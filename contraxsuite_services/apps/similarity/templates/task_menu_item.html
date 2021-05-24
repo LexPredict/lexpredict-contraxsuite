@@ -1,36 +1,74 @@
-<li class="dropdown-item">
-    <a class="task" href="#"
-       data-href="{% url "similarity:similarity" %}"
-       data-btn-text="Search">
+<li class="dropdown-submenu">
+  <a class="dropdown-item" href="#" tabindex="-1">
+    <i class="fa fa-object-group"></i> Similarity: Identify Similar</a>
+  <ul class="dropdown-menu">
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:similarity" %}"
+         data-btn-text="Search">
         <i class="fa fa-copy"></i>
-        Similarity: Identify Similar Documents/Text Units Based on Text</a>
-</li>
-<li class="dropdown-item">
-    <a class="task" href="#"
-       data-href="{% url "similarity:similarity_by_features" %}"
-       data-btn-text="Search">
+        Documents/Text Units Based on Text</a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:chunk_similarity" %}"
+         data-btn-text="Search">
         <i class="fa fa-copy"></i>
-        Similarity: Identify Similar Documents/Text Units Based on Extracted Features</a>
-</li>
-<li class="dropdown-item">
-    <a class="task" href="#"
-       data-href="{% url "similarity:chunk_similarity" %}"
-       data-btn-text="Search">
+        Documents/Text Units Based on Text (by chunks)</a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:document_similarity_by_features" %}"
+         data-btn-text="Search">
         <i class="fa fa-copy"></i>
-        Similarity: Identify Similar Documents/Text Units Based on Text (by chunks)</a>
-</li>
-<li class="dropdown-item">
-    <a class="task" href="#"
-       data-href="{% url "similarity:preconfigured-document-similarity-search" %}"
-       data-btn-text="Process">
+        Documents Based on Extracted Features</a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:text_unit_similarity_by_features" %}"
+         data-btn-text="Search">
         <i class="fa fa-copy"></i>
-        Similarity: Identify Similar Documents Based on Fields
-    </a>
-</li>
-<li class="dropdown-item">
-    <a class="task" href="#"
-       data-href="{% url "similarity:party-similarity" %}"
-       data-btn-text="Search">
+        Text Units Based on Extracted Features</a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:project_documents_similarity_by_vectors" %}"
+         data-btn-text="Search">
         <i class="fa fa-copy"></i>
-        Similarity: Identify Similar Parties</a>
+        Project Documents Based on Pre-Calculated Vectors</a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:project_text_units_similarity_by_vectors" %}"
+         data-btn-text="Search">
+        <i class="fa fa-copy"></i>
+        Project Text Units Based on Pre-Calculated Vectors</a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:preconfigured-document-similarity-search" %}"
+         data-btn-text="Process">
+        <i class="fa fa-copy"></i>
+        Documents Based on Fields
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "similarity:party-similarity" %}"
+         data-btn-text="Search">
+        <i class="fa fa-copy"></i>
+        Parties</a>
+    </li>
+
+  </ul>
 </li>

@@ -20,13 +20,19 @@
     box-shadow: 0px 0px 2px #D8DDE6;
 }
 
-.wy-menu-vertical header, .wy-menu-vertical p.caption {
+.wy-menu-vertical header,
+.wy-menu-vertical p.caption {
     color: #1589EE;
 }
 
 .wy-nav-top {
     background: #1589EE;
     color: #fff;
+}
+
+.wy-menu-vertical li.current>a,
+.wy-menu-vertical li.on a {
+    color: #334c70;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -41,35 +47,39 @@ p.caption {
     letter-spacing: 0.07em;
 }
 
+a {
+    color: #1688EE;
+}
+
 /* ------------------------------------------------------------------------- */
 /* PREVIOUS, NEXT BUTTONS */
 /* ------------------------------------------------------------------------- */
 
-/* button - shape */
+/* button shape */
 .btn {
     display: flex;
     justify-content: center;
-    margin: 20px 10px 0;
+    margin-top: 20px;
     height: 30px;
     align-items: center;
     line-height: 15px;
     border: none;
-    border-radius: 15px;
+    border-radius: 3px;
     padding: 0 15px;
     font-size: 14px;
     box-shadow: none;
 }
 
-/* button - coloring */
+/* button coloring */
 .btn-neutral {
     background-color: #F4F6F9 !important;
     transition-duration: 0.2s;
 }
 
-/* button - set blue on hover */
+/* button set blue on hover */
 .btn:hover {
-    background-color: #6DB5F4 !important;
-    color: #FFF !important;
+    background-color: rgba(21, 137, 238, 0.1) !important;
+    color: #1589EE !important;
 }
 
 /* button - remove press animation */
@@ -100,7 +110,6 @@ p.caption {
     align-items: center;
     line-height: 18px;
     border-color: #6DB5F4;
-    /* border: none; */
 }
 
 .wy-menu-vertical a {
@@ -141,6 +150,7 @@ and the generic admonition all require color adjustments. */
 /* AUTODOC ELEMENTS */
 /* ------------------------------------------------------------------------- */
 
+/* class block */
 dl.class {
     border: 1px solid #D8DDE6;
     border-radius: 3px;
@@ -148,17 +158,83 @@ dl.class {
     padding: 15px;
 }
 
-.rst-content dl:not(.docutils) dt {
-    border-bottom: 1px solid #D8DDE6;
-    border-top: #FFF;
+/* class header */
+html.writer-html4 .rst-content dl:not(.docutils) > dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) > dt {
+    width: 100%;
     background: #FFF;
+    border-top: #FFF;
     color: #6DB5F4;
+    border-bottom: 1px solid #D8DDE6;
+    font-size: 16px;
 }
 
-/* em.property,
-em.sig-paren,
+/* module name, model/function name, function parentheses */
+code.sig-prename.descclassname,
+code.sig-name.descname,
+span.sig-paren {
+    color: #16325C;
+    font-family: 'Source Sans Pro';
+}
+
+/* "class" and class parameters */
+em.property,
 em.sig-param {
     color: #1589EE;
-} */
+    font-style: normal;
+}
 
-/* orange #F17105 */
+/* return type hint */
+html.writer-html4 .rst-content dl:not(.docutils) dl:not(.field-list) > dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) dl:not(.field-list) > dt {
+    color: #16325C;
+}
+
+/* methods, properties, and exceptions */
+html.writer-html4 .rst-content dl:not(.docutils) dl:not(.field-list) > dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) dl:not(.field-list) > dt {
+    background-color: #F4F6F9;
+    border: 1px solid #D8DDE6;
+    border-radius: 3px;
+    box-shadow: 0 1px 4px 0 rgba(0,0,0,0.05);
+    padding: 15px;
+}
+
+/* dividing line between methods and properties */
+.rst-content dl {
+    /*TODO: exempt dl.exception class and only draw this on the last one*/
+    border-bottom: 1px solid #D8DDE6;
+}
+
+td > dl.simple[class]:not(.field-list) {
+    border-bottom: none;
+}
+
+/* parameter list positioning */
+html.writer-html5 .rst-content dl.field-list > dt.field-odd {
+    padding-left: 0;
+}
+
+/* "Parameters" */
+dl > dt.field-odd {
+    color: #16325C;
+    font-size: 14px;
+}
+
+/* parameter name color */
+dd > ul.simple > li > p > strong {
+    color: #1589EE;
+    font-weight: 400;
+}
+
+/* parameter dividers */
+dl.field-list.simple dd.field-odd > ul.simple > li {
+    border-bottom: 1px solid #f1f2f3;
+    padding-bottom: 5px;
+    margin-bottom: 3px;
+}
+
+/* method docstrings */
+dl.method > dd {
+    margin-left: 15px;
+}

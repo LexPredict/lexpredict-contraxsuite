@@ -36,9 +36,9 @@ from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFie
 from apps.document.models import Document, TextUnit, DocumentFieldDetector, DocumentField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -148,14 +148,14 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
             ],
             self.make_doc_field_detector(
                 include_regexps=r'\bb.{1,3}n\sfox\b',
-                detected_value='brown fox'
+                detected_value='brown fox',
+                detect_limit_count=3
             ),
-            detect_limit_count=3
         )
 
         self.assertIsNotNone(detected)
         self.assertEqual(3, len(detected.annotations))
-        self.assertEqual(['brown fox'], detected.field_value)
+        self.assertEqual('brown fox', detected.field_value)
         for i in range(0, 3, 1):
             self.assertEqual('brown fox', detected.annotations[i].annotation_value)
 
@@ -174,10 +174,9 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
                 )
             ),
             self.make_doc_field_detector(
-                include_regexps=
-                    'governed\\s{1,5}by\r\n'
-                    'accordance.{1,25}law\r\n'
-                    'interpreted.{1,10}according.{1,10}law.{1,5}of',
+                include_regexps='governed\\s{1,5}by\r\n'
+                                'accordance.{1,25}law\r\n'
+                                'interpreted.{1,10}according.{1,10}law.{1,5}of',
                 detected_value='United States'
             ),
             type='string'
@@ -207,36 +206,6 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
         self.assertIsNotNone(detected_by_case[1][1])
         self.assertEqual(1, len(detected_by_case[1][1].annotations))
 
-    def test_stop_words(self) -> None:
-        detected = self.detect_values_in_document(
-            [
-                MockTextUnit('dont stop words stopwords', 1)
-            ],
-            self.make_doc_field_detector(
-                include_regexps='',
-                detected_value='error',
-                regexps_pre_process_lower=True
-            ),
-            stop_words={r'stop\s+words': 'stop_word'},
-            type='string'
-        )
-        self.assertIsNotNone(detected)
-        self.assertEqual('stop_word', detected.field_value)
-
-        detected = self.detect_values_in_document(
-            [
-                MockTextUnit('dont sTop words stopwords', 1)
-            ],
-            self.make_doc_field_detector(
-                include_regexps='',
-                detected_value='error',
-                regexps_pre_process_lower=True
-            ),
-            stop_words={r'stop\s+words': 'stop_word'},
-            type='string'
-        )
-        self.assertIsNotNone(detected)
-
     def test_definition_words(self):
         detected = self.detect_values_in_document(
             [
@@ -249,7 +218,6 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
                 regexps_pre_process_lower=True,
                 definition_words='account\nauthorized'
             ),
-            stop_words={r'stop\s+words': 'stop_word'},
             type='string'
         )
         self.assertIsNotNone(detected)
@@ -266,7 +234,6 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
                 regexps_pre_process_lower=True,
                 definition_words='account\nauthorized'
             ),
-            stop_words={r'stop\s+words': 'stop_word'},
             type='string'
         )
         self.assertIsNotNone(detected)
@@ -293,7 +260,8 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
         RegexpsOnlyFieldDetectionStrategy.field_detector_repo = detect_repo
 
         try:
-            detected = RegexpsOnlyFieldDetectionStrategy.detect_field_value(None, doc, field, {})
+            detected = RegexpsOnlyFieldDetectionStrategy.detect_field_value(
+                None, doc, field, {})
         finally:
             RegexpsOnlyFieldDetectionStrategy.text_unit_repo = old_repo_tu
             RegexpsOnlyFieldDetectionStrategy.field_detector_repo = old_repo_detect
@@ -303,13 +271,10 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
     def make_doc_field(**kwargs) -> DocumentField:
         doc_field_attributes = {
             'requires_text_annotations': kwargs.get('requires_text_annotations', False),
-            'stop_words': kwargs.get('stop_words'),
             'text_unit_type': kwargs.get('text_unit_type', 'sentence'),
             'type': kwargs.get('type', 'multi_choice'),
             'choices': kwargs.get('choices', 'brown fox\nbrown box\nfrown fox'),
-            'allow_values_not_specified_in_choices': kwargs.get('choices', True),
-            'detect_limit_unit': kwargs.get('choices', 'UNIT'),
-            'detect_limit_count': kwargs.get('choices', 0)
+            'allow_values_not_specified_in_choices': kwargs.get('choices', True)
         }
 
         for k, v in doc_field_attributes.items():
@@ -322,7 +287,9 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
                                 include_regexps: Optional[str] = None,
                                 detected_value: Optional[str] = None,
                                 regexps_pre_process_lower: bool = True,
-                                definition_words: Optional[str] = None) -> DocumentFieldDetector:
+                                definition_words: Optional[str] = None,
+                                detect_limit_unit='UNIT',
+                                detect_limit_count=0) -> DocumentFieldDetector:
         detector = DocumentFieldDetector()
         detector.exclude_regexps = exclude_regexps if exclude_regexps is not None else 'cushion'
         detector.include_regexps = include_regexps if include_regexps is not None else r'(?<=\D{3,3}\s\D{5,5}\s)\D+'
@@ -332,6 +299,8 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
         detector.text_part = 'INSIDE_REGEXP'
         detector.regexps_pre_process_lower = regexps_pre_process_lower
         detector.definition_words = definition_words
+        detector.detect_limit_unit = detect_limit_unit
+        detector.detect_limit_count = detect_limit_count
         return detector
 
     @staticmethod

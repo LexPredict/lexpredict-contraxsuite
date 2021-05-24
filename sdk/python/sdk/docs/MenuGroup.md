@@ -1,10 +1,11 @@
 # MenuGroup
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**pk** | **int** |  | [optional] [readonly] 
 **name** | **str** | Menu item group (folder) name. | 
+**pk** | **int** |  | [optional] [readonly] 
 **public** | **bool** |  | [optional] 
 **order** | **int** |  | [optional] 
 **user** | **str** |  | [optional] [readonly] 

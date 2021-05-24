@@ -10,13 +10,17 @@ Method | HTTP request | Description
 [**taskLoadDocumentsPOST**](TaskApi.md#taskLoadDocumentsPOST) | **POST** /api/v1/task/load-documents/ | 
 [**taskLocateGET**](TaskApi.md#taskLocateGET) | **GET** /api/v1/task/locate/ | 
 [**taskLocatePOST**](TaskApi.md#taskLocatePOST) | **POST** /api/v1/task/locate/ | 
+[**taskProcessTextExtractionResultsRequestIdPOST**](TaskApi.md#taskProcessTextExtractionResultsRequestIdPOST) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ | 
 [**taskPurgeTaskPOST**](TaskApi.md#taskPurgeTaskPOST) | **POST** /api/v1/task/purge-task/ | 
 [**taskRecallTaskGET**](TaskApi.md#taskRecallTaskGET) | **GET** /api/v1/task/recall-task/ | 
 [**taskRecallTaskPOST**](TaskApi.md#taskRecallTaskPOST) | **POST** /api/v1/task/recall-task/ | 
+[**taskReindexroutinesCheckSchedulePOST**](TaskApi.md#taskReindexroutinesCheckSchedulePOST) | **POST** /api/v1/task/reindexroutines/check_schedule | 
 [**taskTaskLogGET**](TaskApi.md#taskTaskLogGET) | **GET** /api/v1/task/task-log/ | 
 [**taskTaskStatusGET**](TaskApi.md#taskTaskStatusGET) | **GET** /api/v1/task/task-status/ | 
 [**taskTasksGET**](TaskApi.md#taskTasksGET) | **GET** /api/v1/task/tasks/ | 
 [**taskTasksIdGET**](TaskApi.md#taskTasksIdGET) | **GET** /api/v1/task/tasks/{id}/ | 
+[**taskTasksProjectProjectIdActiveTasksGET**](TaskApi.md#taskTasksProjectProjectIdActiveTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ | 
+[**taskTasksProjectProjectIdTasksGET**](TaskApi.md#taskTasksProjectProjectIdTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ | 
 [**taskUpdateElasticIndexGET**](TaskApi.md#taskUpdateElasticIndexGET) | **GET** /api/v1/task/update-elastic-index/ | 
 [**taskUpdateElasticIndexPOST**](TaskApi.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ | 
 
@@ -427,6 +431,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="taskProcessTextExtractionResultsRequestIdPOST"></a>
+# **taskProcessTextExtractionResultsRequestIdPOST**
+> Object taskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.TaskApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    TaskApi apiInstance = new TaskApi(defaultClient);
+    String requestId = "requestId_example"; // String | 
+    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    try {
+      Object result = apiInstance.taskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling TaskApi#taskProcessTextExtractionResultsRequestIdPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestId** | **String**|  |
+ **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="taskPurgeTaskPOST"></a>
 # **taskPurgeTaskPOST**
 > Map&lt;String, Object&gt; taskPurgeTaskPOST(requestBody)
@@ -630,9 +703,76 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="taskReindexroutinesCheckSchedulePOST"></a>
+# **taskReindexroutinesCheckSchedulePOST**
+> Object taskReindexroutinesCheckSchedulePOST(requestBody)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.TaskApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    TaskApi apiInstance = new TaskApi(defaultClient);
+    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    try {
+      Object result = apiInstance.taskReindexroutinesCheckSchedulePOST(requestBody);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling TaskApi#taskReindexroutinesCheckSchedulePOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="taskTaskLogGET"></a>
 # **taskTaskLogGET**
-> Map&lt;String, Object&gt; taskTaskLogGET(taskId, recordsLimit)
+> List&lt;TaskLogResponse&gt; taskTaskLogGET(taskId, recordsLimit, jqFilters)
 
 
 
@@ -662,8 +802,9 @@ public class Example {
     TaskApi apiInstance = new TaskApi(defaultClient);
     String taskId = "taskId_example"; // String | 
     Integer recordsLimit = 56; // Integer | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      Map<String, Object> result = apiInstance.taskTaskLogGET(taskId, recordsLimit);
+      List<TaskLogResponse> result = apiInstance.taskTaskLogGET(taskId, recordsLimit, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling TaskApi#taskTaskLogGET");
@@ -680,12 +821,13 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **taskId** | **String**|  | [optional]
+ **taskId** | **String**|  |
  **recordsLimit** | **Integer**|  | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**List&lt;TaskLogResponse&gt;**](TaskLogResponse.md)
 
 ### Authorization
 
@@ -896,6 +1038,144 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**Task**](Task.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="taskTasksProjectProjectIdActiveTasksGET"></a>
+# **taskTasksProjectProjectIdActiveTasksGET**
+> List&lt;ProjectActiveTasks&gt; taskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.TaskApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    TaskApi apiInstance = new TaskApi(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectActiveTasks> result = apiInstance.taskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling TaskApi#taskTasksProjectProjectIdActiveTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="taskTasksProjectProjectIdTasksGET"></a>
+# **taskTasksProjectProjectIdTasksGET**
+> List&lt;ProjectTasks&gt; taskTasksProjectProjectIdTasksGET(projectId, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.TaskApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    TaskApi apiInstance = new TaskApi(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectTasks> result = apiInstance.taskTasksProjectProjectIdTasksGET(projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling TaskApi#taskTasksProjectProjectIdTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
 
 ### Authorization
 

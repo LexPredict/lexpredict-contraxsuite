@@ -2,6 +2,7 @@
 
 # DocumentTypeDetailCategories
 
+
 ## Properties
 
 Name | Type | Description | Notes

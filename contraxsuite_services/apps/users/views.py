@@ -46,9 +46,9 @@ from apps.common.mixins import CustomUpdateView, CustomDetailView, \
 from apps.users.models import User, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,7 +58,7 @@ class BaseUserView(PermissionRequiredMixin):
     slug_field = 'username'
     slug_url_kwarg = 'username'
     fields = ['username', 'first_name', 'last_name', 'name',
-              'organization', 'email', 'role', 'is_active', 'photo']
+              'organization', 'email', 'is_active', 'photo']
 
 
 class UserUpdateView(BaseUserView, CustomUpdateView):
@@ -112,7 +112,6 @@ class ViewUsersPermission(PermissionRequiredMixin):
 
 class UserListView(ViewUsersPermission, JqPaginatedListView):
     model = User
-    extra_json_fields = ['role__name']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -243,7 +242,7 @@ class UserPermissionsListView(ViewUsersPermission, AjaxListView):
 
         # get perms map for perm id
         _permissions = Permission.objects.values('content_type_id', 'codename', 'id')
-        permissions = dict()
+        permissions = {}
         for p in _permissions:
             content_type_id = p['content_type_id']
             if content_type_id not in permissions:
@@ -295,12 +294,10 @@ from allauth.account.views import PasswordChangeView, reverse_lazy, LoginView
 
 
 class MixedLoginView(LoginView):
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ret = super().get_context_data(**kwargs)
-        ret['providers'] = [app for app in SocialApp.objects.all()]
+        ret['providers'] = SocialApp.objects.all()
         return ret
 
 

@@ -2,6 +2,7 @@
 
 # ProjectList
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -12,7 +13,7 @@ Name | Type | Description | Notes
 **statusData** | [**ProjectListStatusData**](ProjectListStatusData.md) |  |  [optional]
 **type** | **String** |  |  [optional]
 **typeData** | [**ProjectListTypeData**](ProjectListTypeData.md) |  | 
-**countOfDocuments** | **Integer** |  |  [optional] [readonly]
+**countOfDocuments** | **Integer** |  | 
 
 
 

@@ -6,27 +6,39 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**ProjectProjectClusteringGET**](ProjectApi.md#projectprojectclusteringget) | **GET** /api/v1/project/project-clustering/ | 
 [**ProjectProjectClusteringIdGET**](ProjectApi.md#projectprojectclusteringidget) | **GET** /api/v1/project/project-clustering/{id}/ | 
+[**ProjectProjectsFormFieldsGET**](ProjectApi.md#projectprojectsformfieldsget) | **GET** /api/v1/project/projects/form-fields/ | 
 [**ProjectProjectsGET**](ProjectApi.md#projectprojectsget) | **GET** /api/v1/project/projects/ | 
+[**ProjectProjectsIdActiveTasksGET**](ProjectApi.md#projectprojectsidactivetasksget) | **GET** /api/v1/project/projects/{id}/active_tasks/ | 
 [**ProjectProjectsIdAnnotationsAssigneesGET**](ProjectApi.md#projectprojectsidannotationsassigneesget) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ | 
 [**ProjectProjectsIdAssignAnnotationsPOST**](ProjectApi.md#projectprojectsidassignannotationspost) | **POST** /api/v1/project/projects/{id}/assign_annotations/ | 
 [**ProjectProjectsIdAssignDocumentPOST**](ProjectApi.md#projectprojectsidassigndocumentpost) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**ProjectProjectsIdAssignDocumentsPOST**](ProjectApi.md#projectprojectsidassigndocumentspost) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**ProjectProjectsIdAssigneesGET**](ProjectApi.md#projectprojectsidassigneesget) | **GET** /api/v1/project/projects/{id}/assignees/ | 
 [**ProjectProjectsIdCleanupPOST**](ProjectApi.md#projectprojectsidcleanuppost) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
+[**ProjectProjectsIdClusterActionsGET**](ProjectApi.md#projectprojectsidclusteractionsget) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**ProjectProjectsIdClusterPOST**](ProjectApi.md#projectprojectsidclusterpost) | **POST** /api/v1/project/projects/{id}/cluster/ | 
 [**ProjectProjectsIdClusteringStatusGET**](ProjectApi.md#projectprojectsidclusteringstatusget) | **GET** /api/v1/project/projects/{id}/clustering-status/ | 
 [**ProjectProjectsIdDELETE**](ProjectApi.md#projectprojectsiddelete) | **DELETE** /api/v1/project/projects/{id}/ | 
+[**ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE**](ProjectApi.md#projectprojectsiddeletedocumentsimilarityresultsdelete) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ | 
+[**ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](ProjectApi.md#projectprojectsiddeletetextunitsimilarityresultsdelete) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ | 
 [**ProjectProjectsIdDetectFieldValuesPOST**](ProjectApi.md#projectprojectsiddetectfieldvaluespost) | **POST** /api/v1/project/projects/{id}/detect_field_values/ | 
+[**ProjectProjectsIdFormFieldsGET**](ProjectApi.md#projectprojectsidformfieldsget) | **GET** /api/v1/project/projects/{id}/form-fields/ | 
 [**ProjectProjectsIdGET**](ProjectApi.md#projectprojectsidget) | **GET** /api/v1/project/projects/{id}/ | 
-[**ProjectProjectsIdMakeSearchablePdfPOST**](ProjectApi.md#projectprojectsidmakesearchablepdfpost) | **POST** /api/v1/project/projects/{id}/make-searchable-pdf/ | 
+[**ProjectProjectsIdLocateItemsPOST**](ProjectApi.md#projectprojectsidlocateitemspost) | **POST** /api/v1/project/projects/{id}/locate_items/ | 
 [**ProjectProjectsIdMarkDeletePOST**](ProjectApi.md#projectprojectsidmarkdeletepost) | **POST** /api/v1/project/projects/{id}/mark_delete/ | 
 [**ProjectProjectsIdPATCH**](ProjectApi.md#projectprojectsidpatch) | **PATCH** /api/v1/project/projects/{id}/ | 
 [**ProjectProjectsIdPUT**](ProjectApi.md#projectprojectsidput) | **PUT** /api/v1/project/projects/{id}/ | 
 [**ProjectProjectsIdProgressGET**](ProjectApi.md#projectprojectsidprogressget) | **GET** /api/v1/project/projects/{id}/progress/ | 
+[**ProjectProjectsIdSearchSimilarDocumentsPOST**](ProjectApi.md#projectprojectsidsearchsimilardocumentspost) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ | 
+[**ProjectProjectsIdSearchSimilarTextUnitsPOST**](ProjectApi.md#projectprojectsidsearchsimilartextunitspost) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ | 
 [**ProjectProjectsIdSendClustersToProjectPOST**](ProjectApi.md#projectprojectsidsendclusterstoprojectpost) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ | 
 [**ProjectProjectsIdSetAnnotationStatusPOST**](ProjectApi.md#projectprojectsidsetannotationstatuspost) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ | 
 [**ProjectProjectsIdSetStatusPOST**](ProjectApi.md#projectprojectsidsetstatuspost) | **POST** /api/v1/project/projects/{id}/set_status/ | 
+[**ProjectProjectsIdSettingsActionsGET**](ProjectApi.md#projectprojectsidsettingsactionsget) | **GET** /api/v1/project/projects/{id}/settings_actions/ | 
+[**ProjectProjectsIdTaskTaskIdTaskLogsGET**](ProjectApi.md#projectprojectsidtasktaskidtasklogsget) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ | 
+[**ProjectProjectsIdTasksGET**](ProjectApi.md#projectprojectsidtasksget) | **GET** /api/v1/project/projects/{id}/tasks/ | 
 [**ProjectProjectsIdUnmarkDeletePOST**](ProjectApi.md#projectprojectsidunmarkdeletepost) | **POST** /api/v1/project/projects/{id}/unmark_delete/ | 
+[**ProjectProjectsIdUpdateDocumentFieldsPOST**](ProjectApi.md#projectprojectsidupdatedocumentfieldspost) | **POST** /api/v1/project/projects/{id}/update_document_fields/ | 
 [**ProjectProjectsPOST**](ProjectApi.md#projectprojectspost) | **POST** /api/v1/project/projects/ | 
 [**ProjectProjectsProjectStatsGET**](ProjectApi.md#projectprojectsprojectstatsget) | **GET** /api/v1/project/projects/project_stats/ | 
 [**ProjectProjectsRecentGET**](ProjectApi.md#projectprojectsrecentget) | **GET** /api/v1/project/projects/recent/ | 
@@ -47,6 +59,7 @@ Method | HTTP request | Description
 [**ProjectUploadSessionUidDeleteFileDELETE**](ProjectApi.md#projectuploadsessionuiddeletefiledelete) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ | 
 [**ProjectUploadSessionUidFilesPOST**](ProjectApi.md#projectuploadsessionuidfilespost) | **POST** /api/v1/project/upload-session/{uid}/files/ | 
 [**ProjectUploadSessionUidGET**](ProjectApi.md#projectuploadsessionuidget) | **GET** /api/v1/project/upload-session/{uid}/ | 
+[**ProjectUploadSessionUidPATCH**](ProjectApi.md#projectuploadsessionuidpatch) | **PATCH** /api/v1/project/upload-session/{uid}/ | 
 [**ProjectUploadSessionUidProgressGET**](ProjectApi.md#projectuploadsessionuidprogressget) | **GET** /api/v1/project/upload-session/{uid}/progress/ | 
 [**ProjectUploadSessionUidUploadPOST**](ProjectApi.md#projectuploadsessionuiduploadpost) | **POST** /api/v1/project/upload-session/{uid}/upload/ | 
 
@@ -119,6 +132,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -201,6 +215,83 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsFormFieldsGET
+
+> Dictionary&lt;string, Object&gt; ProjectProjectsFormFieldsGET ()
+
+
+
+GET model form fields description to build UI form for an object:       - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\"input\" | \"select\" | \"checkbox\" | ...), data_type: (\"string\", \"integer\", \"date\", ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsFormFieldsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.ProjectProjectsFormFieldsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsFormFieldsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -280,6 +371,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdActiveTasksGET
+
+> List&lt;ProjectActiveTasks&gt; ProjectProjectsIdActiveTasksGET (string id, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdActiveTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectActiveTasks> result = apiInstance.ProjectProjectsIdActiveTasksGET(id, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdActiveTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -358,6 +530,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -439,6 +612,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -522,6 +696,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -604,6 +779,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -683,6 +859,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -765,10 +942,97 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdClusterActionsGET
+
+> List&lt;Action&gt; ProjectProjectsIdClusterActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdClusterActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.ProjectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdClusterActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
 | **200** |  |  -  |
 
 [[Back to top]](#)
@@ -846,6 +1110,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -929,6 +1194,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1007,6 +1273,161 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE
+
+> void ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdDeleteDocumentSimilarityResultsDELETEExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+
+            try
+            {
+                apiInstance.ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE(id);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE
+
+> void ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETEExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+
+            try
+            {
+                apiInstance.ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1087,10 +1508,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdFormFieldsGET
+
+> Dictionary&lt;string, Object&gt; ProjectProjectsIdFormFieldsGET (string id)
+
+
+
+GET model form fields description to build UI form for EXISTING object:       - value: any - object field value      - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\"input\" | \"select\" | \"checkbox\" | ...), data_type: (\"string\", \"integer\", \"date\", ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdFormFieldsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this user.
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.ProjectProjectsIdFormFieldsGET(id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdFormFieldsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this user. | 
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -1168,6 +1670,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1179,9 +1682,9 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
-## ProjectProjectsIdMakeSearchablePdfPOST
+## ProjectProjectsIdLocateItemsPOST
 
-> TaskIdResponse ProjectProjectsIdMakeSearchablePdfPOST (string id, MakeSearchablePDFRequest makeSearchablePDFRequest = null)
+> ProjectDetail ProjectProjectsIdLocateItemsPOST (string id, ProjectDetail projectDetail = null)
 
 
 
@@ -1196,7 +1699,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class ProjectProjectsIdMakeSearchablePdfPOSTExample
+    public class ProjectProjectsIdLocateItemsPOSTExample
     {
         public static void Main()
         {
@@ -1208,16 +1711,16 @@ namespace Example
 
             var apiInstance = new ProjectApi(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this project.
-            var makeSearchablePDFRequest = new MakeSearchablePDFRequest(); // MakeSearchablePDFRequest |  (optional) 
+            var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
 
             try
             {
-                TaskIdResponse result = apiInstance.ProjectProjectsIdMakeSearchablePdfPOST(id, makeSearchablePDFRequest);
+                ProjectDetail result = apiInstance.ProjectProjectsIdLocateItemsPOST(id, projectDetail);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdMakeSearchablePdfPOST: " + e.Message );
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdLocateItemsPOST: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -1232,11 +1735,11 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this project. | 
- **makeSearchablePDFRequest** | [**MakeSearchablePDFRequest**](MakeSearchablePDFRequest.md)|  | [optional] 
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] 
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -1246,6 +1749,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1328,6 +1832,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1409,6 +1914,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1426,7 +1932,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Project
+Create Document/TextUnit Vectors if needed Update ocr_enable project app var if needed
 
 ### Example
 
@@ -1489,6 +1995,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1569,10 +2076,171 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdSearchSimilarDocumentsPOST
+
+> TaskIdResponse ProjectProjectsIdSearchSimilarDocumentsPOST (string id, ProjectSearchSimilarDocumentsRequest projectSearchSimilarDocumentsRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdSearchSimilarDocumentsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectSearchSimilarDocumentsRequest = new ProjectSearchSimilarDocumentsRequest(); // ProjectSearchSimilarDocumentsRequest |  (optional) 
+
+            try
+            {
+                TaskIdResponse result = apiInstance.ProjectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdSearchSimilarDocumentsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional] 
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdSearchSimilarTextUnitsPOST
+
+> TaskIdResponse ProjectProjectsIdSearchSimilarTextUnitsPOST (string id, ProjectSearchSimilarTextUnitsRequest projectSearchSimilarTextUnitsRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdSearchSimilarTextUnitsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectSearchSimilarTextUnitsRequest = new ProjectSearchSimilarTextUnitsRequest(); // ProjectSearchSimilarTextUnitsRequest |  (optional) 
+
+            try
+            {
+                TaskIdResponse result = apiInstance.ProjectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdSearchSimilarTextUnitsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional] 
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -1649,6 +2317,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1733,6 +2402,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1814,10 +2484,261 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdSettingsActionsGET
+
+> List&lt;Action&gt; ProjectProjectsIdSettingsActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdSettingsActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.ProjectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdSettingsActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdTaskTaskIdTaskLogsGET
+
+> TaskLogResponse ProjectProjectsIdTaskTaskIdTaskLogsGET (string id, string taskId, int? recordsLimit = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdTaskTaskIdTaskLogsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var taskId = taskId_example;  // string | 
+            var recordsLimit = 56;  // int? |  (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                TaskLogResponse result = apiInstance.ProjectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdTaskTaskIdTaskLogsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **taskId** | **string**|  | 
+ **recordsLimit** | **int?**|  | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**TaskLogResponse**](TaskLogResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdTasksGET
+
+> List&lt;ProjectTasks&gt; ProjectProjectsIdTasksGET (string id, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectTasks> result = apiInstance.ProjectProjectsIdTasksGET(id, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -1895,10 +2816,94 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdUpdateDocumentFieldsPOST
+
+> TaskIdResponse ProjectProjectsIdUpdateDocumentFieldsPOST (string id, UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = null)
+
+
+
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdUpdateDocumentFieldsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest |  (optional) 
+
+            try
+            {
+                TaskIdResponse result = apiInstance.ProjectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdUpdateDocumentFieldsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional] 
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -1912,7 +2917,7 @@ Name | Type | Description  | Notes
 
 
 
-Create Project
+Create Document/TextUnit Vectors if needed
 
 ### Example
 
@@ -1973,6 +2978,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2053,6 +3059,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2131,6 +3138,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2211,6 +3219,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2290,6 +3299,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2367,6 +3377,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2449,6 +3460,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2529,6 +3541,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2611,6 +3624,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2689,6 +3703,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2769,6 +3784,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2782,7 +3798,7 @@ Name | Type | Description  | Notes
 
 ## ProjectUploadSessionPOST
 
-> UploadSession ProjectUploadSessionPOST (UploadSession uploadSession = null)
+> UploadSessionCreate ProjectUploadSessionPOST (UploadSessionCreate uploadSessionCreate = null)
 
 
 
@@ -2810,11 +3826,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uploadSession = new UploadSession(); // UploadSession |  (optional) 
+            var uploadSessionCreate = new UploadSessionCreate(); // UploadSessionCreate |  (optional) 
 
             try
             {
-                UploadSession result = apiInstance.ProjectUploadSessionPOST(uploadSession);
+                UploadSessionCreate result = apiInstance.ProjectUploadSessionPOST(uploadSessionCreate);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2833,11 +3849,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **uploadSession** | [**UploadSession**](UploadSession.md)|  | [optional] 
+ **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional] 
 
 ### Return type
 
-[**UploadSession**](UploadSession.md)
+[**UploadSessionCreate**](UploadSessionCreate.md)
 
 ### Authorization
 
@@ -2847,6 +3863,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2926,6 +3943,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3008,6 +4026,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3089,6 +4108,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3167,6 +4187,7 @@ void (empty response body)
 - **Content-Type**: Not defined
 - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3244,6 +4265,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3325,6 +4347,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3418,6 +4441,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/offset+octet-stream
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3502,6 +4526,89 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectUploadSessionUidPATCH
+
+> UploadSessionUpdate ProjectUploadSessionUidPATCH (string uid, UploadSessionUpdate uploadSessionUpdate = null)
+
+
+
+Partial Update Session Upload
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectUploadSessionUidPATCHExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uploadSessionUpdate = new UploadSessionUpdate(); // UploadSessionUpdate |  (optional) 
+
+            try
+            {
+                UploadSessionUpdate result = apiInstance.ProjectUploadSessionUidPATCH(uid, uploadSessionUpdate);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectUploadSessionUidPATCH: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **uid** | **string**| A UUID string identifying this upload session. | 
+ **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional] 
+
+### Return type
+
+[**UploadSessionUpdate**](UploadSessionUpdate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3580,6 +4687,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3671,6 +4779,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

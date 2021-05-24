@@ -2,13 +2,14 @@
 
 # PercentUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**amount** | **BigDecimal** |  |  [optional]
 **unitType** | **String** |  | 
-**total** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**total** | **BigDecimal** |  |  [optional]
 **count** | **Integer** |  |  [optional]
 **pk** | **Integer** |  |  [optional] [readonly]
 **textUnitPk** | **String** |  |  [optional] [readonly]

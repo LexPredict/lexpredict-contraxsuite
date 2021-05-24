@@ -32,9 +32,9 @@ from apps.document.repository.document_field_repository import DocumentFieldRepo
 from apps.common.models import MethodStatsCollectorPlugin, MethodStats
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,13 +73,9 @@ class ModelStatsSetsManager:
 
     @staticmethod
     def get_field_locators() -> List[str]:
-        path = 'apps.document.field_detection.regexps_and_text_based_ml_field_detection'
-        cls = ['RegexpsAndTextBasedMLFieldDetectionStrategy', 'TextBasedMLFieldDetectionStrategy']
-        methods = [f'{path}.{c}.detect_field_value' for c in cls]
-
         path = 'apps.document.field_detection.regexps_field_detection'
         cls = ['RegexpsOnlyFieldDetectionStrategy', 'FieldBasedRegexpsDetectionStrategy']
-        methods += [f'{path}.{c}.detect_field_value' for c in cls]
+        methods = [f'{path}.{c}.detect_field_value' for c in cls]
 
         path = 'apps.document.field_detection.csv_regexps_field_detection_strategy'
         cls = ['CsvRegexpsFieldDetectionStrategy']
@@ -109,7 +105,7 @@ class ModelStatsSetsManager:
 
     @staticmethod
     def remove_all_decorators():
-        count = MethodStatsCollectorPlugin.objects.all().count()
+        count = MethodStatsCollectorPlugin.objects.count()
         MethodStatsCollectorPlugin.objects.all().delete()
         print(f'Deleted {count} decorators')
 
@@ -136,6 +132,6 @@ class ModelStatsSetsManager:
 
     @staticmethod
     def purge_stored_statistics():
-        count = MethodStats.objects.all().count()
+        count = MethodStats.objects.count()
         MethodStats.objects.all().delete()
         print(f'Deleted {count} MethodStats records')

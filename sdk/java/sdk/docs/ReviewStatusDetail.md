@@ -2,6 +2,7 @@
 
 # ReviewStatusDetail
 
+
 ## Properties
 
 Name | Type | Description | Notes

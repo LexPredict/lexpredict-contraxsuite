@@ -2,12 +2,13 @@
 
 # DocumentFieldAnnotation
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **pk** | **Integer** |  |  [optional] [readonly]
-**uid** | [**UUID**](UUID.md) |  |  [optional] [readonly]
+**uid** | **UUID** |  |  [optional] [readonly]
 **projectId** | **Integer** |  |  [optional] [readonly]
 **projectName** | **String** |  |  [optional] [readonly]
 **documentId** | **String** |  |  [optional] [readonly]
@@ -21,12 +22,12 @@ Name | Type | Description | Notes
 **locationEnd** | **Integer** |  |  [optional]
 **locationText** | **String** |  |  [optional]
 **assigneeId** | **Integer** |  | 
-**assignDate** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
+**assignDate** | **OffsetDateTime** |  |  [optional]
 **statusId** | **Integer** |  | 
 **statusName** | **String** |  |  [optional] [readonly]
 **assigneeName** | **String** |  |  [optional] [readonly]
 **modifiedById** | **String** |  |  [optional] [readonly]
-**modifiedDate** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional] [readonly]
+**modifiedDate** | **OffsetDateTime** |  |  [optional] [readonly]
 
 
 

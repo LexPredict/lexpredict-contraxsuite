@@ -25,7 +25,6 @@
 # -*- coding: utf-8 -*-
 
 import inspect
-import logging
 import os
 import time
 from shutil import rmtree
@@ -36,6 +35,8 @@ from threading import RLock
 from threading import Thread
 from typing import Dict, List
 from uuid import uuid4
+
+from apps.common.logger import CsLogger
 from apps.common.singleton import Singleton
 
 import mlflow.pyfunc as pyfunc
@@ -49,9 +50,9 @@ from apps.mlflow import mlflow_socket_server_script
 from apps.mlflow.mlflow_model_client import predict_on_server
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,7 +63,7 @@ AWS_SECRET_ACCESS_KEY = 'AWS_SECRET_ACCESS_KEY'
 
 AWS_ACCESS_KEY_ID = 'AWS_ACCESS_KEY_ID'
 
-logger = logging.getLogger(settings.MLFLOW_LOGGER_NAME)
+logger = CsLogger.get_logger(settings.MLFLOW_LOGGER_NAME)
 
 
 @dataclass
@@ -112,7 +113,7 @@ class MLFlowModelManager:
     def __init__(self) -> None:
         super().__init__()
         self.lock = RLock()
-        self.models = dict()  # type: Dict[str, ModelInfo]
+        self.models = {}  # type: Dict[str, ModelInfo]
         self.thread = None
         self.started = False
         self.predict_timeout = None
@@ -154,9 +155,9 @@ class MLFlowModelManager:
     def _update_app_vars(self):
         from apps.mlflow.app_vars import MLFLOW_MODEL_SERVER_STARTUP_TIMEOUT_SEC, MLFLOW_PREDICT_TIMEOUT_SEC, \
             MLFLOW_MODEL_SERVER_IDLE_TIMEOUT_SEC
-        self.predict_timeout = MLFLOW_PREDICT_TIMEOUT_SEC.val
-        self.server_init_timeout = MLFLOW_MODEL_SERVER_STARTUP_TIMEOUT_SEC.val
-        self.server_idle_timeout = MLFLOW_MODEL_SERVER_IDLE_TIMEOUT_SEC.val
+        self.predict_timeout = MLFLOW_PREDICT_TIMEOUT_SEC.val()
+        self.server_init_timeout = MLFLOW_MODEL_SERVER_STARTUP_TIMEOUT_SEC.val()
+        self.server_idle_timeout = MLFLOW_MODEL_SERVER_IDLE_TIMEOUT_SEC.val()
 
     def _init_model(self, model_uri: str):
         self.lock.acquire()
@@ -268,7 +269,7 @@ class MLFlowModelManager:
 
             if not model_info:
                 raise Exception(f'Unable to initialize model: {model_uri}')
-            elif model_info.process.poll() is not None:
+            if model_info.process.poll() is not None:
                 raise Exception(f'Model initialization was ok but the model server has quit unexpectedly: {model_uri}')
 
             res = predict_on_server(model_info.unix_socket_path, model_input, self.predict_timeout)

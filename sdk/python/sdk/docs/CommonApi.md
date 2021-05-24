@@ -6,9 +6,10 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**common_actions_get**](CommonApi.md#common_actions_get) | **GET** /api/v1/common/actions/ | 
 [**common_actions_id_get**](CommonApi.md#common_actions_id_get) | **GET** /api/v1/common/actions/{id}/ | 
-[**common_app_variables_delete**](CommonApi.md#common_app_variables_delete) | **DELETE** /api/v1/common/app-variables/ | 
 [**common_app_variables_get**](CommonApi.md#common_app_variables_get) | **GET** /api/v1/common/app-variables/ | 
-[**common_app_variables_post**](CommonApi.md#common_app_variables_post) | **POST** /api/v1/common/app-variables/ | 
+[**common_app_variables_list_get**](CommonApi.md#common_app_variables_list_get) | **GET** /api/v1/common/app-variables/list/ | 
+[**common_app_variables_project_project_id_get**](CommonApi.md#common_app_variables_project_project_id_get) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
+[**common_app_variables_project_project_id_put**](CommonApi.md#common_app_variables_project_project_id_put) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
 [**common_media_path_get**](CommonApi.md#common_media_path_get) | **GET** /api/v1/common/media/{path}/ | 
 [**common_menu_groups_form_fields_get**](CommonApi.md#common_menu_groups_form_fields_get) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**common_menu_groups_get**](CommonApi.md#common_menu_groups_get) | **GET** /api/v1/common/menu-groups/ | 
@@ -41,7 +42,7 @@ Method | HTTP request | Description
 
 
 # **common_actions_get**
-> list[Action] common_actions_get(jq_filters=jq_filters)
+> [[Action]] common_actions_get()
 
 
 
@@ -51,10 +52,10 @@ Action List
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.action import Action
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -68,37 +69,46 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = common_api.CommonApi(api_client)
+    project_id = 1 # int | Project ID (optional)
+    document_id = 1 # int | Document ID (optional)
+    view_actions = [
+        "view_actions_example",
+    ] # [str] | Action names (optional)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
-        api_response = api_instance.common_actions_get(jq_filters=jq_filters)
+        api_response = api_instance.common_actions_get(project_id=project_id, document_id=document_id, view_actions=view_actions, jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_actions_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **project_id** | **int**| Project ID | [optional]
+ **document_id** | **int**| Document ID | [optional]
+ **view_actions** | **[str]**| Action names | [optional]
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**list[Action]**](Action.md)
+**[[Action]]**
 
 ### Authorization
 
@@ -108,6 +118,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -117,7 +128,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_actions_id_get**
-> Action common_actions_id_get(id, jq_filters=jq_filters)
+> [Action] common_actions_id_get(id)
 
 
 
@@ -127,10 +138,10 @@ Retrieve Action
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.action import Action
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -144,39 +155,55 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this action.
-jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this action.
+    project_id = 1 # int | Project ID (optional)
+    document_id = 1 # int | Document ID (optional)
+    view_actions = [
+        "view_actions_example",
+    ] # [str] | Action names (optional)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.common_actions_id_get(id, jq_filters=jq_filters)
+        api_response = api_instance.common_actions_id_get(id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_actions_id_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.common_actions_id_get(id, project_id=project_id, document_id=document_id, view_actions=view_actions, jq_filters=jq_filters)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_actions_id_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this action. | 
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **id** | **str**| A unique integer value identifying this action. |
+ **project_id** | **int**| Project ID | [optional]
+ **document_id** | **int**| Document ID | [optional]
+ **view_actions** | **[str]**| Action names | [optional]
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**Action**](Action.md)
+[**[Action]**](Action.md)
 
 ### Authorization
 
@@ -187,81 +214,6 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **common_app_variables_delete**
-> str common_app_variables_delete(app_var_delete=app_var_delete)
-
-
-
-Delete specific App Variable by name     Param:         - name: str         - category: str
-
-### Example
-
-* Api Key Authentication (AuthToken):
-```python
-from __future__ import print_function
-import time
-import openapi_client
-from openapi_client.rest import ApiException
-from pprint import pprint
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = openapi_client.Configuration(
-    host = "http://localhost"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AuthToken'] = 'Bearer'
-
-# Enter a context with an instance of the API client
-with openapi_client.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    app_var_delete = openapi_client.AppVarDelete() # AppVarDelete |  (optional)
-
-    try:
-        api_response = api_instance.common_app_variables_delete(app_var_delete=app_var_delete)
-        pprint(api_response)
-    except ApiException as e:
-        print("Exception when calling CommonApi->common_app_variables_delete: %s\n" % e)
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **app_var_delete** | [**AppVarDelete**](AppVarDelete.md)|  | [optional] 
-
-### Return type
-
-**str**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
- - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -271,7 +223,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_app_variables_get**
-> dict(str, object) common_app_variables_get(name=name)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_app_variables_get()
 
 
 
@@ -281,10 +233,9 @@ Retrieve App Variable(s)      Params:         - name: str - retrieve specific va
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -298,37 +249,36 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    name = 'name_example' # str | App var name (optional)
+    api_instance = common_api.CommonApi(api_client)
+    name = "name_example" # str | App var name (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_app_variables_get(name=name)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_app_variables_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **name** | **str**| App var name | [optional] 
+ **name** | **str**| App var name | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -339,6 +289,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -346,21 +297,19 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **common_app_variables_post**
-> str common_app_variables_post(request_body=request_body)
+# **common_app_variables_list_get**
+> [AppVar] common_app_variables_list_get()
 
 
-
-Create or update App Variables      Params:         key1: val1,         key2: val2, etc
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.app_var import AppVar
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -374,33 +323,204 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
-        api_response = api_instance.common_app_variables_post(request_body=request_body)
+        api_response = api_instance.common_app_variables_list_get(jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
-        print("Exception when calling CommonApi->common_app_variables_post: %s\n" % e)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_app_variables_list_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**[AppVar]**](AppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **common_app_variables_project_project_id_get**
+> [ProjectAppVar] common_app_variables_project_project_id_get(project_id)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import common_api
+from openapi_client.model.project_app_var import ProjectAppVar
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = common_api.CommonApi(api_client)
+    project_id = "project_id_example" # str | 
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_app_variables_project_project_id_get(project_id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_app_variables_project_project_id_get: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_id** | **str**|  |
+
+### Return type
+
+[**[ProjectAppVar]**](ProjectAppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **common_app_variables_project_project_id_put**
+> str common_app_variables_project_project_id_put(project_id)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import common_api
+from openapi_client.model.project_app_var import ProjectAppVar
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = common_api.CommonApi(api_client)
+    project_id = "project_id_example" # str | 
+    project_app_var = [
+        ProjectAppVar(
+            category="category_example",
+            name="name_example",
+            description="description_example",
+            value={},
+            access_type="access_type_example",
+            use_system=True,
+            system_value={},
+        ),
+    ] # [ProjectAppVar] |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_app_variables_project_project_id_put(project_id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_app_variables_project_project_id_put: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.common_app_variables_project_project_id_put(project_id, project_app_var=project_app_var)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_app_variables_project_project_id_put: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_id** | **str**|  |
+ **project_app_var** | [**[ProjectAppVar]**](ProjectAppVar.md)|  | [optional]
 
 ### Return type
 
@@ -415,6 +535,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -423,7 +544,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_media_path_get**
-> dict(str, object) common_media_path_get(path, action=action)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_media_path_get(path)
 
 
 
@@ -433,10 +554,9 @@ If directory:   action: None: - list directory   action: download - list directo
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -450,39 +570,45 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    path = 'path_example' # str | 
-action = 'download' # str | Action name (optional) (default to 'download')
+    api_instance = common_api.CommonApi(api_client)
+    path = "path_example" # str | 
+    action = "download" # str | Action name (optional) if omitted the server will use the default value of "download"
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_media_path_get(path)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_media_path_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_media_path_get(path, action=action)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_media_path_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **path** | **str**|  | 
- **action** | **str**| Action name | [optional] [default to &#39;download&#39;]
+ **path** | **str**|  |
+ **action** | **str**| Action name | [optional] if omitted the server will use the default value of "download"
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -493,6 +619,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/json, */*
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -501,7 +628,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_groups_form_fields_get**
-> dict(str, object) common_menu_groups_form_fields_get()
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_menu_groups_form_fields_get()
 
 
 
@@ -511,10 +638,9 @@ GET model form fields description to build UI form for an object:       - field_
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -528,33 +654,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    
+    api_instance = common_api.CommonApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.common_menu_groups_form_fields_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_form_fields_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -564,6 +688,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -573,7 +698,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_groups_get**
-> list[MenuGroup] common_menu_groups_get()
+> [MenuGroup] common_menu_groups_get()
 
 
 
@@ -583,10 +708,10 @@ MenuGroup List
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_group import MenuGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -600,33 +725,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    
+    api_instance = common_api.CommonApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.common_menu_groups_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-[**list[MenuGroup]**](MenuGroup.md)
+[**[MenuGroup]**](MenuGroup.md)
 
 ### Authorization
 
@@ -636,6 +759,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -655,10 +779,9 @@ Delete MenuGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -672,32 +795,30 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
 
+    # example passing only required values which don't have defaults set
     try:
         api_instance.common_menu_groups_id_delete(id)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_id_delete: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
+ **id** | **str**|  |
 
 ### Return type
 
@@ -712,6 +833,7 @@ void (empty response body)
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -720,7 +842,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_groups_id_form_fields_get**
-> dict(str, object) common_menu_groups_id_form_fields_get(id)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_menu_groups_id_form_fields_get(id)
 
 
 
@@ -730,10 +852,9 @@ GET model form fields description to build UI form for EXISTING object:       - 
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -747,37 +868,35 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this user.
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this user.
 
+    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.common_menu_groups_id_form_fields_get(id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_id_form_fields_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this user. | 
+ **id** | **str**| A unique integer value identifying this user. |
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -787,6 +906,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -806,10 +926,10 @@ Retrieve MenuGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_group import MenuGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -823,33 +943,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
 
+    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.common_menu_groups_id_get(id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_id_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
+ **id** | **str**|  |
 
 ### Return type
 
@@ -863,6 +981,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -872,7 +991,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_groups_id_patch**
-> MenuGroup common_menu_groups_id_patch(id, menu_group=menu_group)
+> MenuGroup common_menu_groups_id_patch(id)
 
 
 
@@ -882,10 +1001,10 @@ Partial Update MenuGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_group import MenuGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -899,35 +1018,47 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
-menu_group = openapi_client.MenuGroup() # MenuGroup |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
+    menu_group = MenuGroup(
+        pk=1,
+        name="name_example",
+        public=True,
+        order=0,
+        user="user_example",
+    ) # MenuGroup |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_menu_groups_id_patch(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_menu_groups_id_patch: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_menu_groups_id_patch(id, menu_group=menu_group)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_id_patch: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
- **menu_group** | [**MenuGroup**](MenuGroup.md)|  | [optional] 
+ **id** | **str**|  |
+ **menu_group** | [**MenuGroup**](MenuGroup.md)|  | [optional]
 
 ### Return type
 
@@ -941,6 +1072,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -950,7 +1082,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_groups_id_put**
-> MenuGroup common_menu_groups_id_put(id, menu_group=menu_group)
+> MenuGroup common_menu_groups_id_put(id)
 
 
 
@@ -960,10 +1092,10 @@ Update MenuGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_group import MenuGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -977,35 +1109,47 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
-menu_group = openapi_client.MenuGroup() # MenuGroup |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
+    menu_group = MenuGroup(
+        pk=1,
+        name="name_example",
+        public=True,
+        order=0,
+        user="user_example",
+    ) # MenuGroup |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_menu_groups_id_put(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_menu_groups_id_put: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_menu_groups_id_put(id, menu_group=menu_group)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_id_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
- **menu_group** | [**MenuGroup**](MenuGroup.md)|  | [optional] 
+ **id** | **str**|  |
+ **menu_group** | [**MenuGroup**](MenuGroup.md)|  | [optional]
 
 ### Return type
 
@@ -1019,6 +1163,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1028,7 +1173,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_groups_post**
-> MenuGroup common_menu_groups_post(menu_group=menu_group)
+> MenuGroup common_menu_groups_post()
 
 
 
@@ -1038,10 +1183,10 @@ Create MenuGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_group import MenuGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1055,33 +1200,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    menu_group = openapi_client.MenuGroup() # MenuGroup |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    menu_group = MenuGroup(
+        pk=1,
+        name="name_example",
+        public=True,
+        order=0,
+        user="user_example",
+    ) # MenuGroup |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_menu_groups_post(menu_group=menu_group)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_groups_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **menu_group** | [**MenuGroup**](MenuGroup.md)|  | [optional] 
+ **menu_group** | [**MenuGroup**](MenuGroup.md)|  | [optional]
 
 ### Return type
 
@@ -1096,6 +1246,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1104,7 +1255,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_items_form_fields_get**
-> dict(str, object) common_menu_items_form_fields_get()
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_menu_items_form_fields_get()
 
 
 
@@ -1114,10 +1265,9 @@ GET model form fields description to build UI form for an object:       - field_
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1131,33 +1281,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    
+    api_instance = common_api.CommonApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.common_menu_items_form_fields_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_form_fields_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -1167,6 +1315,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1176,7 +1325,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_items_get**
-> list[MenuItem] common_menu_items_get()
+> [MenuItem] common_menu_items_get()
 
 
 
@@ -1186,10 +1335,10 @@ MenuItem List
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_item import MenuItem
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1203,33 +1352,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    
+    api_instance = common_api.CommonApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.common_menu_items_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-[**list[MenuItem]**](MenuItem.md)
+[**[MenuItem]**](MenuItem.md)
 
 ### Authorization
 
@@ -1239,6 +1386,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1258,10 +1406,9 @@ Delete MenuItem
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1275,32 +1422,30 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
 
+    # example passing only required values which don't have defaults set
     try:
         api_instance.common_menu_items_id_delete(id)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_id_delete: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
+ **id** | **str**|  |
 
 ### Return type
 
@@ -1315,6 +1460,7 @@ void (empty response body)
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1323,7 +1469,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_items_id_form_fields_get**
-> dict(str, object) common_menu_items_id_form_fields_get(id)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_menu_items_id_form_fields_get(id)
 
 
 
@@ -1333,10 +1479,9 @@ GET model form fields description to build UI form for EXISTING object:       - 
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1350,37 +1495,35 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this user.
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this user.
 
+    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.common_menu_items_id_form_fields_get(id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_id_form_fields_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this user. | 
+ **id** | **str**| A unique integer value identifying this user. |
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -1390,6 +1533,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1409,10 +1553,10 @@ Retrieve MenuItem
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_item import MenuItem
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1426,33 +1570,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
 
+    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.common_menu_items_id_get(id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_id_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
+ **id** | **str**|  |
 
 ### Return type
 
@@ -1466,6 +1608,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1475,7 +1618,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_items_id_patch**
-> MenuItem common_menu_items_id_patch(id, menu_item=menu_item)
+> MenuItem common_menu_items_id_patch(id)
 
 
 
@@ -1485,10 +1628,10 @@ Partial Update MenuItem
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_item import MenuItem
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1502,35 +1645,49 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
-menu_item = openapi_client.MenuItem() # MenuItem |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
+    menu_item = MenuItem(
+        pk=1,
+        name="name_example",
+        url="url_example",
+        group=1,
+        public=True,
+        order=0,
+        user="user_example",
+    ) # MenuItem |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_menu_items_id_patch(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_menu_items_id_patch: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_menu_items_id_patch(id, menu_item=menu_item)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_id_patch: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
- **menu_item** | [**MenuItem**](MenuItem.md)|  | [optional] 
+ **id** | **str**|  |
+ **menu_item** | [**MenuItem**](MenuItem.md)|  | [optional]
 
 ### Return type
 
@@ -1544,6 +1701,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1553,7 +1711,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_items_id_put**
-> MenuItem common_menu_items_id_put(id, menu_item=menu_item)
+> MenuItem common_menu_items_id_put(id)
 
 
 
@@ -1563,10 +1721,10 @@ Update MenuItem
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_item import MenuItem
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1580,35 +1738,49 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | 
-menu_item = openapi_client.MenuItem() # MenuItem |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | 
+    menu_item = MenuItem(
+        pk=1,
+        name="name_example",
+        url="url_example",
+        group=1,
+        public=True,
+        order=0,
+        user="user_example",
+    ) # MenuItem |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_menu_items_id_put(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_menu_items_id_put: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_menu_items_id_put(id, menu_item=menu_item)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_id_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**|  | 
- **menu_item** | [**MenuItem**](MenuItem.md)|  | [optional] 
+ **id** | **str**|  |
+ **menu_item** | [**MenuItem**](MenuItem.md)|  | [optional]
 
 ### Return type
 
@@ -1622,6 +1794,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1631,7 +1804,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_menu_items_post**
-> MenuItem common_menu_items_post(menu_item=menu_item)
+> MenuItem common_menu_items_post()
 
 
 
@@ -1641,10 +1814,10 @@ Create MenuItem
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.menu_item import MenuItem
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1658,33 +1831,40 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    menu_item = openapi_client.MenuItem() # MenuItem |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    menu_item = MenuItem(
+        pk=1,
+        name="name_example",
+        url="url_example",
+        group=1,
+        public=True,
+        order=0,
+        user="user_example",
+    ) # MenuItem |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_menu_items_post(menu_item=menu_item)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_menu_items_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **menu_item** | [**MenuItem**](MenuItem.md)|  | [optional] 
+ **menu_item** | [**MenuItem**](MenuItem.md)|  | [optional]
 
 ### Return type
 
@@ -1699,6 +1879,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1707,7 +1888,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_status_groups_get**
-> list[ReviewStatusGroup] common_review_status_groups_get(jq_filters=jq_filters)
+> [ReviewStatusGroup] common_review_status_groups_get()
 
 
 
@@ -1717,10 +1898,10 @@ ReviewStatusGroup List
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_group import ReviewStatusGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1734,37 +1915,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = common_api.CommonApi(api_client)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_status_groups_get(jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_status_groups_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**list[ReviewStatusGroup]**](ReviewStatusGroup.md)
+[**[ReviewStatusGroup]**](ReviewStatusGroup.md)
 
 ### Authorization
 
@@ -1774,6 +1956,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1793,10 +1976,9 @@ Delete ReviewStatusGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1810,32 +1992,30 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status group.
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status Group.
 
+    # example passing only required values which don't have defaults set
     try:
         api_instance.common_review_status_groups_id_delete(id)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_status_groups_id_delete: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status group. | 
+ **id** | **str**| A unique integer value identifying this Review Status Group. |
 
 ### Return type
 
@@ -1850,6 +2030,7 @@ void (empty response body)
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1858,7 +2039,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_status_groups_id_get**
-> ReviewStatusGroup common_review_status_groups_id_get(id, jq_filters=jq_filters)
+> ReviewStatusGroup common_review_status_groups_id_get(id)
 
 
 
@@ -1868,10 +2049,10 @@ Retrieve ReviewStatusGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_group import ReviewStatusGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1885,35 +2066,43 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status group.
-jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status Group.
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_review_status_groups_id_get(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_review_status_groups_id_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_status_groups_id_get(id, jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_status_groups_id_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status group. | 
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **id** | **str**| A unique integer value identifying this Review Status Group. |
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
@@ -1927,6 +2116,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1936,7 +2126,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_status_groups_id_patch**
-> ReviewStatusGroup common_review_status_groups_id_patch(id, review_status_group=review_status_group)
+> ReviewStatusGroup common_review_status_groups_id_patch(id)
 
 
 
@@ -1946,10 +2136,10 @@ Partial Update ReviewStatusGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_group import ReviewStatusGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1963,35 +2153,47 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status group.
-review_status_group = openapi_client.ReviewStatusGroup() # ReviewStatusGroup |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status Group.
+    review_status_group = ReviewStatusGroup(
+        pk=1,
+        name="name_example",
+        code="code_example",
+        order=0,
+        is_active=True,
+    ) # ReviewStatusGroup |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_review_status_groups_id_patch(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_review_status_groups_id_patch: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_status_groups_id_patch(id, review_status_group=review_status_group)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_status_groups_id_patch: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status group. | 
- **review_status_group** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
+ **id** | **str**| A unique integer value identifying this Review Status Group. |
+ **review_status_group** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
 
@@ -2005,6 +2207,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2014,7 +2217,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_status_groups_id_put**
-> ReviewStatusGroup common_review_status_groups_id_put(id, review_status_group=review_status_group)
+> ReviewStatusGroup common_review_status_groups_id_put(id)
 
 
 
@@ -2024,10 +2227,10 @@ Update ReviewStatusGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_group import ReviewStatusGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2041,35 +2244,47 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status group.
-review_status_group = openapi_client.ReviewStatusGroup() # ReviewStatusGroup |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status Group.
+    review_status_group = ReviewStatusGroup(
+        pk=1,
+        name="name_example",
+        code="code_example",
+        order=0,
+        is_active=True,
+    ) # ReviewStatusGroup |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_review_status_groups_id_put(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_review_status_groups_id_put: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_status_groups_id_put(id, review_status_group=review_status_group)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_status_groups_id_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status group. | 
- **review_status_group** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
+ **id** | **str**| A unique integer value identifying this Review Status Group. |
+ **review_status_group** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
 
@@ -2083,6 +2298,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2092,7 +2308,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_status_groups_post**
-> ReviewStatusGroup common_review_status_groups_post(review_status_group=review_status_group)
+> ReviewStatusGroup common_review_status_groups_post()
 
 
 
@@ -2102,10 +2318,10 @@ Create ReviewStatusGroup
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_group import ReviewStatusGroup
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2119,33 +2335,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    review_status_group = openapi_client.ReviewStatusGroup() # ReviewStatusGroup |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    review_status_group = ReviewStatusGroup(
+        pk=1,
+        name="name_example",
+        code="code_example",
+        order=0,
+        is_active=True,
+    ) # ReviewStatusGroup |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_status_groups_post(review_status_group=review_status_group)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_status_groups_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **review_status_group** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
+ **review_status_group** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
 
@@ -2160,6 +2381,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2168,7 +2390,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_statuses_get**
-> list[ReviewStatusDetail] common_review_statuses_get(jq_filters=jq_filters)
+> [ReviewStatusDetail] common_review_statuses_get()
 
 
 
@@ -2178,10 +2400,10 @@ ReviewStatus List
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_detail import ReviewStatusDetail
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2195,37 +2417,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = common_api.CommonApi(api_client)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_statuses_get(jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_statuses_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**list[ReviewStatusDetail]**](ReviewStatusDetail.md)
+[**[ReviewStatusDetail]**](ReviewStatusDetail.md)
 
 ### Authorization
 
@@ -2235,6 +2458,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2254,10 +2478,9 @@ Delete ReviewStatus
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2271,32 +2494,30 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status.
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status.
 
+    # example passing only required values which don't have defaults set
     try:
         api_instance.common_review_statuses_id_delete(id)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_statuses_id_delete: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status. | 
+ **id** | **str**| A unique integer value identifying this Review Status. |
 
 ### Return type
 
@@ -2311,6 +2532,7 @@ void (empty response body)
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2319,7 +2541,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_statuses_id_get**
-> ReviewStatusDetail common_review_statuses_id_get(id, jq_filters=jq_filters)
+> ReviewStatusDetail common_review_statuses_id_get(id)
 
 
 
@@ -2329,10 +2551,10 @@ Retrieve ReviewStatus
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status_detail import ReviewStatusDetail
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2346,35 +2568,43 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status.
-jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status.
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_review_statuses_id_get(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_review_statuses_id_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_statuses_id_get(id, jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_statuses_id_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status. | 
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **id** | **str**| A unique integer value identifying this Review Status. |
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
@@ -2389,6 +2619,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2397,7 +2628,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_statuses_id_patch**
-> ReviewStatus common_review_statuses_id_patch(id, review_status=review_status)
+> ReviewStatus common_review_statuses_id_patch(id)
 
 
 
@@ -2407,10 +2638,10 @@ Partial Update ReviewStatus
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status import ReviewStatus
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2424,35 +2655,48 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status.
-review_status = openapi_client.ReviewStatus() # ReviewStatus |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status.
+    review_status = ReviewStatus(
+        id=1,
+        name="name_example",
+        code="code_example",
+        order=0,
+        is_active=True,
+        group=1,
+    ) # ReviewStatus |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_review_statuses_id_patch(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_review_statuses_id_patch: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_statuses_id_patch(id, review_status=review_status)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_statuses_id_patch: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status. | 
- **review_status** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
+ **id** | **str**| A unique integer value identifying this Review Status. |
+ **review_status** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type
 
@@ -2466,6 +2710,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2475,7 +2720,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_statuses_id_put**
-> ReviewStatus common_review_statuses_id_put(id, review_status=review_status)
+> ReviewStatus common_review_statuses_id_put(id)
 
 
 
@@ -2485,10 +2730,10 @@ Update ReviewStatus
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status import ReviewStatus
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2502,35 +2747,48 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    id = 'id_example' # str | A unique integer value identifying this review status.
-review_status = openapi_client.ReviewStatus() # ReviewStatus |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this Review Status.
+    review_status = ReviewStatus(
+        id=1,
+        name="name_example",
+        code="code_example",
+        order=0,
+        is_active=True,
+        group=1,
+    ) # ReviewStatus |  (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.common_review_statuses_id_put(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling CommonApi->common_review_statuses_id_put: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_statuses_id_put(id, review_status=review_status)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_statuses_id_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique integer value identifying this review status. | 
- **review_status** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
+ **id** | **str**| A unique integer value identifying this Review Status. |
+ **review_status** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type
 
@@ -2544,6 +2802,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2553,7 +2812,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_review_statuses_post**
-> ReviewStatus common_review_statuses_post(review_status=review_status)
+> ReviewStatus common_review_statuses_post()
 
 
 
@@ -2563,10 +2822,10 @@ Create ReviewStatus
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import common_api
+from openapi_client.model.review_status import ReviewStatus
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2580,33 +2839,39 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.CommonApi(api_client)
-    review_status = openapi_client.ReviewStatus() # ReviewStatus |  (optional)
+    api_instance = common_api.CommonApi(api_client)
+    review_status = ReviewStatus(
+        id=1,
+        name="name_example",
+        code="code_example",
+        order=0,
+        is_active=True,
+        group=1,
+    ) # ReviewStatus |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.common_review_statuses_post(review_status=review_status)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling CommonApi->common_review_statuses_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **review_status** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
+ **review_status** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type
 
@@ -2620,6 +2885,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

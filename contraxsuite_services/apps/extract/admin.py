@@ -24,29 +24,36 @@
 """
 # -*- coding: utf-8 -*-
 
-# Django imports
-from django.contrib import admin
-from django.db.models import F, Q, QuerySet
+import csv
+import math
+from typing import List, Dict, Any  # OrderedDict as OrderedDictType
+from collections import OrderedDict
 
-# Project imports
+# Django imports
+import pandas as pd
+from django.contrib import admin
+from django.db.models import F, Q, QuerySet, Count
 from django.forms import Select
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.urls import path, reverse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
+# Project imports
 from apps.common.querysets import CustomCountQuerySet, stringify_queryset
-from apps.common.utils import full_reverse
+from apps.common.utils import full_reverse, GroupConcat
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.document.models import TextUnit
-from apps.extract.models import (
-    AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
-    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
-    GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
-    Party, PartyUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Term, TermUsage, TrademarkUsage, UrlUsage, DocumentTermUsage, DocumentDefinitionUsage, BanListRecord)
+from apps.extract.models import AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage, \
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage, GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, \
+    GeoRelation, Party, PartyUsage, PercentUsage, RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, \
+    UrlUsage, DocumentTermUsage, DocumentDefinitionUsage, BanListRecord, TermTag, CompanyType, CompanyTypeTag
+from apps.task.forms import LoadTermsForm, LoadCompanyTypesForm
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -175,9 +182,189 @@ class GeoRelationAdmin(admin.ModelAdmin):
         return qs.select_related('entity_a', 'entity_b')
 
 
-class TermAdmin(admin.ModelAdmin):
-    list_display = ('term', 'source', 'definition_url')
+class TagManagerAdmin:
+    @classmethod
+    def init_obj_relations(
+            cls,
+            new_obj: Any,
+            data: Dict[str, Any],
+            tag_by_name: Dict[str, Any],
+            tag_class,
+            tag_column_name: str = 'Tags') -> None:
+        tag_list_str = data[tag_column_name] or ''
+        if not isinstance(tag_list_str, str):
+            tag_list_str = ''  # for numpy / pandas "nan" value
+        tag_names = [t.strip() for t in tag_list_str.split(',')]
+        tag_names = [t for t in tag_names if t]
+        # new object needs to be saved to add a tag to it (relation)
+        # otherwise this line fails
+        if new_obj.tags is not None:
+            extra_tags = [t for t in new_obj.tags.all() if t.name not in tag_names]
+            for tag in extra_tags:
+                new_obj.tags.remove(tag)
+        for tag_name in tag_names:
+            if tag_name not in tag_by_name:
+                new_tag = tag_class()
+                new_tag.name = tag_name
+                new_tag.save()
+                tag_by_name[tag_name] = new_tag
+            new_obj.tags.add(tag_by_name[tag_name])
+
+    @classmethod
+    def _export_as_csv(cls,
+                       model_name: str,
+                       field_aliases: OrderedDict,
+                       queryset):
+        queryset = queryset.annotate(tag_list=GroupConcat('tags__name'))
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename={model_name}.csv'
+        writer = csv.writer(response)
+        writer.writerow([title for _, title in field_aliases.items()])
+        for obj in queryset:
+            tag_list_items = (obj.tag_list or '').split(', ')
+            obj.tag_list = ', '.join(sorted(tag_list_items))
+            writer.writerow([getattr(obj, field) for field in field_aliases])
+
+        return response
+
+
+class TermAdmin(admin.ModelAdmin, TagManagerAdmin):
+    list_display = ('term', 'source', 'definition_url', 'term_tags')
     search_fields = ('term', 'source', 'definition_url')
+    actions = ['export_as_csv']
+
+    COLUMN_FIELD_MAPPING = {
+        'Term': 'term',
+        'Source': 'source',
+        'Locale': 'definition_url',
+        'Tags': 'tag_list',
+        # for backward compatibility
+        'Term Locale': 'definition_url',
+        'Term Category': 'source',
+    }
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(
+            _term_tags=GroupConcat('tags__name'))
+        return queryset
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+
+    def term_tags(self, obj: Term):
+        return obj._term_tags
+
+    term_tags.short_description = 'Tags'
+    term_tags.admin_order_field = '_term_tags'
+
+    def json_response(self, data, **kwargs):
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False, **kwargs)
+
+    def upload_csv_file(self, request):
+        # TODO: move into task.views/forms/urls
+
+        if request.method == 'GET':
+            form = LoadTermsForm()
+            data = dict(form_data=form.as_p())
+            return self.json_response(data)
+
+        form = LoadTermsForm(files=request.FILES)
+        if not form.is_valid():
+            return self.json_response(form.errors, status=400)
+
+        file_data = request.FILES['source_file']
+        try:
+            df = pd.read_csv(file_data.file)
+        except:
+            return JsonResponse(data={'status': 'error', 'message': 'File can\'t be parsed as CSV'})
+
+        # we expect the following columns here:
+        # 'term', 'source', 'definition_url', 'tag_list'
+        # New terms will be added, the existing terms will be updated.
+        try:
+            self.import_or_update_terms(df)
+        except Exception as e:
+            return JsonResponse(data={'status': 'error', 'message': str(e)})
+        return HttpResponseRedirect(reverse('admin:extract_term_changelist'))
+
+    def import_or_update_terms(self, df: pd.DataFrame):
+        old_term_list = Term.objects.annotate(tag_list=GroupConcat('tags__name'))
+        for term in old_term_list:
+            tag_list_items = (term.tag_list or '').split(', ')
+            term.tag_list = ', '.join(sorted(tag_list_items))
+        old_terms = {t.term: t for t in old_term_list}
+
+        new_terms: List[Dict[str, any]] = []
+        updated_terms: List[Dict[str, any]] = []
+
+        for _, row in df.iterrows():
+            if len(row) == 0:
+                continue
+            data = row.to_dict()
+            data = {d: data[d] if not
+                    (isinstance(data[d], float) and math.isnan(data[d])) else '' for d in data}
+            if data['Term'] not in old_terms:
+                new_terms.append(data)
+                continue
+            # did item change?
+            is_updated = False
+            old_term = old_terms[data['Term']]
+            for key in data:
+                term_attr = self.COLUMN_FIELD_MAPPING[key]
+                if not hasattr(old_term, term_attr):
+                    # for columns like 'Case Sensitive'
+                    continue
+                if data[key] != getattr(old_term, term_attr):
+                    is_updated = True
+                    break
+            if is_updated:
+                updated_terms.append(data)
+
+        tag_by_name = {t.name: t for t in TermTag.objects.all()}
+
+        # insert new terms. Then update updated terms
+        for data in new_terms:
+            term = Term()
+            # term object needs to be saved to add a tag to it (relation), see self.init_new_term
+            self.init_new_term(term, data, tag_by_name)
+
+        # update existing terms
+        for data in updated_terms:
+            term = old_terms[data['Term']]
+            self.init_new_term(term, data, tag_by_name)
+
+    @classmethod
+    def init_new_term(cls, term: Term, data: Dict[str, Any], tag_by_name: Dict[str, TermTag]) -> None:
+        term.term = data['Term']
+        term.definition_url = data.get('Locale', data.get('Term Locale'))
+        term.source = data.get('Source', data.get('Term Category'))
+        # term object needs to be saved to add a tag to it (relation)
+        term.save()
+        cls.init_obj_relations(term, data, tag_by_name, TermTag)
+
+    def export_as_csv(self, request, queryset):
+        field_aliases = OrderedDict(
+            term='Term', source='Source',
+            definition_url='Locale', tag_list='Tags')
+        return self._export_as_csv(self.model._meta, field_aliases, queryset)
+
+    def export_all_as_csv(self, request):
+        return self.export_as_csv(request, Term.objects.all())
+
+    export_as_csv.short_description = 'Export Selected'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('upload_csv_file/', self.upload_csv_file),
+            path('export_all_terms/', self.export_all_as_csv)
+        ]
+        return my_urls + urls
 
 
 class TermUsageAdmin(TextUnitUsageAdminBase):
@@ -311,6 +498,165 @@ class BanListRecordAdmin(admin.ModelAdmin):
         return form
 
 
+class TermTagAdmin(admin.ModelAdmin):
+    list_display = ('name', 'terms_count', 'projects_count')
+    search_fields = ('pk', 'name')
+    # filter_horizontal = ('terms',)
+
+    @staticmethod
+    def projects_count(obj):
+        return obj.projects_count
+
+    @staticmethod
+    def terms_count(obj):
+        return obj.terms_count
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(projects_count=Count('project'), terms_count=Count('term'))
+        return qs
+
+
+class CompanyTypeAdmin(admin.ModelAdmin, TagManagerAdmin):
+    list_display = ('alias', 'abbreviation', 'label', 'companytype_tags')
+    search_fields = ('alias', 'abbreviation', 'label')
+    actions = ['export_as_csv', 'export_all_as_csv']
+
+    COLUMN_FIELD_MAPPING = {
+        'Alias': 'alias',
+        'Abbreviation': 'abbreviation',
+        'Label': 'label',
+        'Tags': 'tag_list',
+    }
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(
+            _companytype_tags=GroupConcat('tags__name'))
+        return queryset
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
+
+    def companytype_tags(self, obj: CompanyType):
+        return obj._companytype_tags
+
+    companytype_tags.short_description = 'Tags'
+    companytype_tags.admin_order_field = '_companytype_tags'
+
+    def json_response(self, data, **kwargs):
+        return JsonResponse(data, encoder=ImprovedDjangoJSONEncoder, safe=False, **kwargs)
+
+    def upload_csv_file(self, request):
+        if request.method == 'GET':
+            form = LoadCompanyTypesForm()
+            data = dict(form_data=form.as_p())
+            return self.json_response(data)
+
+        form = LoadCompanyTypesForm(files=request.FILES)
+        if not form.is_valid():
+            return self.json_response(form.errors, status=400)
+
+        file_data = request.FILES['source_file']
+        df = pd.read_csv(file_data.file)
+        # we expect the following columns here:
+        # 'alias', 'abbreviation', 'label', 'tag_list'
+        # New company types will be added, the existing ones will be updated.
+        self.import_or_update_types(df)
+        return HttpResponseRedirect(reverse('admin:extract_companytype_changelist'))
+
+    def import_or_update_types(self, df: pd.DataFrame):
+        old_comp_list = CompanyType.objects.annotate(tag_list=GroupConcat('tags__name'))
+        for cm in old_comp_list:
+            tag_list_items = (cm.tag_list or '').split(', ')
+            cm.tag_list = ', '.join(sorted(tag_list_items))
+        old_comps = {t.alias: t for t in old_comp_list}
+
+        new_comps: List[Dict[str, any]] = []
+        updated_comps: List[Dict[str, any]] = []
+
+        for _, row in df.iterrows():
+            if len(row) == 0:
+                continue
+            data = row.to_dict()
+            if data['Alias'] not in old_comps:
+                new_comps.append(data)
+                continue
+            # did item change?
+            is_updated = False
+            old_comp = old_comps[data['Alias']]
+            for key in data:
+                term_attr = self.COLUMN_FIELD_MAPPING[key]
+                if data[key] != getattr(old_comp, term_attr):
+                    is_updated = True
+                    break
+            if is_updated:
+                updated_comps.append(data)
+
+        tag_by_name = {t.name: t for t in CompanyTypeTag.objects.all()}
+
+        # insert new terms. Then update updated terms
+        for data in new_comps:
+            comp = CompanyType()
+            # CompanyType object needs to be saved to add a tag to it (relation), see self.init_new_term
+            self.init_new_comp(comp, data, tag_by_name)
+
+        # update existing company types
+        for data in updated_comps:
+            comp = old_comps[data['Alias']]
+            self.init_new_comp(comp, data, tag_by_name)
+
+    @classmethod
+    def init_new_comp(cls, comp: CompanyType, data: Dict[str, Any], tag_by_name: Dict[str, TermTag]) -> None:
+        comp.alias = data['Alias']
+        comp.abbreviation = data['Abbreviation']
+        comp.label = data['Label']
+        # CompanyType object needs to be saved to add a tag to it (relation)
+        comp.save()
+        cls.init_obj_relations(comp, data, tag_by_name, CompanyTypeTag)
+
+    def export_as_csv(self, request, queryset):
+        field_aliases = OrderedDict(
+            alias='Alias', abbreviation='Abbreviation',
+            label='Label', tag_list='Tags')
+        return self._export_as_csv(self.model._meta, field_aliases, queryset)
+
+    def export_all_as_csv(self, request, queryset):
+        return self.export_as_csv(request, CompanyType.objects.all())
+
+    export_as_csv.short_description = 'Export Selected'
+
+    export_all_as_csv.short_description = 'Export All'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('upload_csv_file/', self.upload_csv_file),
+        ]
+        return my_urls + urls
+
+
+class CompanyTypeTagAdmin(admin.ModelAdmin):
+    list_display = ('name', 'companytypes_count', 'projects_count')
+    search_fields = ('pk', 'name')
+
+    @staticmethod
+    def projects_count(obj):
+        return obj.projects_count
+
+    @staticmethod
+    def companytypes_count(obj):
+        return obj.companytypes_count
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(projects_count=Count('project'), companytypes_count=Count('companytype'))
+        return qs
+
+
 admin.site.register(AmountUsage, AmountUsageAdmin)
 admin.site.register(CitationUsage, CitationUsageAdmin)
 admin.site.register(CopyrightUsage, CopyrightUsageAdmin)
@@ -338,3 +684,6 @@ admin.site.register(DocumentTermUsage, DocumentTermUsageAdmin)
 admin.site.register(TrademarkUsage, TrademarkUsageAdmin)
 admin.site.register(UrlUsage, UrlUsageAdmin)
 admin.site.register(BanListRecord, BanListRecordAdmin)
+admin.site.register(TermTag, TermTagAdmin)
+admin.site.register(CompanyType, CompanyTypeAdmin)
+admin.site.register(CompanyTypeTag, CompanyTypeTagAdmin)

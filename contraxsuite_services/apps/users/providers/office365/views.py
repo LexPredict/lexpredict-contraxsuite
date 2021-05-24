@@ -26,13 +26,12 @@
 
 from __future__ import unicode_literals
 
-import logging
-
 import requests
 from allauth.socialaccount.providers.oauth2.client import OAuth2Error
 
 from allauth.socialaccount.providers.oauth2.views import OAuth2Adapter
 
+from apps.common.logger import CsLogger
 from .provider import Office365Provider
 from ..custom_auxilary import log_error, format_data_message
 from ..custom_uris import get_callback_url, AppAwareLoginView, AppAwareCallbackView
@@ -40,14 +39,14 @@ from ...adapters import email_follows_pattern
 from ...models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
 class Office365OAuth2Adapter(OAuth2Adapter):
@@ -95,7 +94,7 @@ class Office365OAuth2Adapter(OAuth2Adapter):
         """Define the tenant's available for SocialLogin authorize (common, organizations, consumers, contoso.onmicrosoft.com)"""
         url = self._authorize_url_template.format(TENANT=self._get_o365_tenant())
         from ...app_vars import AZURE_AD_ALLOW_SWITCH_TENANT
-        if AZURE_AD_ALLOW_SWITCH_TENANT.val:
+        if AZURE_AD_ALLOW_SWITCH_TENANT.val():
             url += '?prompt=select_account'
         return url
 

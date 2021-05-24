@@ -6,9 +6,10 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**CommonActionsGET**](CommonApi.md#commonactionsget) | **GET** /api/v1/common/actions/ | 
 [**CommonActionsIdGET**](CommonApi.md#commonactionsidget) | **GET** /api/v1/common/actions/{id}/ | 
-[**CommonAppVariablesDELETE**](CommonApi.md#commonappvariablesdelete) | **DELETE** /api/v1/common/app-variables/ | 
 [**CommonAppVariablesGET**](CommonApi.md#commonappvariablesget) | **GET** /api/v1/common/app-variables/ | 
-[**CommonAppVariablesPOST**](CommonApi.md#commonappvariablespost) | **POST** /api/v1/common/app-variables/ | 
+[**CommonAppVariablesListGET**](CommonApi.md#commonappvariableslistget) | **GET** /api/v1/common/app-variables/list/ | 
+[**CommonAppVariablesProjectProjectIdGET**](CommonApi.md#commonappvariablesprojectprojectidget) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
+[**CommonAppVariablesProjectProjectIdPUT**](CommonApi.md#commonappvariablesprojectprojectidput) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
 [**CommonMediaPathGET**](CommonApi.md#commonmediapathget) | **GET** /api/v1/common/media/{path}/ | 
 [**CommonMenuGroupsFormFieldsGET**](CommonApi.md#commonmenugroupsformfieldsget) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**CommonMenuGroupsGET**](CommonApi.md#commonmenugroupsget) | **GET** /api/v1/common/menu-groups/ | 
@@ -43,7 +44,7 @@ Method | HTTP request | Description
 
 ## CommonActionsGET
 
-> List&lt;Action&gt; CommonActionsGET (Dictionary<string, string> jqFilters = null)
+> List&lt;List&lt;Action&gt;&gt; CommonActionsGET (int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -71,11 +72,14 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<Action> result = apiInstance.CommonActionsGET(jqFilters);
+                List<List<Action>> result = apiInstance.CommonActionsGET(projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -94,11 +98,14 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+**List<List<Action>>**
 
 ### Authorization
 
@@ -108,6 +115,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -122,7 +130,7 @@ Name | Type | Description  | Notes
 
 ## CommonActionsIdGET
 
-> Action CommonActionsIdGET (string id, Dictionary<string, string> jqFilters = null)
+> List&lt;Action&gt; CommonActionsIdGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -151,11 +159,14 @@ namespace Example
 
             var apiInstance = new CommonApi(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this action.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                Action result = apiInstance.CommonActionsIdGET(id, jqFilters);
+                List<Action> result = apiInstance.CommonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -175,11 +186,14 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this action. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
 
-[**Action**](Action.md)
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -190,84 +204,6 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## CommonAppVariablesDELETE
-
-> string CommonAppVariablesDELETE (AppVarDelete appVarDelete = null)
-
-
-
-Delete specific App Variable by name     Param:         - name: str         - category: str
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class CommonAppVariablesDELETEExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new CommonApi(Configuration.Default);
-            var appVarDelete = new AppVarDelete(); // AppVarDelete |  (optional) 
-
-            try
-            {
-                string result = apiInstance.CommonAppVariablesDELETE(appVarDelete);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling CommonApi.CommonAppVariablesDELETE: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **appVarDelete** | [**AppVarDelete**](AppVarDelete.md)|  | [optional] 
-
-### Return type
-
-**string**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json
-- **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -348,6 +284,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -359,13 +296,11 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
-## CommonAppVariablesPOST
+## CommonAppVariablesListGET
 
-> string CommonAppVariablesPOST (Dictionary<string, Object> requestBody = null)
+> List&lt;AppVar&gt; CommonAppVariablesListGET (Dictionary<string, string> jqFilters = null)
 
 
-
-Create or update App Variables      Params:         key1: val1,         key2: val2, etc
 
 ### Example
 
@@ -378,7 +313,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class CommonAppVariablesPOSTExample
+    public class CommonAppVariablesListGETExample
     {
         public static void Main()
         {
@@ -389,16 +324,16 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                string result = apiInstance.CommonAppVariablesPOST(requestBody);
+                List<AppVar> result = apiInstance.CommonAppVariablesListGET(jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling CommonApi.CommonAppVariablesPOST: " + e.Message );
+                Debug.Print("Exception when calling CommonApi.CommonAppVariablesListGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -412,7 +347,169 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;AppVar&gt;**](AppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CommonAppVariablesProjectProjectIdGET
+
+> List&lt;ProjectAppVar&gt; CommonAppVariablesProjectProjectIdGET (string projectId)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class CommonAppVariablesProjectProjectIdGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new CommonApi(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+
+            try
+            {
+                List<ProjectAppVar> result = apiInstance.CommonAppVariablesProjectProjectIdGET(projectId);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling CommonApi.CommonAppVariablesProjectProjectIdGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+
+### Return type
+
+[**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CommonAppVariablesProjectProjectIdPUT
+
+> string CommonAppVariablesProjectProjectIdPUT (string projectId, List<ProjectAppVar> projectAppVar = null)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class CommonAppVariablesProjectProjectIdPUTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new CommonApi(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+            var projectAppVar = new List<ProjectAppVar>(); // List<ProjectAppVar> |  (optional) 
+
+            try
+            {
+                string result = apiInstance.CommonAppVariablesProjectProjectIdPUT(projectId, projectAppVar);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling CommonApi.CommonAppVariablesProjectProjectIdPUT: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+ **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional] 
 
 ### Return type
 
@@ -426,6 +523,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -508,6 +606,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, */*
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -583,6 +682,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -657,6 +757,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -735,6 +836,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -815,6 +917,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -893,6 +996,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -975,6 +1079,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1056,6 +1161,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1135,6 +1241,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1210,6 +1317,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1284,6 +1392,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1362,6 +1471,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1442,6 +1552,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1520,6 +1631,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1602,6 +1714,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1683,6 +1796,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1761,6 +1875,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1841,6 +1956,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1882,7 +1998,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
 
             try
             {
@@ -1904,7 +2020,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
 
 ### Return type
 
@@ -1918,6 +2034,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1960,7 +2077,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1984,7 +2101,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
@@ -1999,6 +2116,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2041,7 +2159,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -2065,7 +2183,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
 
 ### Return type
@@ -2080,6 +2198,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2122,7 +2241,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -2146,7 +2265,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
 
 ### Return type
@@ -2161,6 +2280,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2241,6 +2361,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2320,6 +2441,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2361,7 +2483,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
 
             try
             {
@@ -2383,7 +2505,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
 
 ### Return type
 
@@ -2397,6 +2519,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2439,7 +2562,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2463,7 +2586,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
@@ -2478,6 +2601,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2520,7 +2644,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -2544,7 +2668,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
 
 ### Return type
@@ -2559,6 +2683,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2601,7 +2726,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -2625,7 +2750,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
 
 ### Return type
@@ -2640,6 +2765,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2719,6 +2845,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

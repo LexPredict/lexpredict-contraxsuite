@@ -1,5 +1,6 @@
 # PartyUsage
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

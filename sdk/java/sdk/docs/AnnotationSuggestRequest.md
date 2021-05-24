@@ -2,11 +2,12 @@
 
 # AnnotationSuggestRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**field** | [**UUID**](UUID.md) |  | 
+**field** | **UUID** |  | 
 **document** | **Integer** |  | 
 **quite** | **String** |  | 
 

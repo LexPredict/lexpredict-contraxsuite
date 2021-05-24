@@ -2,16 +2,17 @@
 
 # Task
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **pk** | **String** |  |  [optional]
 **name** | **String** |  |  [optional]
-**dateStart** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
-**dateWorkStart** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
+**dateStart** | **OffsetDateTime** |  |  [optional]
+**dateWorkStart** | **OffsetDateTime** |  |  [optional]
 **userUsername** | **String** |  |  [optional] [readonly]
-**dateDone** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
+**dateDone** | **OffsetDateTime** |  |  [optional]
 **duration** | **String** |  |  [optional] [readonly]
 **progress** | **Integer** |  |  [optional]
 **status** | [**StatusEnum**](#StatusEnum) |  |  [optional]

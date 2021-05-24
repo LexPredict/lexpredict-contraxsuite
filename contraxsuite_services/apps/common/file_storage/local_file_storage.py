@@ -25,35 +25,45 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
 from contextlib import contextmanager
-from typing import List
+from typing import List, Any, Dict
 from typing import Optional, BinaryIO
 
+import magic
+import requests
 from django.conf import settings
+from requests import Response
 
 from apps.common.file_storage.file_storage import ContraxsuiteFileStorage
+from apps.common.file_storage.local_file_adapter import LocalFileAdapter
 from apps.common.singleton import Singleton
 from apps.common.streaming_utils import copy_data
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-@Singleton
-class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
+class ContraxsuiteInstanceLocalFileStorage(ContraxsuiteFileStorage):
     """
     Implementation of the file storage working in a local folder.
     Intended for usage during the development process to avoid having WebDAV server started on the developer machine.
     Also in future may be used for fast switching to distributed file systems.
+
+    ContraxsuiteLocalFileStorage inherits this class and make it a Singleton,
+    thus ContraxsuiteLocalFileStorage becomes a "sealed" class.
     """
 
     def __init__(self) -> None:
         super().__init__()
         self.root_dir = settings.CONTRAX_FILE_STORAGE_LOCAL_ROOT_DIR
+        self.init_basic_folders()
+
+    def init_basic_folders(self):
         try:
             self.mkdir(self.documents_path)
         except:
@@ -70,8 +80,7 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
         # if path separator is not "/" (old Windows OS or something like that) then replace "/" with the proper one
         if os.path.sep != '/':
             return os.path.join(*res.split('/'))
-        else:
-            return res
+        return res
 
     @classmethod
     def get_parent_path(cls, child_path: str):
@@ -81,10 +90,42 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
         path = os.path.join(self.root_dir, rel_path)
         os.mkdir(path)
 
-    def write_file(self, rel_file_path: str, contents_file_like_object: BinaryIO, content_length: int = None):
+    def write_file(self,
+                   rel_file_path: str,
+                   contents_file_like_object: BinaryIO,
+                   content_length: int = None,
+                   skip_existing: bool = False):
         path = os.path.join(self.root_dir, rel_file_path)
+        if skip_existing and os.path.isfile(path):
+            return
         with open(path, 'wb') as dst_f:
             copy_data(contents_file_like_object, dst_f)
+
+    def check_path(self, rel_path: str) -> Dict[str, bool]:
+        # returns: { 'exists': True, 'is_folder': True, 'not_empty': False }
+        path = os.path.join(self.root_dir, rel_path)
+        if not os.path.exists(path):
+            return {
+                'exists': False,
+                'is_folder': False,
+                'not_empty': False
+            }
+        if not os.path.isdir(path):
+            return {
+                'exists': True,
+                'is_folder': False,
+                'not_empty': False
+            }
+        has_files = False
+        for _f in os.listdir(path):
+            has_files = True
+            break
+
+        return {
+            'exists': True,
+            'is_folder': True,
+            'not_empty': has_files
+        }
 
     def document_exists(self, rel_path: str):
         abs_path = os.path.join(self.root_dir, self.documents_path, rel_path.lstrip('/'))
@@ -108,11 +149,21 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
         """
         file_path = os.path.join(self.root_dir, rel_file_path)
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f'LocalFileStorage: file "{rel_file_path}"' +
+            raise FileNotFoundError(f'LocalFileStorage.delete_file(): file "{rel_file_path}"' +
                                     f' (mapped on "{file_path}") is not found')
         os.remove(file_path)
 
-    def rename_file(self, old_rel_path: str, new_rel_path: str):
+    def file_info(self, rel_file_path: str):
+        file_path = os.path.join(self.root_dir, rel_file_path)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f'LocalFileStorage.file_info(): file "{rel_file_path}"' +
+                                    f' (mapped on "{file_path}") is not found')
+        return {
+            'size': os.path.getsize(file_path),
+            'date': time.ctime(os.path.getmtime(file_path))
+        }
+
+    def rename_file(self, old_rel_path: str, new_rel_path: str, move_file: bool = False):
         """
         Rename files by absolute path (file system) or full URI
         """
@@ -133,9 +184,30 @@ class ContraxsuiteLocalFileStorage(ContraxsuiteFileStorage):
     def read(self, rel_file_path: str) -> Optional[bytes]:
         fn = os.path.join(self.root_dir, rel_file_path)
         if not os.path.isfile(fn):
-            return None
+            return
         with open(fn, 'rb') as f:
             return f.read()
 
+    def get_request(self, rel_file_path: str, extra_headers: Optional[Dict[str, Any]]) -> Optional[Response]:
+        rel_file_path = self.sub_path_join(self.documents_path, rel_file_path)
+        fn = os.path.join(self.root_dir, rel_file_path)
+
+        requests_session = requests.session()
+        requests_session.mount('file://', LocalFileAdapter())
+        for h in extra_headers:
+            requests_session.headers[h] = extra_headers[h]
+        resp = requests_session.get(f'file:///{fn}')
+        mime = magic.Magic(mime=True)
+        resp.headers['Content-Type'] = mime.from_file(fn)
+        return resp
+
     def __str__(self):
-        return 'ContraxsuiteLocalFileStorage: {0}'.format(self.root_dir)
+        return f'ContraxsuiteLocalFileStorage: {self.root_dir}'
+
+
+@Singleton
+class ContraxsuiteLocalFileStorage(ContraxsuiteInstanceLocalFileStorage):
+    """
+    This class is a sealed (it doesn't allow inheriting)
+    descendant of ContraxsuiteInstanceLocalFileStorage.
+    """

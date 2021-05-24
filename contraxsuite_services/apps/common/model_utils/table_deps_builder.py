@@ -31,9 +31,9 @@ from apps.common.collection_utils import group_by
 from apps.common.model_utils.table_deps import TableDeps, DependencyRecord
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,24 +86,40 @@ class TableDepsBuilder:
 
     @staticmethod
     def get_relations() -> List[Tuple[str, str, str, str]]:
-        cmd = '''        
-            SELECT      
-                KCU1.TABLE_NAME AS FK_TABLE_NAME 
-                ,KCU1.COLUMN_NAME AS FK_COLUMN_NAME  
-                ,KCU2.TABLE_NAME AS REFERENCED_TABLE_NAME 
-                ,KCU2.COLUMN_NAME AS REFERENCED_COLUMN_NAME     
-            FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS RC 
+        cmd = '''
+        DROP TABLE IF EXISTS KCU1;
 
-            INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU1 
-                ON KCU1.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG  
-                AND KCU1.CONSTRAINT_SCHEMA = RC.CONSTRAINT_SCHEMA 
-                AND KCU1.CONSTRAINT_NAME = RC.CONSTRAINT_NAME 
-
-            INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU2 
-                ON KCU2.CONSTRAINT_CATALOG = RC.UNIQUE_CONSTRAINT_CATALOG  
-                AND KCU2.CONSTRAINT_SCHEMA = RC.UNIQUE_CONSTRAINT_SCHEMA 
-                AND KCU2.CONSTRAINT_NAME = RC.UNIQUE_CONSTRAINT_NAME 
-                AND KCU2.ORDINAL_POSITION = KCU1.ORDINAL_POSITION;
+        CREATE TEMP TABLE KCU1 AS
+         SELECT
+              KCU.TABLE_NAME AS FK_TABLE_NAME,
+              KCU.COLUMN_NAME AS FK_COLUMN_NAME,
+              RC.UNIQUE_CONSTRAINT_CATALOG AS UNIQUE_CONSTRAINT_CATALOG,
+              RC.UNIQUE_CONSTRAINT_SCHEMA AS UNIQUE_CONSTRAINT_SCHEMA,
+              RC.UNIQUE_CONSTRAINT_NAME AS UNIQUE_CONSTRAINT_NAME,
+              KCU.ORDINAL_POSITION AS ORDINAL_POSITION
+         FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS RC        
+                                                                      
+         INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU       
+             ON KCU.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG       
+             AND KCU.CONSTRAINT_SCHEMA = RC.CONSTRAINT_SCHEMA        
+             AND KCU.CONSTRAINT_NAME = RC.CONSTRAINT_NAME;    
+        
+        
+        SELECT                                                        
+             KCU1.FK_TABLE_NAME AS FK_TABLE_NAME,
+             KCU1.FK_COLUMN_NAME AS FK_COLUMN_NAME,
+             KCU2.TABLE_NAME AS REFERENCED_TABLE_NAME,
+             KCU2.COLUMN_NAME AS REFERENCED_COLUMN_NAME
+         FROM KCU1      
+                 
+                                                                      
+         INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU2       
+             ON KCU2.CONSTRAINT_CATALOG = KCU1.UNIQUE_CONSTRAINT_CATALOG
+             AND KCU2.CONSTRAINT_SCHEMA = KCU1.UNIQUE_CONSTRAINT_SCHEMA 
+             AND KCU2.CONSTRAINT_NAME = KCU1.UNIQUE_CONSTRAINT_NAME     
+             AND KCU2.ORDINAL_POSITION = KCU1.ORDINAL_POSITION;         
+        
+        -- DROP TABLE IF EXISTS KCU1;
         '''
 
         with connection.cursor() as cursor:

@@ -24,16 +24,16 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List
+from typing import List, Dict
 
 from apps.common.log_utils import auto_str
 from apps.common.utils import Serializable
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,3 +56,9 @@ class DocDetectFieldValuesParams(Serializable):
         self.updated_field_codes = updated_field_codes
         self.user = user
         self.skip_modified_values = skip_modified_values
+
+    @classmethod
+    def wrap(cls, d: Dict) -> 'DocDetectFieldValuesParams':
+        p = DocDetectFieldValuesParams(0)
+        p.__dict__.update(d)
+        return p

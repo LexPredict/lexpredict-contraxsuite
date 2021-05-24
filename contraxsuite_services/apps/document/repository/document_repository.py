@@ -35,11 +35,12 @@ from apps.document.models import Document, TextUnitNote, DocumentNote
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.signals import fire_doc_full_delete
 from apps.extract.models import Party
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -56,11 +57,21 @@ class DocumentRepository(BaseDocumentRepository):
         return list(Document.all_objects.filter(pk__in=ids).values_list('pk', 'source_path'))
 
     # @collect_stats(name='DocumentRepository', log_sql=False)
-    def delete_all_documents_by_ids(self, ids: List[int]) -> None:
+    def delete_all_documents_by_ids(self, ids: List[int], user: User = None) -> None:
         docs_query = Document.all_objects.filter(pk__in=ids)
+
+        # get doc type code => doc ids map to delete from rawdb
+        doc_type_code_to_doc_ids = {}
+        doc_type_codes = docs_query.order_by('document_type__code').values_list('document_type__code', flat=True).distinct()
+        for doc_type_code in doc_type_codes:
+            doc_type_code_to_doc_ids[doc_type_code] = sorted(list(
+                docs_query.filter(document_type__code=doc_type_code).values_list('id', flat=True)))
+
         if docs_query.exists():
             docs_query._raw_delete(docs_query.db)
-        fire_doc_full_delete(self, ids)
+
+        for doc_type_code, doc_ids in doc_type_code_to_doc_ids.items():
+            fire_doc_full_delete(self, user=user, document_type_code=doc_type_code, document_ids=doc_ids)
 
     # @collect_stats(name='DocumentRepository', log_sql=False)
     def delete_document_history_by_ids(self, ids: List[int]) -> None:

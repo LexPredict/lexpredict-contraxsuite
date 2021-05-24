@@ -31,9 +31,9 @@ from datetime import datetime
 from apps.common.models import ObjectStorage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,9 +61,8 @@ class DbCache:
             self.lock.acquire()
             try:
                 for key in set(self.in_memory_cache.keys()):
-                    last_update_date, value = self.in_memory_cache[key]
-                    if (datetime.now() - last_update_date).seconds \
-                            > self.CACHE_IN_MEMORY_REFRESH_SECONDS:
+                    last_update_date, _ = self.in_memory_cache[key]
+                    if (datetime.now() - last_update_date).seconds > self.CACHE_IN_MEMORY_REFRESH_SECONDS:
                         del self.in_memory_cache[key]
 
             finally:

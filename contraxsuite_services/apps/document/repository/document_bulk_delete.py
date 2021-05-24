@@ -28,18 +28,19 @@ import os
 import settings
 from typing import List, Dict
 from apps.common.model_utils.model_bulk_delete import ModelBulkDelete, WherePredicate
+from apps.common.model_utils.table_deps_builder import TableDepsBuilder
 from apps.document.models import Document, TextUnit
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.extract.models import TermUsage
 from apps.task.models import Task
 from apps.task.tasks import purge_task
-from apps.common.model_utils.table_deps_builder import TableDepsBuilder
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,10 +50,12 @@ class DocumentBulkDelete:
 
     def __init__(self,
                  document_repository: BaseDocumentRepository,
-                 safe_mode: bool = True):
+                 safe_mode: bool = True,
+                 user: User = None):
         self.model_class = Document.objects.model._meta.db_table
         self.document_repository = document_repository
         self.bulk_del = self.build_model_bulk_delete(safe_mode)
+        self.user = user
 
     def calculate_deleting_count(self, ids: List[int], remove_empty: bool = True) -> Dict[str, int]:
         if len(ids) == 0:
@@ -74,7 +77,7 @@ class DocumentBulkDelete:
         except Exception as e:
             raise RuntimeError(f'error in delete_documents.delete_document_history_by_ids({len(ids)})') from e
         try:
-            self.document_repository.delete_all_documents_by_ids(ids)
+            self.document_repository.delete_all_documents_by_ids(ids, user=self.user)
         except Exception as e:
             raise RuntimeError(f'error in delete_documents.delete_all_documents_by_ids({len(ids)})') from e
 
@@ -117,5 +120,5 @@ class DocumentBulkDelete:
                                 TextUnit.objects.model._meta.db_table})
 
 
-def get_document_bulk_delete(safe_mode: bool = True):
-    return DocumentBulkDelete(DocumentRepository(), safe_mode)
+def get_document_bulk_delete(safe_mode: bool = True, user: User = None):
+    return DocumentBulkDelete(DocumentRepository(), safe_mode, user=user)

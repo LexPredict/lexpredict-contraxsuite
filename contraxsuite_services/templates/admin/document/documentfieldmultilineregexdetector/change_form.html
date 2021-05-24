@@ -24,6 +24,16 @@
     </div>
   </div>
 
+  <style type="text/css">
+    table[name="csv_content_table"] td {
+      cursor: pointer
+    }
+    table[name="csv_content_table"] td:hover {
+      color: #001060
+    }
+  </style>
+
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js" style="text/javascrypt"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js" style="text/javascrypt"></script>
   <script type="text/javascript">
@@ -144,14 +154,17 @@
       }
 
       function addRowClickHandlers(tableOptions) {
-          let first = true;
-          $('table[name="' + tableOptions.tableName + '_table"] tbody tr').click(function() {
-              if (first) {
-                  first = false;
+          var firstRow = true;
+          var selector = 'table[name="' + tableOptions.tableName + '_table"] tbody tr';
+          $('table[name="' + tableOptions.tableName + '_table"] tbody tr').each(function(index) {
+              if (firstRow) {
+                  firstRow = false;
                   return;
               }
-              row = $(this);
-              editRow(row, tableOptions);
+              $(this).click(function() {
+                  var row = $(this);
+                  editRow(row, tableOptions);
+              });
           });
       }
 
@@ -223,6 +236,7 @@
              isDelete: isDelete,
              csvData: csvData
          };
+         fieldData['csrfmiddlewaretoken'] = jQuery("[name=csrfmiddlewaretoken]").val();
          $.ajax({
                   type: 'POST',
                   dataType: 'json',
@@ -249,7 +263,9 @@
       $.ajaxSetup({
         beforeSend: function(xhr, settings) {
           if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            var csToken = jQuery("[name=csrfmiddlewaretoken]").val();
+            xhr.setRequestHeader("X-CSRFToken", csToken);
+            xhr.setRequestHeader("content-type", "application/json");
           }
         }
       });

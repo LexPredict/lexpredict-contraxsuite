@@ -31,7 +31,6 @@ from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.utils import NestedObjects
 from django.db import router, transaction
-from django.db.models import Count, F
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse, path
@@ -43,14 +42,14 @@ from guardian.admin import GuardedModelAdmin
 from apps.common.utils import cap_words
 from apps.document.admin import ModelAdminWithPrettyJsonField
 from apps.document.models import Document
-from apps.project.models import Project, TaskQueue, TaskQueueHistory,\
-    ProjectClustering, UploadSession, ProjectTermConfiguration, UserProjectsSavedFilter
+from apps.project.models import Project, TaskQueue, TaskQueueHistory, \
+    ProjectClustering, UploadSession, UserProjectsSavedFilter
 from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -278,7 +277,7 @@ class SoftDeleteProjectAdmin(ProjectAdmin):
             if details:
                 from apps.document.repository.document_bulk_delete \
                     import get_document_bulk_delete
-                items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
+                items_by_table = get_document_bulk_delete(user=request.user).calculate_deleting_count(doc_ids)
                 mdc = ModelClassDictionary()
                 del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
                                   for t in items_by_table if t in mdc.model_by_table}
@@ -313,24 +312,6 @@ class SoftDeleteProjectAdmin(ProjectAdmin):
         return my_urls + urls
 
 
-class ProjectTermConfigurationAdmin(admin.ModelAdmin):
-    list_display = ('project_name', 'project_id', 'terms_count')
-    search_fields = ('pk', 'project__name')
-    filter_horizontal = ('terms',)
-
-    @staticmethod
-    def project_name(obj):
-        return obj.project_name
-
-    @staticmethod
-    def terms_count(obj):
-        return obj.terms_count
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.annotate(project_name=F('project__name'), terms_count=Count('terms'))
-
-
 class UserProjectsSavedFilterAdmin(admin.ModelAdmin):
     list_display = ('user_id', 'user_name', 'project_names')
     search_fields = ('pk', 'user_id')
@@ -352,5 +333,4 @@ admin.site.register(Project, ProjectAdmin)
 admin.site.register(ProjectClustering, ProjectClusteringAdmin)
 admin.site.register(UploadSession, UploadSessionAdmin)
 admin.site.register(SoftDeleteProject, SoftDeleteProjectAdmin)
-admin.site.register(ProjectTermConfiguration, ProjectTermConfigurationAdmin)
 admin.site.register(UserProjectsSavedFilter, UserProjectsSavedFilterAdmin)

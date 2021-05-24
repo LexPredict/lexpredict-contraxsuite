@@ -13,7 +13,8 @@ Name | Type | Description | Notes
 **PartyBName** | **string** |  | [optional] [readonly] 
 **PartyBPk** | **string** |  | [optional] [readonly] 
 **PartyBTypeAbbr** | **string** |  | [optional] [readonly] 
-**Similarity** | **string** |  | 
+**Similarity** | **decimal** |  | 
+**Run** | [**DocumentSimilarityRun**](DocumentSimilarityRun.md) |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

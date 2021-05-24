@@ -2,6 +2,7 @@
 
 # TrademarkUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes

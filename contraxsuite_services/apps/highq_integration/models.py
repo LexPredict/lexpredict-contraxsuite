@@ -27,20 +27,21 @@
 # django
 from django.conf import settings
 from django.contrib.postgres.fields import HStoreField
-from django.db import models
-from django.db.models.deletion import CASCADE
+from django.db import models, transaction
+from django.db.models.deletion import CASCADE, SET_NULL
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 # ContraxSuite
 from apps.document import constants as document_constants
+from apps.document.models import Document, DocumentType, DocumentField
 from apps.project.models import Project
 from apps.users.models import User
-from apps.document.models import Document, DocumentType, DocumentField
-
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,10 +69,10 @@ class HighQiSheetColumnChoiceMapping(models.Model):
 
     contraxsuite_documentfield = models.ForeignKey(
         DocumentField,
+        null=False,
+        blank=False,
         on_delete=CASCADE,
         verbose_name='ContraxSuite DocumentField',
-        blank=False,
-        null=False,
     )
 
     # TODO: add choices somehow? Requires widget modifications
@@ -98,19 +99,19 @@ class HighQiSheetColumnIDMapping(models.Model):
     )
 
     isheet_id = models.PositiveIntegerField(
-        verbose_name=' iSheet ID',
-        blank=False,
         null=False,
+        blank=False,
+        verbose_name=' iSheet ID',
         help_text='The iSheet ID must match the one defined in the '
                   'HighQ Integration Configuration. Save to apply.'
     )
 
     contraxsuite_documenttype = models.ForeignKey(
         DocumentType,
+        null=False,
+        blank=False,
         on_delete=CASCADE,
         verbose_name='ContraxSuite DocumentType',
-        blank=False,
-        null=False,
         help_text='The ContraxSuite DocumentType must match the one defined in'
                   ' the HighQ Integration Configuration. Save to apply.'
     )
@@ -131,10 +132,10 @@ class HighQiSheetColumnAssociation(models.Model):
 
     highq_isheet_column_id_mapping = models.ForeignKey(
         HighQiSheetColumnIDMapping,
+        null=True,
+        blank=True,
         on_delete=CASCADE,
         verbose_name='HighQ iSheet Column ID Mapping',
-        blank=True,
-        null=True,
     )
 
     """
@@ -159,10 +160,10 @@ class HighQiSheetColumnAssociation(models.Model):
 
     highq_isheet_column_choice_mapping = models.ForeignKey(
         HighQiSheetColumnChoiceMapping,
+        null=True,
+        blank=True,
         on_delete=CASCADE,
         verbose_name='HighQ iSheet Column Choice Mapping',
-        blank=True,
-        null=True,
     )
 
 
@@ -196,9 +197,18 @@ class HighQConfiguration(models.Model):
         default=False,
         blank=False,
         null=False,
-        verbose_name='Update Existing iSheet Items',
-        help_text='Whether or not changes to document field values in'
-                  ' ContraxSuite should update iSheet rows in HighQ.',
+        verbose_name='Update Existing iSheet Items?',
+        help_text='Whether or not changes to document field values in '
+                  'ContraxSuite should update iSheet rows in HighQ.',
+    )
+
+    get_highq_files_from_subfolders = models.BooleanField(
+        default=True,
+        blank=False,
+        null=False,
+        verbose_name='Get HighQ files from subfolders?',
+        help_text='Whether or not ContraxSuite should get files from '
+                  'subfolders in HighQ.'
     )
 
     api_client_id = models.PositiveIntegerField(
@@ -222,18 +232,18 @@ class HighQConfiguration(models.Model):
 
     project = models.ForeignKey(
         Project,
-        on_delete=CASCADE,
+        null=True,
         blank=False,
-        null=False,
+        on_delete=SET_NULL,
         verbose_name='ContraxSuite Project',
         help_text='ContraxSuite will send HighQ files to this project.'
     )
 
     assignee = models.ForeignKey(
         User,
-        on_delete=CASCADE,
-        blank=True,
         null=True,
+        blank=True,
+        on_delete=SET_NULL,
         help_text='ContraxSuite will assign HighQ Documents to this user.',
     )
 
@@ -291,9 +301,9 @@ class HighQConfiguration(models.Model):
 
     isheet_column_mapping = models.ForeignKey(
         HighQiSheetColumnIDMapping,
-        on_delete=CASCADE,
         null=True,
         blank=True,
+        on_delete=SET_NULL,
         verbose_name=' iSheet Column Mapping',
         help_text='Map ContraxSuite fields to iSheet columns. Save this HighQ '
                   'Integration Configuration before adding Column Associations.'
@@ -366,9 +376,9 @@ class HighQDocument(models.Model):
 
     highq_configuration = models.ForeignKey(
         HighQConfiguration,
-        null=False,
+        null=True,
         blank=False,
-        on_delete=CASCADE,
+        on_delete=SET_NULL,
         verbose_name='HighQ Configuration',
     )
 
@@ -386,9 +396,9 @@ class HighQDocument(models.Model):
 
     document = models.ForeignKey(
         Document,
-        null=False,
+        null=True,
         blank=False,
-        on_delete=CASCADE,
+        on_delete=SET_NULL,
         verbose_name='ContraxSuite Document',
     )
 
@@ -409,6 +419,14 @@ class HighQDocument(models.Model):
         blank=False,
     )
 
+    removed_from_highq = models.BooleanField(
+        help_text='Has the corresponding HighQ file been removed from HighQ?',
+        verbose_name='Removed from HighQ?',
+        default=False,
+        null=False,
+        blank=False,
+    )
+
     @property
     def highq_site_id(self) -> int:
         return self.highq_configuration.highq_site_id
@@ -420,3 +438,49 @@ class HighQDocument(models.Model):
     @property
     def highq_isheet_id(self) -> int:
         return self.highq_configuration.highq_isheet_id
+
+
+def _update_highq_configurations(
+    qs_highq_configurations: models.QuerySet,
+    **model_field_values
+) -> None:
+    """
+    Loops through objects in the QuerySet and updates their fields using the
+    key-value pairs passed as `model_field_values` kwargs.
+
+    Example:
+        # Disable HighQ Configurations
+        _update_highq_configurations(
+            qs_highq_configurations=qs_highq_configurations,
+            enabled=False
+        )
+    """
+    for highq_configuration in qs_highq_configurations:
+        for field, value in model_field_values.items():
+            setattr(highq_configuration, field, value)
+
+    HighQConfiguration.objects.bulk_update(
+        objs=qs_highq_configurations,
+        fields=list(model_field_values.keys()),
+    )
+
+
+@receiver(pre_delete, sender=Project)
+def disable_highq_configuration_on_project_delete(
+    sender: Project,
+    instance: Project,
+    **kwargs
+) -> None:
+    """
+    Disable HighQ Configuration synchronization if associated projects are deleted.
+    """
+    qs_highq_configurations: models.QuerySet = \
+        HighQConfiguration.objects.filter(project=instance)
+
+    with transaction.atomic():
+        transaction.on_commit(
+            func=lambda: _update_highq_configurations(
+                qs_highq_configurations=qs_highq_configurations,
+                enabled=False
+            )
+        )

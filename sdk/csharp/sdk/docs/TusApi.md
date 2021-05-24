@@ -87,6 +87,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/offset+octet-stream
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -103,7 +104,7 @@ Name | Type | Description  | Notes
 
 ## TusUploadSessionUploadSessionIdUploadPOST
 
-> void TusUploadSessionUploadSessionIdUploadPOST (string uploadSessionId, int uploadLength, string uploadMetadata, string tusResumable, bool? force = null, Object body = null)
+> void TusUploadSessionUploadSessionIdUploadPOST (string uploadSessionId, int uploadLength, string uploadMetadata, string tusResumable, bool? force = null, Dictionary<string, Object> requestBody = null)
 
 
 
@@ -136,11 +137,11 @@ namespace Example
             var uploadMetadata = uploadMetadata_example;  // string | Upload metadata include file name, relative path, etc.
             var tusResumable = tusResumable_example;  // string | 1.0.0
             var force = true;  // bool? | Upload a file even if it exists. (optional) 
-            var body = ;  // Object |  (optional) 
+            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
 
             try
             {
-                apiInstance.TusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, body);
+                apiInstance.TusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, requestBody);
             }
             catch (ApiException e)
             {
@@ -163,7 +164,7 @@ Name | Type | Description  | Notes
  **uploadMetadata** | **string**| Upload metadata include file name, relative path, etc. | 
  **tusResumable** | **string**| 1.0.0 | 
  **force** | **bool?**| Upload a file even if it exists. | [optional] 
- **body** | **Object**|  | [optional] 
+ **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
 
 ### Return type
 
@@ -177,6 +178,7 @@ void (empty response body)
 
 - **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

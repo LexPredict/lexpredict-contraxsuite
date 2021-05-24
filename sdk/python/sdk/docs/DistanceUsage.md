@@ -1,10 +1,11 @@
 # DistanceUsage
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | **float** |  | [optional] 
 **distance_type** | **str** |  | 
+**amount** | **float, none_type** |  | [optional] 
 **count** | **int** |  | [optional] 
 **pk** | **int** |  | [optional] [readonly] 
 **text_unit__pk** | **str** |  | [optional] [readonly] 

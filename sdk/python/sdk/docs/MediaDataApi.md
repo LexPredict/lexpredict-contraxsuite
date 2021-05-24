@@ -8,7 +8,7 @@ Method | HTTP request | Description
 
 
 # **media_data_path_get**
-> dict(str, object) media_data_path_get(path, action=action)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} media_data_path_get(path)
 
 
 
@@ -18,10 +18,9 @@ If directory:   action: None: - list directory   action: download - list directo
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import media_data_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -35,39 +34,45 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.MediaDataApi(api_client)
-    path = 'path_example' # str | 
-action = 'download' # str | Action name (optional) (default to 'download')
+    api_instance = media_data_api.MediaDataApi(api_client)
+    path = "path_example" # str | 
+    action = "download" # str | Action name (optional) if omitted the server will use the default value of "download"
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.media_data_path_get(path)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling MediaDataApi->media_data_path_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.media_data_path_get(path, action=action)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling MediaDataApi->media_data_path_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **path** | **str**|  | 
- **action** | **str**| Action name | [optional] [default to &#39;download&#39;]
+ **path** | **str**|  |
+ **action** | **str**| Action name | [optional] if omitted the server will use the default value of "download"
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -77,6 +82,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json, */*
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

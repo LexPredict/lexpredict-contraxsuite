@@ -1,0 +1,333 @@
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: celery-worker
+  namespace: {{ .Values.namespace }}
+spec:
+  jobTargetRef:
+    parallelism: 1                           
+    completions: 1 
+    backoffLimit: 4  
+    template:
+      spec:
+        tolerations:
+        - key: "kubernetes.azure.com/scalesetpriority"
+          operator: "Equal"
+          value: "spot"
+          effect: "NoSchedule"
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                    - worker
+              topologyKey: "kubernetes.io/hostname"
+        terminationGracePeriodSeconds: 10
+        nodeSelector:
+          contraxsuite.com/role: worker
+        containers:
+        - args:
+          - celery-single
+          env:
+          - name: DOCKER_CELERY_CONCURRENCY
+            value: "4"
+          - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+            value: optional
+          - name: DOCKER_DJANGO_ADMIN_EMAIL
+            value: admin@localhost
+          - name: DOCKER_DJANGO_ADMIN_NAME
+            value: Administrator
+          - name: DOCKER_DJANGO_ADMIN_PASSWORD
+            value: Administrator
+          - name: DOCKER_DJANGO_BASE_PATH
+            value: /explorer/
+          - name: DOCKER_DJANGO_DEBUG
+            value: "False"
+          - name: DOCKER_DJANGO_DEBUG_SQL
+            value: "False"
+          - name: DOCKER_DJANGO_EMAIL_BACKEND
+            value: smtp.CustomEmailBackend
+          - name: DOCKER_DJANGO_EMAIL_HOST
+            value: localhost
+          - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+          - name: DOCKER_DJANGO_EMAIL_HOST_USER
+          - name: DOCKER_DJANGO_EMAIL_PORT
+            value: "587"
+          - name: DOCKER_DJANGO_EMAIL_USE_TLS
+            value: "False"
+          - name: DOCKER_DJANGO_HOST_NAME
+            value: {{ .Values.domain_name }}
+          - name: DOCKER_DJANGO_SECRET_KEY
+            value: Welcome1
+          - name: DOCKER_FLOWER_BASE_PATH
+            value: flower
+          - name: DOCKER_FRONTEND_ROOT_URL
+            value: {{ .Values.domain_name }}
+          - name: DOCKER_HOST_NAME_ELASTICSEARCH
+            value: {{ .Values.docker_host_name_elasticsearch }}
+          - name: DOCKER_ELASTICSEARCH_PORT
+            value: "{{ .Values.docker_elasticsearch_port }}"
+          - name: DOCKER_HOST_NAME_KIBANA
+            value: contrax-kibana
+          - name: DOCKER_HOST_NAME_PG
+            value: {{ .Values.pg_host_name }}
+          - name: DOCKER_HOST_NAME_RABBITMQ
+            value: contrax-rabbitmq
+          - name: DOCKER_HOST_NAME_REDIS
+            value: contrax-redis
+          - name: DOCKER_JUPYTER_BASE_URL
+            value: /jupyter
+          - name: DOCKER_JUPYTER_PORT
+            value: "8888"
+          - name: DOCKER_NGINX_SERVER_NAME
+            value: contrax-nginx
+          - name: DOCKER_PG_DB_NAME
+            value: {{ .Values.pg_db_name }}
+          - name: DOCKER_PG_PASSWORD
+            value: {{ .Values.pg_password }}
+          - name: DOCKER_PG_USER
+            value: {{ .Values.pg_user }}
+          - name: DOCKER_RABBITMQ_PASSWORD
+            value: contrax1
+          - name: DOCKER_RABBITMQ_USER
+            value: contrax1
+          - name: DOCKER_RABBITMQ_VHOST
+            value: contrax1_vhost
+          - name: SHARED_USER_ID
+            value: "65432"
+          - name: SHARED_USER_NAME
+            value: contraxsuite_docker_user
+          - name: DOCKER_WEBDAV_AUTH_PASSWORD
+            value: password
+          - name: DOCKER_WEBDAV_AUTH_USER
+            value: user
+          - name: DOCKER_WEBDAV_SERVER_NAME
+            value: contrax-webdav
+          - name: LEXNLP_TIKA_PARSER_MODE
+            value: pdf_ocr
+          - name: MLFLOW_S3_ENDPOINT_URL
+            value: "{{ .Values.mlflow_s3_endpoint_url }}"
+          - name: AWS_ACCESS_KEY_ID
+            value: 'Administrator'
+          - name: AWS_SECRET_ACCESS_KEY
+            value: 'Administrator'
+          - name: DOCKER_TEXT_EXTRACTION_SYSTEM_URL
+            value: {{ .Values.tes_url }}
+          - name: contraxsuite_celery_shutdown_when_no_tasks_longer_than_sec
+            value: "30"
+          name: contrax-celery
+          image: {{ .Values.docker_image }}
+          resources:
+            limits:
+              cpu: {{ .Values.celery_cpu_limit }}
+            requests:
+              cpu: {{ .Values.celery_cpu_request }}
+          volumeMounts:
+          # - name: contrax-celery-pvc
+          #   mountPath: /data/celery_worker_state
+          - name: local-settings-py
+            mountPath: /contraxsuite_services/local_settings.py
+            subPath: local_settings.py
+        initContainers:
+        - name: daphne-waiter
+          image: {{ .Values.docker_image }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        volumes:
+        - name: local-settings-py
+          configMap:
+            name: local-settings-celery
+        imagePullSecrets:
+        - name: contraxsuitesecret
+        restartPolicy: Never
+  pollingInterval: 300            # Optional. Default: 30 seconds
+  maxReplicaCount: 20             # Calculated as = temp_node_pool_scale_limit(15) * Node vCPU(8) / (tes_celery_cpu_request + contrax_celery_cpu_request)
+  successfulJobsHistoryLimit: 10  # How many completed jobs should be kept.
+  failedJobsHistoryLimit: 10      # How many failed jobs should be kept.
+  scalingStrategy:
+    strategy: "accurate"
+    #strategy: "custom"                        # Optional. Default: default. Which Scaling Strategy to use.
+    #customScalingQueueLengthDeduction: 1      # Optional. A parameter to optimize custom ScalingStrategy.
+    #customScalingRunningJobPercentage: "0.5"  # Optional. A parameter to optimize custom ScalingStrategy.
+  triggers:
+  - type: rabbitmq
+    metadata:
+      host: "amqp://{{ .Values.rabbitmq.username }}:{{ .Values.rabbitmq.password }}@{{ .Values.rabbitmq.host }}.{{ .Values.namespace }}:{{ .Values.rabbitmq.port }}/{{ .Values.rabbitmq.vhost }}"
+      queueName: default
+      mode: QueueLength
+      value: "10"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: tes-celery-worker
+  namespace: {{ .Values.namespace }}
+spec:
+  jobTargetRef:
+    parallelism: 1                           
+    completions: 1 
+    backoffLimit: 4  
+    template:
+      spec:
+        tolerations:
+          - key: "kubernetes.azure.com/scalesetpriority"
+            operator: "Equal"
+            value: "spot"
+            effect: "NoSchedule"
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                    - worker
+              topologyKey: "kubernetes.io/hostname"
+        nodeSelector:
+          contraxsuite.com/role: worker
+        containers:
+        - args: 
+          - celery-worker
+          env:
+          - name: text_extraction_system_celery_broker
+            value: redis://contrax-redis:6379/8
+          - name: text_extraction_system_celery_backend
+            value: redis://contrax-redis:6379/8
+          - name: text_extraction_system_webdav_url
+            value: http://contrax-tes-webdav:80
+          - name: text_extraction_system_webdav_username
+            value: {{.Values.tes_webdav_username}}
+          - name: text_extraction_system_webdav_password
+            value: {{.Values.tes_webdav_password}}
+          - name: text_extraction_system_delete_temp_files_on_request_finish
+            value: "true"
+          - name: text_extraction_system_keep_failed_files
+            value: "true"
+          - name: text_extraction_system_celery_shutdown_when_no_tasks_longer_than_sec
+            value: "30"
+          name: lexpredict-text-extraction-system
+          image: {{ .Values.docker_tes_image }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","/bin/sleep 1; kill -QUIT 1"]
+          resources:
+            limits:
+              cpu: {{ .Values.tes_cpu_limit }}
+            requests:
+              cpu: {{ .Values.tes_cpu_request }}
+          volumeMounts:
+          # - name: lexpredict-text-extraction-system-pvc
+          #   mountPath: /data/celery_worker_state
+          - name: local-settings-py
+            mountPath: /contraxsuite_services/local_settings.py
+            subPath: local_settings.py
+        initContainers:
+        - name: daphne-waiter
+          image: {{ .Values.docker_tes_image }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        volumes:
+        - name: local-settings-py
+          configMap:
+            name: local-settings-celery
+        imagePullSecrets:
+        - name: contraxsuitesecret
+        restartPolicy: Never
+  pollingInterval: 300            # Optional. Default: 30 seconds
+  maxReplicaCount: 20             # Calculated as = temp_node_pool_scale_limit * vCPU / (tes_celery_cpu_request + contrax_celery_cpu_request)          
+  successfulJobsHistoryLimit: 10  # How many completed jobs should be kept.
+  failedJobsHistoryLimit: 10      # How many failed jobs should be kept.
+  scalingStrategy:
+    strategy: "accurate"
+    #strategy: "custom"                        # Optional. Default: default. Which Scaling Strategy to use.
+    #customScalingQueueLengthDeduction: 1      # Optional. A parameter to optimize custom ScalingStrategy.
+    #customScalingRunningJobPercentage: "0.5"  # Optional. A parameter to optimize custom ScalingStrategy.
+  triggers:
+  - type: redis
+    metadata:
+      address: "contrax-redis.{{ .Values.namespace }}:6379" # Format must be host:port
+      #passwordFromEnv: REDIS_PASSWORD
+      listName: celery # Required
+      listLength: "25" # Required
+      enableTLS: "false" # optional
+      databaseIndex: "8" # optional
+      # Alternatively, you can use existing environment variables to read configuration from:
+      # See details in "Parameter list" section
+      #addressFromEnv: REDIS_HOST # Optional. You can use this instead of `address` parameter
+
+#---
+#apiVersion: keda.sh/v1alpha1
+#kind: ScaledObject
+#metadata:
+#  name: rabbitmq-scaledobject
+#  namespace: {{ .Values.namespace }}
+#spec:
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: StatefulSet
+#    name: contrax-celery
+#  pollingInterval: 30                                # Optional. Default: 30 seconds
+#  #cooldownPeriod:  300                               # Optional. Default: 300 seconds
+#  minReplicaCount: 0                                 # Optional. Default: 0
+#  maxReplicaCount: 25                                # Optional. Default: 100
+#  advanced:                                          # Optional. Section to specify advanced options
+#    restoreToOriginalReplicaCount: false             # Optional. Default: false
+#    horizontalPodAutoscalerConfig:                   # Optional. Section to specify HPA related options
+#      behavior:                                      # Optional. Use to modify HPA's scaling behavior
+#        scaleDown:
+#          stabilizationWindowSeconds: 900
+#          policies:
+#          - type: Percent
+#            value: 100
+#            periodSeconds: 60
+#  triggers:
+#  - type: rabbitmq
+#    metadata:
+#      host: "amqp://{{ .Values.rabbitmq.username }}:{{ .Values.rabbitmq.password }}@{{ .Values.rabbitmq.host }}.{{ .Values.namespace }}:{{ .Values.rabbitmq.port }}/{{ .Values.rabbitmq.vhost }}"
+#      queueName: default
+#      mode: QueueLength
+#      value: "10"
+
+#---
+#apiVersion: keda.sh/v1alpha1
+#kind: ScaledObject
+#metadata:
+#  name: redis-scaledobject
+#  namespace: contraxsuite
+#spec:
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: StatefulSet
+#    name: tes-celery-worker
+#  pollingInterval: 30                                # Optional. Default: 30 seconds
+#  #cooldownPeriod:  300                               # Optional. Default: 300 seconds
+#  minReplicaCount: 0                                 # Optional. Default: 0
+#  maxReplicaCount: 30                                # Optional. Default: 100
+#  advanced:                                          # Optional. Section to specify advanced options
+#    restoreToOriginalReplicaCount: false             # Optional. Default: false
+#    horizontalPodAutoscalerConfig:                   # Optional. Section to specify HPA related options
+#      behavior:                                      # Optional. Use to modify HPA's scaling behavior
+#        scaleDown:
+#          stabilizationWindowSeconds: 900
+#          policies:
+#          - type: Percent
+#            value: 100
+#            periodSeconds: 60
+#  triggers:
+#  - type: redis
+#    metadata:
+#      address: contrax-redis:6379 # Format must be host:port
+#      #passwordFromEnv: REDIS_PASSWORD
+#      listName: celery # Required
+#      listLength: "10" # Required
+#      enableTLS: "false" # optional
+#      databaseIndex: "8" # optional
+#      # Alternatively, you can use existing environment variables to read configuration from:
+#      # See details in "Parameter list" section
+#      #addressFromEnv: REDIS_HOST # Optional. You can use this instead of `address` parameter
+#
+#

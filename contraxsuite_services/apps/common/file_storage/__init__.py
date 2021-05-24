@@ -33,9 +33,9 @@ from apps.common.file_storage.local_file_storage import ContraxsuiteLocalFileSto
 from apps.common.file_storage.webdav_file_storage import ContraxsuiteWebDAVFileStorage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,10 +44,9 @@ def get_file_storage() -> ContraxsuiteFileStorage:
     access_type = settings.CONTRAX_FILE_STORAGE_TYPE
     if access_type == 'Local':
         return ContraxsuiteLocalFileStorage()  # singleton - always returns the same instance
-    elif access_type == 'WebDAV':
+    if access_type == 'WebDAV':
         return ContraxsuiteWebDAVFileStorage()
-    else:
-        raise Exception(f'Unknown file storage type: {access_type}')
+    raise Exception(f'Unknown file storage type: {access_type}')
 
 
 def get_filebrowser_site(url_as_download=True):

@@ -425,6 +425,7 @@ services:
       - "POSTGRES_USER=${DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+      - "POSTGRES_ENABLE_DAILY_REINDEX=${POSTGRES_ENABLE_DAILY_REINDEX}"
     command: postgres -c config_file=/contraxsuite/postgresql.conf
     tmpfs:
       - /tmp:size=4GB

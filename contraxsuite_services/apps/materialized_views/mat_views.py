@@ -24,9 +24,8 @@
 """
 # -*- coding: utf-8 -*-
 
-import time
 from datetime import datetime, timedelta
-from typing import Callable, Type, Tuple
+from typing import Callable, Type
 
 from celery.states import PENDING
 from django.db import connection, transaction, models
@@ -38,9 +37,9 @@ from apps.common.sql_commons import SQLClause, fetch_bool
 from apps.materialized_views.models import MaterializedView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -117,7 +116,7 @@ class MaterializedViews:
 
                 concurency_clause = ''
                 from apps.materialized_views.app_vars import CONCURRENCY_UPDATE
-                if CONCURRENCY_UPDATE.val:
+                if CONCURRENCY_UPDATE.val():
                     concurency_clause = ' CONCURRENTLY'
                 cursor.execute(f'refresh materialized view{concurency_clause} {view_name};')
 
@@ -171,8 +170,8 @@ class MaterializedViews:
         """
 
         from apps.materialized_views.app_vars import REFRESH_DELAY
-        refresh_delay_sec = REFRESH_DELAY.val
-        to_refresh = list()
+        refresh_delay_sec = REFRESH_DELAY.val()
+        to_refresh = []
         with connection.cursor() as cursor:
             cursor.execute(f'''select view_name, max(request_date) 
                                from {TABLE_M_VIEW_REQUEST}

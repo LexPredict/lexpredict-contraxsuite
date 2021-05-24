@@ -6,27 +6,39 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**projectProjectClusteringGET**](ProjectApi.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ | 
 [**projectProjectClusteringIdGET**](ProjectApi.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ | 
+[**projectProjectsFormFieldsGET**](ProjectApi.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ | 
 [**projectProjectsGET**](ProjectApi.md#projectProjectsGET) | **GET** /api/v1/project/projects/ | 
+[**projectProjectsIdActiveTasksGET**](ProjectApi.md#projectProjectsIdActiveTasksGET) | **GET** /api/v1/project/projects/{id}/active_tasks/ | 
 [**projectProjectsIdAnnotationsAssigneesGET**](ProjectApi.md#projectProjectsIdAnnotationsAssigneesGET) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ | 
 [**projectProjectsIdAssignAnnotationsPOST**](ProjectApi.md#projectProjectsIdAssignAnnotationsPOST) | **POST** /api/v1/project/projects/{id}/assign_annotations/ | 
 [**projectProjectsIdAssignDocumentPOST**](ProjectApi.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**projectProjectsIdAssignDocumentsPOST**](ProjectApi.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**projectProjectsIdAssigneesGET**](ProjectApi.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ | 
 [**projectProjectsIdCleanupPOST**](ProjectApi.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
+[**projectProjectsIdClusterActionsGET**](ProjectApi.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**projectProjectsIdClusterPOST**](ProjectApi.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ | 
 [**projectProjectsIdClusteringStatusGET**](ProjectApi.md#projectProjectsIdClusteringStatusGET) | **GET** /api/v1/project/projects/{id}/clustering-status/ | 
 [**projectProjectsIdDELETE**](ProjectApi.md#projectProjectsIdDELETE) | **DELETE** /api/v1/project/projects/{id}/ | 
+[**projectProjectsIdDeleteDocumentSimilarityResultsDELETE**](ProjectApi.md#projectProjectsIdDeleteDocumentSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ | 
+[**projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](ProjectApi.md#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ | 
 [**projectProjectsIdDetectFieldValuesPOST**](ProjectApi.md#projectProjectsIdDetectFieldValuesPOST) | **POST** /api/v1/project/projects/{id}/detect_field_values/ | 
+[**projectProjectsIdFormFieldsGET**](ProjectApi.md#projectProjectsIdFormFieldsGET) | **GET** /api/v1/project/projects/{id}/form-fields/ | 
 [**projectProjectsIdGET**](ProjectApi.md#projectProjectsIdGET) | **GET** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdMakeSearchablePdfPOST**](ProjectApi.md#projectProjectsIdMakeSearchablePdfPOST) | **POST** /api/v1/project/projects/{id}/make-searchable-pdf/ | 
+[**projectProjectsIdLocateItemsPOST**](ProjectApi.md#projectProjectsIdLocateItemsPOST) | **POST** /api/v1/project/projects/{id}/locate_items/ | 
 [**projectProjectsIdMarkDeletePOST**](ProjectApi.md#projectProjectsIdMarkDeletePOST) | **POST** /api/v1/project/projects/{id}/mark_delete/ | 
 [**projectProjectsIdPATCH**](ProjectApi.md#projectProjectsIdPATCH) | **PATCH** /api/v1/project/projects/{id}/ | 
 [**projectProjectsIdPUT**](ProjectApi.md#projectProjectsIdPUT) | **PUT** /api/v1/project/projects/{id}/ | 
 [**projectProjectsIdProgressGET**](ProjectApi.md#projectProjectsIdProgressGET) | **GET** /api/v1/project/projects/{id}/progress/ | 
+[**projectProjectsIdSearchSimilarDocumentsPOST**](ProjectApi.md#projectProjectsIdSearchSimilarDocumentsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ | 
+[**projectProjectsIdSearchSimilarTextUnitsPOST**](ProjectApi.md#projectProjectsIdSearchSimilarTextUnitsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ | 
 [**projectProjectsIdSendClustersToProjectPOST**](ProjectApi.md#projectProjectsIdSendClustersToProjectPOST) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ | 
 [**projectProjectsIdSetAnnotationStatusPOST**](ProjectApi.md#projectProjectsIdSetAnnotationStatusPOST) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ | 
 [**projectProjectsIdSetStatusPOST**](ProjectApi.md#projectProjectsIdSetStatusPOST) | **POST** /api/v1/project/projects/{id}/set_status/ | 
+[**projectProjectsIdSettingsActionsGET**](ProjectApi.md#projectProjectsIdSettingsActionsGET) | **GET** /api/v1/project/projects/{id}/settings_actions/ | 
+[**projectProjectsIdTaskTaskIdTaskLogsGET**](ProjectApi.md#projectProjectsIdTaskTaskIdTaskLogsGET) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ | 
+[**projectProjectsIdTasksGET**](ProjectApi.md#projectProjectsIdTasksGET) | **GET** /api/v1/project/projects/{id}/tasks/ | 
 [**projectProjectsIdUnmarkDeletePOST**](ProjectApi.md#projectProjectsIdUnmarkDeletePOST) | **POST** /api/v1/project/projects/{id}/unmark_delete/ | 
+[**projectProjectsIdUpdateDocumentFieldsPOST**](ProjectApi.md#projectProjectsIdUpdateDocumentFieldsPOST) | **POST** /api/v1/project/projects/{id}/update_document_fields/ | 
 [**projectProjectsPOST**](ProjectApi.md#projectProjectsPOST) | **POST** /api/v1/project/projects/ | 
 [**projectProjectsProjectStatsGET**](ProjectApi.md#projectProjectsProjectStatsGET) | **GET** /api/v1/project/projects/project_stats/ | 
 [**projectProjectsRecentGET**](ProjectApi.md#projectProjectsRecentGET) | **GET** /api/v1/project/projects/recent/ | 
@@ -47,6 +59,7 @@ Method | HTTP request | Description
 [**projectUploadSessionUidDeleteFileDELETE**](ProjectApi.md#projectUploadSessionUidDeleteFileDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ | 
 [**projectUploadSessionUidFilesPOST**](ProjectApi.md#projectUploadSessionUidFilesPOST) | **POST** /api/v1/project/upload-session/{uid}/files/ | 
 [**projectUploadSessionUidGET**](ProjectApi.md#projectUploadSessionUidGET) | **GET** /api/v1/project/upload-session/{uid}/ | 
+[**projectUploadSessionUidPATCH**](ProjectApi.md#projectUploadSessionUidPATCH) | **PATCH** /api/v1/project/upload-session/{uid}/ | 
 [**projectUploadSessionUidProgressGET**](ProjectApi.md#projectUploadSessionUidProgressGET) | **GET** /api/v1/project/upload-session/{uid}/progress/ | 
 [**projectUploadSessionUidUploadPOST**](ProjectApi.md#projectUploadSessionUidUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/upload/ | 
 
@@ -191,6 +204,71 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="projectProjectsFormFieldsGET"></a>
+# **projectProjectsFormFieldsGET**
+> Map&lt;String, Object&gt; projectProjectsFormFieldsGET()
+
+
+
+GET model form fields description to build UI form for an object:       - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\&quot;input\&quot; | \&quot;select\&quot; | \&quot;checkbox\&quot; | ...), data_type: (\&quot;string\&quot;, \&quot;integer\&quot;, \&quot;date\&quot;, ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.projectProjectsFormFieldsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsFormFieldsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectProjectsGET"></a>
 # **projectProjectsGET**
 > List&lt;ProjectList&gt; projectProjectsGET(jqFilters)
@@ -245,6 +323,75 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;ProjectList&gt;**](ProjectList.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectProjectsIdActiveTasksGET"></a>
+# **projectProjectsIdActiveTasksGET**
+> List&lt;ProjectActiveTasks&gt; projectProjectsIdActiveTasksGET(id, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectActiveTasks> result = apiInstance.projectProjectsIdActiveTasksGET(id, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdActiveTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
 
 ### Authorization
 
@@ -686,6 +833,81 @@ Name | Type | Description  | Notes
 **201** |  |  -  |
 **200** |  |  -  |
 
+<a name="projectProjectsIdClusterActionsGET"></a>
+# **projectProjectsIdClusterActionsGET**
+> List&lt;Action&gt; projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdClusterActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectProjectsIdClusterPOST"></a>
 # **projectProjectsIdClusterPOST**
 > ClusterProjectResponse projectProjectsIdClusterPOST(id, clusterProjectRequest)
@@ -898,6 +1120,138 @@ null (empty response body)
 |-------------|-------------|------------------|
 **204** |  |  -  |
 
+<a name="projectProjectsIdDeleteDocumentSimilarityResultsDELETE"></a>
+# **projectProjectsIdDeleteDocumentSimilarityResultsDELETE**
+> projectProjectsIdDeleteDocumentSimilarityResultsDELETE(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    try {
+      apiInstance.projectProjectsIdDeleteDocumentSimilarityResultsDELETE(id);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdDeleteDocumentSimilarityResultsDELETE");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** |  |  -  |
+
+<a name="projectProjectsIdDeleteTextUnitSimilarityResultsDELETE"></a>
+# **projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**
+> projectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    try {
+      apiInstance.projectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** |  |  -  |
+
 <a name="projectProjectsIdDetectFieldValuesPOST"></a>
 # **projectProjectsIdDetectFieldValuesPOST**
 > TaskIdResponse projectProjectsIdDetectFieldValuesPOST(id, detectProjectFieldValuesRequest)
@@ -966,6 +1320,75 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **201** |  |  -  |
+
+<a name="projectProjectsIdFormFieldsGET"></a>
+# **projectProjectsIdFormFieldsGET**
+> Map&lt;String, Object&gt; projectProjectsIdFormFieldsGET(id)
+
+
+
+GET model form fields description to build UI form for EXISTING object:       - value: any - object field value      - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\&quot;input\&quot; | \&quot;select\&quot; | \&quot;checkbox\&quot; | ...), data_type: (\&quot;string\&quot;, \&quot;integer\&quot;, \&quot;date\&quot;, ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this user.
+    try {
+      Map<String, Object> result = apiInstance.projectProjectsIdFormFieldsGET(id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdFormFieldsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this user. |
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
 
 <a name="projectProjectsIdGET"></a>
 # **projectProjectsIdGET**
@@ -1038,9 +1461,9 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
-<a name="projectProjectsIdMakeSearchablePdfPOST"></a>
-# **projectProjectsIdMakeSearchablePdfPOST**
-> TaskIdResponse projectProjectsIdMakeSearchablePdfPOST(id, makeSearchablePDFRequest)
+<a name="projectProjectsIdLocateItemsPOST"></a>
+# **projectProjectsIdLocateItemsPOST**
+> ProjectDetail projectProjectsIdLocateItemsPOST(id, projectDetail)
 
 
 
@@ -1067,12 +1490,12 @@ public class Example {
 
     ProjectApi apiInstance = new ProjectApi(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this project.
-    MakeSearchablePDFRequest makeSearchablePDFRequest = new MakeSearchablePDFRequest(); // MakeSearchablePDFRequest | 
+    ProjectDetail projectDetail = new ProjectDetail(); // ProjectDetail | 
     try {
-      TaskIdResponse result = apiInstance.projectProjectsIdMakeSearchablePdfPOST(id, makeSearchablePDFRequest);
+      ProjectDetail result = apiInstance.projectProjectsIdLocateItemsPOST(id, projectDetail);
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling ProjectApi#projectProjectsIdMakeSearchablePdfPOST");
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdLocateItemsPOST");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -1087,11 +1510,11 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this project. |
- **makeSearchablePDFRequest** | [**MakeSearchablePDFRequest**](MakeSearchablePDFRequest.md)|  | [optional]
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -1255,7 +1678,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Project
+Create Document/TextUnit Vectors if needed Update ocr_enable project app var if needed
 
 ### Example
 ```java
@@ -1388,6 +1811,144 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+
+<a name="projectProjectsIdSearchSimilarDocumentsPOST"></a>
+# **projectProjectsIdSearchSimilarDocumentsPOST**
+> TaskIdResponse projectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    ProjectSearchSimilarDocumentsRequest projectSearchSimilarDocumentsRequest = new ProjectSearchSimilarDocumentsRequest(); // ProjectSearchSimilarDocumentsRequest | 
+    try {
+      TaskIdResponse result = apiInstance.projectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdSearchSimilarDocumentsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional]
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+<a name="projectProjectsIdSearchSimilarTextUnitsPOST"></a>
+# **projectProjectsIdSearchSimilarTextUnitsPOST**
+> TaskIdResponse projectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    ProjectSearchSimilarTextUnitsRequest projectSearchSimilarTextUnitsRequest = new ProjectSearchSimilarTextUnitsRequest(); // ProjectSearchSimilarTextUnitsRequest | 
+    try {
+      TaskIdResponse result = apiInstance.projectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdSearchSimilarTextUnitsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional]
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
 
 <a name="projectProjectsIdSendClustersToProjectPOST"></a>
 # **projectProjectsIdSendClustersToProjectPOST**
@@ -1604,6 +2165,223 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **201** |  |  -  |
 
+<a name="projectProjectsIdSettingsActionsGET"></a>
+# **projectProjectsIdSettingsActionsGET**
+> List&lt;Action&gt; projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdSettingsActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectProjectsIdTaskTaskIdTaskLogsGET"></a>
+# **projectProjectsIdTaskTaskIdTaskLogsGET**
+> TaskLogResponse projectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    String taskId = "taskId_example"; // String | 
+    Integer recordsLimit = 56; // Integer | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      TaskLogResponse result = apiInstance.projectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdTaskTaskIdTaskLogsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **taskId** | **String**|  |
+ **recordsLimit** | **Integer**|  | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**TaskLogResponse**](TaskLogResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectProjectsIdTasksGET"></a>
+# **projectProjectsIdTasksGET**
+> List&lt;ProjectTasks&gt; projectProjectsIdTasksGET(id, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectTasks> result = apiInstance.projectProjectsIdTasksGET(id, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectProjectsIdUnmarkDeletePOST"></a>
 # **projectProjectsIdUnmarkDeletePOST**
 > MarkUnmarkForDeleteProjectsReponse projectProjectsIdUnmarkDeletePOST(id, markUnmarkForDeleteProjectsRequest)
@@ -1675,13 +2453,85 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **201** |  |  -  |
 
+<a name="projectProjectsIdUpdateDocumentFieldsPOST"></a>
+# **projectProjectsIdUpdateDocumentFieldsPOST**
+> TaskIdResponse projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest)
+
+
+
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \&quot;all\&quot; is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest | 
+    try {
+      TaskIdResponse result = apiInstance.projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdUpdateDocumentFieldsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional]
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+**404** |  |  -  |
+
 <a name="projectProjectsPOST"></a>
 # **projectProjectsPOST**
 > ProjectCreate projectProjectsPOST(projectCreate)
 
 
 
-Create Project
+Create Document/TextUnit Vectors if needed
 
 ### Example
 ```java
@@ -2441,7 +3291,7 @@ Name | Type | Description  | Notes
 
 <a name="projectUploadSessionPOST"></a>
 # **projectUploadSessionPOST**
-> UploadSession projectUploadSessionPOST(uploadSession)
+> UploadSessionCreate projectUploadSessionPOST(uploadSessionCreate)
 
 
 
@@ -2469,9 +3319,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ProjectApi apiInstance = new ProjectApi(defaultClient);
-    UploadSession uploadSession = new UploadSession(); // UploadSession | 
+    UploadSessionCreate uploadSessionCreate = new UploadSessionCreate(); // UploadSessionCreate | 
     try {
-      UploadSession result = apiInstance.projectUploadSessionPOST(uploadSession);
+      UploadSessionCreate result = apiInstance.projectUploadSessionPOST(uploadSessionCreate);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ProjectApi#projectUploadSessionPOST");
@@ -2488,11 +3338,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **uploadSession** | [**UploadSession**](UploadSession.md)|  | [optional]
+ **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional]
 
 ### Return type
 
-[**UploadSession**](UploadSession.md)
+[**UploadSessionCreate**](UploadSessionCreate.md)
 
 ### Authorization
 
@@ -3075,6 +3925,77 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectUploadSessionUidPATCH"></a>
+# **projectUploadSessionUidPATCH**
+> UploadSessionUpdate projectUploadSessionUidPATCH(uid, uploadSessionUpdate)
+
+
+
+Partial Update Session Upload
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String uid = "uid_example"; // String | A UUID string identifying this upload session.
+    UploadSessionUpdate uploadSessionUpdate = new UploadSessionUpdate(); // UploadSessionUpdate | 
+    try {
+      UploadSessionUpdate result = apiInstance.projectUploadSessionUidPATCH(uid, uploadSessionUpdate);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectUploadSessionUidPATCH");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **uid** | **String**| A UUID string identifying this upload session. |
+ **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional]
+
+### Return type
+
+[**UploadSessionUpdate**](UploadSessionUpdate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
 ### HTTP response details

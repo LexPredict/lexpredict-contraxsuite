@@ -9,7 +9,15 @@ Method | HTTP request | Description
 [**analyzeDocumentClusterIdPATCH**](AnalyzeApi.md#analyzeDocumentClusterIdPATCH) | **PATCH** /api/v1/analyze/document-cluster/{id}/ | 
 [**analyzeDocumentClusterIdPUT**](AnalyzeApi.md#analyzeDocumentClusterIdPUT) | **PUT** /api/v1/analyze/document-cluster/{id}/ | 
 [**analyzeDocumentSimilarityListGET**](AnalyzeApi.md#analyzeDocumentSimilarityListGET) | **GET** /api/v1/analyze/document-similarity/list/ | 
+[**analyzeDocumentTransformerListGET**](AnalyzeApi.md#analyzeDocumentTransformerListGET) | **GET** /api/v1/analyze/document-transformer/list/ | 
+[**analyzeMlModelListGET**](AnalyzeApi.md#analyzeMlModelListGET) | **GET** /api/v1/analyze/ml-model/list/ | 
 [**analyzePartySimilarityListGET**](AnalyzeApi.md#analyzePartySimilarityListGET) | **GET** /api/v1/analyze/party-similarity/list/ | 
+[**analyzeProjectDocumentSimilarityListGET**](AnalyzeApi.md#analyzeProjectDocumentSimilarityListGET) | **GET** /api/v1/analyze/project-document-similarity/list/ | 
+[**analyzeProjectTextUnitSimilarityListGET**](AnalyzeApi.md#analyzeProjectTextUnitSimilarityListGET) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ | 
+[**analyzeProjectTextUnitSimilarityListPOST**](AnalyzeApi.md#analyzeProjectTextUnitSimilarityListPOST) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ | 
+[**analyzeSimilarityRunsGET**](AnalyzeApi.md#analyzeSimilarityRunsGET) | **GET** /api/v1/analyze/similarity-runs/ | 
+[**analyzeSimilarityRunsIdDELETE**](AnalyzeApi.md#analyzeSimilarityRunsIdDELETE) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ | 
+[**analyzeSimilarityRunsIdGET**](AnalyzeApi.md#analyzeSimilarityRunsIdGET) | **GET** /api/v1/analyze/similarity-runs/{id}/ | 
 [**analyzeTextUnitClassificationsGET**](AnalyzeApi.md#analyzeTextUnitClassificationsGET) | **GET** /api/v1/analyze/text-unit-classifications/ | 
 [**analyzeTextUnitClassificationsIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassificationsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ | 
 [**analyzeTextUnitClassificationsIdGET**](AnalyzeApi.md#analyzeTextUnitClassificationsIdGET) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ | 
@@ -22,6 +30,7 @@ Method | HTTP request | Description
 [**analyzeTextUnitClassifiersIdGET**](AnalyzeApi.md#analyzeTextUnitClassifiersIdGET) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ | 
 [**analyzeTextUnitClusterListGET**](AnalyzeApi.md#analyzeTextUnitClusterListGET) | **GET** /api/v1/analyze/text-unit-cluster/list/ | 
 [**analyzeTextUnitSimilarityListGET**](AnalyzeApi.md#analyzeTextUnitSimilarityListGET) | **GET** /api/v1/analyze/text-unit-similarity/list/ | 
+[**analyzeTextUnitTransformerListGET**](AnalyzeApi.md#analyzeTextUnitTransformerListGET) | **GET** /api/v1/analyze/text-unit-transformer/list/ | 
 [**analyzeTypeaheadTextUnitClassificationFieldNameGET**](AnalyzeApi.md#analyzeTypeaheadTextUnitClassificationFieldNameGET) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ | 
 
 
@@ -313,7 +322,7 @@ Name | Type | Description  | Notes
 
 
 
-Document Similarity List
+Base Document Similarity List
 
 ### Example
 ```java
@@ -361,6 +370,144 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;DocumentSimilarity&gt;**](DocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeDocumentTransformerListGET"></a>
+# **analyzeDocumentTransformerListGET**
+> List&lt;Transformer&gt; analyzeDocumentTransformerListGET(jqFilters)
+
+
+
+MLModel List - document transformers only
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Transformer> result = apiInstance.analyzeDocumentTransformerListGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeDocumentTransformerListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Transformer&gt;**](Transformer.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeMlModelListGET"></a>
+# **analyzeMlModelListGET**
+> List&lt;MLModel&gt; analyzeMlModelListGET(jqFilters)
+
+
+
+MLModel List
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<MLModel> result = apiInstance.analyzeMlModelListGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeMlModelListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;MLModel&gt;**](MLModel.md)
 
 ### Authorization
 
@@ -430,6 +577,455 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;PartySimilarity&gt;**](PartySimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeProjectDocumentSimilarityListGET"></a>
+# **analyzeProjectDocumentSimilarityListGET**
+> List&lt;ProjectDocumentSimilarity&gt; analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters)
+
+
+
+Project Document Similarity List for ONE document
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    Integer textMaxLength = 56; // Integer | document b text max length, 0 to get all text
+    Integer runId = 56; // Integer | run id or document id required
+    Integer documentId = 56; // Integer | run id or document id required
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectDocumentSimilarity> result = apiInstance.analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeProjectDocumentSimilarityListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
+ **runId** | **Integer**| run id or document id required | [optional]
+ **documentId** | **Integer**| run id or document id required | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeProjectTextUnitSimilarityListGET"></a>
+# **analyzeProjectTextUnitSimilarityListGET**
+> List&lt;ProjectTextUnitSimilarity&gt; analyzeProjectTextUnitSimilarityListGET(jqFilters, textMaxLength, runId, lastRun, textUnitId, documentId, locationStart, locationEnd, selection)
+
+
+
+Project Text Unit Similarity List for ONE text unit
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    Integer textMaxLength = 56; // Integer | text unit b text max length, 0 to get all text
+    Integer runId = 56; // Integer | run id or text unit id required
+    Boolean lastRun = true; // Boolean | run id or last_run or text unit id required
+    Integer textUnitId = 56; // Integer | run id or text unit id required
+    Integer documentId = 56; // Integer | document ID
+    Integer locationStart = 56; // Integer | start of chosen text block in a Document
+    Integer locationEnd = 56; // Integer | end of chosen text block in a Document
+    List<Object> selection = null; // List<Object> | selection coordinates
+    try {
+      List<ProjectTextUnitSimilarity> result = apiInstance.analyzeProjectTextUnitSimilarityListGET(jqFilters, textMaxLength, runId, lastRun, textUnitId, documentId, locationStart, locationEnd, selection);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeProjectTextUnitSimilarityListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+ **textMaxLength** | **Integer**| text unit b text max length, 0 to get all text | [optional]
+ **runId** | **Integer**| run id or text unit id required | [optional]
+ **lastRun** | **Boolean**| run id or last_run or text unit id required | [optional]
+ **textUnitId** | **Integer**| run id or text unit id required | [optional]
+ **documentId** | **Integer**| document ID | [optional]
+ **locationStart** | **Integer**| start of chosen text block in a Document | [optional]
+ **locationEnd** | **Integer**| end of chosen text block in a Document | [optional]
+ **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional]
+
+### Return type
+
+[**List&lt;ProjectTextUnitSimilarity&gt;**](ProjectTextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeProjectTextUnitSimilarityListPOST"></a>
+# **analyzeProjectTextUnitSimilarityListPOST**
+> ProjectTextUnitSimilarity analyzeProjectTextUnitSimilarityListPOST(similarProjectTextUnitsRequest)
+
+
+
+Project Text Unit Similarity List for ONE text unit
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    SimilarProjectTextUnitsRequest similarProjectTextUnitsRequest = new SimilarProjectTextUnitsRequest(); // SimilarProjectTextUnitsRequest | 
+    try {
+      ProjectTextUnitSimilarity result = apiInstance.analyzeProjectTextUnitSimilarityListPOST(similarProjectTextUnitsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeProjectTextUnitSimilarityListPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional]
+
+### Return type
+
+[**ProjectTextUnitSimilarity**](ProjectTextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+<a name="analyzeSimilarityRunsGET"></a>
+# **analyzeSimilarityRunsGET**
+> List&lt;SimilarityRun&gt; analyzeSimilarityRunsGET(unitSource, projectId, jqFilters)
+
+
+
+list Similarity Run objects
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    String unitSource = "unitSource_example"; // String | document / text_unit
+    Integer projectId = 56; // Integer | Project ID
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<SimilarityRun> result = apiInstance.analyzeSimilarityRunsGET(unitSource, projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeSimilarityRunsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **unitSource** | **String**| document / text_unit | [optional]
+ **projectId** | **Integer**| Project ID | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;SimilarityRun&gt;**](SimilarityRun.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeSimilarityRunsIdDELETE"></a>
+# **analyzeSimilarityRunsIdDELETE**
+> analyzeSimilarityRunsIdDELETE(id, unitSource, projectId)
+
+
+
+delete Similarity Run object
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this similarity run.
+    String unitSource = "unitSource_example"; // String | document / text_unit
+    Integer projectId = 56; // Integer | Project ID
+    try {
+      apiInstance.analyzeSimilarityRunsIdDELETE(id, unitSource, projectId);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeSimilarityRunsIdDELETE");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this similarity run. |
+ **unitSource** | **String**| document / text_unit | [optional]
+ **projectId** | **Integer**| Project ID | [optional]
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** |  |  -  |
+
+<a name="analyzeSimilarityRunsIdGET"></a>
+# **analyzeSimilarityRunsIdGET**
+> SimilarityRun analyzeSimilarityRunsIdGET(id, unitSource, projectId, jqFilters)
+
+
+
+get Similarity Run object
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this similarity run.
+    String unitSource = "unitSource_example"; // String | document / text_unit
+    Integer projectId = 56; // Integer | Project ID
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      SimilarityRun result = apiInstance.analyzeSimilarityRunsIdGET(id, unitSource, projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeSimilarityRunsIdGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this similarity run. |
+ **unitSource** | **String**| document / text_unit | [optional]
+ **projectId** | **Integer**| Project ID | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**SimilarityRun**](SimilarityRun.md)
 
 ### Authorization
 
@@ -1209,7 +1805,7 @@ Name | Type | Description  | Notes
 
 
 
-Text Unit Similarity List
+Base Text Unit Similarity List
 
 ### Example
 ```java
@@ -1257,6 +1853,75 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;TextUnitSimilarity&gt;**](TextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeTextUnitTransformerListGET"></a>
+# **analyzeTextUnitTransformerListGET**
+> List&lt;Transformer&gt; analyzeTextUnitTransformerListGET(jqFilters)
+
+
+
+MLModel List - text unit transformers only
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.AnalyzeApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    AnalyzeApi apiInstance = new AnalyzeApi(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Transformer> result = apiInstance.analyzeTextUnitTransformerListGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AnalyzeApi#analyzeTextUnitTransformerListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Transformer&gt;**](Transformer.md)
 
 ### Authorization
 

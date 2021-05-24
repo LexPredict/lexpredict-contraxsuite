@@ -23,6 +23,10 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+# pylint: disable=anomalous-backslash-in-string
+
+
+from tests.django_test_case import *
 
 from unittest import TestCase
 from typing import Tuple, List
@@ -31,9 +35,9 @@ import pandas as pd
 from apps.document.models import DocumentFieldMultilineRegexDetector
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,23 +93,23 @@ class TestDocumentFieldMultilineRegexDetector(TestCase):
 
         df_new = detector.get_as_pandas_df()
         row_val = []  # type: List[Tuple[str, str]]
-        for i, row in df_new.iterrows():
+        for _, row in df_new.iterrows():
             row_val.append((row[0], row[1],))
 
         self.assertEqual(8, len(row_val))
-        self.assertTrue(('John Smith Archives, LLC d/b/a Charlie (085292) (Flay, Bobby (New York))',
-                         '\bcharlie\s{1,5}(085292)\b',) in row_val)
-        self.assertTrue(('Big Bank & Company (004578) (Knight, Bobby (Charlotte); Bryant, Koby ' +
-                         '(Charlotte); Williams, Gary (Charlotte); Johnson, Magic (Charlotte); ' +
-                         'Lobo, Rebecca (Charlotte))',
-                         '\bbig\s{1,5}bank\s{1,5}.{1,5}\s{1,5}company\s{1,5}(004578)\b',) in row_val)
-        self.assertTrue(('Family Name Limited (173437) (Tanner, Rebecca (Houston); Saget, Bob (Houston))',
-                         '\bfamily\s{1,5}guy(173437)\b',) in row_val)
-        self.assertTrue(('Family Name Limited (173437) (Tanner, Rebecca (Houston); Saget, Bob (Houston))',
-                         '\bfamily\s{1,5}name(173437)\b',) in row_val)
-        self.assertTrue(('Eye-Eyes Communications (018951)',
-                         '\ball\s{1,5}eyes\s{1,5}communications\s{1,5}(018951)\b',) in row_val)
+        self.assertIn(('John Smith Archives, LLC d/b/a Charlie (085292) (Flay, Bobby (New York))',
+                       '\bcharlie\s{1,5}(085292)\b',), row_val)
+        self.assertIn(('Big Bank & Company (004578) (Knight, Bobby (Charlotte); Bryant, Koby ' +
+                       '(Charlotte); Williams, Gary (Charlotte); Johnson, Magic (Charlotte); ' +
+                       'Lobo, Rebecca (Charlotte))',
+                       '\bbig\s{1,5}bank\s{1,5}.{1,5}\s{1,5}company\s{1,5}(004578)\b',), row_val)
+        self.assertIn(('Family Name Limited (173437) (Tanner, Rebecca (Houston); Saget, Bob (Houston))',
+                       '\bfamily\s{1,5}guy(173437)\b',), row_val)
+        self.assertIn(('Family Name Limited (173437) (Tanner, Rebecca (Houston); Saget, Bob (Houston))',
+                       '\bfamily\s{1,5}name(173437)\b',), row_val)
+        self.assertIn(('Eye-Eyes Communications (018951)',
+                       '\ball\s{1,5}eyes\s{1,5}communications\s{1,5}(018951)\b',), row_val)
         # this one is replaced
-        self.assertFalse(('All Eyes Communications (018951) (Moore, Michael (New York); Tarantino, Quentin ' +
-                         '(San Francisco); Lee, Spike (New York); Levinson, Barry (Charlotte))',
-                         '\ball\s{1,5}eyes\s{1,5}communications\s{1,5}(018951)\b',) in row_val)
+        self.assertNotIn(('All Eyes Communications (018951) (Moore, Michael (New York); Tarantino, Quentin ' +
+                          '(San Francisco); Lee, Spike (New York); Levinson, Barry (Charlotte))',
+                          '\ball\s{1,5}eyes\s{1,5}communications\s{1,5}(018951)\b',), row_val)

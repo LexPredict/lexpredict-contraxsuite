@@ -28,6 +28,7 @@ import io
 import hashlib
 import os
 import re
+import sys
 import tempfile
 import time
 import traceback
@@ -45,13 +46,14 @@ from guardian.shortcuts import get_objects_for_user
 
 from apps.common.error_explorer import retry_for_operational_error
 from apps.common.log_utils import ProcessLogger
+from apps.common.logger import CsLogger
 from apps.common.pandas_excel_formatter import PandasExcelFormatter
 from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQLClause, \
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
 from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.document import field_types
 from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, DocumentSystemField, FieldSpec, \
-    DOC_METADATA_DOCUMENT_CLASS_PROB
+    DOC_METADATA_DOCUMENT_CLASS_PROB, DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR
 from apps.document.document_class import DocumentClass
 from apps.document.models import DocumentType, Document, DocumentField, FieldAnnotation
 from apps.document.repository.document_field_repository import DocumentFieldRepository
@@ -59,14 +61,16 @@ from apps.extract.models import DefinitionUsage, GeoEntityUsage, CurrencyUsage
 from apps.project.models import Project
 from apps.rawdb.constants import TABLE_NAME_PREFIX, FIELD_CODE_DOC_NAME, FIELD_CODE_DOC_TITLE, \
     FIELD_CODE_DOC_LANGUAGE, FIELD_CODE_DOC_LINK, FIELD_CODE_DOC_PROCESSED, \
-    FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, \
+    FIELD_CODE_DOC_FULL_TEXT_LENGTH, FIELD_CODE_DOC_ID, FIELD_CODE_CREATE_DATE, FIELD_CODE_CREATED_BY, \
+    FIELD_CODE_MODIFIED_DATE, FIELD_CODE_MODIFIED_BY, FIELD_CODE_IS_REVIEWED, \
     FIELD_CODE_IS_COMPLETED, FIELD_CODE_PROJECT_ID, FIELD_CODE_PROJECT_NAME, FIELD_CODE_ASSIGNEE_ID, \
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, FIELD_CODE_DELETE_PENDING, \
     FIELD_CODE_NOTES, FIELD_CODE_DEFINITIONS, FIELD_CODE_HIDDEN_COLUMNS, FIELD_CODE_CLUSTER_ID, FIELD_CODE_PARTIES, \
     FIELD_CODE_EARLIEST_DATE, FIELD_CODE_LATEST_DATE, FIELD_CODE_LARGEST_CURRENCY, FIELD_CODES_SYSTEM, \
     FIELD_CODES_GENERIC, FIELD_CODE_ANNOTATION_SUFFIX, INDEX_NAME_PREFIX, DEFAULT_ORDER_BY, FIELD_CODE_FOLDER, \
     CACHE_FIELD_TO_DOC_FIELD, FIELD_CODE_DOCUMENT_CLASS, FIELD_CODE_DOCUMENT_CLASS_PROB, FIELD_CODE_IS_CONTRACT, \
-    FIELD_CODE_DOCUMENT_OCR_RATING, FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES, MAX_RAWDB_COLUMNS
+    FIELD_CODE_DOCUMENT_OCR_RATING, FIELD_CODE_GEOGRAPHIES, FIELD_CODE_CURRENCY_TYPES, MAX_RAWDB_COLUMNS, \
+    FIELD_CODE_DOCUMENT_CONTRACT_TYPE, FIELD_CODE_DOCUMENT_CONTRACT_CLASS_VECTOR
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.notifications import UserNotifications
 from apps.rawdb.rawdb.rawdb_field_handlers import PgTypes, RawdbFieldHandler, ColumnDesc, StringRawdbFieldHandler, \
@@ -77,13 +81,12 @@ from apps.rawdb.rawdb.errors import Forbidden, UnknownColumnError
 from apps.rawdb.rawdb.query_parsing import SortDirection, parse_column_filters, parse_order_by
 from apps.rawdb.repository.raw_db_repository import RawDbRepository, doc_fields_table_name
 from apps.rawdb.signals import fire_document_fields_changed, DocumentEvent
-from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -223,14 +226,14 @@ class EmptyDocumentQueryResults(DocumentQueryResults):
     def __len__(self) -> int:
         return 0
 
-    def fetch_dicts(self) -> Generator[Dict, None, None]:
+    def fetch_dicts(self) -> Optional[Generator[Dict, None, None]]:
         return
 
     @property
     def documents(self):
         return list()
 
-    def fetch(self) -> Generator[List, None, None]:
+    def fetch(self) -> Optional[Generator[List, None, None]]:
         return
 
 
@@ -251,23 +254,22 @@ RAWDB_FIELD_HANDLER_REGISTRY = {
     field_types.ChoiceField.type_code: StringRawdbFieldHandler,
     field_types.MultiChoiceField.type_code: MultichoiceFieldHandler,
     field_types.PersonField.type_code: StringRawdbFieldHandler,
-    field_types.AmountField.type_code: FloatFieldHandler,
     field_types.MoneyField.type_code: MoneyRawdbFieldHandler,
     field_types.RatioField.type_code: RatioRawdbFieldHandler,
     field_types.GeographyField.type_code: StringRawdbFieldHandler,
-    field_types.BooleanField.type_code: BooleanRawdbFieldHandler,
     field_types.LinkedDocumentsField.type_code: LinkedDocumentsRawdbFieldHandler
 }
 
 
 # Generic Fields - should match keys from the output of field_value_cache.get_generic_values(doc)
-
-
-def _build_system_field_handlers(table_name: str,
-                                 include_system_fields: FieldSpec = True,
-                                 is_select: bool = False) \
-        -> List[RawdbFieldHandler]:
-    res = list()
+def _build_system_field_handlers(
+    table_name: str,
+    include_system_fields: FieldSpec = True,
+    is_select: bool = False,
+) -> List[RawdbFieldHandler]:
+    """
+    """
+    res = []
 
     # Create String handler to use LIKE operator over document id column for Select clauses
     if is_select:
@@ -282,6 +284,11 @@ def _build_system_field_handlers(table_name: str,
         id_handler.pg_type = PgTypes.INTEGER_PRIMARY_KEY
     res.append(id_handler)
 
+    res.append(DateTimeFieldHandler(FIELD_CODE_MODIFIED_DATE, field_types.DateTimeField.type_code,
+                                    'Modified Date', table_name))
+    res.append(StringRawdbFieldHandler(FIELD_CODE_MODIFIED_BY, field_types.StringField.type_code,
+                                       'Modified By', table_name))
+
     if not include_system_fields:
         return res
 
@@ -290,51 +297,134 @@ def _build_system_field_handlers(table_name: str,
             rel_url_prefix, rel_url_suffix = reverse('v1:document-show', args=['ID']).split('ID')
             doc_link_base = os.path.join(settings.HOST_NAME.rstrip('/'), rel_url_prefix.lstrip('/'))
             spec = f"'{settings.API_URL_PROTOCOL}://{doc_link_base}' || document_id || '{rel_url_suffix}'"
-
             res.append(
                 ProxyFieldHandler(FIELD_CODE_DOC_LINK, field_types.StringField.type_code,
                                   'Original Doc Link', table_name, proxy_sql_spec=spec))
 
-        res.append(
-            StringRawdbFieldHandler(FIELD_CODE_DOC_NAME, field_types.StringFieldWholeValueAsAToken.type_code,
-                                    'Name', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_DOC_TITLE, field_types.StringField.type_code,
-                                           'Title', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_DOC_LANGUAGE, field_types.StringField.type_code,
-                                           'Language', table_name))
+        res.extend([
+            StringRawdbFieldHandler(
+                field_code=FIELD_CODE_DOC_NAME,
+                field_type=field_types.StringFieldWholeValueAsAToken.type_code,
+                field_title='Name',
+                table_name=table_name,
+            ),
 
-        lim = int(settings.RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH)
-        res.append(IntFieldHandler(FIELD_CODE_DOC_FULL_TEXT_LENGTH, field_types.IntField.type_code,
-                                   'Text Length', table_name))
-        res.append(DateTimeFieldHandler(FIELD_CODE_CREATE_DATE, field_types.DateTimeField.type_code,
-                                        'Load Date', table_name))
+            StringRawdbFieldHandler(
+                FIELD_CODE_DOC_TITLE,
+                field_types.StringField.type_code,
+                'Title',
+                table_name,
+            ),
 
-        # append common fields for all types
-        res.append(StringRawdbFieldHandler(FIELD_CODE_PARTIES, field_types.StringField.type_code,
-                                           'Parties', table_name))
-        res.append(DateFieldHandler(FIELD_CODE_EARLIEST_DATE, field_types.DateField.type_code,
-                                    'Earliest Date', table_name))
-        res.append(DateFieldHandler(FIELD_CODE_LATEST_DATE, field_types.DateField.type_code,
-                                    'Latest Date', table_name))
-        res.append(MoneyRawdbFieldHandler(FIELD_CODE_LARGEST_CURRENCY, field_types.MoneyField.type_code,
-                                          'Largest Currency', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_DEFINITIONS, field_types.StringField.type_code,
-                                           'Definitions', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_GEOGRAPHIES, field_types.StringField.type_code,
-                                           'Geographies', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_CURRENCY_TYPES, field_types.StringField.type_code,
-                                           'Currency Types', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS, field_types.StringField.type_code,
-                                           'Document Class', table_name))
-        res.append(FloatFieldHandler(FIELD_CODE_DOCUMENT_OCR_RATING, field_types.FloatField.type_code,
-                                           'OCR Rating', table_name))
-        res.append(StringRawdbFieldHandler(FIELD_CODE_DOCUMENT_CLASS_PROB, field_types.StringField.type_code,
-                                           'Document Class Vector', table_name))
-        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_CONTRACT, field_types.BooleanField.type_code,
-                                            'Is Contract', table_name))
+            StringRawdbFieldHandler(
+                FIELD_CODE_DOC_LANGUAGE,
+                field_types.StringField.type_code,
+                'Language',
+                table_name,
+            ),
+
+            IntFieldHandler(
+                FIELD_CODE_DOC_FULL_TEXT_LENGTH,
+                field_types.IntField.type_code,
+                "Text Length",
+                table_name,
+            ),
+
+            DateTimeFieldHandler(
+                FIELD_CODE_CREATE_DATE,
+                field_types.DateTimeField.type_code,
+                "Load Date",
+                table_name,
+            ),
+
+            StringRawdbFieldHandler(
+                FIELD_CODE_CREATED_BY,
+                field_types.StringField.type_code,
+                "Loaded By",
+                table_name,
+            ),
+
+            # append common fields for all types
+            StringRawdbFieldHandler(
+                FIELD_CODE_PARTIES,
+                field_types.StringField.type_code,
+                "Parties",
+                table_name,
+            ),
+
+            DateFieldHandler(
+                FIELD_CODE_EARLIEST_DATE,
+                field_types.DateField.type_code,
+                "Earliest Date",
+                table_name,
+            ),
+
+            DateFieldHandler(
+                FIELD_CODE_LATEST_DATE,
+                field_types.DateField.type_code,
+                "Latest Date",
+                table_name,
+            ),
+
+            MoneyRawdbFieldHandler(
+                FIELD_CODE_LARGEST_CURRENCY,
+                field_types.MoneyField.type_code,
+                "Largest Currency",
+                table_name,
+            ),
+
+            StringRawdbFieldHandler(
+                FIELD_CODE_DEFINITIONS,
+                field_types.StringField.type_code,
+                "Definitions",
+                table_name,
+            ),
+
+            StringRawdbFieldHandler(
+                FIELD_CODE_GEOGRAPHIES,
+                field_types.StringField.type_code,
+                "Geographies",
+                table_name,
+            ),
+
+            StringRawdbFieldHandler(
+                FIELD_CODE_CURRENCY_TYPES,
+                field_types.StringField.type_code,
+                "Currency Types",
+                table_name,
+            ),
+
+            FloatFieldHandler(
+                FIELD_CODE_DOCUMENT_OCR_RATING,
+                field_types.FloatField.type_code,
+                "OCR Rating",
+                table_name,
+            ),
+
+            BooleanRawdbFieldHandler(
+                FIELD_CODE_IS_CONTRACT,
+                field_types.RelatedInfoField.type_code,
+                "Is Contract",
+                table_name,
+            ),
+
+            StringRawdbFieldHandler(
+                FIELD_CODE_DOCUMENT_CONTRACT_TYPE,
+                field_types.StringField.type_code,
+                "Contract Type",
+                table_name,
+            ),
+
+            StringRawdbFieldHandler(
+                FIELD_CODE_DOCUMENT_CONTRACT_CLASS_VECTOR,
+                field_types.StringField.type_code,
+                "Contract Type Top 3",
+                table_name,
+            ),
+        ])
 
     if DocumentSystemField.processed.specified_in(include_system_fields):
-        res.append(BooleanRawdbFieldHandler(FIELD_CODE_DOC_PROCESSED, field_types.BooleanField.type_code,
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_DOC_PROCESSED, field_types.RelatedInfoField.type_code,
                                             'Processed', table_name))
 
     if DocumentSystemField.project.specified_in(include_system_fields):
@@ -355,12 +445,12 @@ def _build_system_field_handlers(table_name: str,
         res.append(
             StringRawdbFieldHandler(FIELD_CODE_STATUS_NAME, field_types.StringFieldWholeValueAsAToken.type_code,
                                     'Status', table_name))
-        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_REVIEWED, field_types.BooleanField.type_code,
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_REVIEWED, field_types.RelatedInfoField.type_code,
                                             'Reviewed', table_name))
-        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_COMPLETED, field_types.BooleanField.type_code,
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_IS_COMPLETED, field_types.RelatedInfoField.type_code,
                                             'Completed', table_name))
     if DocumentSystemField.delete_pending.specified_in(include_system_fields):
-        res.append(BooleanRawdbFieldHandler(FIELD_CODE_DELETE_PENDING, field_types.BooleanField.type_code,
+        res.append(BooleanRawdbFieldHandler(FIELD_CODE_DELETE_PENDING, field_types.RelatedInfoField.type_code,
                                             'Delete Pending', table_name))
 
     if DocumentSystemField.notes.specified_in(include_system_fields):
@@ -377,7 +467,7 @@ def _build_system_field_handlers(table_name: str,
 def _build_generic_field_handlers(table_name: str,
                                   include_generic_fields: FieldSpec = True) \
         -> List[RawdbFieldHandler]:
-    res = list()
+    res = []
 
     if not include_generic_fields:
         return res
@@ -398,7 +488,7 @@ def build_field_handlers(document_type: DocumentType,
                          is_select: bool = False,
                          field_repo: Optional[DocumentFieldRepository] = None) \
         -> List[RawdbFieldHandler]:
-    res = list()  # type: List[RawdbFieldHandler]
+    res = []  # type: List[RawdbFieldHandler]
 
     if not table_name:
         table_name = doc_fields_table_name(document_type.code)
@@ -530,19 +620,19 @@ def get_table_index_names_from_pg(cursor, table_name: str) -> Set[str]:
 def cleanup_saved_filters(document_type: DocumentType, should_be_column_names: Set[str]):
     for f in SavedFilter.objects.filter(document_type=document_type):
         save = False
-        if f.columns and type(f.columns) is list:
+        if f.columns and isinstance(f.columns, list):
             new_columns = [c for c in f.columns if c in should_be_column_names]
             if new_columns != f.columns:
                 f.columns = new_columns
                 save = True
-        if f.column_filters and type(f.column_filters) is dict:
+        if f.column_filters and isinstance(f.column_filters, dict):
             new_column_filters = {c: ff for c, ff in f.column_filters.items() if c in should_be_column_names}
             if new_column_filters != f.column_filters:
                 f.column_filters = new_column_filters
                 save = True
         if f.order_by:
-            new_order_by = list()  # type: List[Tuple[str, SortDirection]]
-            if type(f.order_by) is list:
+            new_order_by = []  # type: List[Tuple[str, SortDirection]]
+            if isinstance(f.order_by, list):
                 for order_by_item in f.order_by:
                     try:
                         order_by_item_parsed = parse_order_by(order_by_item)
@@ -552,7 +642,7 @@ def cleanup_saved_filters(document_type: DocumentType, should_be_column_names: S
                                     new_order_by.append((column, sort_direction))
                     except:
                         pass
-            elif type(f.order_by) is str:
+            elif isinstance(f.order_by, str):
                 try:
                     order_by_item_parsed = parse_order_by(str(f.order_by))
                     if order_by_item_parsed:
@@ -601,7 +691,7 @@ def calculate_doctype_cache_columns(document_type: DocumentType,
     for field_handler in fields:
         field_columns = field_handler.get_pg_column_definitions()  # type: Dict[str, PgTypes]
         column_count += len(field_columns)
-        col_names += [c for c in field_columns]
+        col_names += list(field_columns)
     # FIELD_CODE_HIDDEN_COLUMNS column is also added
     return column_count + 1
 
@@ -622,8 +712,8 @@ def adapt_table_structure(log: ProcessLogger,
     table_name = doc_fields_table_name(document_type.code)
 
     fields = build_field_handlers(document_type, table_name)
-    should_be_columns = dict()  # type: Dict[str, str]
-    should_be_indexes = dict()  # type: Dict[str, str]
+    should_be_columns = {}  # type: Dict[str, str]
+    should_be_indexes = {}  # type: Dict[str, str]
     for field_handler in fields:
         field_columns = field_handler.get_pg_column_definitions()  # type: Dict[str, PgTypes]
         should_be_columns.update({name: pg_type.value for name, pg_type in field_columns.items()})
@@ -639,14 +729,14 @@ def adapt_table_structure(log: ProcessLogger,
         cleanup_saved_filters(document_type, set(should_be_columns.keys()))
         return True
 
-    dropped_columns = list()  # type: List[Tuple[str, str]]
-    added_columns = list()  # type: List[Tuple[str, str]]
+    dropped_columns = []  # type: List[Tuple[str, str]]
+    added_columns = []  # type: List[Tuple[str, str]]
 
     with connection.cursor() as cursor:
         with transaction.atomic():
             existing_columns = get_table_columns_from_pg(cursor, table_name)  # type: Dict[str, str]
 
-            alter_table_actions = list()  # type: List[str]
+            alter_table_actions = []  # type: List[str]
 
             for existing_name, existing_type in existing_columns.items():
                 should_be_type = should_be_columns.get(existing_name)
@@ -744,7 +834,11 @@ def _delete_document_fields_table(log: ProcessLogger, document_type_code: str):
 def _fill_system_fields_to_python_values(document: Document,
                                          field_to_python_values: Dict[str, List],
                                          include_system_fields: FieldSpec = True):
+
     field_to_python_values[FIELD_CODE_DOC_ID] = document.pk
+
+    field_to_python_values[FIELD_CODE_MODIFIED_BY] = document.modified_by.name if document.modified_by else None
+    field_to_python_values[FIELD_CODE_MODIFIED_DATE] = document.modified_date
 
     if not include_system_fields:
         return
@@ -755,13 +849,17 @@ def _fill_system_fields_to_python_values(document: Document,
         field_to_python_values[FIELD_CODE_DOC_NAME] = document.name
         field_to_python_values[FIELD_CODE_DOC_TITLE] = document.title
         field_to_python_values[FIELD_CODE_DOC_LANGUAGE] = document.language
+        field_to_python_values[FIELD_CODE_DOCUMENT_CONTRACT_TYPE] = document.document_contract_class
         field_to_python_values[FIELD_CODE_DOC_FULL_TEXT_LENGTH] = len(document.full_text) if document.full_text else 0
-
-        field_to_python_values[FIELD_CODE_CREATE_DATE] = document.history.last().history_date \
+        field_to_python_values[FIELD_CODE_DOCUMENT_OCR_RATING] = document.ocr_rating
+        # CREATED
+        # document.history.last() is the first history entry (they ordered desc by history date)
+        field_to_python_values[FIELD_CODE_CREATE_DATE] = document.created_date or document.history.last().history_date \
             if document.history.exists() else document.upload_session.created_date \
             if document.upload_session else None
-
-        field_to_python_values[FIELD_CODE_DOCUMENT_OCR_RATING] = document.ocr_rating
+        field_to_python_values[FIELD_CODE_CREATED_BY] = document.created_by.name if document.created_by else document.history.last().history_user.name \
+            if document.history.exists() and document.history.last().history_user else document.upload_session.created_by.name \
+            if document.upload_session and document.upload_session.created_by else None
 
         if document.metadata:
             field_to_python_values[FIELD_CODE_IS_CONTRACT] = \
@@ -770,6 +868,9 @@ def _fill_system_fields_to_python_values(document: Document,
                 document.document_class or DocumentClass.GENERIC
             field_to_python_values[FIELD_CODE_DOCUMENT_CLASS_PROB] = \
                 document.metadata.get(DOC_METADATA_DOCUMENT_CLASS_PROB) or [0]
+            contract_vector = document.metadata.get(DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR) or []
+            field_to_python_values[FIELD_CODE_DOCUMENT_CONTRACT_CLASS_VECTOR] = \
+                ', '.join([f'{nm}: {prob:.2f}' for nm, prob in contract_vector[:3]])
 
         field_to_python_values[FIELD_CODE_DEFINITIONS] = '; '.join(
             DefinitionUsage.objects.filter(text_unit__document=document)
@@ -832,12 +933,12 @@ def _build_insert_clause(log: ProcessLogger,
                          document: Document,
                          fields_to_python_values: Dict[str, Any],
                          hidden_field_codes: Set[str]) -> SQLClause:
-    insert_clauses = list()
+    insert_clauses = []
 
     fields_to_python_values = dict(fields_to_python_values)  # creating a copy to not modify the original one
 
     if hidden_field_codes is not None:
-        hidden_columns = list()
+        hidden_columns = []
         for h in hidden_handlers:
             if h.field_code and h.field_code in hidden_field_codes:
                 cdefs = h.get_pg_column_definitions()
@@ -905,6 +1006,27 @@ def delete_document_from_cache(user: User, document: Document):
                                      changed_by_user=user)
 
 
+def delete_documents_from_cache_by_ids(user: User, document_type_code: str, document_ids: List):
+    table_name = doc_fields_table_name(document_type_code)
+    document_type = DocumentType.objects.get(code=document_type_code)
+    handlers = build_field_handlers(document_type, table_name)
+    for document_id in document_ids:
+        with connection.cursor() as cursor:
+            document_fields_before = _get_document_fields(cursor=cursor,
+                                                          document_id=document_id,
+                                                          table_name=table_name,
+                                                          handlers=handlers)
+            _delete_document_from_cache(cursor, document_id)
+            log = ProcessLogger()
+            fire_document_fields_changed(cache_document_fields,
+                                         log=log,
+                                         document_event=DocumentEvent.DELETED.value,
+                                         document_pk=document_id,
+                                         field_handlers={h.field_code: h for h in handlers},
+                                         fields_before=document_fields_before, fields_after=None,
+                                         changed_by_user=user)
+
+
 def get_document_values_actual_and_cached(
         document: Document,
         skip_cached_values: bool = False,
@@ -965,7 +1087,7 @@ def _get_document_fields(document_id,
                          table_name: str,
                          handlers: List[RawdbFieldHandler],
                          none_on_errors: bool = True) -> Optional[Dict[str, Any]]:
-    column_names = list()  # type: List[str]
+    column_names = []  # type: List[str]
     for h in handlers:  # type: FieldHandler
         columns = h.get_client_column_descriptions()  # type: List[ColumnDesc]
         for c in columns:  # type: ColumnDesc
@@ -977,7 +1099,7 @@ def _get_document_fields(document_id,
                     .format(columns=sql_columns, table_name=table_name), [document_id])
 
     for d in fetch_dicts(cursor, sql, column_names):
-        res = dict()
+        res = {}
         for h in handlers:
             try:
                 fv = h.columns_to_field_value(d)
@@ -1032,10 +1154,10 @@ def cache_document_fields(log: ProcessLogger,
                                     include_generic_fields=cache_generic_fields,
                                     include_user_fields=cache_user_fields,
                                     include_annotation_fields=True)
-    system_field_handlers = list()  # type: List[RawdbFieldHandler]
-    generic_field_handlers = list()  # type: List[RawdbFieldHandler]
-    user_field_handlers = list()  # type: List[RawdbFieldHandler]
-    user_field_annotations_handlers = list()
+    system_field_handlers = []  # type: List[RawdbFieldHandler]
+    generic_field_handlers = []  # type: List[RawdbFieldHandler]
+    user_field_handlers = []  # type: List[RawdbFieldHandler]
+    user_field_annotations_handlers = []
 
     for h in handlers:
         if h.field_code in FIELD_CODES_SYSTEM:
@@ -1047,8 +1169,8 @@ def cache_document_fields(log: ProcessLogger,
         else:
             user_field_handlers.append(h)
 
-    insert_field_handlers = list()  # type: List[RawdbFieldHandler]
-    field_to_python_values = dict()
+    insert_field_handlers = []  # type: List[RawdbFieldHandler]
+    field_to_python_values = {}
 
     _fill_system_fields_to_python_values(document, field_to_python_values, cache_system_fields)
     insert_field_handlers += system_field_handlers
@@ -1064,7 +1186,6 @@ def cache_document_fields(log: ProcessLogger,
     if cache_user_fields and user_field_handlers:
         insert_field_handlers += user_field_handlers
         insert_field_handlers += user_field_annotations_handlers
-        from apps.document.repository.document_field_repository import DocumentFieldRepository
         field_repo = DocumentFieldRepository()
 
         user_fields_code_to_value = {code: None for code in
@@ -1073,7 +1194,7 @@ def cache_document_fields(log: ProcessLogger,
             document_type_id=document_type.pk,
             doc_id=document.pk,
             ignore_errors=True,
-            log_func=lambda m: log.error(m)))
+            log_func=log.error))
 
         _hidden_field_ids, hidden_field_codes = field_repo.get_hidden_field_ids_codes(
             document, user_fields_code_to_value)
@@ -1137,9 +1258,7 @@ def cache_document_fields(log: ProcessLogger,
                 if er_str in ex_str:
                     log.error(f'Document {document.pk} of {document_type} is '
                               f'deleted by the time it is being cached in cache_document_fields()')
-                    pass
             except:
-                import sys
                 etype, evalue, _ = sys.exc_info()
                 log.error(f'Error {etype}: {evalue}\n'
                           f'in cache_document_fields(doc_id={document.pk})\nSQL: '
@@ -1176,8 +1295,6 @@ def cache_document_fields(log: ProcessLogger,
                     src_error_txt = traceback.format_exc()
                     log.error('Failed to send notifications on document values changed. '
                               'Original exception is: {}'.format(src_error_txt))
-    document.fields_dirty = None
-    document.save(update_fields=['fields_dirty'])
     log.debug(f"Fields are cached for document {document.pk}",
               extra={Document.LOG_FIELD_DOC_ID: str(document.pk)})
 
@@ -1232,18 +1349,18 @@ def _extract_column_filters_and_order_by_from_saved_filters(document_type: Docum
                          .values_list('column_filters', 'order_by'))  # type: List[Tuple[str, str]]
     if not saved_filters:
         raise Forbidden()
-    column_filters = list()  # type: List[Tuple[str, str]]
+    column_filters = []  # type: List[Tuple[str, str]]
     order_by = None  # type: List[Tuple[str, SortDirection]]
 
     for filter_json, order_by_json in saved_filters:
         if filter_json:
-            column_filters.extend([(column, column_filter) for column, column_filter in filter_json.items()])
+            column_filters.extend(list(filter_json.items()))
 
         if order_by_json and not order_by:
             if isinstance(order_by_json, str):
                 order_by = parse_order_by(order_by_json)
             elif isinstance(order_by_json, list):
-                order_by = list()
+                order_by = []
                 for elem in order_by_json:
                     order_by_items = parse_order_by(elem)
                     if order_by_items:
@@ -1403,16 +1520,14 @@ def query_documents(document_type: DocumentType,
     if return_documents:
         sql_columns = ', \n'.join(column_sql_specs)
 
-        correct_order_by = list()
+        correct_order_by = []
         if order_by:
             for column, direction in order_by:
                 if column not in existing_column_names:
                     if not ignore_errors:
                         raise UnknownColumnError('Unknown column: ' + column)
-                    else:
-                        continue
-                else:
-                    correct_order_by.append((column, direction))
+                    continue
+                correct_order_by.append((column, direction))
 
         order_by = correct_order_by if correct_order_by else [DEFAULT_ORDER_BY]
         # If field IS in hidden list, "=ANY" returns 't' (true), that
@@ -1489,7 +1604,7 @@ def set_documents_delete_status(document_ids: List[int],
 
     except Exception as e:
         er_msg = format_error_msg(document_ids, delete_pending, total_checked)
-        logger = get_django_logger()
+        logger = CsLogger.get_django_logger()
         logger.error(er_msg + '\n' + str(e))
         raise e
 
@@ -1501,7 +1616,7 @@ def set_documents_delete_status(document_ids: List[int],
     # Otherwise if some unpredicted case - ensure all documents are processed
     elif total_checked != len(document_ids):
         er_msg = format_error_msg(document_ids, delete_pending, total_checked)
-        logger = get_django_logger()
+        logger = CsLogger.get_django_logger()
         logger.error(er_msg)
         raise RuntimeError(er_msg)
 
@@ -1527,7 +1642,7 @@ def delete_documents(document_ids: List[int]) -> None:
                       f'"{FIELD_CODE_DOC_ID}" IN ({doc_type_doc_ids_str});'
                 cursor.execute(cmd)
     except Exception as e:
-        logger = get_django_logger()
+        logger = CsLogger.get_django_logger()
         logger.error('Failed to delete documents with ids {}'.format(str(document_ids)) + '\n' + str(e))
         raise e
 
@@ -1544,7 +1659,7 @@ def update_document_name(doc_id: int, doc_name: str) -> None:
                   f'"{FIELD_CODE_DOC_ID}" = {doc_id};'
             cursor.execute(cmd)
     except Exception as e:
-        logger = get_django_logger()
+        logger = CsLogger.get_django_logger()
         logger.error(f'RawDB: could not rename doc id = {doc_id} to "{doc_name}"', exc_info=e)
         raise e
 

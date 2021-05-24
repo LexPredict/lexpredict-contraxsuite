@@ -1,6 +1,6 @@
      if ($request_method = 'OPTIONS') {
         add_header 'Access-Control-Allow-Origin' '*';
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, OPTIONS';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, OPTIONS, HEAD, DELETE';
         #
         # Custom headers and headers various browsers *should* be OK with but aren't
         #
@@ -13,9 +13,9 @@
         add_header 'Content-Length' 0;
         return 204;
      }
-     if ($request_method ~* "(GET|POST|PUT|PATCH|HEAD)") {
+     if ($request_method ~* "(GET|POST|PUT|PATCH|HEAD|DELETE)") {
         add_header 'Access-Control-Allow-Origin' '*';
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, OPTIONS, HEAD';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, OPTIONS, HEAD, DELETE';
         add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,authorization,Upload-Length,Upload-Metadata,Upload-Offset,force,Location,tus-resumable,Upload-Defer-Length';
         add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range,Location,Upload-Offset,Upload-Length,Upload-Defer-Length,Content-Disposition';
      }

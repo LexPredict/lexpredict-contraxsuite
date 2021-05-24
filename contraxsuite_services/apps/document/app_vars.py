@@ -26,100 +26,126 @@
 
 # Project imports
 from apps.common.models import AppVar
-from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
 
 ADMIN_RUNNING_TASKS_VALIDATION_ENABLED = AppVar.set(
     'Document', 'admin_running_tasks_validation_enabled', True,
     'Prevents critical changes if user tasks running')
 
-TIKA_SERVER_ENDPOINT = AppVar.set(
-    'Document', 'tika_remote_server_endpoint', '',
-    'TIKA server endpoint. Example: http://contrax-tika:9998')
-
-TIKA_TIMEOUT = AppVar.set(
-    'Document', 'tika_timeout', settings.TIKA_TIMEOUT,
-    'TIKA timeout (default = 5.5 hours)')
-
-TIKA_PARSE_MODE = AppVar.set(
-    'Document', 'tika_parse_mode', 'plain',
-    'TIKA parse mode ("xhtml" or "plain")')
-
 MAX_DOCUMENT_SIZE = AppVar.set(
     'Document', 'max_document_size', 50,
-    'Enables maximum document file size for uploading, Mb')
+    'Enables maximum document file size for uploading, Mb',
+    system_only=False)
 
 MAX_ARCHIVE_SIZE = AppVar.set(
     'Document', 'max_archive_size', 100,
-    'Enables maximum archive file size for uploading, Mb')
+    'Enables maximum archive file size for uploading, Mb',
+    system_only=False)
 
 PREPROCESS_DOCTEXT_LINEBREAKS = AppVar.set(
     'Document', 'preprocess_doctext_linebreaks', True,
-    'Enables / disables removing extra line breaks in uploaded document')
+    'Enables / disables removing extra line breaks in uploaded document',
+    system_only=False)
 
 PREPROCESS_DOCTEXT_PUNCT = AppVar.set(
     'Document', 'preprocess_doctext_punct', False,
-    'Fix anomalies in quotes and spaces in uploaded document')
+    'Fix anomalies in quotes and spaces in uploaded document',
+    system_only=False)
 
 LOCATE_TEXTUNITTAGS = AppVar.set(
     'Document', 'locate_text_unit_tags', False,
-    'Enables storing text unit tags during parsing a document')
+    'Enables storing text unit tags during parsing a document',
+    system_only=False)
 
 LOCATE_TEXTUNITPROPERTIES = AppVar.set(
     'Document', 'locate_text_unit_properties', False,
-    'Enables storing text unit properties during parsing a document')
+    'Enables storing text unit properties during parsing a document',
+    system_only=False)
 
 OCR_ENABLE = AppVar.set(
     'Document', 'ocr_enable', True,
-    'Enables / disables documents OCR by Tika os Textract')
+    'Enables / disables OCR when loading documents',
+    system_only=False)
+
+TABLE_DETECTION_ENABLE = AppVar.set(
+    'Document', 'table_detection_enable', True,
+    'Enables / disables table detection when loading documents',
+    system_only=False)
+
+DESKEW_ENABLE = AppVar.set(
+    'Document', 'deskew_enable', True,
+    'Enables / disables automatic correction of the rotated (skewed) pages when loading documents',
+    system_only=False)
+
+PDF_COORDINATES_DEBUG_ENABLE = AppVar.set(
+    'Document', 'pdf_coordinates_debug_enable', False,
+    'Enables / disables rendering a rectangle for each character in PDF documents '
+    '- for the coordinates debug purposes.',
+    system_only=False)
+
+DOCUMENT_LOCALE = AppVar.set(
+    'Document', 'document_locale', None,
+    'Sets default document locale. Use ISO-639 codes, e.g., "en_US", "en_GB", or "de"',
+    system_only=False)
 
 OCR_FILE_SIZE_LIMIT = AppVar.set(
     'Document', 'ocr_file_size_limit', 100,
-    'Max file size enabled (MB) for OCR')
+    'Max file size enabled (MB) for OCR',
+    system_only=False)
 
 MIN_NOT_PLAIN_FILE_SIZE = AppVar.set(
     'Document', 'min_not_plain_file_size', 1024,
-    'Mint file size (bytes) to try extracting text with Tika / Textract etc.')
+    'Mint file size (bytes) to try extracting text with Tika / Textract etc.',
+    system_only=False)
 
 MSWORD_TO_TEXT_ENABLE = AppVar.set(
     'Document', 'msword_to_text_enable', True,
-    'Enables / disables parsing MS Word documents with python-docx')
+    'Enables / disables parsing MS Word documents with python-docx',
+    system_only=False)
 
-FORCE_REWRITE_DOC = AppVar.set(
-    'Document', 'force_rewrite_doc', True,
-    'Enables / disables rewriting existing documents')
-
-STRICT_PARSE_DATES = AppVar.set(
-    'Document', 'strict_parse_dates', True,
-    'Skip values like "C-4-30" if strict mode (True) is on')
+ALLOW_DUPLICATE_DOCS = AppVar.set(
+    'Document', 'allow_duplicate_documents', False,
+    "If True, additional uploads of the same file name and same content " +
+    "will be allowed and copy 01, copy 02, etc will be added to the name. " +
+    "If False, you will get an error rejecting the upload of duplicate documents.",
+    system_only=False)
 
 DETECT_CONTRACT = AppVar.set(
     'Document', 'detect_contract', True,
-    'Check if document is a contract'
+    'Check if document is a contract',
+    system_only=False
+)
+
+DETECT_CONTRACT_TYPE = AppVar.set(
+    'Document', 'detect_contract_type', False,
+    'Identify document contract type',
+    system_only=False
 )
 
 ENABLE_PROVISION_LEVEL_REVIEW = AppVar.set(
     'Document', 'enable_provision_level_review', False,
-    'Provision Level Review on/off.'
+    'Provision Level Review on/off.',
+    system_only=False
 )
 
 CSV_DETECTOR_COMPANIES = AppVar.set(
     'Document', 'csv_detector_companies',
     'LLC,,Corp,,LP,,Inc,,Ltd,,Corporation,,Limited,,Co,,S.A',
-    'CSV Detector - company abbreviations. Use two commas to separate values'
+    'CSV Detector - company abbreviations. Use two commas to separate values',
+    system_only=False
 )
 
 CSV_DETECTOR_CONJUNCTIONS = AppVar.set(
     'Document', 'csv_detector_conjunctions',
     'and,,the,,&',
-    'CSV Detector - conjunctions. Use two commas to separate values'
+    'CSV Detector - conjunctions. Use two commas to separate values',
+    system_only=False
 )
 
 ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT = AppVar.set(
@@ -128,8 +154,18 @@ ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT = AppVar.set(
 
 MAX_DOCUMENTS_TO_EXPORT_SIZE_HTTP = AppVar.set(
     'Document', 'max_documents_to_export_size', 20,
-    'Maximum total size of document files (Mb) to export as zip via http response.')
+    'Maximum total size of document files (Mb) to export as zip via http response.',
+    system_only=False)
 
-TIKA_PROCESS_RAM_MB_LIMIT = AppVar.set(
-    'Document', 'tika_process_ram_mb_limit', 0,
-    'Max RAM for Tika Java subprocess, MB. 0 means "not set" (default limit).')
+DETECT_CONTRACT_TYPE = AppVar.set(
+    'Document', 'detect_contract_type', True,
+    "Enables detecting document's contract type",
+    system_only=False)
+
+CONTRACT_TYPE_FILTER = AppVar.set(
+    'Document', 'contract_type_filter',
+    '{"min_prob": 0.05, "max_closest_percent": 100}',
+    "Set contract type as 'UNKNOWN' if either the probability is too low or " +
+    "the next detected type has about the same probability",
+    system_only=False
+)

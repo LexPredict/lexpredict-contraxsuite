@@ -328,7 +328,7 @@ services:
         max-file: 5
         max-size: 10m
     healthcheck:
-      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG_ACCESS} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
       retries: 3
@@ -360,7 +360,7 @@ services:
         max-file: 5
         max-size: 10m
     healthcheck:
-      test: pg_isready -h ${DOCKER_HOST_NAME_PG} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
+      test: pg_isready -h ${DOCKER_HOST_NAME_PG_ACCESS} -U ${DOCKER_PG_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
       interval: 30s
       timeout: 10s
       retries: 3
@@ -373,6 +373,7 @@ services:
       - "POSTGRES_USER=${DOCKER_PG_USER}"
       - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
       - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+      - "POSTGRES_ENABLE_DAILY_REINDEX=${POSTGRES_ENABLE_DAILY_REINDEX}"
     command: bash -c "${POWA_INSTALL} service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf"
     tmpfs:
       - /tmp:size=4GB
@@ -408,7 +409,7 @@ services:
     image: ${CONTRAXSUITE_IMAGE}
     networks:
       - contrax_net
-    command: ["/start.sh",  "celery-single"]
+    command: ["celery-single"]
     environment:
       - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
       - "MLFLOW_AWS_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
@@ -456,59 +457,11 @@ services:
       retries: 3
       start_period: 5s
 
-  contrax-celery-doc-load:
-    image: ${CONTRAXSUITE_IMAGE}
-    networks:
-      - contrax_net
-    command: ["/start.sh",  "celery-load"]
-    environment:
-      - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
-      - "MLFLOW_AWS_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
-      - "MLFLOW_AWS_SECRET_KEY=${MLFLOW_AWS_SECRET_KEY}"
-      - "SHARED_USER_NAME=${SHARED_USER_NAME}"
-      - "SHARED_USER_ID=${SHARED_USER_ID}"
-      - "DOCKER_CELERY_CONCURRENCY=1"
-      - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME}"
-      - "http_proxy=${PROXY_SERVER_HTTP}"
-      - "HTTP_PROXY=${PROXY_SERVER_HTTP}"
-      - "https_proxy=${PROXY_SERVER_HTTPS}"
-      - "HTTPS_PROXY=${PROXY_SERVER_HTTPS}"
-      - "no_proxy=${PROXY_NO_PROXY}"
-      - "NO_PROXY=${PROXY_NO_PROXY}"
-      - "AIOREDIS_DEBUG=${AIOREDIS_DEBUG}"
-    configs:
-      - source: ls_celery_${LOCAL_SET_CELERY_CONFIG_VERSION}
-        target: /contraxsuite_services/local_settings.py
-    volumes:
-      - celery_worker_state:/data/celery_worker_state
-    deploy:
-      mode: global # Exactly one instance per node. Primitive AWS autoscaling solution.
-    stop_signal: SIGQUIT
-    stop_grace_period: 1m
-    sysctls:
-      # Possible solution for DB connections disappearing.
-      # https://forums.docker.com/t/setting-tcp-keepalive-time-param-for-containers/41496/3
-      # Swarm Load Balancer purges idle connections after 900 seconds. Need keep-alive < 900 s.
-      net.ipv4.tcp_keepalive_time: 600
-      net.ipv4.tcp_keepalive_intvl: 60
-      net.ipv4.tcp_keepalive_probes: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-file: 5
-        max-size: 10m
-    healthcheck:
-      test: pg_isready -h ${DJANGO_CELERY_DB_HOST} -U ${DJANGO_CELERY_DB_USER} -d ${DOCKER_PG_DB_NAME} || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
   contrax-celery-beat:
     image: ${CONTRAXSUITE_IMAGE}
     networks:
       - contrax_net
-    command: ["/start.sh",  "celery-beat"]
+    command: ["celery-beat"]
     environment:
       - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
       - "MLFLOW_AWS_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
@@ -557,7 +510,7 @@ services:
     image: ${CONTRAXSUITE_IMAGE}
     networks:
       - contrax_net
-    command: ["/start.sh",  "daphne"]
+    command: ["daphne"]
     environment:
       - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
       - "MLFLOW_AWS_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
@@ -567,7 +520,7 @@ services:
       - "DOCKER_DJANGO_HOST_NAME=${DOCKER_DJANGO_HOST_NAME}"
       - "DOCKER_DJANGO_ADMIN_PASSWORD=${DOCKER_DJANGO_ADMIN_PASSWORD}"
       - "DOCKER_DJANGO_ADMIN_EMAIL=${DOCKER_DJANGO_ADMIN_EMAIL}"
-      - "DOCKER_WEBDAV_SERVER_NAME=${DOCKER_WEBDAV_SERVER_NAME}"
+      - "DOCKER_WEBDAV_SERVER_NAME_ACCESS=${DOCKER_WEBDAV_SERVER_NAME_ACCESS}"
       - "DOCKER_WEBDAV_AUTH_USER=${DOCKER_WEBDAV_AUTH_USER}"
       - "DOCKER_WEBDAV_AUTH_PASSWORD=${DOCKER_WEBDAV_AUTH_PASSWORD}"
       - "STARTUP_DEPS_READY_CMD=pg_isready -h ${DJANGO_WEBSRV_DB_HOST} -U ${DJANGO_WEBSRV_DB_USER} -d ${DOCKER_PG_DB_NAME}"
@@ -650,7 +603,7 @@ services:
     image: ${CONTRAXSUITE_IMAGE}
     networks:
       - contrax_net
-    command: ["/start.sh",  "jupyter"]
+    command: ["jupyter"]
     environment:
       - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
       - "MLFLOW_AWS_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
@@ -699,7 +652,7 @@ services:
     image: ${CONTRAXSUITE_IMAGE}
     networks:
       - contrax_net
-    command: ["/start.sh",  "flower"]
+    command: ["flower"]
     environment:
       - "MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}"
       - "MLFLOW_AWS_ACCESS_KEY=${MLFLOW_AWS_ACCESS_KEY}"
@@ -775,7 +728,7 @@ services:
     image: ${CONTRAXSUITE_IMAGE}
     networks:
       - contrax_net
-    command: ["/start.sh",  "mock-imanage"]
+    command: ["mock-imanage"]
     environment:
       - "SHARED_USER_NAME=${SHARED_USER_NAME}"
       - "SHARED_USER_ID=${SHARED_USER_ID}"
@@ -794,6 +747,9 @@ services:
       options:
         max-file: 5
         max-size: 10m
+    configs:
+      - source: ls_celery_${LOCAL_SET_CELERY_CONFIG_VERSION}
+        target: /contraxsuite_services/local_settings.py
     volumes:
       - mock_imanage_data:/contraxsuite_services/apps/imanage_integration/debug/data/
 

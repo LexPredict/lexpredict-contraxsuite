@@ -1,8 +1,11 @@
 # DocumentFieldAnnotation
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**assignee_id** | **int** |  | 
+**status_id** | **int** |  | 
 **pk** | **int** |  | [optional] [readonly] 
 **uid** | **str** |  | [optional] [readonly] 
 **project_id** | **int** |  | [optional] [readonly] 
@@ -13,13 +16,11 @@ Name | Type | Description | Notes
 **document_status** | **str** |  | [optional] [readonly] 
 **field_id** | **str** |  | [optional] [readonly] 
 **field_name** | **str** |  | [optional] [readonly] 
-**value** | **object** |  | [optional] 
-**location_start** | **int** |  | [optional] 
-**location_end** | **int** |  | [optional] 
-**location_text** | **str** |  | [optional] 
-**assignee_id** | **int** |  | 
-**assign_date** | **datetime** |  | [optional] 
-**status_id** | **int** |  | 
+**value** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}, none_type** |  | [optional] 
+**location_start** | **int, none_type** |  | [optional] 
+**location_end** | **int, none_type** |  | [optional] 
+**location_text** | **str, none_type** |  | [optional] 
+**assign_date** | **datetime, none_type** |  | [optional] 
 **status_name** | **str** |  | [optional] [readonly] 
 **assignee_name** | **str** |  | [optional] [readonly] 
 **modified_by_id** | **str** |  | [optional] [readonly] 

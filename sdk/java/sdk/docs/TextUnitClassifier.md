@@ -2,6 +2,7 @@
 
 # TextUnitClassifier
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -11,7 +12,7 @@ Name | Type | Description | Notes
 **version** | **String** |  | 
 **className** | **String** |  | 
 **isActive** | **Boolean** |  |  [optional]
-**suggestions** | **String** |  |  [optional] [readonly]
+**suggestions** | **Integer** |  |  [optional] [readonly]
 
 
 

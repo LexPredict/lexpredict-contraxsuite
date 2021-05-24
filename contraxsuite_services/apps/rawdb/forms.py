@@ -35,9 +35,9 @@ import task_names
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,15 +57,17 @@ class ReindexForm(forms.Form):
 
     document_type = forms.ModelChoiceField(
         queryset=DocumentType.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         label='Document Type',
         required=False)
 
-    recreate_tables = forms.BooleanField(required=False)
+    project = FilterableProjectSelectField(
+        queryset=Project.objects.order_by('-pk'),
+        required=False,
+        label='Restrict to project',
+        widget=FiltrableProjectSelectWidget)
 
-    project = FilterableProjectSelectField(queryset=Project.objects.order_by('-pk'),
-                                           required=False,
-                                           label='Restrict to project',
-                                           widget=FiltrableProjectSelectWidget)
+    recreate_tables = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

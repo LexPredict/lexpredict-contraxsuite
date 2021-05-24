@@ -36,9 +36,9 @@ from django.conf import settings
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,9 +73,24 @@ build_date = get_build_date()
 BUILD_DATE = AppVar.set(
     'Common', 'build_date', build_date,
     'Backend build date.',
-    overwrite=build_date is not None
-)
+    access_type='all',
+    overwrite=build_date is not None)
+RELEASE_VERSION = AppVar.set(
+    'Common', 'release_version', settings.VERSION_NUMBER, 'Backend release version.',
+    access_type='all',
+    overwrite=True)
+CUSTOM_LOGO_URL = AppVar.set(
+    'Common', 'custom_logo_url', None,
+    'Url to custom logo.',
+    access_type='all')
+SUPPORT_EMAIL = AppVar.set(
+    'Common', 'support_email', 'support@contraxsuite.com',
+    'Custom email address to display on html pages.',
+    access_type='all')
 
+CUSTOM_LINKS_HEADER = AppVar.set(
+    'Common', 'custom_links_header', 'Custom Links',
+    'Title for Custom Links menu item on left sidebar..')
 TRACK_API = AppVar.set(
     'Common', 'track_api', False,
     'Enables/disables tracking API request processing time. Values: true / false.')
@@ -90,37 +105,27 @@ ENABLE_AUTH_TOKEN_IN_QUERY_STRING = AppVar.set(
     'Common', 'enable_auth_token_in_query_string', False,
     'Enables/disables ability to authenticate via query string param auth_token in query string'
     'in API calls. WARNING: this is insecure setting for DEV purposes only!!!')
-CUSTOM_LINKS_HEADER = AppVar.set(
-    'Common', 'custom_links_header', 'Custom Links',
-    '', 'Title for Custom Links menu item on left sidebar..')
-CUSTOM_LOGO_URL = AppVar.set(
-    'Common', 'custom_logo_url', None,
-    'Url to custom logo.')
 USE_FULL_TEXT_SEARCH = AppVar.set(
     'Common', 'use_full_text_search', False,
     'Use full test search via tsvector for TextField model fields included into'
     ' "full_text_search" model attribute. "False" - disable, "True" - enable, "auto" - use '
-    '"auto_full_text_search_cutoff" AppVar to detect whether FTS should be enabled.')
+    '"auto_full_text_search_cutoff" AppVar to detect whether FTS should be enabled.',
+    system_only=False)
 AUTO_FULL_TEXT_SEARCH_CUTOFF = AppVar.set(
     'Common', 'auto_full_text_search_cutoff', 1000000,
-    'Full test search starting from N table rows (if use_full_text_search is "auto") ')
+    'Full test search starting from N table rows (if use_full_text_search is "auto") ',
+    system_only=False)
 PG_FULL_TEXT_SEARCH_LOCALE = AppVar.set(
     'Common', 'pg_full_text_search_locale', 'english',
-    'Default locale for PostgreSQL full text search (for to_tsvector, to_tsquery).')
-
-RELEASE_VERSION = AppVar.set(
-    'Common', 'release_version', settings.VERSION_NUMBER, 'Backend release version.',
-    overwrite=True
-)
+    'Default locale for PostgreSQL full text search (for to_tsvector, to_tsquery).',
+    system_only=False)
 
 MAX_FILES_UPLOAD = AppVar.set(
     'Common', 'max_files_upload', 10000,
-    'Max amount of files to upload at once.')
+    'Max amount of files to upload at once.',
+    system_only=False)
 
 MAX_FILES_UPLOAD_PARALLEL = AppVar.set(
     'Common', 'max_files_upload_parallel', 10,
-    'Max amount of files to upload at once in parallel.')
-
-SUPPORT_EMAIL = AppVar.set(
-    'Common', 'support_email', 'support@contraxsuite.com',
-    'Custom email address to display on html pages.')
+    'Max amount of files to upload at once in parallel.',
+    system_only=False)

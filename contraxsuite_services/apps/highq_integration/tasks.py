@@ -44,6 +44,7 @@ from django.utils import timezone
 
 # ContraxSuite
 import task_names
+from contraxsuite_logging import CausedException
 from apps.celery import app
 from apps.common.file_storage import get_file_storage
 from apps.common.file_storage.file_storage import ContraxsuiteFileStorage
@@ -62,16 +63,31 @@ from apps.rawdb.field_value_tables import *
 from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, LoadDocuments, call_task_func, call_task
 from apps.users.user_utils import get_main_admin_user
+from apps.deployment.models import Deployment
+from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-init_field_type_registry()
+_DEPLOYMENT_INSTALLATION_ID: Optional[str] = None
+
+
+def get_deployment_installation_id() -> str:
+    global _DEPLOYMENT_INSTALLATION_ID
+    if _DEPLOYMENT_INSTALLATION_ID is None:
+        _DEPLOYMENT_INSTALLATION_ID = str(Deployment.objects.first().installation_id)
+    return _DEPLOYMENT_INSTALLATION_ID
+
+
+class NullField(CausedException):
+    def __init__(self, message: str, cause: Optional[Exception] = None):
+        self._explanation = f'Exception caught while syncing with HighQ.'
+        super().__init__(message, cause)
 
 
 @shared_task(
@@ -84,10 +100,11 @@ init_field_type_registry()
     autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
     max_retries=0)
 def get_highq_document(
-        task: ExtendedTask,
-        highq_configuration_id: int,
-        highq_file_id: int,
-        highq_file_location: str) -> None:
+    task: ExtendedTask,
+    highq_configuration_id: int,
+    highq_file_id: int,
+    highq_file_location: str
+) -> None:
     """
     Downloads a file from HighQ, loads it into ContraxSuite, and creates a
         HighQ Document object.
@@ -98,19 +115,35 @@ def get_highq_document(
         highq_file_id (int): The ID of a HighQ file.
         highq_file_location (int): The HighQ file's source directory.
     """
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Fetch a model instance, instantiate an API client, and make API calls
     #   in order to get data used throughout the remainder of this task.
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    task.log_info(
+        f'Getting HighQ file #{highq_file_id} from "{highq_file_location}"'
+    )
+
     highq_configuration: HighQConfiguration = \
         HighQConfiguration.objects.get(id=highq_configuration_id)
+
+    try:
+        _: Project = highq_configuration.project
+    except AttributeError as attribute_error:
+        raise NullField(
+            f'HighQ Configuration #{highq_configuration.id}'
+            ' is not associated with a ContraxSuite project'
+            ' (i.e. files downloaded from HighQ have nowhere to go).'
+            ' This usually occurs when a previously-associated ContraxSuite'
+            ' Project was deleted.',
+            attribute_error
+        ) from attribute_error
 
     highq_api_client: HighQ_API_Client = \
         HighQ_API_Client(highq_configuration=highq_configuration)
 
     try:
         r_highq_file: Response = highq_api_client.get_highq_file(
-            file_id=highq_file_id,
+            fileid=highq_file_id,
             original=False
         )
         r_highq_file.raise_for_status()
@@ -146,9 +179,9 @@ def get_highq_document(
             f' | {r_isheet_record_id}'
         )
 
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Get data which will be used in the next operations...
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     try:
         isheet_column_id_file_link: int = \
             highq_configuration.isheet_column_mapping \
@@ -178,7 +211,7 @@ def get_highq_document(
     content_disposition: Tuple[str, dict] = \
         parse_header(content_disposition)
 
-    quasi_upload_session_id = str(uuid.uuid4())
+    quasi_upload_session_id: str = str(uuid.uuid4())
     highq_file_name = content_disposition[1].get('filename')
 
     rel_file_path: pathlib.Path = pathlib.Path(
@@ -186,10 +219,10 @@ def get_highq_document(
         highq_file_name,
     )
 
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Store the HighQ file in ContraxSuite's raw file storage, create a
     #   ContraxSuite Document, and a then create a HighQDocument.
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     contraxsuite_file_storage: ContraxsuiteFileStorage = get_file_storage()
     with buffer_contents_into_temp_file(
             http_response=r_highq_file,
@@ -209,9 +242,8 @@ def get_highq_document(
         except AttributeError:
             assignee_id = None
 
-        kwargs = {
-            'document_type_id':
-                highq_configuration.document_type.uid,
+        kwargs: Dict[str, Any] = {
+            'document_type_id': highq_configuration.document_type.uid,
             'project_id': highq_configuration.project.id,
             'assignee_id': assignee_id,
             'user_id': get_main_admin_user().pk,
@@ -225,16 +257,27 @@ def get_highq_document(
             'metadata': {},
         }
 
-        new_document_id: int = LoadDocuments.create_document_local(
-            task=task,
-            file_path=temp_filename,
-            file_name=str(rel_file_path),
-            kwargs=kwargs,
-            return_doc_id=True,
-            pre_defined_doc_fields_code_to_val=None,
-        )
+        new_document_id: int = \
+            LoadDocuments.create_document_local(
+                task=task,
+                file_path=temp_filename,
+                file_name=str(rel_file_path),
+                kwargs=kwargs,
+                pre_defined_doc_fields_code_to_val=None,
+            )
+
+        exception_message: str = \
+            f'Unable to create ContraxSuite Document' \
+            f' for HighQ file #{highq_file_id}'
 
         if new_document_id:
+            if not isinstance(new_document_id, int):
+                raise Exception(
+                    'Expected new_document_id to be of type `int`.'
+                    f' Instead got type: {type(new_document_id)}.'
+                    f'\n{exception_message}'
+                )
+
             new_highq_document = HighQDocument.objects.create(
                 highq_configuration=highq_configuration,
                 highq_file_id=highq_file_id,
@@ -246,13 +289,13 @@ def get_highq_document(
                 'representing HighQ file #'
                 f'{new_highq_document.highq_file_id} '
                 'and ContraxSuite Document #'
-                f'{new_highq_document.document}.'
+                f'{new_highq_document.document.pk} '
+                f'("{new_highq_document.document}").'
             )
         else:
             raise Exception(
                 'No document loaded.\n'
-                'Unable to create ContraxSuite Document'
-                f' for HighQ file #{highq_file_id}'
+                f'{exception_message}'
             )
 
 
@@ -266,8 +309,9 @@ def get_highq_document(
     autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
     max_retries=0)
 def write_to_isheet(
-        task: ExtendedTask,
-        highq_document_id: int) -> None:
+    task: ExtendedTask,
+    highq_document_id: int
+) -> None:
     """
     Gets a document's RawDB field values, constructs the necessary data
         transfer objects for JSON-serialization for each respective field
@@ -283,12 +327,12 @@ def write_to_isheet(
     highq_document: HighQDocument = \
         HighQDocument.objects.get(id=highq_document_id)
 
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Get the ContraxSuite Document's field values from RawDB.
     #   Additionally, save the RawDB field code and its corresponding
     #   FieldValue type in a dict. This will be used for fieldtype-specific
     #   formatting, like date or multi-choice handling.
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     document_query_results: DocumentQueryResults = query_documents(
         document_type=highq_document.document.document_type,
         column_filters=[('document_id', str(highq_document.document.id))],
@@ -299,8 +343,7 @@ def write_to_isheet(
         try:
             document_field: DocumentField = DocumentField.objects.get(
                 code=column.field_code,
-                document_type__code=
-                highq_document.document.document_type.code,
+                document_type__code=highq_document.document.document_type.code,
             )
         except DocumentField.DoesNotExist:
             continue
@@ -313,10 +356,10 @@ def write_to_isheet(
     except IndexError as ie:
         raise Exception('Caught IndexError while trying to load RawDB document field values') from ie
 
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Fetch the model instances needed for the next operations. Likewise,
     #   instantiate an API client and a referential data structure.
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     highq_configuration: HighQConfiguration = \
         HighQConfiguration.objects.get(
             id=highq_document.highq_configuration_id
@@ -336,14 +379,14 @@ def write_to_isheet(
         )
     )
 
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Build ColumnDTO objects based on the field type of each field.
     #   Finally, add the list of ColumnDTOs to a single ISheetDTO.
     #
     # Logic: FieldAnnotations ('_ann') and RawDB field values are examined.
     #   FieldAnnotations are joined and included in the RawDataDTO.
     #   RawDB field values are formatted according to their field type.
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     column_dtos: List[ColumnDTO] = []
     for code in mapped_field_codes:
 
@@ -371,8 +414,7 @@ def write_to_isheet(
                 document_field: DocumentField = \
                     DocumentField.objects.get(
                         code=code.split('_ann')[0],
-                        document_type=
-                        highq_document.document.document_type
+                        document_type=highq_document.document.document_type
                     )
 
                 qs_field_annotations: QuerySet = \
@@ -465,18 +507,21 @@ def write_to_isheet(
         data=DataDTO(
             item=[ItemDTO(
                 itemid=highq_document.highq_isheet_item_id,
-                externalid=highq_document.pk,
+                externalid=f'{settings.HOST_NAME}'
+                           f'_{get_deployment_installation_id()}'
+                           f'_{highq_document.pk}',
                 column=column_dtos,
             )]
         )
     )
 
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     # Send ISheetDTO data to HighQ iSheet.
-    # ---------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     highq_api_client: HighQ_API_Client = \
         HighQ_API_Client(highq_configuration=highq_configuration)
 
+    r_put_items: Response = Response()
     try:
         r_put_items: Response = \
             highq_api_client.put_isheet_items(
@@ -515,7 +560,11 @@ class HighQiSheetSynchronization(ExtendedTask):
             and if not, begins the HighQ Configuration synchronization process.
         """
         highq_config = kwargs.get('highq_config')
-        highq_config_id = highq_config.get('pk') if highq_config is not None else kwargs.get('highq_config_id')
+        highq_config_id: int = (
+            highq_config.get('pk')
+            if highq_config is not None
+            else kwargs.get('highq_config_id')
+        )
 
         if highq_config_id is None:
             raise Exception('HighQ configuration id not specified.')
@@ -538,8 +587,9 @@ class HighQiSheetSynchronization(ExtendedTask):
         self.sync_highq_configuration(HighQConfiguration.objects.get(pk=highq_config_id))
 
     def sync_highq_configuration(
-            self,
-            highq_configuration: HighQConfiguration) -> None:
+        self,
+        highq_configuration: HighQConfiguration
+    ) -> None:
         """
         Mediates synchronization operations for a given HighQ Configuration.
 
@@ -563,6 +613,9 @@ class HighQiSheetSynchronization(ExtendedTask):
         Returns:
               None
         """
+        # ---------------------------------------------------------------------
+        # Instantiate an API client and create lists to hold relevant data.
+        # ---------------------------------------------------------------------
         highq_configuration.last_sync_start = timezone.now()
         highq_configuration.save(update_fields=['last_sync_start'])
         self.log_debug(
@@ -573,218 +626,234 @@ class HighQiSheetSynchronization(ExtendedTask):
         highq_api_client: HighQ_API_Client = \
             HighQ_API_Client(highq_configuration=highq_configuration)
 
+        highq_folder_ids: Set[int] = {highq_configuration.highq_folder_id}
+        highq_files: List[Dict[str, Union[str, int, dict]]] = []
         highq_file_ids_to_sync: List[Tuple[int, int, str]] = []
 
-        try:
-            r_highq_files: Response = highq_api_client.get_files(
-                folderid=highq_configuration.highq_folder_id,
-                offset=0,
-                limit=-1,
-                orderby='desc',
-                ordertype='lastModified',
-            )
-            r_highq_files.raise_for_status()
-        except HTTPError as http_error:
-            raise Exception(
-                f'HTTP Error caught while synchronizing'
-                f' HighQ Configuration #{highq_configuration.id}.'
-                f' {http_error}'
-            ) from http_error
+        # ---------------------------------------------------------------------
+        # Get HighQ folder, subfolder, and file information.
+        # ---------------------------------------------------------------------
+        if highq_configuration.get_highq_files_from_subfolders:
+            for folder in highq_api_client.fetch_subfolders(
+                folderid=highq_configuration.highq_folder_id
+            ):
+                highq_folder_ids.add(folder['id'])
 
-        if r_highq_files.ok:
-            # -----------------------------------------------------------------
-            # Get data which will be used in the next operations...
-            # -----------------------------------------------------------------
-            highq_files: List[Dict[str, Union[str, int, dict]]] = \
-                r_highq_files.json()['file']
-
-            qs_highq_documents: QuerySet = \
-                HighQDocument.objects.filter(
-                    highq_configuration=highq_configuration,
-                )
-
-            highq_file_ids: Set[int] = set((
-                highq_file['id'] for highq_file in highq_files
-            ))
-
-            highq_document_ids: Set[int] = \
-                set(qs_highq_documents.values_list('highq_file_id', flat=True))
-
-            in_contraxsuite_not_in_highq: Set[int] = \
-                highq_document_ids.difference(highq_file_ids)
-
-            in_highq_not_in_contraxsuite: Set[int] = \
-                highq_file_ids.difference(highq_document_ids)
-
-            # -----------------------------------------------------------------
-            # Mark documents which have been removed from HighQ.
-            # -----------------------------------------------------------------
-            if not in_contraxsuite_not_in_highq:
-                self.log_info('No HighQ Documents to mark as removed')
-            else:
-                qs_extra_highq_documents: QuerySet = qs_highq_documents \
-                    .filter(highq_file_id__in=in_contraxsuite_not_in_highq) \
-                    .update(removed_from_highq=True)
-
-                self.log_info(
-                    'Marking HighQ Documents as removed: '
-                    f'{list(qs_extra_highq_documents.values_list("pk"))}'
-                )
-                qs_extra_highq_documents.update(removed_from_highq=True)
-
-            # -----------------------------------------------------------------
-            # Download files from HighQ and load them into ContraxSuite.
-            # -----------------------------------------------------------------
-            if not in_highq_not_in_contraxsuite:
-                self.log_info('No file transfer operations to complete.')
-            else:
-                for file in filter(
-                        lambda f: f['id'] in in_highq_not_in_contraxsuite,
-                        highq_files
-                ):
-                    highq_file_location: str = file.get('location', '')
-                    highq_file_id: int = file['id']
-                    highq_file_ids_to_sync.append(
-                        (
-                            highq_configuration.id,
-                            highq_file_id,
-                            highq_file_location,
-                        )
-                    )
-
-            len_highq_file_ids_to_sync: int = len(highq_file_ids_to_sync)
-            if len_highq_file_ids_to_sync > 0:
-                self.log_info(
-                    f'Found {len_highq_file_ids_to_sync} '
-                    'new HighQ documents (HighQ Configuration '
-                    f'#{highq_configuration.id}) '
-                    'not synced with ContraxSuite. '
-                    'Beginning synchronization task(s) now.'
-                )
-                self.run_sub_tasks(
-                    sub_tasks_group_title='Synchronize HighQ documents for HighQ Configuration'
-                                          f' #{highq_configuration.id}',
-                    sub_task_function=get_highq_document,
-                    args_list=highq_file_ids_to_sync,
-                    source_data=None,
-                    countdown=None,
-                )
-
-            # -----------------------------------------------------------------
-            # Get data which will be used in the next two operations...
-            # -----------------------------------------------------------------
+        for highq_folder_id in highq_folder_ids:
             try:
-                isheet_column_id_file_link: int = \
-                    highq_configuration.isheet_column_mapping \
-                        .highqisheetcolumnassociation_set \
-                        .get(contraxsuite_field_code='document_id') \
-                        .highq_isheet_column_id
-            except HighQiSheetColumnAssociation.DoesNotExist as dne:
+                r_highq_files: Response = highq_api_client.get_files(
+                    folderid=highq_folder_id,
+                    offset=0,
+                    limit=-1,
+                    orderby='desc',
+                    ordertype='lastModified',
+                )
+                r_highq_files.raise_for_status()
+                if r_highq_files.ok:
+                    highq_files.extend(r_highq_files.json()['file'])
+                else:
+                    raise Exception(
+                        'HighQ `get_files` content response not OK.'
+                        f' HighQ Configuration: {highq_configuration.id}'
+                        f' | {r_highq_files}'
+                    )
+            except HTTPError as http_error:
                 raise Exception(
-                    'No HighQiSheetColumnAssociation mapping a ContraxSuite '
-                    'document_id to a HighQ iSheet column of type `File link`. '
-                    'Unable to continue. Exiting.'
-                ) from dne
+                    f'HTTP Error caught while synchronizing'
+                    f' HighQ Configuration #{highq_configuration.id}.'
+                    f' {http_error}'
+                ) from http_error
 
-            highq_isheet_item_ids: Dict[int, int] = {
-                d['highq_file_id']: d['highq_isheet_item_id']
-                for d in highq_api_client.fetch_item_ids_in_files_column(
-                    isheetid=highq_configuration.highq_isheet_id,
-                    files_columnid=isheet_column_id_file_link
+        # ---------------------------------------------------------------------
+        # Find the differences between the HighQ file set and the
+        #   ContraxSuite document set.
+        # ---------------------------------------------------------------------
+        qs_highq_documents: QuerySet = \
+            HighQDocument.objects.filter(
+                highq_configuration=highq_configuration,
+            )
+
+        highq_file_ids: Set[int] = set(
+            highq_file['id'] for highq_file in highq_files
+        )
+
+        highq_document_ids: Set[int] = \
+            set(qs_highq_documents.values_list('highq_file_id', flat=True))
+
+        in_contraxsuite_not_in_highq: Set[int] = \
+            highq_document_ids.difference(highq_file_ids)
+
+        in_highq_not_in_contraxsuite: Set[int] = \
+            highq_file_ids.difference(highq_document_ids)
+
+        # ---------------------------------------------------------------------
+        # Mark documents which have been removed from HighQ.
+        # ---------------------------------------------------------------------
+        if not in_contraxsuite_not_in_highq:
+            self.log_info('No HighQ Documents to mark as removed.')
+        else:
+            qs_extra_highq_documents: QuerySet = qs_highq_documents \
+                .filter(highq_file_id__in=in_contraxsuite_not_in_highq) \
+                .update(removed_from_highq=True)
+
+            self.log_info(
+                'Marking HighQ Documents as removed: '
+                f'{list(qs_extra_highq_documents.values_list("pk"))}'
+            )
+            qs_extra_highq_documents.update(removed_from_highq=True)
+
+        # ---------------------------------------------------------------------
+        # Download files from HighQ and load them into ContraxSuite.
+        # ---------------------------------------------------------------------
+        if not in_highq_not_in_contraxsuite:
+            self.log_info('No file transfer operations to complete.')
+        else:
+            for file in filter(
+                lambda f: f['id'] in in_highq_not_in_contraxsuite,
+                highq_files
+            ):
+                highq_file_location: str = file.get('location', '')
+                highq_file_id: int = file['id']
+                highq_file_ids_to_sync.append(
+                    (
+                        highq_configuration.id,
+                        highq_file_id,
+                        highq_file_location,
+                    )
                 )
-            }
 
-            # -----------------------------------------------------------------
-            # Add HighQ files as iSheet rows
-            # TODO: consider moving this functionality into an independent task
-            #   ("create_isheet_records" or something similar)
-            # -----------------------------------------------------------------
-            document_dtos: List[int] = [
-                highq_file['id']
-                for highq_file in highq_files
-                if not highq_isheet_item_ids or (
-                        highq_file['id'] not in highq_isheet_item_ids
-                        and highq_isheet_item_ids
-                )
-            ]
+        len_highq_file_ids_to_sync: int = len(highq_file_ids_to_sync)
+        if len_highq_file_ids_to_sync > 0:
+            self.log_info(
+                f'Found {len_highq_file_ids_to_sync} '
+                'new HighQ documents (HighQ Configuration '
+                f'#{highq_configuration.id}) '
+                'not synced with ContraxSuite. '
+                'Beginning synchronization task(s) now.'
+            )
+            self.run_sub_tasks(
+                sub_tasks_group_title='Synchronize HighQ documents for HighQ Configuration'
+                                      f' #{highq_configuration.id}',
+                sub_task_function=get_highq_document,
+                args_list=highq_file_ids_to_sync,
+                source_data=None,
+                countdown=None,
+            )
 
-            if len(document_dtos) > 0:
-                isheet_dto: ISheetDTO = ISheetDTO(
-                    data=DataDTO(
-                        item=[
-                            ItemDTO(
-                                column=[
-                                    ColumnDTO(
-                                        attributecolumnid=
-                                        isheet_column_id_file_link,
-                                        rawdata=RawDataDTO(
-                                            documents=DocumentsDTO(
-                                                document=[
-                                                    DocumentDTO(
-                                                        docid=highq_file_id
-                                                    )
-                                                ]
-                                            )
+        # ---------------------------------------------------------------------
+        # Get data which will be used in the next two operations...
+        # ---------------------------------------------------------------------
+        try:
+            isheet_column_id_file_link: int = \
+                highq_configuration.isheet_column_mapping \
+                    .highqisheetcolumnassociation_set \
+                    .get(contraxsuite_field_code='document_id') \
+                    .highq_isheet_column_id
+        except HighQiSheetColumnAssociation.DoesNotExist as dne:
+            raise Exception(
+                'No HighQiSheetColumnAssociation mapping a ContraxSuite '
+                'document_id to a HighQ iSheet column of type `File link`. '
+                'Unable to continue. Exiting.'
+            ) from dne
+
+        highq_isheet_item_ids: Dict[int, int] = {
+            d['highq_file_id']: d['highq_isheet_item_id']
+            for d in highq_api_client.fetch_item_ids_in_files_column(
+                isheetid=highq_configuration.highq_isheet_id,
+                files_columnid=isheet_column_id_file_link
+            )
+        }
+
+        # ---------------------------------------------------------------------
+        # Add HighQ files as iSheet rows
+        # TODO: consider moving this functionality into an independent task
+        #   ("create_isheet_records" or something similar)
+        # ---------------------------------------------------------------------
+        document_dtos: List[int] = [
+            highq_file['id']
+            for highq_file in highq_files
+            if not highq_isheet_item_ids or (
+                    highq_file['id'] not in highq_isheet_item_ids
+                    and highq_isheet_item_ids
+            )
+        ]
+
+        if len(document_dtos) > 0:
+            isheet_dto: ISheetDTO = ISheetDTO(
+                data=DataDTO(
+                    item=[
+                        ItemDTO(
+                            column=[
+                                ColumnDTO(
+                                    attributecolumnid=isheet_column_id_file_link,
+                                    rawdata=RawDataDTO(
+                                        documents=DocumentsDTO(
+                                            document=[
+                                                DocumentDTO(
+                                                    docid=highq_file_id
+                                                )
+                                            ]
                                         )
                                     )
-                                ]
-                            )
-                            for highq_file_id in document_dtos
-                        ]
-                    )
-                )
-
-                try:
-                    r_post_items: Response = \
-                        highq_api_client.post_isheet_items(
-                            isheetid=highq_configuration.highq_isheet_id,
-                            isheet_dto=isheet_dto
+                                )
+                            ]
                         )
-                    r_post_items.raise_for_status()
-                    self.log_info(
-                        f'Added HighQ files {document_dtos} to'
-                        f' iSheet #{highq_configuration.highq_isheet_id}'
-                        f' (column {isheet_column_id_file_link}).'
-                        f' Response: {r_post_items.text}'
-                    )
-                except HTTPError as http_error:
-                    raise Exception(
-                        'HTTP Error caught while POSTing to'
-                        f' iSheet #{highq_configuration.highq_isheet_id}.'
-                        f' {http_error}'
-                    ) from http_error
-
-            # -----------------------------------------------------------------
-            # Add highq_isheet_item_id to HighQ Document objects
-            # -----------------------------------------------------------------
-            highq_documents_needing_isheet_item_ids: List[HighQDocument] = [
-                highq_document
-                for highq_document in qs_highq_documents
-                if (
-                    highq_document.highq_isheet_item_id is None
-                    or highq_document.highq_isheet_item_id
-                    not in highq_isheet_item_ids.values()
+                        for highq_file_id in document_dtos
+                    ]
                 )
-            ]
-
-            for highq_document in highq_documents_needing_isheet_item_ids:
-                highq_document.highq_isheet_item_id = \
-                    highq_isheet_item_ids.get(highq_document.highq_file_id)
-
-            HighQDocument.objects.bulk_update(
-                objs=highq_documents_needing_isheet_item_ids,
-                fields=('highq_isheet_item_id',)
             )
 
-            # -----------------------------------------------------------------
-            # Update iSheet column values if the HighQ iSheet file item's
-            #   modification date is older than its corresponding ContraxSuite
-            #   Document's youngest FieldValue modification date
-            # -----------------------------------------------------------------
-            isheet_updates: List[Tuple[int]] = []
+            try:
+                r_post_items: Response = \
+                    highq_api_client.post_isheet_items(
+                        isheetid=highq_configuration.highq_isheet_id,
+                        isheet_dto=isheet_dto
+                    )
+                r_post_items.raise_for_status()
+                self.log_info(
+                    f'Added HighQ files {document_dtos} to'
+                    f' iSheet #{highq_configuration.highq_isheet_id}'
+                    f' (column {isheet_column_id_file_link}).'
+                    f' Response: {r_post_items.text}'
+                )
+            except HTTPError as http_error:
+                raise Exception(
+                    'HTTP Error caught while POSTing to'
+                    f' iSheet #{highq_configuration.highq_isheet_id}.'
+                    f' {http_error}'
+                ) from http_error
 
-            highq_file_ids_and_their_modification_dates: \
-                List[Tuple[int, datetime.datetime]] = [
+        # ---------------------------------------------------------------------
+        # Add highq_isheet_item_id to HighQ Document objects
+        # ---------------------------------------------------------------------
+        highq_documents_needing_isheet_item_ids: List[HighQDocument] = [
+            highq_document
+            for highq_document in qs_highq_documents
+            if (
+                highq_document.highq_isheet_item_id is None
+                or highq_document.highq_isheet_item_id
+                not in highq_isheet_item_ids.values()
+            )
+        ]
+
+        for highq_document in highq_documents_needing_isheet_item_ids:
+            highq_document.highq_isheet_item_id = \
+                highq_isheet_item_ids.get(highq_document.highq_file_id)
+
+        HighQDocument.objects.bulk_update(
+            objs=highq_documents_needing_isheet_item_ids,
+            fields=('highq_isheet_item_id',)
+        )
+
+        # ---------------------------------------------------------------------
+        # Update iSheet column values if the HighQ iSheet file item's
+        #   modification date is older than its corresponding ContraxSuite
+        #   Document's youngest FieldValue modification date
+        # ---------------------------------------------------------------------
+        isheet_updates: List[Tuple[int]] = []
+
+        highq_file_ids_and_their_modification_dates: \
+            List[Tuple[int, datetime.datetime]] = [
                 (
                     highq_file['id'],
                     highq_datetime_to_py_datetime(
@@ -793,43 +862,37 @@ class HighQiSheetSynchronization(ExtendedTask):
                 ) for highq_file in highq_files
             ]
 
-            for highq_file_id, highq_file_modifieddate \
-                    in highq_file_ids_and_their_modification_dates:
+        for highq_file_id, highq_file_modifieddate \
+                in highq_file_ids_and_their_modification_dates:
 
-                highq_document: HighQDocument = HighQDocument.objects.filter(
-                    highq_configuration=highq_configuration,
-                    highq_file_id=highq_file_id,
-                ).first()
+            highq_document: HighQDocument = HighQDocument.objects.filter(
+                highq_configuration=highq_configuration,
+                highq_file_id=highq_file_id,
+            ).first()
 
-                if highq_document is not None:
-                    if highq_document.highq_isheet_item_id is not None:
-                        qs_document_field_values: QuerySet = \
-                            highq_document.document.field_values.get_queryset()
-                        if qs_document_field_values.exists():
-                            contraxsuite_document_modified_date: datetime.datetime = \
-                                qs_document_field_values.latest('modified_date').modified_date
-                            if highq_file_modifieddate < contraxsuite_document_modified_date:
-                                if (
-                                    highq_configuration.update_existing_isheet_items is True
-                                    or highq_document.recorded_in_isheet is False
-                                ):
-                                    isheet_updates.append((highq_document.id,))
+            if highq_document is not None:
+                if highq_document.highq_isheet_item_id is not None:
+                    qs_document_field_values: QuerySet = \
+                        highq_document.document.field_values.get_queryset()
+                    if qs_document_field_values.exists():
+                        contraxsuite_document_modified_date: datetime.datetime = \
+                            qs_document_field_values.latest('modified_date').modified_date
+                        if highq_file_modifieddate < contraxsuite_document_modified_date:
+                            if (
+                                highq_configuration.update_existing_isheet_items is True
+                                or highq_document.recorded_in_isheet is False
+                            ):
+                                isheet_updates.append((highq_document.id,))
 
-            if len(isheet_updates) > 0:
-                self.run_sub_tasks(
-                    sub_tasks_group_title='Send ContraxSuite FieldValues to HighQ iSheet | HighQ Configuration'
-                                          f' #{highq_configuration.id}',
-                    sub_task_function=write_to_isheet,
-                    args_list=isheet_updates,
-                    source_data=None,
-                    countdown=None,
-                )
-
-        else:
-            raise Exception(
-                'HighQ `get_files` content response not OK.'
-                f' HighQ Configuration: {highq_configuration.id}'
-                f' | {r_highq_files}'
+        if len(isheet_updates) > 0:
+            self.run_sub_tasks(
+                sub_tasks_group_title='Send ContraxSuite FieldValues to'
+                                      ' HighQ iSheet | HighQ Configuration'
+                                      f' #{highq_configuration.id}',
+                sub_task_function=write_to_isheet,
+                args_list=isheet_updates,
+                source_data=None,
+                countdown=None,
             )
 
 
@@ -842,8 +905,7 @@ class HighQiSheetSynchronization(ExtendedTask):
     default_retry_delay=10,
     retry_backoff=True,
     bind=True)
-def trigger_highq_isheet_synchronization(
-        _task: ExtendedTask) -> None:
+def trigger_highq_isheet_synchronization(_task: ExtendedTask) -> None:
     """
     Step 1: HighQ synchronization
         Determine if any HighQ Configurations are ready for synchronization.
@@ -853,7 +915,7 @@ def trigger_highq_isheet_synchronization(
         Determine if any HighQ Configurations need a refreshed access token.
         If yes, call the `refresh_highq_access_token` task.
     """
-    _task.log_info(f'In task: trigger_highq_isheet_synchronization')
+    _task.log_info('In task: trigger_highq_isheet_synchronization')
 
     # -------------------------------------------------------------------------
     # Step 1.1: Get HighQConfigurations synchronized longer ago
@@ -861,21 +923,22 @@ def trigger_highq_isheet_synchronization(
     # -------------------------------------------------------------------------
     qs_highq_configurations_to_sync: QuerySet = HighQConfiguration.objects \
         .annotate(
-        next_sync_start=ExpressionWrapper(
-            output_field=DateTimeField(),
-            expression=F('last_sync_start') + (
+            next_sync_start=ExpressionWrapper(
+                output_field=DateTimeField(),
+                expression=F('last_sync_start') + (
                     datetime.timedelta(minutes=1)
                     * F('sync_frequency_minutes')
+                )
             )
-        )
-    ) \
+        ) \
         .filter(
-        Q(enabled=True)
-        & (
+            Q(enabled=True)
+            & ~Q(project=None)
+            & (
                 Q(last_sync_start__isnull=True)
                 | Q(next_sync_start__lte=timezone.now())
+            )
         )
-    )
 
     # -------------------------------------------------------------------------
     # Step 1.2: Plan multiple HighQ Synchronization tasks.
@@ -936,8 +999,9 @@ def trigger_highq_isheet_synchronization(
     name=task_names.TASK_NAME_HIGHQ_REFRESH_ACCESS_TOKEN,
     bind=True)
 def refresh_highq_access_token(
-        task: ExtendedTask,
-        highq_configuration_id: int) -> None:
+    task: ExtendedTask,
+    highq_configuration_id: int
+) -> None:
     """
     HighQ uses the OAuth 2.0 Authentication Code workflow
         to authenticate API requests.

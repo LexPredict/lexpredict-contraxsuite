@@ -25,51 +25,41 @@
 # -*- coding: utf-8 -*-
 
 import io
-from typing import Optional, List, Iterable, Dict, Any, Set, Tuple
+from typing import Optional, List, Dict, Any, Set, Tuple
 
 import chardet
 import pandas as pd
 import regex as re
-
+from contraxsuite_logging import CausedException
 from apps.common.log_utils import ProcessLogger
 from apps.document.field_types import TypedField, MultiValueField
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
-from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector, DocumentField, Document, \
     DocumentFieldMultilineRegexDetector
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
 from apps.document.repository.field_detector_repository import FieldDetectorRepository
 from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class _CausedException(Exception):
+class ValueExtractionFunctionThrownException(CausedException):
     def __init__(self, message: str, cause: Optional[Exception] = None):
-        self._explanation: str
-        self.__cause__: Exception = cause
-        super().__init__(f'{self._explanation}\n'
-                         f'Cause: {self.__cause__.__class__.__name__}\n'
-                         f'Reason: {self.__cause__}\n'
-                         f'{message}\n')
-
-
-class ValueExtractionFunctionThrownException(_CausedException):
-    def __init__(self, message: str, cause: Optional[Exception] = None):
-        self._explanation = f'Value extraction function has thrown an exception.'
+        self._explanation = 'Value extraction function has thrown an exception.'
         super().__init__(message, cause)
 
 
-class CaughtErrorWhileApplyingFieldDetector(_CausedException):
+class CaughtErrorWhileApplyingFieldDetector(CausedException):
     def __init__(self, message: str, cause: Optional[Exception] = None):
-        self._explanation = f'Exception caught while trying to apply FieldDetector.'
+        self._explanation = 'Exception caught while trying to apply FieldDetector.'
         super().__init__(message, cause)
 
 
@@ -106,29 +96,22 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
             pass
 
         ants: List[AnnotationDTO] = []
-        depends_on_full_text: str = doc.full_text
         typed_field: TypedField = TypedField.by(field)
         text_unit_repo: TextUnitRepository = cls.text_unit_repo
         field_detector_repo: FieldDetectorRepository = cls.field_detector_repo
 
-        detected_with_stop_words, detected_value = \
-            detect_with_stop_words_by_field_and_full_text(field, doc, depends_on_full_text)
-        if detected_with_stop_words:
-            return FieldValueDTO(field_value=detected_value)
-
         qs_text_units = text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
-        qs_text_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(qs_text_units, field)
-
         field_detectors = field_detector_repo.get_field_detectors(field)
-        detectors = [DetectorFieldMatcher(d) for d in field_detectors]
 
-        for text_unit in qs_text_units:
-            unit_ants = cls.extract_from_textunit(text_unit, field, detectors)
-            if not unit_ants:
-                continue
-            if not isinstance(typed_field, MultiValueField):
-                return FieldValueDTO(field_value=unit_ants[0].annotation_value, annotations=unit_ants)
-            else:
+        for detector in field_detectors:
+            limited_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(
+                qs_text_units, field, detector)
+            for text_unit in limited_units:
+                unit_ants = cls.extract_from_textunit(text_unit, field, [DetectorFieldMatcher(detector)])
+                if not unit_ants:
+                    continue
+                if not isinstance(typed_field, MultiValueField):
+                    return FieldValueDTO(field_value=unit_ants[0].annotation_value, annotations=unit_ants)
                 ants += unit_ants
 
         if not ants:
@@ -137,8 +120,7 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         if isinstance(typed_field, MultiValueField):
             field_value = typed_field.build_json_field_value_from_json_ant_values(
                 [a.annotation_value for a in ants])
-        else:
-            field_value = typed_field.annotation_value_python_to_json(ants[0].annotation_value)
+        field_value = typed_field.annotation_value_python_to_json(ants[0].annotation_value)
         return FieldValueDTO(field_value=field_value, annotations=ants)
 
     @classmethod
@@ -195,18 +177,16 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
                     if not isinstance(typed_field, MultiValueField):
                         return [ant]
-                    else:
-                        ants.append(ant)
+                    ants.append(ant)
             except Exception as e:
                 if isinstance(e, ValueExtractionFunctionThrownException):
                     raise e
-                else:
-                    raise CaughtErrorWhileApplyingFieldDetector(
-                        f'Document: {text_unit.document.name} (#{text_unit.document.pk})\n'
-                        f'TextUnit: {text_unit.unit_type} (#{text_unit.pk})\n'
-                        f'Field detector: #{field_detector.detector.pk}\n'
-                        f'{field_detector.detector.include_regexps}\n'
-                        f'Text: {src_text[:300]}', e) from e
+                raise CaughtErrorWhileApplyingFieldDetector(
+                    f'Document: {text_unit.document.name} (#{text_unit.document.pk})\n'
+                    f'TextUnit: {text_unit.unit_type} (#{text_unit.pk})\n'
+                    f'Field detector: #{field_detector.detector.pk}\n'
+                    f'{field_detector.detector.include_regexps}\n'
+                    f'Text: {src_text[:300]}', e) from e
         return ants
 
 
@@ -238,18 +218,11 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
         depends_on_fields = field.get_depends_on_codes()
         field_code_to_value = {c: v for c, v in field_code_to_value.items() if c in depends_on_fields}
 
-        if field.stop_words:
-            depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])
-            detected_with_stop_words, detected_value \
-                = detect_with_stop_words_by_field_and_full_text(field, doc, depends_on_full_text)
-            if detected_with_stop_words:
-                return FieldValueDTO(field_value=detected_value)
-
         field_detectors = DocumentFieldDetector.objects.filter(field=field)
         detectors = [DetectorFieldMatcher(d) for d in field_detectors]
         typed_field = TypedField.by(field)  # type: TypedField
 
-        values = list()  # type: List
+        values = []  # type: List
 
         for depends_on_value in field_code_to_value.values():
             if not depends_on_value:
@@ -273,13 +246,10 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                     value = typed_field.annotation_value_python_to_json(value)
                     if not isinstance(typed_field, MultiValueField):
                         return FieldValueDTO(field_value=value)
-                    else:
-                        values.append(value)
+                    values.append(value)
 
         if isinstance(typed_field, MultiValueField):
             return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values(values))
-        else:
-            return None
 
 
 class CsvDetectorImporter:
@@ -295,7 +265,8 @@ class CsvDetectorImporter:
                  csv_contains_regexps: bool = False,
                  selected_columns: Optional[str] = None,
                  wrap_in_wordbreaks: bool = True,
-                 save_in_csv_format: bool = True):
+                 save_in_csv_format: bool = True,
+                 modified_by: User = None):
         """
         Import CSV records as a number of field detectors
         :param log: logging provider
@@ -308,9 +279,9 @@ class CsvDetectorImporter:
         :param save_in_csv_format: save entire CSV as a DocumentFieldMultilineRegexDetector record
         """
         from apps.document.app_vars import CSV_DETECTOR_COMPANIES, CSV_DETECTOR_CONJUNCTIONS
-        self.company_abbreviations = CSV_DETECTOR_COMPANIES.val.split(',,')
+        self.company_abbreviations = CSV_DETECTOR_COMPANIES.val().split(',,')
         self.company_abbreviations = {c.lower() for c in self.company_abbreviations}
-        self.conjunctions = CSV_DETECTOR_CONJUNCTIONS.val.split(',,')
+        self.conjunctions = CSV_DETECTOR_CONJUNCTIONS.val().split(',,')
 
         self.log = log
         self.document_field = document_field
@@ -320,6 +291,8 @@ class CsvDetectorImporter:
         self.selected_columns_str = selected_columns
         self.wrap_in_wordbreaks = wrap_in_wordbreaks
         self.save_in_csv_format = save_in_csv_format
+        self.modified_by = modified_by
+
         self.value_column = 0
         self.value_suffix_column = None  # type: Optional[int]
         self.columns_to_search = []  # type: List[int]
@@ -364,13 +337,13 @@ class CsvDetectorImporter:
             if len(row) == 0:
                 continue
             field_val = row[self.value_column]
-            if not field_val or type(field_val) is not str:
+            if not field_val or not isinstance(field_val, str):
                 continue
 
             value_suffix = row[self.value_suffix_column] if self.value_suffix_column is not None else None
-            value_suffix = value_suffix if type(value_suffix) is str else None
+            value_suffix = value_suffix if isinstance(value_suffix, str) else None
             include_reg_cells = list(row[self.columns_to_search])  # type: List[str]
-            if not include_reg_cells or not include_reg_cells[0] or type(include_reg_cells[0]) is not str:
+            if not include_reg_cells or not include_reg_cells[0] or not isinstance(include_reg_cells[0], str):
                 continue
             if not self.csv_contains_regexps:
                 include_reg_cells = self.pre_process_regexp_option(include_reg_cells)
@@ -407,7 +380,9 @@ class CsvDetectorImporter:
             choices = list(detectors_by_value)
             choices.sort()
             self.document_field.choices = '\n'.join(choices)
-            self.document_field.save()
+
+        self.document_field.modified_by = self.modified_by
+        self.document_field.save()
 
         self.log.info('Done.')
 
@@ -554,8 +529,7 @@ class CsvDetectorImporter:
                 # replace conjunctions and merge
                 space_token = r'\s{1,5}'
                 tokens_separated = []  # type: List[str]
-                for i in range(len(tokens)):
-                    t = tokens[i]
+                for i, t in enumerate(tokens):
                     is_conj = t in self.conjunctions
                     is_abbr = t in self.company_abbreviations
                     if is_conj or is_abbr:

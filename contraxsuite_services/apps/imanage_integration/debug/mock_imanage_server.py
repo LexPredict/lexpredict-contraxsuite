@@ -28,17 +28,18 @@ import json
 import os
 import re
 import socket
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 from typing import Dict, Optional
-import sys
+from urllib import parse
 
 import requests
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -87,7 +88,6 @@ class MockServerRequestHandler(BaseHTTPRequestHandler):
         else:
             m = self.download_re.search(self.path)
             if m:
-                from urllib import parse
                 self.do_download(parse.unquote(m.group('doc_id')))
             return
 
@@ -100,7 +100,7 @@ def get_free_port():
     return port
 
 
-class MockIManageServer(object):
+class MockIManageServer:
     @classmethod
     def start(cls):
         cls.mock_server_port = int(sys.argv[1]) if len(sys.argv) > 1 else 65534  # get_free_port()

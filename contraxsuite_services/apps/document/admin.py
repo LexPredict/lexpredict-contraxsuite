@@ -30,7 +30,7 @@ import html
 import inspect
 import json
 import re
-from typing import List, Dict, Any, Optional, Union, Iterable
+from typing import List, Dict, Any, Optional
 
 # Django imports
 from django import forms
@@ -44,7 +44,7 @@ from django.contrib.postgres import fields
 from django.contrib.postgres.forms.jsonb import JSONField, JSONString
 from django.core.exceptions import FieldError, ValidationError
 from django.db import transaction
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
@@ -52,6 +52,7 @@ from django.urls import reverse, path
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+from django.db.models import QuerySet, Q
 
 # Third-party imports
 import ast
@@ -70,39 +71,31 @@ from apps.common.expressions import PythonExpressionChecker
 from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 from apps.common.script_utils import ScriptError
 from apps.common.url_utils import as_bool
-from apps.common.utils import fetchone, full_reverse
+from apps.common.utils import full_reverse
 from apps.common.widgets import EditableTableWidget
 from apps.document import signals
 from apps.document.constants import DOC_NUMBER_PER_MAIN_TASK
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.field_detection.field_based_ml_field_detection import init_classifier_impl
-from apps.document.field_detection.formula_based_field_detection import \
-    FormulaBasedFieldDetectionStrategy
-from apps.document.field_detection.stop_words import compile_stop_words, \
-    detect_value_with_stop_words
+from apps.document.field_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy
 from apps.document.field_processing.field_processing_utils import order_field_detection
 from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField
-from apps.document.models import (Document, DocumentText, DocumentMetadata, DocumentField,
-                                  DocumentType, FieldValue, FieldAnnotationStatus, FieldAnnotation,
-                                  FieldAnnotationFalseMatch, FieldAnnotationSavedFilter,
-                                  DocumentProperty, DocumentRelation, DocumentNote,
-                                  DocumentFieldDetector, ExternalFieldValue, ClassifierModel,
-                                  TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag,
-                                  TextUnitText, DocumentFieldCategory, DocumentFieldFamily,
-                                  DocumentFieldMultilineRegexDetector)
-from apps.document.python_coded_fields_registry import PYTHON_CODED_FIELDS_REGISTRY
+from apps.document.models import Document, DocumentText, DocumentMetadata, DocumentField, DocumentType, FieldValue, \
+    FieldAnnotationStatus, FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationSavedFilter, \
+    DocumentProperty, DocumentRelation, DocumentNote, DocumentFieldDetector, ExternalFieldValue, ClassifierModel, \
+    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, TextUnitText, DocumentFieldCategory, DocumentFieldFamily, \
+    DocumentFieldMultilineRegexDetector
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.extract.models import Term
 from apps.project.models import Project
-from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON, \
-    FIELD_CODE_FORMULA
+from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON, FIELD_CODE_FORMULA
 from apps.rawdb.field_value_tables import validate_doctype_cache_columns_count
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -123,7 +116,7 @@ class ModelAdminWithPrettyJsonField(admin.ModelAdmin):
     }
 
 
-class PrettyJsonFieldMixin(object):
+class PrettyJsonFieldMixin:
     """
     Mixin that prettifies JSON field representation
     """
@@ -154,18 +147,17 @@ class TermUsageField(StrField):
         """
         The lookup should support with all operators compatible with IntField
         """
-        if operator == 'in' or operator == 'not in':
+        if operator in ('in', 'not in'):
             term_ids = list(Term.objects.filter(term__in=value).values_list('pk', flat=True))
         else:
             value = self.get_lookup_value(value)
             term_ids = list(Term.objects.filter(term=value).values_list('pk', flat=True))
 
-        if operator == '=' or operator == 'in':
-            return (Q(**{'termusage__term__id__in': term_ids}))
-        elif operator == '!=' or operator == 'not in':
-            return (~Q(**{'termusage__term__id__in': term_ids}))
-        else:
-            return (Q(**{}),)
+        if operator in ('=', 'in'):
+            return Q(**{'termusage__term__id__in': term_ids})
+        if operator in ('!=', 'not in'):
+            return ~Q(**{'termusage__term__id__in': term_ids})
+        return Q(**{})
 
 
 class DocumentQLSchema(DjangoQLSchema):
@@ -371,7 +363,7 @@ class SoftDeleteDocumentAdmin(DocumentAdmin):
             del_count = []
 
             if details:
-                items_by_table = get_document_bulk_delete().calculate_deleting_count(doc_ids)
+                items_by_table = get_document_bulk_delete(user=request.user).calculate_deleting_count(doc_ids)
                 mdc = ModelClassDictionary()
                 del_count_hash = {mdc.get_model_class_name_hr(t): items_by_table[t]
                                   for t in items_by_table if t in mdc.model_by_table}
@@ -434,7 +426,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
     def users_tasks_validation_enabled(cls):
         from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
         from apps.document.app_vars import ADMIN_RUNNING_TASKS_VALIDATION_ENABLED
-        return not APP_VAR_DISABLE_RAW_DB_CACHING.val and ADMIN_RUNNING_TASKS_VALIDATION_ENABLED.val
+        return not APP_VAR_DISABLE_RAW_DB_CACHING.val() and ADMIN_RUNNING_TASKS_VALIDATION_ENABLED.val()
 
     @classmethod
     def get_user_task_names(cls):
@@ -445,8 +437,6 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
                 .order_by('name') \
                 .values_list('name', flat=True)
             return list(tasks)
-        else:
-            return None
 
     WARN_CODE_TASKS_RUNNING = 'warning:tasks_running'
 
@@ -458,10 +448,15 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
         if not as_bool(request.GET, PARAM_OVERRIDE_WARNINGS):
             user_tasks = UsersTasksValidationAdmin.get_user_task_names()
             if user_tasks:
+                single_task = len(user_tasks) == 1
                 user_tasks = '; <br />'.join(user_tasks)
-                dst_errors_dict[cls.WARN_CODE_TASKS_RUNNING] = f'''The following background tasks are running at 
-                the current moment:\n<br />{user_tasks}.\n<br />
-                The Save operation can cause their crashing because of the document type / field structure changes.'''
+                article = 'this' if single_task else 'these'
+                tasks_title = 'task' if single_task else 'tasks'
+                tasks_verb = 'is' if single_task else 'are'
+                dst_errors_dict[cls.WARN_CODE_TASKS_RUNNING] = \
+                    f'''The following background {tasks_title} {tasks_verb} currently running:
+                    <b>{user_tasks}</b>.
+                    Saving now may crash or create errors in {article} background {tasks_title}.'''
 
     @staticmethod
     def _get_deleted_objects(objects, request, admin_site=None):
@@ -485,7 +480,7 @@ class UsersTasksValidationAdmin(admin.ModelAdmin):
 
     def get_actions(self, request):
         actions = super().get_actions(request)
-        func, name, title = actions['delete_selected']
+        _, name, title = actions['delete_selected']
         actions['delete_selected'] = (self.delete_selected_action, name, title)
         return actions
 
@@ -711,10 +706,10 @@ class DocumentFieldFormulaCheck:
                             test_range - 2, test_range - 1]
         for i in values_range:
             values_to_test = {}
-            for j in range(len(fields_to_values_list)):
+            for j, item in enumerate(fields_to_values_list):
                 is_shown = self.shown_by_mask(i, j)
-                key = fields_to_values_list[j][0]
-                value = fields_to_values_list[j][1] if is_shown else None
+                key = item[0]
+                value = item[1] if is_shown else None
                 values_to_test[key] = value
 
             result = self.calculate_formula_result_on_values(document_field, values_to_test)
@@ -782,9 +777,9 @@ class DocumentFieldFormulaCheck:
             if isinstance(node, ast.Name) and node.id not in reserved_words:
                 var_names.append(node.id)
         # get field deps
-        deps = {v for v in fields_to_values}
+        deps = set(fields_to_values)
         if field.depends_on_fields.exists():
-            field_deps = {f for f in field.depends_on_fields.values_list('code', flat=True)}
+            field_deps = set(field.depends_on_fields.values_list('code', flat=True))
             deps.update(field_deps)
         missing_fields = [n for n in var_names if n not in deps]
         if not missing_fields:
@@ -910,7 +905,6 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         self.fields['text_unit_type'].required = False
         self.fields['value_detection_strategy'].required = False
         self.fields['trained_after_documents_number'].required = False
-        self.fields['detect_limit_count'].required = True
         self.fields['display_yes_no'].required = False
 
     @classmethod
@@ -954,14 +948,22 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                 self.add_error('code', '''"{}" suffix is reserved.
                  You cannot use a field code which ends with this suffix.'''.format(suffix))
 
-    def clean_detect_limit_count(self):
-        detect_limit_count = self.cleaned_data['detect_limit_count']
-        detect_limit_unit = self.cleaned_data['detect_limit_unit']
-        if detect_limit_unit == DocumentField.DETECT_LIMIT_NONE:
-            return 0
-        if detect_limit_unit != DocumentField.DETECT_LIMIT_NONE and detect_limit_count == 0:
-            self.add_error('detect_limit_count', '"Detect Limit Count" must be greater than "0".')
-        return detect_limit_count
+    def clean_depends_on_fields(self):
+        depends_on_fields = self.cleaned_data.get('depends_on_fields')
+        if not depends_on_fields:
+            return depends_on_fields
+
+        own_doc_type = self.cleaned_data.get('document_type').code
+        wrong_fields: List[str] = []
+        for f_code, f_type in depends_on_fields.values_list('code', 'document_type__code'):
+            if f_type != own_doc_type:
+                wrong_fields.append(f'{f_code} ({f_type})')
+        if wrong_fields:
+            raise ValidationError('Following fields listed in "depends on fields" have different '
+                                  'document type: ' + ', '.join(wrong_fields),
+                                  'depends_on_field')
+
+        return depends_on_fields
 
     UNSURE_CHOICE_VALUE = 'unsure_choice_value'
     UNSURE_THRESHOLDS = 'unsure_thresholds_by_value'
@@ -1013,7 +1015,6 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         depends_on_fields = self.cleaned_data.get('depends_on_fields') or []
         depends_on_fields = list(depends_on_fields)
         classifier_init_script = self.cleaned_data['classifier_init_script']
-        stop_words = self.cleaned_data.get('stop_words')
         unsure_choice_value = self.cleaned_data[self.UNSURE_CHOICE_VALUE]
         choice_values = DocumentField.parse_choice_values(self.cleaned_data['choices'])
         unsure_thresholds_by_value = self.cleaned_data.get(self.UNSURE_THRESHOLDS)
@@ -1066,35 +1067,17 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                                            'Threshold should be a float value between 0 and 1: ' + k)
 
         try:
-            stop_words = compile_stop_words(stop_words)
-            detect_value_with_stop_words(stop_words, 'dummy text')
-        except Exception as err:
-            self.add_error('stop_words', str(err))
-
-        try:
             init_classifier_impl(field_code, classifier_init_script)
         except ScriptError as err:
             self.add_error('classifier_init_script', str(err).split('\n'))
 
         fields_and_deps = {self.cleaned_data.get('code') or 'xxx': {f.code for f in depends_on_fields}}
         fields_and_deps = self._extract_field_and_deps(depends_on_fields, fields_and_deps)
-        fields_and_deps = [(code, deps) for code, deps in fields_and_deps.items()]
+        fields_and_deps = list(fields_and_deps.items())
         try:
             order_field_detection(fields_and_deps)
         except ValueError as ve:
             self.add_error('depends_on_fields', str(ve))
-
-        python_coded_field_code = self.cleaned_data.get('python_coded_field')
-        if python_coded_field_code:
-            python_coded_field = PYTHON_CODED_FIELDS_REGISTRY.get(python_coded_field_code)
-            if not python_coded_field:
-                self.add_error('python_coded_field', 'Unknown Python-coded field: {0}'.format(python_coded_field_code))
-            else:
-                if type_code != python_coded_field.type:
-                    self.add_error('type', 'Python-coded field {0} is of type {1} but {2} is specified'
-                                           ' as the field type'.format(python_coded_field.title,
-                                                                       python_coded_field.type,
-                                                                       type_code))
 
         if self.initial and 'type' in self.changed_data:
             wrong_field_detector_pks = []
@@ -1137,11 +1120,10 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             'fields': ('hidden_always', 'hide_until_python', 'hide_until_js', 'display_yes_no',),
         }),
         ('Field Detection: General', {
-            'fields': ('value_detection_strategy', 'text_unit_type', 'depends_on_fields',
-                       'detect_limit_unit', 'detect_limit_count'),
+            'fields': ('value_detection_strategy', 'text_unit_type', 'depends_on_fields',),
         }),
         ('Field Detection: Regexp-based', {
-            'fields': ('stop_words', 'value_regexp'),
+            'fields': ('value_regexp',),
         }),
         ('Field Detection: Machine Learning', {
             'fields': ('classifier_init_script', 'unsure_choice_value', 'unsure_thresholds_by_value',
@@ -1149,9 +1131,6 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         }),
         ('Field Detection: Calculated Fields', {
             'fields': ('formula', 'convert_decimals_to_floats_in_formula_args'),
-        }),
-        ('Field Detection: Python-coded Fields', {
-            'fields': ('python_coded_field',),
         }),
         ('Field Detection: MLFlow', {
             'fields': ('mlflow_model_uri', 'mlflow_detect_on_document_level'),
@@ -1207,8 +1186,11 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
                     request, messages.WARNING, msg)
         # check we not exceed max rawdb columns number
         self.check_cache_column_limit(obj, request)
-        super().save_model(request, obj, form, change)
-        signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
+        try:
+            super().save_model(request, obj, form, change)
+            signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
+        except ValidationError as e:
+            messages.add_message(request, messages.ERROR, e.message)
 
     def check_cache_column_limit(self,
                                  obj: DocumentField,
@@ -1234,10 +1216,10 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         if not typed.is_choice_field or obj.allow_values_not_specified_in_choices:
             # object is already saved, continue
             if action == 'ADD':
-                return super(DocumentFieldAdmin, self).response_add(
+                return super().response_add(
                     request, obj, post_url_continue)
             # if action == 'CHANGE':
-            return super(DocumentFieldAdmin, self).response_change(request, obj)
+            return super().response_change(request, obj)
 
         return self.confirm_newchoices_view(request, obj=obj)
 
@@ -1271,8 +1253,7 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
             if '_save' in request.POST:
                 return redirect('admin:document_documentfield_changelist')
             # "Save and Continue"
-            else:
-                return redirect(return_url)  # request.path?
+            return redirect(return_url)  # request.path?
 
         context = {
             'field_name': new_field.title,
@@ -1293,12 +1274,14 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     def add_view(self, request, form_url='', extra_context=None):
         extra_context = extra_context or dict()
         extra_context['fields_by_doctype'] = self.get_fields_by_doctype()
+        extra_context['categories_by_doctype'] = self.get_categories_by_doctype()
         return super().add_view(request, form_url, extra_context=extra_context)
 
     def change_view(self, request, object_id, form_url='', extra_context=None, **kwargs):
         extra_context = extra_context or dict()
         extra_context.update(kwargs)
         extra_context['fields_by_doctype'] = self.get_fields_by_doctype()
+        extra_context['categories_by_doctype'] = self.get_categories_by_doctype()
 
         self.is_clone_view = 'clone' in kwargs
         return super().change_view(request, object_id, form_url, extra_context=extra_context)
@@ -1360,7 +1343,6 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         Custom method to display related objects
         Otherwise default collector method works too long and throws 504 on FE side
         """
-        from apps.project.models import Project
         if isinstance(objects, list):
             doc_types = [i.document_type for i in objects]
         elif isinstance(objects, UsersTasksValidationAdmin.QSList):
@@ -1399,12 +1381,23 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
     @classmethod
     def get_fields_by_doctype(cls) -> Dict[str, List[str]]:
         fields_by_doctype: Dict[str, List[str]] = {}
-        for pk, tp_id in DocumentField.objects.all().values_list('pk', 'document_type_id'):
+        for pk, tp_id in DocumentField.objects.values_list('pk', 'document_type_id'):
             if tp_id in fields_by_doctype:
                 fields_by_doctype[tp_id].append(pk)
             else:
                 fields_by_doctype[tp_id] = [pk]
         return fields_by_doctype
+
+    @classmethod
+    def get_categories_by_doctype(cls) -> Dict[str, List[str]]:
+        categories_by_doctype: Dict[str, List[str]] = {}
+        for pk, obj_id in DocumentFieldCategory.objects.values_list('pk', 'document_type_id'):
+            cat_id = str(obj_id)
+            if cat_id in categories_by_doctype:
+                categories_by_doctype[cat_id].append(pk)
+            else:
+                categories_by_doctype[cat_id] = [pk]
+        return categories_by_doctype
 
 
 class DocumentTypeListFilter(admin.SimpleListFilter):
@@ -1425,8 +1418,7 @@ class DocumentTypeListFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        cats = set(
-            [v for v in DocumentFieldDetector.objects.all().values_list('field__document_type__code', flat=True)])
+        cats = set(DocumentFieldDetector.objects.values_list('field__document_type__code', flat=True))
         return sorted([(c or '', c or '') for c in cats], key=lambda c: c[0])
         # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
 
@@ -1464,7 +1456,7 @@ class FieldDetectorListFilter(admin.SimpleListFilter):
             doc_code = request.GET['field__document_type__code']
             if doc_code:
                 detector_query = DocumentFieldDetector.objects.filter(field__document_type__code=doc_code)
-        cats = set([v for v in detector_query.values_list('field__title', flat=True)])
+        cats = set(detector_query.values_list('field__title', flat=True))
         return sorted([(c, c) for c in cats], key=lambda c: c[0])
         # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
 
@@ -1480,6 +1472,10 @@ class FieldDetectorListFilter(admin.SimpleListFilter):
 
 
 class DocumentFieldDetectorForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['detect_limit_count'].required = True
+
     def clean(self):
         detector = DocumentFieldDetector()
         detector.exclude_regexps = self.cleaned_data.get('exclude_regexps') \
@@ -1501,12 +1497,22 @@ class DocumentFieldDetectorForm(forms.ModelForm):
             self.add_error(error_msg, exc)
         return self.cleaned_data
 
+    def clean_detect_limit_count(self):
+        detect_limit_count = self.cleaned_data['detect_limit_count']
+        detect_limit_unit = self.cleaned_data['detect_limit_unit']
+        if detect_limit_unit == DocumentFieldDetector.DETECT_LIMIT_NONE:
+            return 0
+        if detect_limit_unit != DocumentFieldDetector.DETECT_LIMIT_NONE and detect_limit_count == 0:
+            self.add_error('detect_limit_count', '"Detect Limit Count" must be greater than "0".')
+        return detect_limit_count
+
 
 class DocumentFieldDetectorAdmin(admin.ModelAdmin):
     form = DocumentFieldDetectorForm
     list_display = (
         'field', 'detected_value', 'extraction_hint', 'text_part', 'definition_words_',
-        'exclude_regexps_', 'include_regexps_', 'regexps_pre_process_lower')
+        'exclude_regexps_', 'include_regexps_', 'regexps_pre_process_lower',
+        'detect_limit_unit', 'detect_limit_count')
     search_fields = ['field__long_code', 'field__title', 'detected_value', 'extraction_hint', 'include_regexps']
     list_filter = (DocumentTypeListFilter, FieldDetectorListFilter,)
 
@@ -1595,7 +1601,7 @@ class DocumentFieldMultilineRegexDetectorAdmin(admin.ModelAdmin):
             }, ignore_index=True)
 
         markup = '<table><tr><th>Value</th><th>Pattern</th></tr>\n'
-        for i, row in df.iterrows():
+        for _, row in df.iterrows():
             cell_value = html.escape(row[0])
             cell_pattern = html.escape(row[1])
             markup += f'<tr><td>{cell_value}</td><td>{cell_pattern}</td></tr>'
@@ -1621,16 +1627,14 @@ class DocumentFieldMultilineRegexDetectorAdmin(admin.ModelAdmin):
                     continue
                 df.drop([irow], inplace=True)
                 df.sort_values('value', inplace=True)
-                return JsonResponse({'succeeded': True, 'data': df.to_csv()},
-                                    content_type='application/json')
-            return JsonResponse({'succeeded': False},
-                                content_type='application/json')
+                return JsonResponse({'succeeded': True, 'data': df.to_csv()})
+            return JsonResponse({'succeeded': False})
 
         # edit or add or replace a row
         if not new_values or len(new_values) != 2:
-            return JsonResponse({'succeeded': False}, content_type='application/json')
+            return JsonResponse({'succeeded': False})
         if not all(v for v in new_values):
-            return JsonResponse({'succeeded': False}, content_type='application/json')
+            return JsonResponse({'succeeded': False})
 
         # add row
         if request_data['isNewRow']:
@@ -1648,9 +1652,7 @@ class DocumentFieldMultilineRegexDetectorAdmin(admin.ModelAdmin):
                 break
             df.drop_duplicates(subset='pattern', inplace=True)
         df.sort_values('value', inplace=True)
-
-        return JsonResponse({'succeeded': True, 'data': df.to_csv()},
-                            content_type='application/json')
+        return JsonResponse({'succeeded': True, 'data': df.to_csv()})
 
     def get_urls(self):
         urls = super().get_urls()
@@ -1752,8 +1754,8 @@ class ExternalFieldValueAdmin(admin.ModelAdmin):
 class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
     def clean(self):
         field_ids = set()
-        dependencies = list()
-        order_values = list()
+        dependencies = []
+        order_values = []
         for form in self.forms:
             document_field = form.cleaned_data.get('document_field')
             if document_field:
@@ -1767,7 +1769,7 @@ class DocumentFieldInlineFormset(forms.models.BaseInlineFormSet):
                     order_values.append(order)
         for form in dependencies:
             document_field = form.cleaned_data['document_field']
-            missed_fields = list()
+            missed_fields = []
             depends_on_fields = list(document_field.depends_on_fields.all())
             for field in depends_on_fields:
                 if field.pk not in field_ids:
@@ -1929,11 +1931,13 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
     def user(obj):
         return obj.modified_by.username if obj.modified_by else None
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj: DocumentType, form, change: bool):
         """
         Patched to send a signal to reindex doc type
         """
         super().save_model(request, obj, form, change)
+        if 'code' in form.changed_data:
+            obj.rename_child_fields()
         signals.document_type_changed.send(self.__class__, user=None, document_type=obj)
 
     @staticmethod
@@ -1942,7 +1946,6 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         Custom method to display related objects
         Otherwise default collector method works too long and throws 504 on FE side
         """
-        from apps.project.models import Project
         model_count = dict(
             projects=Project.all_objects.filter(type__in=objects).count(),
             projects_delete_pending=Project.all_objects.filter(type__in=objects, delete_pending=True).count(),
@@ -1988,8 +1991,7 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         Patched to warn a user if related objects exist and deletion is forbidden
         """
         from apps.document.app_vars import ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT
-        if not ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
-            from apps.project.models import Project
+        if not ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val():
             filter_predicate = Q(type_id=object_id)
             related_projects = Project.all_objects.filter(filter_predicate)
             if related_projects.count():
@@ -2009,7 +2011,7 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         """
         from apps.document.app_vars import ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT
         orig = self.message_user
-        if ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
+        if ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val():
             # patch default method to hide default "Success" message and display custom one
             self.message_user = lambda *args, **kwargs: None
         res = super().response_delete(request, obj_display, obj_id)
@@ -2021,8 +2023,8 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         Patched to warn a user if related objects exist and deletion is forbidden
         """
         from apps.document.app_vars import ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT
-        if not ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
-            from apps.project.models import Project
+        if not ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val():
+
             filter_predicate = Q(type__in=qs)
             related_projects = Project.all_objects.filter(filter_predicate)
             if related_projects.count():
@@ -2030,7 +2032,7 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
                 return self.warn_related_projects_exist(request, type_ids)
 
         # patch default method to hide default "Success" message and display custom one
-        if ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val:
+        if ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val():
             model_admin.message_user = lambda *args, **kwargs: None
 
         # patch 'model_count' context to get dict in context instead of dict-items
@@ -2050,13 +2052,12 @@ class DocumentTypeAdmin(ModelAdminWithPrettyJsonField, UsersTasksValidationAdmin
         default deletion procedure OR start DeleteDocumentTypes task
         """
         from apps.document.app_vars import ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT
-        from apps.project.models import Project
 
         if isinstance(objs, DocumentType):
             objs = DocumentType.objects.filter(pk=objs.pk)
         elif isinstance(objs, UsersTasksValidationAdmin.QSList):
             objs = objs.qs
-        return (ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val and Project.all_objects.filter(type__in=objs).exists()) \
+        return (ALLOW_REMOVE_DOC_TYPE_WITH_PROJECT.val() and Project.all_objects.filter(type__in=objs).exists()) \
                or self.get_user_task_names() is not None
 
     def run_delete_task(self, request, queryset):
@@ -2287,6 +2288,22 @@ class DocumentFieldCategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'document_type', 'order')
     search_fields = ('name', 'document_type__title')
     form = DocumentFieldCategoryForm
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'document_type':
+            doc_type_id = (request.GET or {}).get('document_type_id', '')
+            kwargs['queryset'] = DocumentType.objects.all() if not doc_type_id \
+                else DocumentType.objects.filter(pk=doc_type_id)
+            if doc_type_id:
+                kwargs['initial'] = doc_type_id
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_fields(self, request, obj=None):
+        is_simple_form = (request.GET or {}).get('simple_form', False)
+        fields = super().get_fields(request, obj)
+        if is_simple_form and 'fields' in fields:
+            fields.remove('fields')
+        return fields
 
 
 class DocumentFieldFamilyInline(admin.TabularInline):

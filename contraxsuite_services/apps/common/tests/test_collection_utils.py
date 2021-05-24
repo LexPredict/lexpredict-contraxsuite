@@ -32,14 +32,14 @@ import time
 from collections import Iterable
 from typing import List, Iterator, Generator
 
-from apps.common.collection_utils import chunks
+from apps.common.collection_utils import chunks, group_by
 from apps.common.decorators import collect_stats
 from apps.common.models import MethodStats
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -108,7 +108,7 @@ class CollectionUtilsTest(TestCase):
 
     def non_test_collect_stat(self):
         # this code can't be run as a unit test because it requires DB connection
-        for i in range(1000):
+        for _ in range(1000):
             d = random.random()
             err = d < 0.1
             delay = d / 100
@@ -116,6 +116,15 @@ class CollectionUtilsTest(TestCase):
 
         records = list(MethodStats.objects.all())
         self.assertGreater(len(records), 999)
+
+    def test_group_by(self):
+        lst = [('a', 1), ('b', 2), ('a', 3), ('a', 4)]
+        d = group_by(lst, lambda i: i[0])
+        self.assertEqual(2, len(d))
+        self.assertEqual(3, len(d['a']))
+        self.assertEqual(1, len(d['b']))
+        self.assertTrue('3' in ''.join([str(i[1]) for i in d['a']]))
+        self.assertTrue('2' not in ''.join([str(i[1]) for i in d['a']]))
 
 
 @collect_stats(name='My Test for fn', comment='some long comment', log_sql=False)

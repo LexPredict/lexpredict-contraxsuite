@@ -1,16 +1,17 @@
 # TextUnitClassifierSuggestion
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**class_name** | **str** |  | 
+**class_value** | **str** |  | 
 **pk** | **int** |  | [optional] [readonly] 
 **text_unit__document__pk** | **str** |  | [optional] [readonly] 
 **text_unit__document__name** | **str** |  | [optional] [readonly] 
 **text_unit__document__document_type** | **str** |  | [optional] [readonly] 
 **text_unit__document__description** | **str** |  | [optional] [readonly] 
 **text_unit__pk** | **str** |  | [optional] [readonly] 
-**class_name** | **str** |  | 
-**class_value** | **str** |  | 
 **classifier_run** | **datetime** |  | [optional] 
 **classifier_confidence** | **float** |  | [optional] 
 

@@ -33,16 +33,16 @@ from django.db.models import Count
 from apps.common.widgets import FilterableProjectSelectField, FiltrableProjectSelectWidget
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, DOCUMENT_FIELD_CODE_MAX_LEN
 from apps.document.models import DocumentType, DocumentField
-from apps.document.scheme_migrations.scheme_migration import CURRENT_VERSION, MIGRATION_TAGS
+from apps.document.scheme_migrations.scheme_migration import MIGRATION_TAGS
 from apps.document.tasks import FindBrokenDocumentFieldValues, FixDocumentFieldCodes, MODULE_NAME
 from apps.project.models import Project
 from apps.document.tasks import ImportCSVFieldDetectionConfig
 from task_names import TASK_NAME_IDENTIFY_CONTRACTS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,8 +66,10 @@ class PatchedForm(forms.Form):
 class DetectFieldValuesForm(PatchedForm):
     header = 'Detect Field Values'
 
-    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.exclude(pk=DOCUMENT_TYPE_PK_GENERIC_DOCUMENT),
-                                           required=False)
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.exclude(pk=DOCUMENT_TYPE_PK_GENERIC_DOCUMENT),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False)
 
     project_ids = ProjectModelMultipleChoiceField(
         queryset=Project.objects.exclude(type_id=DOCUMENT_TYPE_PK_GENERIC_DOCUMENT).order_by(
@@ -102,13 +104,19 @@ class DetectFieldValuesForm(PatchedForm):
 class TrainDocumentFieldDetectorModelForm(PatchedForm):
     header = 'Train Document Field Detector Model'
 
-    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False)
 
 
 class FindBrokenDocumentFieldValuesForm(PatchedForm):
     header = FindBrokenDocumentFieldValues.name
 
-    document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=False)
+    document_field = forms.ModelChoiceField(
+        queryset=DocumentField.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False)
 
     delete_broken = forms.BooleanField(required=False)
 
@@ -125,16 +133,17 @@ class TrainAndTestForm(forms.Form):
             .exclude(value_detection_strategy__isnull=True)
             .exclude(value_detection_strategy=DocumentField.VD_DISABLED),
         label='Document Field',
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
         required=True)
 
     train_data_project_ids = ProjectModelMultipleChoiceField(
-        queryset=Project.objects.all().values_list('pk', 'name').order_by('-pk'),
+        queryset=Project.objects.values_list('pk', 'name').order_by('-pk'),
         label='Train Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
 
     test_data_projects_ids = ProjectModelMultipleChoiceField(
-        queryset=Project.objects.all().values_list('pk', 'name').order_by('-pk'),
+        queryset=Project.objects.values_list('pk', 'name').order_by('-pk'),
         label='Test Data Projects',
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False)
@@ -157,7 +166,10 @@ class TrainAndTestForm(forms.Form):
 
 class LoadDocumentWithFieldsForm(forms.Form):
     header = 'Parse document fields in JSON format to create Document with Field Values.'
-    project = forms.ModelChoiceField(queryset=Project.objects.all(), required=True)
+    project = forms.ModelChoiceField(
+        queryset=Project.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=True)
     source_data = forms.CharField(
         max_length=1000,
         required=False,
@@ -180,7 +192,10 @@ class ImportCSVFieldDetectionConfigForm(PatchedForm):
 
     enctype = 'multipart/form-data'
 
-    document_field = forms.ModelChoiceField(queryset=DocumentField.objects.all(), required=True)
+    document_field = forms.ModelChoiceField(
+        queryset=DocumentField.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=True)
 
     config_csv_file = forms.FileField(required=True, help_text='''CSV file with rows of the following structure: 
     detected value,substring1,substring2,...,substringN . First row should contain column headers (ignored). 
@@ -222,7 +237,10 @@ class ImportCSVFieldDetectionConfigForm(PatchedForm):
 class ExportDocumentTypeForm(forms.Form):
     header = 'Export Document Type'
 
-    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=True)
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen compact'}),
+        required=True)
 
     target_version = forms.ChoiceField(
         label='Target CS Version',
@@ -238,7 +256,10 @@ class ExportDocumentTypeForm(forms.Form):
 class ExportDocumentsForm(forms.Form):
     header = 'Export Documents'
 
-    document_type = forms.ModelChoiceField(queryset=DocumentType.objects.all(), required=False)
+    document_type = forms.ModelChoiceField(
+        queryset=DocumentType.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+        required=False)
     projects = forms.MultipleChoiceField(
         widget=forms.SelectMultiple(attrs={'class': 'chosen'}),
         required=False,
@@ -312,8 +333,17 @@ class IdentifyContractsForm(forms.Form):
 
     document_type = forms.ModelChoiceField(
         queryset=DocumentType.objects.all(),
+        widget=forms.widgets.Select(attrs={'class': 'chosen compact'}),
         label='Document Type',
         required=False)
+
+    check_is_contract = forms.BooleanField(required=False,
+                                           initial=False,
+                                           label='Determine contracts - generic docs')
+
+    set_contract_type = forms.BooleanField(required=False,
+                                           initial=False,
+                                           label='Determine document contract types')
 
     recheck_contract = forms.BooleanField(required=False)
 
@@ -329,6 +359,16 @@ class IdentifyContractsForm(forms.Form):
     def _post_clean(self):
         super()._post_clean()
         self.cleaned_data['module_name'] = MODULE_NAME
+
+    def clean(self):
+        super().clean()
+
+        if not self.cleaned_data.get('check_is_contract') and \
+                not self.cleaned_data.get('set_contract_type'):
+            self.add_error('check_is_contract',
+                           '''Either of these check boxes: "Check if documents are contracts / generic",
+                           "Determine document contract types" should be checked.''')
+        return self.cleaned_data
 
 
 class CloneDocumentFieldForm(forms.Form):

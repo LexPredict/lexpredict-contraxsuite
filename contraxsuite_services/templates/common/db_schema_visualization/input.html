@@ -1,0 +1,46 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block css_extra %}
+  {{ block.super }}
+  <style>
+    .jqx-grid-statusbar {
+      color: white;
+    }
+    .container {
+      max-width: 95%;
+    }
+    .content-wrap {
+      padding-left: 10px;
+    }
+    label {
+      font-size: 16px;
+    }
+    ul {
+      list-style-type: none;
+    }
+    .template {
+      display: none
+    }
+    .page-tabs {
+      margin-left: 10px;
+    }
+    .boot-tabs {
+      margin-bottom: 5px !important;
+    }
+  </style>
+{% endblock %}
+
+{% block page_header %}Database Schema Visualizer{% endblock %}
+
+{% block project_selection %}{% endblock %}
+
+{% block content %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form }}
+        <input type="submit" value="Show database schema">
+    </form>
+
+{% endblock %}

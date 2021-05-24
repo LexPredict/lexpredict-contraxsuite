@@ -2,6 +2,7 @@
 
 # DocumentFieldValue
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -19,7 +20,7 @@ Name | Type | Description | Notes
 **locationText** | **String** |  |  [optional] [readonly]
 **modifiedByUsername** | **String** |  |  [optional] [readonly]
 **modifiedById** | **String** |  |  [optional] [readonly]
-**modifiedDate** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional] [readonly]
+**modifiedDate** | **OffsetDateTime** |  |  [optional] [readonly]
 
 
 

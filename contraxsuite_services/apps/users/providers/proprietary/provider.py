@@ -26,48 +26,27 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-from allauth.account.models import EmailAddress
-#from allauth.socialaccount.app_settings import QUERY_EMAIL
-from allauth.socialaccount.providers.base import AuthAction, ProviderAccount
-from allauth.socialaccount.providers.oauth2.provider import OAuth2Provider
+from allauth.socialaccount.providers.base import AuthAction
 
-from apps.users.providers.custom_auxilary import route_next_param_to_query, derive_user_name
+from apps.users.providers.custom_auxilary import route_next_param_to_query
+from apps.users.providers.okta.provider import OktaAccount, OktaProvider
 
 
-class Scope(object):
-    EMAIL = 'email'
-    PROFILE = 'profile'
+class ProprietaryAccount(OktaAccount):
+    pass
 
 
-class ProprietaryAccount(ProviderAccount):
-    def get_profile_url(self):
-        return self.account.extra_data.get('link')
-
-    def get_avatar_url(self):
-        return self.account.extra_data.get('picture')
-
-    def to_str(self):
-        dflt = super().to_str()
-        return self.account.extra_data.get('name', dflt)
-
-
-class ProprietaryProvider(OAuth2Provider):
+class ProprietaryProvider(OktaProvider):
     id = 'proprietary'
     name = 'Proprietary Provider'
     account_class = ProprietaryAccount
-
-    def get_default_scope(self):
-        scope = [Scope.PROFILE]
-        #if QUERY_EMAIL:
-        scope.append(Scope.EMAIL)
-        return scope
 
     def get_auth_params(self, request, action):
         ret = super().get_auth_params(request, action)
@@ -77,23 +56,6 @@ class ProprietaryProvider(OAuth2Provider):
 
     def extract_uid(self, data):
         return str(data['id'])
-
-    def extract_common_fields(self, data):
-        user_data = {'email': data.get('email'),
-                     'username': data.get('email'),
-                     'last_name': data.get('family_name'),
-                     'first_name': data.get('given_name')}
-        derive_user_name(user_data)
-        return user_data
-
-    def extract_email_addresses(self, data):
-        ret = []
-        email = data.get('email')
-        if email and data.get('verified_email'):
-            ret.append(EmailAddress(email=email,
-                       verified=True,
-                       primary=True))
-        return ret
 
 
 route_next_param_to_query()

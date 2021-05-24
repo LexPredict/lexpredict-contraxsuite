@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -37,19 +37,6 @@ import regex as re
 from typing import Optional, List, Tuple, Union, Any
 
 from django.db.models import QuerySet
-
-
-class ModelUniqueNameBuilder:
-    @classmethod
-    def ensure_unique_name(cls, name: str, model_class) -> str:
-        names = set(model_class.objects.filter(
-            name__startswith=name).values_list('name', flat=True))
-        if name in names:
-            for i in range(1000):
-                name_candidate = f'{name} copy {i}'
-                if name_candidate not in names:
-                    return name_candidate
-        return name
 
 
 class ProjectsNameFilter:

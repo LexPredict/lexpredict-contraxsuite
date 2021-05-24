@@ -10,13 +10,17 @@ Method | HTTP request | Description
 [**TaskLoadDocumentsPOST**](TaskApi.md#taskloaddocumentspost) | **POST** /api/v1/task/load-documents/ | 
 [**TaskLocateGET**](TaskApi.md#tasklocateget) | **GET** /api/v1/task/locate/ | 
 [**TaskLocatePOST**](TaskApi.md#tasklocatepost) | **POST** /api/v1/task/locate/ | 
+[**TaskProcessTextExtractionResultsRequestIdPOST**](TaskApi.md#taskprocesstextextractionresultsrequestidpost) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ | 
 [**TaskPurgeTaskPOST**](TaskApi.md#taskpurgetaskpost) | **POST** /api/v1/task/purge-task/ | 
 [**TaskRecallTaskGET**](TaskApi.md#taskrecalltaskget) | **GET** /api/v1/task/recall-task/ | 
 [**TaskRecallTaskPOST**](TaskApi.md#taskrecalltaskpost) | **POST** /api/v1/task/recall-task/ | 
+[**TaskReindexroutinesCheckSchedulePOST**](TaskApi.md#taskreindexroutinescheckschedulepost) | **POST** /api/v1/task/reindexroutines/check_schedule | 
 [**TaskTaskLogGET**](TaskApi.md#tasktasklogget) | **GET** /api/v1/task/task-log/ | 
 [**TaskTaskStatusGET**](TaskApi.md#tasktaskstatusget) | **GET** /api/v1/task/task-status/ | 
 [**TaskTasksGET**](TaskApi.md#tasktasksget) | **GET** /api/v1/task/tasks/ | 
 [**TaskTasksIdGET**](TaskApi.md#tasktasksidget) | **GET** /api/v1/task/tasks/{id}/ | 
+[**TaskTasksProjectProjectIdActiveTasksGET**](TaskApi.md#tasktasksprojectprojectidactivetasksget) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ | 
+[**TaskTasksProjectProjectIdTasksGET**](TaskApi.md#tasktasksprojectprojectidtasksget) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ | 
 [**TaskUpdateElasticIndexGET**](TaskApi.md#taskupdateelasticindexget) | **GET** /api/v1/task/update-elastic-index/ | 
 [**TaskUpdateElasticIndexPOST**](TaskApi.md#taskupdateelasticindexpost) | **POST** /api/v1/task/update-elastic-index/ | 
 
@@ -89,6 +93,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -169,6 +174,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -243,6 +249,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -323,6 +330,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -397,6 +405,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -477,10 +486,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TaskProcessTextExtractionResultsRequestIdPOST
+
+> Object TaskProcessTextExtractionResultsRequestIdPOST (string requestId, Dictionary<string, Object> requestBody = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskProcessTextExtractionResultsRequestIdPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new TaskApi(Configuration.Default);
+            var requestId = requestId_example;  // string | 
+            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+
+            try
+            {
+                Object result = apiInstance.TaskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling TaskApi.TaskProcessTextExtractionResultsRequestIdPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestId** | **string**|  | 
+ **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -556,6 +646,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -630,6 +721,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -710,6 +802,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -721,9 +814,87 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## TaskReindexroutinesCheckSchedulePOST
+
+> Object TaskReindexroutinesCheckSchedulePOST (Dictionary<string, Object> requestBody = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskReindexroutinesCheckSchedulePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new TaskApi(Configuration.Default);
+            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+
+            try
+            {
+                Object result = apiInstance.TaskReindexroutinesCheckSchedulePOST(requestBody);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling TaskApi.TaskReindexroutinesCheckSchedulePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## TaskTaskLogGET
 
-> Dictionary&lt;string, Object&gt; TaskTaskLogGET (string taskId = null, int? recordsLimit = null)
+> List&lt;TaskLogResponse&gt; TaskTaskLogGET (string taskId, int? recordsLimit = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -751,12 +922,13 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var taskId = taskId_example;  // string |  (optional) 
+            var taskId = taskId_example;  // string | 
             var recordsLimit = 56;  // int? |  (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.TaskTaskLogGET(taskId, recordsLimit);
+                List<TaskLogResponse> result = apiInstance.TaskTaskLogGET(taskId, recordsLimit, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -775,12 +947,13 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **taskId** | **string**|  | [optional] 
+ **taskId** | **string**|  | 
  **recordsLimit** | **int?**|  | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**List&lt;TaskLogResponse&gt;**](TaskLogResponse.md)
 
 ### Authorization
 
@@ -790,6 +963,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -870,6 +1044,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -949,6 +1124,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1031,6 +1207,167 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TaskTasksProjectProjectIdActiveTasksGET
+
+> List&lt;ProjectActiveTasks&gt; TaskTasksProjectProjectIdActiveTasksGET (string projectId, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskTasksProjectProjectIdActiveTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new TaskApi(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectActiveTasks> result = apiInstance.TaskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling TaskApi.TaskTasksProjectProjectIdActiveTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TaskTasksProjectProjectIdTasksGET
+
+> List&lt;ProjectTasks&gt; TaskTasksProjectProjectIdTasksGET (string projectId, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskTasksProjectProjectIdTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new TaskApi(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectTasks> result = apiInstance.TaskTasksProjectProjectIdTasksGET(projectId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling TaskApi.TaskTasksProjectProjectIdTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1105,6 +1442,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1184,6 +1522,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

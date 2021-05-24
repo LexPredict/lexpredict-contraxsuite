@@ -1,5 +1,6 @@
 # CloneDocumentTypeRequest
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

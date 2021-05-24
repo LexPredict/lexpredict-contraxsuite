@@ -24,13 +24,18 @@
 """
 # -*- coding: utf-8 -*-
 
+from django.utils.duration import _get_duration_components
 from rest_framework import serializers
-from apps.common.schemas import ObjectResponseSchema, ObjectItemsResponseSchema, json_ct
+from rest_framework.fields import DurationField
+
+from apps.common.schemas import ObjectResponseSchema, ObjectToItemResponseMixin, JqFiltersListViewSchema, json_ct
+from apps.common.mixins import SimpleRelationSerializer
+from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -49,13 +54,43 @@ class TaskStatusSchema(ObjectResponseSchema):
         return res
 
 
-class TaskLogSchema(ObjectResponseSchema):
+class TaskLogSerializer(serializers.Serializer):
+    task_name = serializers.CharField(source='log_task_name', required=False, default=None)
+    log_level = serializers.CharField(source='level', required=False, default=None)
+    message = serializers.CharField(required=False, default=None)
+    timestamp = serializers.DateTimeField(source='@timestamp')
+    stack_trace = serializers.CharField(source='log_stack_trace', required=False, default=None)
+    regexp_search_fields = ['task_name', 'log_level']
+    sortable_fields = ['task_name', 'log_level', 'timestamp']
+    default_sort_field = 'timestamp'
+    default_sort_order = 'asc'
+
+
+class TaskLogResponseSerializer(serializers.Serializer):
+    records = TaskLogSerializer()
+    total_records_count = serializers.IntegerField()
+    filtered_records_count = serializers.IntegerField()
+    current_records_count = serializers.IntegerField()
+
+
+class TaskLogSchema(JqFiltersListViewSchema):
     parameters = [
         {'name': 'task_id',
          'in': 'query',
-         'required': False,
+         'required': True,
          'description': '',
          'schema': {'type': 'string'}},
+        {'name': 'records_limit',
+         'in': 'query',
+         'required': False,
+         'description': '',
+         'schema': {'type': 'integer'}}
+    ]
+    response_serializer = TaskLogResponseSerializer()
+
+
+class ProjectTaskLogSchema(TaskLogSchema):
+    parameters = [
         {'name': 'records_limit',
          'in': 'query',
          'required': False,
@@ -74,4 +109,84 @@ class RunTaskBaseSchema(ObjectResponseSchema):
             return res
         return {
             '200': {
-                'content': {json_ct: {'schema': self.object_schema}}}}
+                'content': {json_ct: {'schema': self.object_schema}},
+                'description': ''}}
+
+
+class CheckTaskScheduleSchema(ObjectResponseSchema):
+
+    class CheckTaskScheduleRequestSerializer(serializers.Serializer):
+        schedule = serializers.CharField(required=False)
+
+    request_serializer = CheckTaskScheduleRequestSerializer()
+
+    def get_responses(self, path, method):
+        resp = super().get_responses(path, method)
+        resp['200'] = resp['201']
+        del resp['201']
+        resp['200']['content'][json_ct]['schema'] = self.object_schema
+        return resp
+
+
+class CustomDurationField(DurationField):
+
+    def to_representation(self, value):
+        days, hours, minutes, seconds, microseconds = _get_duration_components(value)
+
+        string = '{:02d}:{:02d}:{:02d}'.format(hours, minutes, seconds)
+        if days:
+            string = '{} '.format(days) + string
+        if microseconds:
+            if not any([days, hours, minutes, seconds]):
+                string = '{:06d} ms'.format(microseconds)
+            else:
+                string += '.{:06d}'.format(microseconds)
+
+        return string
+
+
+class ProjectTasksSerializer(SimpleRelationSerializer):
+    verbose_name = serializers.CharField()
+    total_time = CustomDurationField()
+    work_time = CustomDurationField()
+    date_start = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    date_work_start = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    date_done = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    description = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = ['id', 'name', 'verbose_name', 'user__name', 'worker', 'status', 'progress', 'description',
+                  'date_start', 'date_work_start', 'date_done', 'total_time', 'work_time']
+
+    @staticmethod
+    def format_args(args):
+        if isinstance(args, (list, tuple)):
+            return list(args)
+        if isinstance(args, dict):
+            return [f'{k}: {v}' for k, v in args.items()]
+        if args:
+            return [str(args)]
+        return []
+
+    def get_description(self, obj):
+        args = self.format_args(obj.args)
+        kwargs = self.format_args(obj.kwargs)
+        metadata = self.format_args(obj.metadata)
+        return '\n'.join(args + kwargs + metadata)
+
+
+class ProjectTasksSchema(ObjectToItemResponseMixin, JqFiltersListViewSchema):
+    response_serializer = ProjectTasksSerializer()
+
+
+class ProjectActiveTasksSerializer(serializers.Serializer):
+    tasks = ProjectTasksSerializer()
+    document_transformer_change_in_progress = serializers.BooleanField()
+    text_unit_transformer_change_in_progress = serializers.BooleanField()
+    locate_terms_in_progress = serializers.BooleanField()
+    locate_companies_in_progress = serializers.BooleanField()
+
+
+class ProjectActiveTasksSchema(ObjectToItemResponseMixin, JqFiltersListViewSchema):
+    response_serializer = ProjectActiveTasksSerializer()

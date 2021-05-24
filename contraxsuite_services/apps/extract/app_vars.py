@@ -28,9 +28,9 @@
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,7 +45,8 @@ STANDARD_LOCATORS = AppVar.set(
      'geoentity',
      'party',
      'term'],
-    'List of standard (required) locators for use in "Load Documents" task.')
+    'List of standard (required) locators for use in "Load Documents" task.',
+    system_only=False)
 
 OPTIONAL_LOCATORS = AppVar.set(
     'Extract', 'optional_locators',
@@ -59,9 +60,21 @@ OPTIONAL_LOCATORS = AppVar.set(
      'trademark',
      'url'],
     'List of optional locators for use additionally '
-    'in "Locate" task if they have been chosen in "Locate" form.')
+    'in "Locate" task if they have been chosen in "Locate" form.',
+    system_only=False)
 
 SIMPLE_LOCATOR_TOKENIZATION = AppVar.set(
     'Extract', 'simple_locator_tokenization', True,
-    """Don't use NLTK when checking dictionary entries while locating Courts and
-       GeoEntities in the document.""")
+    """<ul>
+          <li><code>true</code>: use regex tokenization when locating Courts and GeoEntities,</li>
+          <li><code>false</code>: use tokenization.</li>
+       </ul>""",
+    system_only=False)
+
+STRICT_PARSE_DATES = AppVar.set(
+    'Extract', 'strict_parse_dates', True,
+    """
+    <ul>
+       <li><code>true</code>: skip values like "C-4-30"</li>          
+    </ul>
+    """, system_only=False)

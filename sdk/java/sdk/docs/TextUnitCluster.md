@@ -2,6 +2,7 @@
 
 # TextUnitCluster
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -13,9 +14,9 @@ Name | Type | Description | Notes
 **description** | **String** |  | 
 **clusterBy** | **String** |  | 
 **using** | **String** |  | 
-**createdDate** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
-**textUnitCount** | **String** |  |  [optional] [readonly]
-**textUnitData** | **String** |  |  [optional] [readonly]
+**createdDate** | **OffsetDateTime** |  |  [optional]
+**textUnitCount** | **Integer** |  |  [optional] [readonly]
+**textUnitData** | **List&lt;Object&gt;** |  |  [optional] [readonly]
 
 
 

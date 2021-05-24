@@ -2,11 +2,12 @@
 
 # AnnotationBatchResponse
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**operationUid** | [**UUID**](UUID.md) |  | 
+**operationUid** | **UUID** |  | 
 **status** | **String** |  | 
 **data** | **Object** |  | 
 

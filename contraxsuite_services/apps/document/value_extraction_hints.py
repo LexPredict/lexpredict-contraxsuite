@@ -28,9 +28,9 @@ from enum import Enum, unique
 from typing import Optional, List
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -51,22 +51,32 @@ class ValueExtractionHint(Enum):
 
     @staticmethod
     def _is_money(v) -> bool:
-        return type(v) is dict and 'amount' in v and 'currency' in v
+        return isinstance(v, dict) and 'amount' in v and 'currency' in v
+
+    @staticmethod
+    def _is_ratio(v) -> bool:
+        return isinstance(v, dict) and 'numerator' in v and 'denominator' in v
 
     @staticmethod
     def get_value(l: Optional[List], hint: str):
         if not l:
-            return None
-
+            return
         if str(hint) == ValueExtractionHint.TAKE_LAST.name:
             return l[-1]
-        elif str(hint) == ValueExtractionHint.TAKE_SECOND.name and len(l) > 1:
+        if str(hint) == ValueExtractionHint.TAKE_SECOND.name and len(l) > 1:
             return l[1]
-        elif str(hint) == ValueExtractionHint.TAKE_FIRST.name and len(l) > 0:
+        if str(hint) == ValueExtractionHint.TAKE_FIRST.name and len(l) > 0:
             return l[0]
-        elif str(hint) == ValueExtractionHint.TAKE_MIN.name:
-            return min(l, key=lambda dd: dd['amount']) if ValueExtractionHint._is_money(l[0]) else min(l)
-        elif str(hint) == ValueExtractionHint.TAKE_MAX.name:
-            return max(l, key=lambda dd: dd['amount']) if ValueExtractionHint._is_money(l[0]) else max(l)
-        else:
-            return None
+        # TODO: move if-else logic into TypedField methods as it depends on TypedField-dependent data structure
+        if str(hint) == ValueExtractionHint.TAKE_MIN.name:
+            if ValueExtractionHint._is_money(l[0]):
+                return min(l, key=lambda dd: dd['amount'])
+            elif ValueExtractionHint._is_ratio(l[0]):
+                return min(l, key=lambda dd: dd['numerator'] / dd['denominator'])
+            return min(l)
+        if str(hint) == ValueExtractionHint.TAKE_MAX.name:
+            if ValueExtractionHint._is_money(l[0]):
+                return max(l, key=lambda dd: dd['amount'])
+            elif ValueExtractionHint._is_ratio(l[0]):
+                return max(l, key=lambda dd: dd['numerator'] / dd['denominator'])
+            return max(l)

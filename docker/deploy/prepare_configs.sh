@@ -77,9 +77,11 @@ envsubst < ./config-templates/jupyter_notebook_config.py.template > ./temp/jupyt
 
 envsubst < ./config-templates/nginx-customer.conf.template > ./temp/nginx-customer.conf || echo '# no customer config included' > ./temp/nginx-customer.conf
 
+envsubst < ./config-templates/filebeat-backend-dev.template.yml > ./temp/filebeat-backend-dev.yml
+
 cp ./config-templates/*.conf ./temp/
 
 echo "Copy config to helm chart"
 mkdir -p ./k8s/contraxsuite/files/
-cp -r ./config-templates/* ./k8s/contraxsuite/files/
+cp -r ./temp/* ./k8s/contraxsuite/files/
 

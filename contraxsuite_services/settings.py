@@ -59,7 +59,8 @@ warnings.filterwarnings('ignore',
 
 ROOT_DIR = environ.Path(__file__) - 2
 PROJECT_DIR = ROOT_DIR.path('contraxsuite_services')
-APPS_DIR = PROJECT_DIR.path('apps')
+APPS_DIR_NAME = 'apps'
+APPS_DIR = PROJECT_DIR.path(APPS_DIR_NAME)
 
 BASE_DIR = ROOT_DIR
 
@@ -131,22 +132,34 @@ INSTALLED_APPS = (
     'guardian',
 
     # LOCAL_APPS
-    # 'apps.common',
-    # 'apps.analyze',
-    # 'apps.document',
-    # 'apps.annotator',
-    # 'apps.extract',
-    # 'apps.project',
-    # 'apps.deployment',
-    # 'apps.task',
-    # 'apps.users',
-    # 'apps.dump'
+    'apps.analyze',
+    'apps.common',
+    'apps.datascience',
+    'apps.deployment',
+    'apps.document',
+    'apps.dump',
+    'apps.extract',
+    'apps.highq_integration',
+    'apps.logging',
+    'apps.materialized_views',
+    'apps.mlflow',
+    'apps.notifications',
+    'apps.project',
+    'apps.rawdb',
+    'apps.task',
+    'apps.tus',
+    'apps.users',
+    'apps.websocket',
+    'apps.imanage_integration',
+    'apps.similarity',
 )
 
-apps_dir = PROJECT_DIR('apps')
-PROJECT_APPS = tuple('apps.%s' % name for name in os.listdir(apps_dir)
-                     if os.path.isdir(os.path.join(apps_dir, name)) and '__' not in name)
-INSTALLED_APPS += PROJECT_APPS
+PLUGGABLE_PROJECT_APPS = tuple(f'{APPS_DIR_NAME}.{name}' for name in sorted(os.listdir(APPS_DIR))
+                               if os.path.isdir(os.path.join(APPS_DIR, name))
+                               and '__' not in name
+                               and f'{APPS_DIR_NAME}.{name}' not in INSTALLED_APPS)
+INSTALLED_APPS += PLUGGABLE_PROJECT_APPS
+PROJECT_APPS = [i for i in INSTALLED_APPS if i.startswith(APPS_DIR_NAME)]
 
 # MIDDLEWARE CONFIGURATION
 # ------------------------------------------------------------------------------
@@ -400,6 +413,10 @@ ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 
+ACCOUNT_FORMS: dict = {
+    'reset_password': 'apps.users.forms.CustomResetPasswordForm',
+}
+
 # Custom user app defaults
 # Select the correct user model
 AUTH_USER_MODEL = 'users.User'
@@ -422,6 +439,10 @@ CELERY_RESULT_EXPIRES = 0
 CELERY_QUEUE_SERIAL = 'serial'
 # message targeted to this queue will be processed on all workers
 
+from apps.task.celery_backend.constants import ENV_VAR_CELERY_SHUTDOWN_WHEN_NO_TASKS_LONGER_THAN_SEC
+if os.environ.get(ENV_VAR_CELERY_SHUTDOWN_WHEN_NO_TASKS_LONGER_THAN_SEC):
+    CELERY_WORKER_AUTOSCALER = 'apps.task.celery_backend.autoscaler:ShutdownWhenNoTasksAutoscaler'
+
 CELERY_BEAT_SCHEDULE = {
     'advanced_celery.track_tasks': {
         'task': task_names.TASK_NAME_TRACK_TASKS,
@@ -443,27 +464,16 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0 * 30,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60 * 30},
     },
-    'advanced_celery.retrain_dirty_fields': {
-        'task': task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
-        'schedule': 60.0,
-        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
-    },
-    'advanced_celery.cache_updated_docs': {
-        'task': task_names.TASK_NAME_CACHE_UPDATED_DOCS,
-        'schedule': 30.0,
-        'options': {'queue': CELERY_QUEUE_SERIAL,
-                    'expires': 30},
-    },
     'advanced_celery.track_session_completed': {
         'task': task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
         'schedule': 15.0,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 15},
     },
-    'advanced_celery.track_pdf2pdfa_status': {
-        'task': task_names.TASK_NAME_TRACK_PDEF2PDFA_STATUS,
-        'schedule': 15.0,
-        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 15},
-    },
+    # 'advanced_celery.track_failed_document_loads': {
+    #     'task': task_names.TASK_NAME_TRACK_FAILED_DOCUMENT_LOADS,
+    #     'schedule': 120.0,
+    #     'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 120},
+    # },
     'deployment.usage_stats': {
         'task': task_names.TASK_NAME_USAGE_STATS,
         'schedule': 60 * 60 * 12,
@@ -499,6 +509,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute=0, hour=0),
         'options': {'queue': CELERY_QUEUE_SERIAL},
     },
+    'apps.analyze.tasks.delete_expired_similarity_objects': {
+        'task': task_names.TASK_NAME_DELETE_EXPIRED_SIMILARITY,
+        'schedule': 1 * 60 * 60,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 1 * 60 * 60},
+    },
     'apps.imanage_integration.tasks.init_method_stats_collectors': {
         'task': task_names.TASK_NAME_INIT_METHOD_STATS_COLLECTORS,
         'schedule': 60,
@@ -518,6 +533,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': task_names.TASK_NAME_TASK_HEALTH_CHECK,
         'schedule': 30,
         'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 30},
+    },
+    'task_check_reindex_schedules': {
+        'task': task_names.TASK_NAME_CHECK_REINDEX_SCHEDULES,
+        'schedule': 60,
+        'options': {'queue': CELERY_QUEUE_SERIAL, 'expires': 60},
     }
 }
 
@@ -525,14 +545,12 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_TRACK_TASKS,
     task_names.TASK_NAME_TRACK_FAILED_TASKS,
     task_names.TASK_NAME_TRACK_SESSION_COMPLETED,
-    task_names.TASK_NAME_TRACK_PDEF2PDFA_STATUS,
+    task_names.TASK_NAME_TRACK_FAILED_DOCUMENT_LOADS,
     task_names.TASK_NAME_UPDATE_MAIN_TASK,
     task_names.TASK_NAME_UPDATE_PARENT_TASK,
     task_names.TASK_NAME_CLEAN_TASKS_PERIODIC,
     task_names.TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC,
     task_names.TASK_NAME_USAGE_STATS,
-    task_names.TASK_NAME_RETRAIN_DIRTY_TASKS,
-    task_names.TASK_NAME_CACHE_UPDATED_DOCS,
     task_names.TASK_NAME_CACHE_DOC_NOT_TRACKED,
     task_names.TASK_NAME_AUTO_REINDEX,
     task_names.TASK_NAME_IMANAGE_TRIGGER_SYNC,
@@ -547,7 +565,10 @@ EXCLUDE_FROM_TRACKING = {
     task_names.TASK_NAME_HIGHQ_WRITE_TO_ISHEET,
     task_names.TASK_NAME_HIGHQ_TRIGGER_ISHEET_SYNC,
     task_names.TASK_NAME_HIGHQ_REFRESH_ACCESS_TOKEN,
-    task_names.TASK_NAME_TASK_HEALTH_CHECK
+    task_names.TASK_NAME_TASK_HEALTH_CHECK,
+    task_names.TASK_NAME_DELETE_EXPIRED_SIMILARITY,
+    task_names.TASK_NAME_CHECK_REINDEX_SCHEDULES,
+    task_names.TASK_NAME_CALCULATE_BLOCK_SIMILARITY,
 }
 
 TASKS_DO_NOT_REMOVE_WHEN_READY = set()
@@ -580,7 +601,6 @@ CELERY_TASK_QUEUES = (
     Queue('high_priority', routing_key='task_high_priority.#'),
     Queue('serial', routing_key='task_serial.#'),
     Queue('beat-db', routing_key='task_beat_db.#'),
-    Queue('doc_load', routing_key='task_doc_load.#'),
     Broadcast(name=CELERY_QUEUE_WORKER_BCAST, exchange=exchange),
 )
 
@@ -702,7 +722,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'apps.common.schemas.CustomAutoSchema'
 }
 REST_FRAMEWORK_TUS = {
-    'SAVE_HANDLER_CLASS': 'apps.tus.storage.TusSaveHandler'
+    'SAVE_HANDLER_CLASS': 'apps.tus.storage.TusSaveHandler',
 }
 
 REST_AUTH_SERIALIZERS = {
@@ -740,7 +760,8 @@ TIKA_DISABLE = False
 TIKA_SERVER_ENDPOINT = None
 JAR_BASE_PATH = PROJECT_DIR('jars')
 
-JAI_JARS = ['jai-imageio-core.jar', 'jai-imageio-jpeg2000.jar', 'levigo-jbig2-imageio-2.0.jar']
+JAI_JARS = ['jai-imageio-core.jar', 'jai-imageio-jpeg2000.jar',
+            'jbig2-imageio.jar']
 TIKA_JARS = ['tika-app.jar', 'lexpredict-tika.jar'] + JAI_JARS
 
 TEXTRACT_FIRST_FOR_EXTENSIONS = []
@@ -757,6 +778,28 @@ JQ_EXPORT = False
 DATA_ROOT = PROJECT_DIR('data/')
 GIT_DATA_REPO_ROOT = 'https://raw.githubusercontent.com/' \
                      'LexPredict/lexpredict-legal-dictionary/1.0.7'
+
+# possible languages and locales
+LOCALES = {
+    "en_AU": "English / Australia",
+    "en_BZ": "English / Belize",
+    "en_CA": "English / Canada",
+    "en_CB": "English / Caribbean",
+    "en_GB": "English / Great Britain",
+    "en_IN": "English / India",
+    "en_IE": "English / Ireland",
+    "en_JM": "English / Jamaica",
+    "en_NZ": "English / New Zealand",
+    "en_PH": "English / Philippines",
+    "en_ZA": "English / Southern Africa",
+    "en_TT": "English / Trinidad",
+    "en_US": "English / United States",
+    "de_AT": "German / Austria",
+    "de_DE": "German / Germany",
+    "de_LI": "German / Liechtenstein",
+    "de_LU": "German / Luxembourg",
+    "de_CH": "German / Switzerland",
+}
 
 # logging
 CELERY_LOG_FILE_PATH = PROJECT_DIR('logs/celery-{0}.log'.format(platform.node()))
@@ -907,7 +950,7 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '1.8.0'
+VERSION_NUMBER = '2.0.0'
 VERSION_COMMIT = '670689597ae28403dd848f924d222a33c4254f46'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
@@ -930,8 +973,6 @@ TRAINED_AFTER_DOCUMENTS_NUMBER = 100
 TEXT_UNITS_TO_PARSE_PACKAGE_SIZE = 200
 
 ML_TRAIN_DATA_SET_GROUP_LEN = 10000
-
-RAW_DB_FULL_TEXT_SEARCH_CUT_ABOVE_TEXT_LENGTH = 4 * 1024 * 1024
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 2621440
 
@@ -965,6 +1006,12 @@ TEST_RUN_MODE = False
 ENABLE_LOCAL_TESTS = False
 
 HOST_NAME = 'localhost'
+
+TEXT_EXTRACTION_SYSTEM_URL = 'http://127.0.0.1:8000'
+TEXT_EXTRACTION_SYSTEM_CALLBACK_URL = 'http://localhost:3355/api/v1/task/process_text_extraction_results'
+
+MODEL_S3_BUCKET = 'lexnlp-models-public'
+MODEL_S3_REGION = 'us-west-1'
 
 try:
     from local_settings import *

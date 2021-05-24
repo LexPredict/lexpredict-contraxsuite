@@ -6,6 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Detail** | **string** |  | 
+**TaskId** | **string** |  | [optional] 
 **Confirm** | **bool** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

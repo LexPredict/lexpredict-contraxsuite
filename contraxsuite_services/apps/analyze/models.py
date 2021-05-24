@@ -25,14 +25,15 @@
 # -*- coding: utf-8 -*-
 
 # Third-party imports
-from typing import List
-
 from picklefield import PickledObjectField
+from scipy.spatial.distance import _METRICS
 
 # Django imports
 from django.db import models
 from django.db.models.deletion import CASCADE
 from django.contrib.postgres.fields import JSONField
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.dispatch import receiver
 from django.utils.timezone import now
 
 # App imports
@@ -42,65 +43,154 @@ from apps.project.models import Project
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # --------------------------------------------------------------------------
-# Transformer models
+# Transformer and classifier models are now in MLModel object
 # --------------------------------------------------------------------------
+class MLDocumentTransformerModelManager(models.Manager):
+    use_in_migrations = True
 
-class BaseTransformer(models.Model):
+    def get_queryset(self):
+        return super().get_queryset().filter(apply_to='document', target_entity='transformer')
+
+
+class MLTextUnitTransformerModelManager(models.Manager):
+    use_in_migrations = True
+
+    def get_queryset(self):
+        return super().get_queryset().filter(apply_to='text_unit', target_entity='transformer')
+
+
+class MLDocumentClassifierModelManager(models.Manager):
+    use_in_migrations = True
+
+    def get_queryset(self):
+        return super().get_queryset().filter(apply_to='document', target_entity='classifier')
+
+
+class MLTextUnitClassifierModelManager(models.Manager):
+    use_in_migrations = True
+
+    def get_queryset(self):
+        return super().get_queryset().filter(apply_to='text_unit', target_entity='classifier')
+
+
+class MLDocumentContractClassifierModelManager(models.Manager):
+    use_in_migrations = True
+
+    def get_queryset(self):
+        return super().get_queryset().filter(apply_to='document', target_entity='contract_type_classifier')
+
+
+class MLTextUnitContractClassifierModelManager(models.Manager):
+    use_in_migrations = True
+
+    def get_queryset(self):
+        return super().get_queryset().filter(apply_to='text_unit', target_entity='contract_type_classifier')
+
+
+class MLModel(models.Model):
+    DEFAULT_LANGUAGE = 'en'
+
     """
-    BaseTransformer abstract model - parent class for TextUnitTransformer and DocumentTransformer
-    # TODO: Document/TextUnit interface for transformer
-    # TODO: Discuss stronger "typing" of transformers (e.g., as CHOICE field or further normalization)
+    This table stores only the path to the ML Model (pickled or even compressed)
+    together with some flags.
+    Document / text unit level classifiers, transformers and contract type detectors all
+    use this class to access the model files.
     """
-    # Transformer name
-    name = models.CharField(max_length=1024, db_index=True, unique=True)
+    # Transformer / classifier name, also may contain description (model params)
+    name = models.CharField(max_length=1024, db_index=True,
+                            help_text='Model name, may include module parameters')
 
     # Transformer version, for version-tracked transformers
-    version = models.CharField(max_length=1024, db_index=True)
+    version = models.CharField(max_length=1024, db_index=True,
+                               help_text='Model version')
 
-    # Name for TextUnitVector - matches TextUnitVector
-    vector_name = models.CharField(max_length=1024, db_index=True)
+    # Name for <entity>Vector - matches <entity>UnitVector
+    vector_name = models.CharField(max_length=1024, db_index=True, null=True, blank=True)
 
-    # Serialized model object
-    model_object = PickledObjectField(compress=True)
+    # Serialized model object path in WebDAV
+    model_path = models.CharField(max_length=1024, db_index=True, unique=True,
+                                  help_text='Model path, relative to WebDAV root folder')
 
     # Active/valid model field used to invalidate or de-activate models
-    is_active = models.BooleanField(default=True, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True,
+                                    help_text='Inactive models are ignored')
+
+    # whether it's default or not
+    default = models.BooleanField(default=False, db_index=True,
+                                  help_text='The default model is used unless another model is deliberately selected')
+
+    apply_to = models.CharField(
+        max_length=26, db_index=True, blank=True, null=True,
+        choices=[('document', 'Document'), ('text_unit', 'Text Unit')],
+        help_text='Should the model be applied to documents or text units')
+
+    target_entity = models.CharField(
+        max_length=26, db_index=True, blank=True, null=True,
+        choices=[('transformer', 'Transformer'),
+                 ('classifier', 'Classifier'),
+                 ('contract_type_classifier', 'Contract Type Classifier'),
+                 ('is_contract', 'Contract / Generic Document Classifier')],
+        help_text='The model class')
+
+    # Serialized model object path in WebDAV
+    language = models.CharField(max_length=12, db_index=True, blank=True, null=True,
+                                help_text='Language (ISO 693-1) code, may be omitted')
+
+    # optional project reference
+    project = models.ForeignKey('project.Project', blank=True, null=True, on_delete=CASCADE, default=None,
+                                help_text='Optional project reference')
+
+    text_unit_type = models.CharField(
+        max_length=26, db_index=True, blank=False, null=True,
+        choices=[('sentence', 'sentence'), ('paragraph', 'paragraph')],
+        help_text='Text unit type: sentence or paragraph',
+        default='sentence')
+
+    # this is the version of the CS codebase in which the model was trained
+    codebase_version = models.CharField(max_length=64, db_index=True, null=True, blank=True,
+                                        help_text='ContraxSuite version in which the model was created')
+
+    # this flag is supposed to be set automatically
+    # and if it's set CS won't try updating the model files
+    user_modified = models.BooleanField(db_index=True, null=False, blank=False, default=False,
+                                        help_text='User modified models are not automatically updated',)
 
     class Meta:
-        abstract = True
-        unique_together = (("name", "version"),)
-        ordering = ('name', 'vector_name')
+        unique_together = (('name', 'version', 'target_entity', 'apply_to', 'language', 'project'),)
+        ordering = ('name', 'vector_name', 'target_entity', 'apply_to')
+
+    objects = models.Manager()
+    document_transformers = MLDocumentTransformerModelManager()
+    textunit_transformers = MLTextUnitTransformerModelManager()
+    document_classifiers = MLDocumentClassifierModelManager()
+    textunit_classifiers = MLTextUnitClassifierModelManager()
+    document_contract_classifiers = MLDocumentContractClassifierModelManager()
+    textunit_contract_classifiers = MLTextUnitContractClassifierModelManager()
 
     def __str__(self):
-        return "{} (name={}, version={}, class_name={}" \
-            .format(self._meta.model.__name__, self.name, self.version, self.vector_name)
+        return f'{self.apply_to} {self.target_entity}, lang="{self.language}", project={self.project}. ' + \
+               f'Name="{self.name}"'
+
+    def __repr__(self):
+        return self.__str__()
+
+    def save_default(self):
+        if self.default:
+            self._meta.model.objects.filter(
+                apply_to=self.apply_to, target_entity=self.target_entity).exclude(id=self.id).update(default=False)
 
 
-class TextUnitTransformer(BaseTransformer):
-    """
-    TextUnitTransformer object model
-    TextUnitTransformer is a class used to transform a text unit into a TextUnitVector object,
-    e.g., a doc2vec model or term-frequency transform.
-    """
-    # Transformer text unit type
-    text_unit_type = models.CharField(max_length=128, db_index=True)
-
-
-class DocumentTransformer(BaseTransformer):
-    """
-    DocumentTransformer object model
-    DocumentTransformer is a class used to transform a text unit into a DocumentVector object,
-    e.g., a doc2vec model or term-frequency transform.
-    """
-    pass
+@receiver(models.signals.post_save, sender=MLModel)
+def save_default(sender, instance, created, **kwargs):
+    instance.save_default()
 
 
 # --------------------------------------------------------------------------
@@ -134,7 +224,7 @@ class TextUnitVector(BaseVector):
     can be set via Jupyter notebook or calculated through manual or scheduled task executing TextUnitTransformer.
     """
     # Transformer
-    transformer = models.ForeignKey(TextUnitTransformer, db_index=True, on_delete=CASCADE)
+    transformer = models.ForeignKey(MLModel, db_index=True, on_delete=CASCADE)
 
     # Text unit
     text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
@@ -150,11 +240,11 @@ class TextUnitVector(BaseVector):
 class DocumentVector(BaseVector):
     """
     DocumentVector object model
-    DocumentVector is a class used to record the calculation of a DocumentTransformer.  This calculation
-    can be set via Jupyter notebook or calculated through manual or scheduled task executing DocumentTransformer.
+    DocumentVector is a class used to record the calculation of a MLModel.  This calculation
+    can be set via Jupyter notebook or calculated through manual or scheduled task executing MLModel.
     """
     # Transformer
-    transformer = models.ForeignKey(DocumentTransformer, db_index=True, on_delete=CASCADE)
+    transformer = models.ForeignKey(MLModel, db_index=True, on_delete=CASCADE)
 
     # Document FK
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
@@ -267,14 +357,12 @@ class TextUnitClassifier(BaseClassifier):
     """
     TextUnitClassifier object model
     """
-    pass
 
 
 class DocumentClassifier(BaseClassifier):
     """
     DocumentClassifier object model
     """
-    pass
 
 
 class BaseClassifierSuggestion(models.Model):
@@ -452,7 +540,65 @@ class TextUnitCluster(BaseCluster):
 # Similarity models
 # --------------------------------------------------------------------------
 
-class DocumentSimilarity(models.Model):
+
+class SimilarityRun(models.Model):
+
+    # Verbose name
+    name = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+
+    project = models.ForeignKey(Project, null=True, blank=True, db_index=True, on_delete=CASCADE)
+
+    # Create date - date of run, so should be equal for all objects from one run
+    created_date = models.DateTimeField(default=now, db_index=True)
+
+    created_by = models.ForeignKey(
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
+
+    # source of features: term, date, ...., vector
+    feature_source = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+
+    # threshold from 50 to 100
+    similarity_threshold = models.PositiveSmallIntegerField(validators=[MinValueValidator(50), MaxValueValidator(100)],
+                                                            default=75, null=True, blank=True, db_index=True)
+
+    distance_type = models.CharField(max_length=20, choices=[(i, i) for i in _METRICS],
+                                     blank=True, null=True, db_index=True)
+
+    # param for similarity task
+    use_tfidf = models.BooleanField(default=False, null=True, blank=True, db_index=True)
+
+    # source for similarity: document, text_unit, etc
+    # TODO: use FK(ContentType)?
+    unit_source = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+
+    # unit type for text_unit, either other specific to item source info
+    unit_type = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+
+    # item id if run was against specific item (text unit / document)
+    unit_id = models.IntegerField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        verbose_name_plural = 'Similarity Runs'
+
+    def __str__(self):
+        return f'{self.id}-{self.name}: {self.feature_source}: {self.created_date}'
+
+
+class BaseSimilarity(models.Model):
+
+    id = models.BigAutoField(primary_key=True)
+
+    # Similarity value
+    similarity = models.DecimalField(max_digits=5, decimal_places=2, db_index=True)
+
+    # run id
+    run = models.ForeignKey(SimilarityRun, null=True, blank=True, db_index=True, on_delete=CASCADE)
+
+    class Meta:
+        abstract = True
+
+
+class DocumentSimilarity(BaseSimilarity):
     """
     DocumentSimilarity object model
     DocumentSimilarity records similarity between two documents.
@@ -467,21 +613,15 @@ class DocumentSimilarity(models.Model):
     document_b = models.ForeignKey(Document, db_index=True,
                                    related_name="document_b_similarity_set", on_delete=CASCADE)
 
-    # Similarity
-    similarity = models.DecimalField(max_digits=5, decimal_places=2)
-
-    # Create date
-    created_date = models.DateTimeField(default=now, db_index=True)
-
     class Meta:
-        ordering = ('document_a__pk', '-similarity', 'document_b__pk')
+        ordering = ('document_a_id', '-similarity', 'document_b_id')
         verbose_name_plural = 'Document Similarities'
 
     def __str__(self):
-        return '{}-{}: {}'.format(str(self.document_a), str(self.document_b), self.similarity)
+        return f'{self.document_a_id}-{self.document_b_id} : {self.run.feature_source} : {self.similarity}'
 
 
-class TextUnitSimilarity(models.Model):
+class TextUnitSimilarity(BaseSimilarity):
     """
     TextUnitSimilarity object model
     TextUnitSimilarity records similarity between two text units.
@@ -496,12 +636,6 @@ class TextUnitSimilarity(models.Model):
     text_unit_b = models.ForeignKey(TextUnit,
                                     db_index=True, related_name="similar_text_unit_b_set",
                                     on_delete=CASCADE)
-
-    # Similarity score
-    similarity = models.DecimalField(max_digits=5, decimal_places=2)
-
-    # Create date
-    created_date = models.DateTimeField(default=now, db_index=True)
 
     # These columns are added to avoid joining tables
     document_a = models.ForeignKey(
@@ -521,11 +655,11 @@ class TextUnitSimilarity(models.Model):
         on_delete=CASCADE)
 
     class Meta:
-        ordering = ('text_unit_a__pk', '-similarity', 'text_unit_b__pk')
+        ordering = ('text_unit_a_id', '-similarity', 'text_unit_b_id')
         verbose_name_plural = 'Text Unit Similarities'
 
     def __str__(self):
-        return '{}-{}: {}'.format(str(self.text_unit_a), str(self.text_unit_b), self.similarity)
+        return f'{self.text_unit_a_id}-{self.text_unit_b_id} : {self.run.feature_source} : {self.similarity}'
 
     def save(self, **kwargs):
         if not self.document_a:
@@ -539,7 +673,7 @@ class TextUnitSimilarity(models.Model):
         super().save(**kwargs)
 
 
-class PartySimilarity(models.Model):
+class PartySimilarity(BaseSimilarity):
     """
     PartySimilarity object model
     PartySimilarity is a class used to record similar party relationships,
@@ -554,15 +688,9 @@ class PartySimilarity(models.Model):
     party_b = models.ForeignKey(Party, db_index=True,
                                 related_name="party_b_similarity_set", on_delete=CASCADE)
 
-    # Similarity score
-    similarity = models.DecimalField(max_digits=5, decimal_places=2)
-
-    # Create date
-    created_date = models.DateTimeField(default=now, db_index=True)
-
     class Meta:
-        ordering = ('party_a__pk', '-similarity', 'party_b__pk')
+        ordering = ('party_a_id', '-similarity', 'party_b_id')
         verbose_name_plural = 'Party Similarities'
 
     def __str__(self):
-        return '{}-{}: {}'.format(str(self.party_a), str(self.party_b), self.similarity)
+        return f'{self.party_a_id}-{self.party_b_id}: {self.feature_source}: {self.similarity}'

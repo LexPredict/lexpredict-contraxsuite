@@ -26,14 +26,15 @@
 
 import re
 from contextlib import contextmanager
-from typing import Optional, Union, BinaryIO, ByteString
+from requests import Response
+from typing import Optional, Union, BinaryIO, ByteString, Any, Dict
 
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,25 +106,42 @@ class ContraxsuiteFileStorage:
         del ar[-1]
         return '/'.join(ar) + '/'
 
+    def ensure_folder_exists(self, target_folder: str):
+        folders = target_folder.strip('/').split('/')
+        for i in range(len(folders)):
+            sub_path = '/'.join(folders[:i + 1])
+            content = self.check_path(sub_path)
+            if content['exists']:
+                continue
+            try:
+                self.mkdir(sub_path)
+            except Exception as e:
+                raise Exception(f'Cannot create folder "{sub_path}"') from e
+
     def list(self, rel_file_path: str):
         """
         List files in a dir..
         :param rel_file_path: Path to the directory - related to the root of the file storage.
         :return:
         """
-        pass
+
+    def file_info(self, rel_file_path: str) -> Dict[str, Any]:
+        """
+        List files in a dir..
+        :param rel_file_path: full path to the file
+        :return:
+        """
+        raise NotImplementedError()
 
     def delete_file(self, rel_file_path: str):
         """
         Delete files by absolute path (file system) or full URI
         """
-        pass
 
-    def rename_file(self, old_file_path: str, new_file_path: str):
+    def rename_file(self, old_file_path: str, new_file_path: str, move_file: bool = False):
         """
         Rename files by absolute path (file system) or full URI
         """
-        pass
 
     @contextmanager
     def get_as_local_fn(self, rel_file_path: str):
@@ -137,7 +155,6 @@ class ContraxsuiteFileStorage:
         :param rel_file_path: Path to file - relative to the root of the storage.
         :return:
         """
-        pass
 
     def mkdir(self, rel_path: str):
         """
@@ -145,7 +162,6 @@ class ContraxsuiteFileStorage:
         :param rel_path: Path relative to the root of the storage.
         :return:
         """
-        pass
 
     def document_exists(self, rel_path: str):
         """
@@ -153,17 +169,23 @@ class ContraxsuiteFileStorage:
         :param rel_path: Path relative to the root of the storage.
         :return:
         """
-        pass
 
-    def write_file(self, rel_file_path: str, contents_file_like_object: BinaryIO, content_length: int = None):
+    def check_path(self, rel_path: str) -> Dict[str, bool]:
+        raise NotImplementedError()
+
+    def write_file(self,
+                   rel_file_path: str,
+                   contents_file_like_object: Union[BinaryIO, bytes],
+                   content_length: int = None,
+                   skip_existing: bool = False):
         """
         Write file into the file storage.
         :param rel_file_path: Path to the new file related to the root of the file storage.
         :param contents_file_like_object: Data to write into the file.
         :param content_length: Length of file if available
+        :param skip_existing:
         :return:
         """
-        pass
 
     def mk_doc_dir(self, rel_path: str):
         """
@@ -176,16 +198,18 @@ class ContraxsuiteFileStorage:
     def write_document(self,
                        rel_file_path: str,
                        contents_file_like_object: Union[BinaryIO, ByteString],
-                       content_length: int = None):
+                       content_length: int = None,
+                       skip_existing: bool = False):
         """
         Write contents into a file in the documents sub-dir of the file storage.
         :param rel_file_path: Path related to the "documents" sub-dir.
         :param contents_file_like_object:
         :param content_length:
+        :param skip_existing:
         :return:
         """
         p = self.sub_path_join(self.documents_path, rel_file_path)
-        self.write_file(p, contents_file_like_object, content_length)
+        self.write_file(p, contents_file_like_object, content_length, skip_existing)
 
     @contextmanager
     def get_document_as_local_fn(self, rel_file_path: str):
@@ -240,4 +264,6 @@ class ContraxsuiteFileStorage:
         :param rel_file_path: File path related to the root of the file storage.
         :return:
         """
-        pass
+
+    def get_request(self, rel_file_path: str, extra_headers: Optional[Dict[str, Any]]) -> Optional[Response]:
+        raise NotImplementedError()

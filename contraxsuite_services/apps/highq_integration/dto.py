@@ -28,9 +28,9 @@ import datetime
 from typing import Dict, List, Union
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,7 +44,7 @@ class HighQDTO:
         for attribute, value in self.__dict__.items():
             if value is None:
                 continue
-            elif isinstance(value, list):
+            if isinstance(value, list):
                 d[attribute] = list(
                     map(
                         lambda x:
@@ -77,19 +77,13 @@ class HighQDTO:
         """
         if obj is None:
             return None
-        elif isinstance(obj, (bool, bytes, str, int, float,)):
+        if isinstance(obj, (bool, bytes, str, int, float,)):
             return obj
-        elif isinstance(obj, list):
-            return [
-                self.sanitize_for_serialization(sub_obj)
-                for sub_obj in obj
-            ]
-        elif isinstance(obj, tuple):
-            return tuple(
-                self.sanitize_for_serialization(sub_obj)
-                for sub_obj in obj
-            )
-        elif isinstance(obj, (datetime.datetime, datetime.date)):
+        if isinstance(obj, list):
+            return [self.sanitize_for_serialization(sub_obj) for sub_obj in obj]
+        if isinstance(obj, tuple):
+            return tuple(self.sanitize_for_serialization(sub_obj) for sub_obj in obj)
+        if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
 
         if isinstance(obj, dict):

@@ -2,11 +2,12 @@
 
 # SetProjectAnnotationsStatusAsyncResponse
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**taskId** | [**UUID**](UUID.md) |  | 
+**taskId** | **UUID** |  | 
 **annotations** | **Integer** |  | 
 
 

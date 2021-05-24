@@ -69,7 +69,7 @@ from sklearn.linear_model import LogisticRegressionCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC
 
-from apps.analyze.ml.utils import ModelUniqueNameBuilder
+from apps.analyze.ml.classifier_repository import ClassifierRepositoryBuilder
 from apps.analyze.models import (
     TextUnitClassification, TextUnitClassifier, TextUnitClassifierAssessment,
     DocumentClassification, DocumentClassifier, DocumentClassifierAssessment,
@@ -78,9 +78,9 @@ from apps.document.models import Document, TextUnit
 from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, Document2VecFeatures, TextUnit2VecFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,7 +101,6 @@ class ClassifierEngine:
         """
         Inject class instance attributes to return after classifying
         """
-        pass
 
     def __call__(self, use_tfidf: bool = True, **options):
         """
@@ -122,7 +121,7 @@ class ClassifierEngine:
         Checks if get_some_callable_option method exists and uses it instead of class attribute.
         :return: dict - engine options dictionary
         """
-        engine_options = dict()
+        engine_options = {}
         allowed_engine_option_names = inspect.getfullargspec(self.engine.__init__).args[1:]
         for option_name in allowed_engine_option_names:
 
@@ -148,7 +147,6 @@ class ClassifierEngine:
         """
         Just a sample to show a signature of callable algorithm method
         """
-        pass
 
     def get_model(self):
         """
@@ -246,8 +244,7 @@ class ClassifyDocuments:
 
     @classmethod
     def get_features_engine_class(cls, classify_by: Optional[str]):
-        return Document2VecFeatures \
-            if classify_by == 'text' or classify_by == ['text'] else DocumentFeatures
+        return Document2VecFeatures if classify_by in ('text', ['text']) else DocumentFeatures
 
     def get_engine_wrapper(self, classifier_algorithm):
         """
@@ -360,7 +357,7 @@ class ClassifyDocuments:
         model_name = "{} class={} algo={} tfidf={} by={}".format(
             'name={} '.format(classifier_name) if classifier_name else '',
             class_name, classifier_algorithm, use_tfidf, classify_by_str)
-        model_name = ModelUniqueNameBuilder.ensure_unique_name(model_name, self.classifier_db_model)
+        ClassifierRepositoryBuilder().repository.ensure_unique_name(model_name, self.classifier_db_model)
 
         classifier = self.classifier_db_model(
             name=model_name,
@@ -368,7 +365,7 @@ class ClassifyDocuments:
             class_name=class_name,
             is_active=True)
         classifier.model_object = pickle.dumps(classifier_model, protocol=pickle.HIGHEST_PROTOCOL)
-        classifier.save()
+        ClassifierRepositoryBuilder().repository.save_classifier(classifier)
 
         # Store assessments from in-sample performance
         if classifier_assessment:
@@ -378,15 +375,14 @@ class ClassifyDocuments:
             for metric_name in metric_names:
                 # get metric function and extra kwargs
                 metric_func = getattr(sklearn.metrics, metric_name + '_score')
-                metric_kwargs = dict()
+                metric_kwargs = {}
                 if 'pos_label' in inspect.getfullargspec(metric_func).args[1:]:
                     if metric_pos_label is None:
                         # TODO: raise exception or log
                         print('"pos_label" argument for "{}" metric is not defined, skipping.'
                               .format(metric_name))
                         continue
-                    else:
-                        metric_kwargs = {'pos_label': metric_pos_label}
+                    metric_kwargs = {'pos_label': metric_pos_label}
                 if 'average' in inspect.getfullargspec(metric_func).args[1:] \
                         and 'metric_average' in classifier_options:
                     metric_kwargs['average'] = classifier_options['metric_average']
@@ -396,7 +392,8 @@ class ClassifyDocuments:
                 ca.assessment_value = metric_func(target_vector, target_predicted, **metric_kwargs)
                 ca.classifier = classifier
                 ca_list.append(ca)
-            self.assessment_db_model.objects.bulk_create(ca_list)
+            ClassifierRepositoryBuilder().repository.save_classifications(
+                self.assessment_db_model, ca_list)
 
         return classifier
 
@@ -468,5 +465,4 @@ class ClassifyTextUnits(ClassifyDocuments):
 
     @classmethod
     def get_features_engine_class(cls, classify_by: Optional[str]):
-        return TextUnit2VecFeatures \
-            if classify_by == 'text' or classify_by == ['text'] else TextUnitFeatures
+        return TextUnit2VecFeatures if classify_by in ('text', ['text']) else TextUnitFeatures

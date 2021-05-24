@@ -2,6 +2,7 @@
 
 # DocumentCluster
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -13,8 +14,8 @@ Name | Type | Description | Notes
 **description** | **String** |  | 
 **clusterBy** | **String** |  | 
 **using** | **String** |  | 
-**createdDate** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
-**documentsCount** | **String** |  |  [optional] [readonly]
+**createdDate** | **OffsetDateTime** |  |  [optional]
+**documentsCount** | **Integer** |  |  [optional] [readonly]
 **documentData** | [**List&lt;DocumentClusterDocumentData&gt;**](DocumentClusterDocumentData.md) |  |  [optional] [readonly]
 
 

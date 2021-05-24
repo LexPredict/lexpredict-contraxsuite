@@ -1,0 +1,104 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block page_header %}
+  Project actions for {{ project }}
+{% endblock %}
+
+{% block content %}
+  <div class="page-tabs mb-40" id="tabs1">
+
+    <ul class="nav nav-tabs boot-tabs">
+      <li><a data-toggle="tab" href="#tab-1" class="active">Settings Actions</a></li>
+      {% if project.type.is_generic %}
+      <li><a data-toggle="tab" href="#tab-2">Cluster Actions</a></li>
+      {% endif %}
+    </ul>
+  </div>
+
+  <div  class="tab-content">
+
+    <div class="tab-pane clearfix active" id="tab-1">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-project-settings-actions"></div>
+      </div>
+    </div>
+
+    <div class="tab-pane clearfix" id="tab-2">
+      <div class="pull-right grid-controls">
+        {% include '_base_grid_buttons_block.html' %}
+      </div>
+      <div class="jqxgrid-container">
+        <div class="jqxgrid col-md-12 jqxgrid-project-cluster-actions"></div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'message', type: 'string' },
+        { name: 'view_action', type: 'string' },
+        { name: 'request_data', type: 'string' },
+        { name: 'user__name', type: 'string' },
+        { name: 'date', type: 'date' }
+      ];
+      var messageFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        if (value) {
+          value = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+        return renderCell(defaulthtml, value);
+      };
+      var requestDataFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        value = value && !$.isEmptyObject(value) ? JSON.stringify(value) : '';
+        $defaulthtml = $(defaulthtml)
+        $defaulthtml.prop('title', value)
+        return renderCell($defaulthtml, value);
+      };
+
+      var columns = [
+        { text: 'Name', datafield: 'name', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'message', width: 'auto',
+          cellsrenderer: messageFormatter,
+          align: 'center', cellsalign: 'center' },
+        { text: 'View Action', datafield: 'view_action', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'User', datafield: 'user__name', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'date', width: 120,
+          filtertype: 'date',
+          format: 'MM-dd-yyyy HH:mm', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Request Data', datafield: 'request_data', width: 'auto',
+          cellsrenderer: requestDataFormatter,
+          align: 'center', cellsalign: 'center' }
+      ];
+
+      var custom_grid_options = {
+        rowsheight: 60,
+        pageable: true,
+      };
+      var custom_grid_source_data = {
+        url: "{% url "v1:project-settings-actions" project.id %}"
+      };
+      draw_grid(".jqxgrid-project-settings-actions", datafields, columns, true, custom_grid_source_data, custom_grid_options);
+
+      {% if project.type.is_generic %}
+        var custom_grid_source_data = {
+          url: "{% url "v1:project-cluster-actions" project.id %}"
+        };
+        draw_grid(".jqxgrid-project-cluster-actions", datafields, columns, true, custom_grid_source_data, custom_grid_options);
+      {% endif %}
+    })
+  </script>
+{% endblock %}

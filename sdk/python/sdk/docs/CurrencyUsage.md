@@ -1,12 +1,13 @@
 # CurrencyUsage
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **usage_type** | **str** |  | 
 **currency** | **str** |  | 
-**amount** | **float** |  | [optional] 
-**amount_str** | **str** |  | [optional] 
+**amount** | **float, none_type** |  | [optional] 
+**amount_str** | **str, none_type** |  | [optional] 
 **pk** | **int** |  | [optional] [readonly] 
 **text_unit__pk** | **str** |  | [optional] [readonly] 
 **text_unit__unit_type** | **str** |  | [optional] [readonly] 

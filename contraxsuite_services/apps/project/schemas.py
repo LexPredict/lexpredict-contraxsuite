@@ -24,14 +24,16 @@
 """
 # -*- coding: utf-8 -*-
 
+from scipy.spatial.distance import _METRICS
+
 from rest_framework import serializers
-from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, ObjectToItemResponseMixin,\
-    json_ct, string_schema, object_schema
+from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, \
+    ObjectToItemResponseMixin, json_ct, string_content, object_content, binary_string_schema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -45,20 +47,17 @@ class CountSuccessResponseSerializer(serializers.Serializer):
 
 
 response_404_details = {
-            'content': {
-                json_ct: {
-                    'schema': {
-                        'type': 'object',
-                        'properties': {
-                            'details': {
-                                'type': 'string',
-                            }
-                        },
-                        'required': ['details']
-                    }
-                }
-            }
+    'content': {
+        json_ct: {
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'details': {
+                        'type': 'string'}},
+                'required': ['details']}
         }
+    },
+    'description': ''}
 
 
 class TaskIdResponseSerializer(serializers.Serializer):
@@ -138,8 +137,8 @@ class SendClusterToProjectSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
         responses = super().get_responses(path, method)
-        responses['200'] = string_schema
-        responses['400'] = string_schema
+        responses['200'] = string_content
+        responses['400'] = string_content
         return responses
 
 
@@ -152,7 +151,7 @@ class CleanupProjectSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
         responses = super().get_responses(path, method)
-        responses['200'] = string_schema
+        responses['200'] = string_content
         return responses
 
 
@@ -196,7 +195,7 @@ class AssignProjectDocumentsSchema(CustomAutoSchema):
 
     request_serializer = AssignProjectDocumentsRequestSerializer()
     response_serializer = CountSuccessResponseSerializer()
-    
+
     def get_responses(self, path, method):
         res = super().get_responses(path, method)
         res['200'] = dict(res['201'])
@@ -207,12 +206,34 @@ class AssignProjectDocumentsSchema(CustomAutoSchema):
 
 
 class AssignProjectDocumentSchema(CustomAutoSchema):
+
     class AssignProjectDocumentRequestSerializer(serializers.Serializer):
         assignee_id = serializers.IntegerField(required=False, allow_null=True)
         document_id = serializers.IntegerField(required=False, allow_null=True)
 
     request_serializer = AssignProjectDocumentRequestSerializer()
     response_serializer = CountSuccessResponseSerializer()
+
+    def get_responses(self, path, method):
+        res = super().get_responses(path, method)
+        res['200'] = dict(res['201'])
+        del res['201']
+        res['404'] = dict(res['200'])
+        res['404'] = response_404_details
+        return res
+
+
+class UpdateProjectDocumentsFieldsSchema(CustomAutoSchema):
+
+    class UpdateProjectDocumentsFieldsRequestSerializer(serializers.Serializer):
+        all = serializers.BooleanField(required=False)
+        document_ids = serializers.ListField(required=False, child=serializers.IntegerField())
+        no_document_ids = serializers.ListField(required=False, child=serializers.IntegerField())
+        fields_data = serializers.DictField(required=True, child=serializers.CharField())
+        on_existing_value = serializers.CharField(required=False)
+
+    request_serializer = UpdateProjectDocumentsFieldsRequestSerializer()
+    response_serializer = TaskIdResponseSerializer()
 
     def get_responses(self, path, method):
         res = super().get_responses(path, method)
@@ -255,7 +276,7 @@ class ClusterProjectSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
         responses = super().get_responses(path, method)
-        responses['400'] = string_schema
+        responses['400'] = string_content
         return responses
 
 
@@ -343,15 +364,6 @@ class DetectProjectFieldValuesSchema(CustomAutoSchema):
     response_serializer = TaskIdResponseSerializer()
 
 
-class MakeSearchablePDFSchema(CustomAutoSchema):
-
-    class MakeSearchablePDFRequestSerializer(serializers.Serializer):
-        document_ids = serializers.ListField(required=False, child=serializers.IntegerField())
-
-    request_serializer = MakeSearchablePDFRequestSerializer()
-    response_serializer = TaskIdResponseSerializer()
-
-
 class UploadSessionStatusSchema(ObjectResponseSchema):
 
     parameters = [
@@ -398,13 +410,13 @@ class UploadSessionFilesSchema(ObjectResponseSchema):
     response_serializer = ProjectUploadSessionFilesResponseSerializer()
 
     def get_request_body(self, path, method):
-        return {'content': {'application/offset+octet-stream': {'schema': {'type': 'string', 'format': 'binary'}}}}
+        return {'content': {'application/offset+octet-stream': binary_string_schema}}
 
     def get_responses(self, path, method):
         responses = super().get_responses(path, method)
         responses['204'] = responses['201']
-        responses['400'] = object_schema
-        responses['500'] = string_schema
+        responses['400'] = object_content
+        responses['500'] = string_content
         return responses
 
 
@@ -444,14 +456,14 @@ class UploadSessionUploadSchema(ObjectResponseSchema):
     response_serializer = ProjectUploadSessionPOSTResponseSerializer()
 
     def get_request_body(self, path, method):
-        return {'content': {'*/*': {'schema': {'type': 'string', 'format': 'binary'}}}}
+        return {'content': {'*/*': binary_string_schema}}
 
     def get_responses(self, path, method):
         resp = super().get_responses(path, method)
         resp['200'] = resp['201']
         del resp['201']
-        resp['400'] = object_schema
-        resp['500'] = string_schema
+        resp['400'] = object_content
+        resp['500'] = string_content
         return resp
 
 
@@ -480,9 +492,9 @@ class UploadSessionDeleteFileSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
         resp = super().get_responses(path, method)
-        resp['200'] = string_schema
-        resp['404'] = string_schema
-        resp['500'] = string_schema
+        resp['200'] = string_content
+        resp['404'] = string_content
+        resp['500'] = string_content
         return resp
 
 
@@ -496,3 +508,33 @@ class ProjectUploadSessionProgressSchema(CustomAutoSchema):
         session_status = serializers.CharField(allow_null=True)
 
     response_serializer = ProjectUploadSessionProgressResponseSerializer()
+
+
+class ProjectSearchSimilarDocumentsRequestSerializer(serializers.Serializer):
+    run_name = serializers.CharField(required=False)
+    distance_type = serializers.ChoiceField(choices=list(_METRICS), required=False, default='cosine')
+    similarity_threshold = serializers.IntegerField(required=False, default=75)
+    create_reverse_relations = serializers.BooleanField(required=False, default=True)
+    use_tfidf = serializers.BooleanField(required=False, default=False)
+    delete = serializers.BooleanField(required=False, default=True)
+    item_id = serializers.IntegerField(required=False)
+
+
+class ProjectSearchSimilarDocumentsSchema(CustomAutoSchema):
+
+    request_serializer = ProjectSearchSimilarDocumentsRequestSerializer()
+    response_serializer = TaskIdResponseSerializer()
+
+
+class ProjectSearchSimilarTextUnitsSchema(CustomAutoSchema):
+
+    class ProjectSearchSimilarTextUnitsRequestSerializer(ProjectSearchSimilarDocumentsRequestSerializer):
+        unit_type = serializers.ChoiceField(
+            required=False, choices=['sentence', 'paragraph'], default='sentence')
+        document_id = serializers.IntegerField(required=False)
+        location_start = serializers.IntegerField(required=False)
+        location_end = serializers.IntegerField(required=False)
+        item_id = serializers.IntegerField(required=False)
+
+    request_serializer = ProjectSearchSimilarTextUnitsRequestSerializer()
+    response_serializer = TaskIdResponseSerializer()

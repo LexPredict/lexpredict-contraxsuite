@@ -36,12 +36,10 @@ from django.utils import timezone
 from filebrowser.storage import StorageMixin
 from webdav3.client import Client
 
-from apps.common.file_storage import get_file_storage
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -120,7 +118,6 @@ class FileBrowserWebdavStorage(StorageMixin, Storage):
         """
         Sets file permission
         """
-        pass
 
     def _open(self, path, mode='rb'):
         tmp = io.BytesIO()
@@ -204,15 +201,13 @@ class FileBrowserWebdavStorage(StorageMixin, Storage):
         if settings.USE_TZ:
             # Safe to use .replace() because UTC doesn't have DST
             return dt.replace(tzinfo=timezone.utc)
-        else:
-            return dt
+        return dt
 
     def get_accessed_time(self, path):
         """
         Return the last accessed time (as a datetime) of the file specified by
         name. The datetime will be timezone-aware if USE_TZ=True.
         """
-        pass
 
     def get_created_time(self, path):
         """

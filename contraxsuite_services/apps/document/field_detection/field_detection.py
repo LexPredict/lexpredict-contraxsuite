@@ -27,8 +27,8 @@
 import sys
 from typing import Optional, List, Dict, Set, Any, Tuple
 
-from django.db.models import Prefetch
 from django.db import transaction
+from django.db.models import Prefetch
 
 from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
 from apps.document.constants import FieldSpec
@@ -37,12 +37,9 @@ from apps.document.field_detection.field_based_ml_field_detection import \
     FieldBasedMLOnlyFieldDetectionStrategy, FieldBasedMLWithUnsureCatFieldDetectionStrategy
 from apps.document.field_detection.fields_detection_abstractions import \
     DisabledFieldDetectionStrategy, FieldDetectionStrategy
-from apps.document.field_detection.formula_and_field_based_ml_field_detection import \
-    FormulaAndFieldBasedMLFieldDetectionStrategy
 from apps.document.field_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy
-from apps.document.field_detection.python_coded_field_detection import PythonCodedFieldDetectionStrategy
 from apps.document.field_detection.regexps_and_text_based_ml_field_detection import \
-    RegexpsAndTextBasedMLFieldDetectionStrategy, TextBasedMLFieldDetectionStrategy
+    TextBasedMLFieldDetectionStrategy
 from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy, \
     FieldBasedRegexpsDetectionStrategy
 from apps.document.field_processing.field_processing_utils import order_field_detection, get_dependent_fields
@@ -56,23 +53,22 @@ from apps.users.models import User
 from apps.document.field_detection.mlflow_field_detection import MLFlowModelBasedFieldDetectionStrategy
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+from contraxsuite_logging import HumanReadableTraceBackException
 
 STRATEGY_DISABLED = DisabledFieldDetectionStrategy()
 
 _FIELD_DETECTION_STRATEGIES = [FieldBasedMLOnlyFieldDetectionStrategy(),
                                FieldBasedMLWithUnsureCatFieldDetectionStrategy(),
-                               FormulaAndFieldBasedMLFieldDetectionStrategy(),
                                FormulaBasedFieldDetectionStrategy(),
                                RegexpsOnlyFieldDetectionStrategy(),
-                               RegexpsAndTextBasedMLFieldDetectionStrategy(),
                                TextBasedMLFieldDetectionStrategy(),
-                               PythonCodedFieldDetectionStrategy(),
                                FieldBasedRegexpsDetectionStrategy(),
                                MLFlowModelBasedFieldDetectionStrategy(),
                                CsvRegexpsFieldDetectionStrategy(),
@@ -148,7 +144,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                updated_field_codes: List[str] = None,
                                                skip_modified_values: bool = True,
                                                field_codes_to_detect: Optional[List[str]] = None,
-                                               task: Any = None):
+                                               task: Any = None,
+                                               skip_caching: bool = False):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -165,6 +162,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param skip_modified_values - don't overwrite field values overwritten by user
     :param field_codes_to_detect - optional list of fields codes - only these fields are to be detected
     :param task - optional task argument to fire signals
+    :param skip_caching - don't cache right now, cache later
     :return:
     """
     import apps.document.repository.document_field_repository as dfr
@@ -184,7 +182,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
 
     fields_and_deps = [(f.code, set(f.get_depends_on_codes()) or set()) for f in all_fields]
     dependent_fields = get_dependent_fields(fields_and_deps, set(updated_field_codes)) \
-        if updated_field_codes else None
+        if updated_field_codes else []
 
     sorted_codes = order_field_detection(fields_and_deps)
     all_fields_code_to_field = {f.code: f for f in all_fields}  # type: Dict[str, DocumentField]
@@ -209,7 +207,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                                     field_codes_only=None)
     current_field_values.update(actual_field_values)
 
-    res = list()
+    res = []
 
     detecting_field_status = []  # type:List[str]
     detection_errors = []  # type:List[Tuple[str, str, Exception, Any]]
@@ -227,7 +225,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             skip_codes -= set(updated_field_codes)
 
     if field_codes_to_detect:
-        all_codes = set([f.code for f in all_fields])
+        all_codes = {f.code for f in all_fields}
         skip_codes = skip_codes.union(all_codes - set(field_codes_to_detect))
 
     if clear_old_values:
@@ -296,7 +294,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                               document_initial_load=document_initial_load,
                               system_fields_changed=system_fields_changed,
                               generic_fields_changed=generic_fields_changed,
-                              user_fields_changed=user_fields_changed)
+                              user_fields_changed=user_fields_changed,
+                              skip_caching=skip_caching)
         if dependent_fields:
             msg = f'Recalculating dependent fields for {document.name}: '  # dependent_fields
             msg += ', '.join(dependent_fields)
@@ -312,7 +311,9 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         msg = f'There were errors while detecting fields:\n{fields_str}\n' + \
               f'for document {document.name} (#{document.pk}, type {document_type.code})\n'
         for f_code, f_type, ex, ex_stack in detection_errors:
-            msg += f'\n{f_code}, {f_type}: {ex}'
+            msg += f'\n{f_code}, {f_type}: {ex}\n' + HumanReadableTraceBackException \
+                .from_exception(ex) \
+                .human_readable_format()
         raise FieldDetectionError(msg)
 
     return res

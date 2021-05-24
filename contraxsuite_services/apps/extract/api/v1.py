@@ -29,7 +29,6 @@ import datetime
 import itertools
 import json
 import operator
-import re
 from collections import defaultdict
 from functools import reduce
 from urllib.parse import quote as url_quote
@@ -49,14 +48,14 @@ from django.db.models.functions import TruncMonth
 from django.http import JsonResponse, HttpResponse
 
 # Project imports
-from apps.document.models import Document
+from apps.common.schemas import ObjectItemsResponseSchema
 from apps.extract.models import *
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,7 +111,7 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
             for field, key, _callable in self.filters:
                 try:
                     value = self.request.GET.get(key)
-                except Exception:
+                except:
                     continue
                 if value:
                     value = _callable(value)
@@ -126,33 +125,7 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
         if document_id:
             qs = qs.filter(text_unit__document_id=document_id)
             return qs.select_related('text_unit')
-        else:
-            return qs.select_related('text_unit', 'text_unit__textunittext', 'text_unit__document')
-
-    @staticmethod
-    def filter(search_str, qs, _or_lookup,
-               _and_lookup=None, _not_lookup=None):
-        search_list = re.split(r'\s*,\s*', search_str.strip().strip(","))
-        _not_search_list = [i[1:].strip() for i in search_list if i.startswith('-')]
-        _and_search_list = [i[1:].strip() for i in search_list if i.startswith('&')]
-        _or_search_list = [i for i in search_list if i[0] not in ['-', '&']]
-
-        if _or_search_list:
-            query = reduce(
-                operator.or_,
-                (Q(**{_or_lookup: i}) for i in _or_search_list))
-            qs = qs.filter(query)
-        if _and_search_list:
-            query = reduce(
-                operator.and_,
-                (Q(**{_and_lookup or _or_lookup: i}) for i in _and_search_list))
-            qs = qs.filter(query)
-        if _not_search_list:
-            query = reduce(
-                operator.or_,
-                (Q(**{_not_lookup or _or_lookup: i}) for i in _not_search_list))
-            qs = qs.exclude(query)
-        return qs
+        return qs.select_related('text_unit', 'text_unit__textunittext', 'text_unit__document')
 
 
 class BaseTopUsageSerializer:
@@ -196,6 +169,7 @@ class BaseTopUsageSerializer:
 
 class BaseTopUsageListAPIView(BaseUsageListAPIView, ViewSetDataMixin):
     serializer_class = BaseTopUsageSerializer
+    schema = ObjectItemsResponseSchema()
     qs_values = []
     qs_order_by = ["-count"]
     url_args = None
@@ -235,10 +209,12 @@ class TermUsageListAPIView(BaseUsageListAPIView):
         qs = super().get_queryset()
         term_search = self.request.GET.get('term_search')
         if term_search:
-            qs = self.filter(term_search, qs,
-                             _or_lookup='term__term__exact',
-                             _and_lookup='text_unit__textunittext__text__icontains',
-                             _not_lookup='text_unit__textunittext__text__icontains')
+            qs = apps.common.mixins.string_filter(
+                term_search,
+                qs,
+                _or_lookup='term__term__exact',
+                _and_lookup='text_unit__textunittext__text__icontains',
+                _not_lookup='text_unit__textunittext__text__icontains')
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
         return qs.select_related('term')
@@ -255,6 +231,24 @@ class TopTermUsageListAPIView(BaseTopUsageListAPIView):
     qs_values = ['term__term', 'term__source']
     qs_order_by = ['term__term', 'term__source']
     url_args = ('v1:term-usage', 'term_search', 'term__term')
+
+
+# --------------------------------------------------------
+# Term Tag Views
+# --------------------------------------------------------
+
+class TermTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TermTag
+        fields = ['pk', 'name']
+
+
+class TermTagListAPIView(apps.common.mixins.JqListAPIView):
+    """
+    list: TermTag List
+    """
+    queryset = TermTag.objects.all()
+    serializer_class = TermTagSerializer
 
 
 # --------------------------------------------------------
@@ -1371,6 +1365,9 @@ urlpatterns = [
         name='term-usage'),
     url(r'^term-usage/top/$', TopTermUsageListAPIView.as_view(),
         name='top-term-usage'),
+
+    url(r'^term-tags/$', TermTagListAPIView.as_view(),
+        name='term-tags'),
 
     url(r'^geo-entity-usage/$', GeoEntityUsageListAPIView.as_view(),
         name='geo-entity-usage'),

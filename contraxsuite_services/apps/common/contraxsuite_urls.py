@@ -29,9 +29,9 @@ from django.conf import settings
 from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -82,9 +82,8 @@ def doc_editor_url(document_type_code: str, project_id: int, document_id: int) -
         if document_type_code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT:
             return '{root_url}/#/batch_analysis/{project_id}/analysis/{document_id}' \
                 .format(root_url=attach_proto(frontend_root_url), project_id=project_id, document_id=document_id)
-        else:
-            return '{root_url}/#/contract_analysis/{project_id}/annotator/{document_id}' \
-                .format(root_url=attach_proto(frontend_root_url), project_id=project_id, document_id=document_id)
+        return '{root_url}/#/contract_analysis/{project_id}/annotator/{document_id}' \
+            .format(root_url=attach_proto(frontend_root_url), project_id=project_id, document_id=document_id)
     backend_root_url = settings.HOST_NAME.strip('/') + '/' + settings.BASE_URL.strip('/')
     return '{root_url}/admin/document/document/{document_id}/change/' \
         .format(root_url=attach_proto(backend_root_url), document_id=document_id)
@@ -103,8 +102,7 @@ def project_documents_url(document_type_code: str, project_id: int) -> str:
         if document_type_code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT:
             return '{root_url}/#/batch_analysis/{project_id}/' \
                 .format(root_url=attach_proto(frontend_root_url), project_id=project_id)
-        else:
-            return '{root_url}/#/contract_analysis/{project_id}/' \
-                .format(root_url=attach_proto(frontend_root_url), project_id=project_id)
+        return '{root_url}/#/contract_analysis/{project_id}/' \
+            .format(root_url=attach_proto(frontend_root_url), project_id=project_id)
     # backend URL doesnt make sense here
     return '#'

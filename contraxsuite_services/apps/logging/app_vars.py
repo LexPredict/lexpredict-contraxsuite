@@ -33,12 +33,13 @@ from django.conf import settings
 
 # Project imports
 from apps.common import redis
+from apps.common.logger import CsLogger
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -113,12 +114,12 @@ def reset_loggers_level():
 
     # reset Project loggers
     for logger_name in settings.LOGGING['loggers']:
-        logger = logging.getLogger(logger_name)
+        logger = CsLogger.get_logger(logger_name)
         logger.getEffectiveLevel = types.MethodType(getEffectiveLevel, logger)
 
     # reset celery loggers
     for logger_name in celery_logger_names:
-        logger = get_logger(logger_name)
+        logger = CsLogger.get_logger(logger_name)
         logger.getEffectiveLevel = types.MethodType(getEffectiveLevel, logger)
 
 

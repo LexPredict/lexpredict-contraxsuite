@@ -26,35 +26,39 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 import inspect
 import json
 from typing import Dict, List, Any
 
-from apps.common.singleton import Singleton
 import apps.document.scheme_migrations.document_scheme_migration as doc_migration
+from apps.common.singleton import Singleton
 from apps.document.scheme_migrations.base_scheme_migration import BaseSchemeMigration
 
 
-# key is what is displayed in GUI
-# value is the actual version number, see CURRENT_VERSION
-MIGRATION_TAGS = {
-        'current': 77,
-        '1.8': 77,
-        '1.7': 76,
-        '1.7 w/o schema versioning': 75,
-        '1.6': 65
-    }
-
-CURRENT_VERSION = 77
+CURRENT_VERSION = 80
 
 # since this version migration file always includes version info
 TAGGED_VERSION = 76
+
+# key is what is displayed in GUI
+# value is the actual version number, see CURRENT_VERSION
+MIGRATION_TAGS: Dict[str, int] = {
+    'current': CURRENT_VERSION,
+    '2.0': 80,
+    '1.9': 79,
+    '1.8 with stop words': 78,
+    '1.8': 77,
+    '1.7': 76,
+    '1.7 w/o schema versioning': 75,
+    '1.6': 65
+}
 
 
 @Singleton
@@ -94,8 +98,10 @@ class SchemeMigration:
         end_version_num = dest_version
 
         direction = 1 if end_version_num > start_version_num else -1
+        start_migration = start_version_num + 1 if direction > 0 else start_version_num
+        end_migration = end_version_num + direction + 1 if direction > 0 else end_version_num
 
-        for vers_num in range(start_version_num, end_version_num + direction, direction):
+        for vers_num in range(start_migration, end_migration, direction):
             if vers_num not in self.migrations:
                 continue
 

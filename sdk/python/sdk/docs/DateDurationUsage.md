@@ -1,12 +1,13 @@
 # DateDurationUsage
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | **float** |  | [optional] 
-**amount_str** | **str** |  | [optional] 
-**duration_type** | **str** |  | [optional] 
-**duration_days** | **float** |  | [optional] 
+**amount** | **float, none_type** |  | [optional] 
+**amount_str** | **str, none_type** |  | [optional] 
+**duration_type** | **str, none_type** |  | [optional] 
+**duration_days** | **float, none_type** |  | [optional] 
 **count** | **int** |  | [optional] 
 **pk** | **int** |  | [optional] [readonly] 
 **text_unit__pk** | **str** |  | [optional] [readonly] 

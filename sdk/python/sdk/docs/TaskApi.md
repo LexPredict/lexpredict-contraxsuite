@@ -10,19 +10,23 @@ Method | HTTP request | Description
 [**task_load_documents_post**](TaskApi.md#task_load_documents_post) | **POST** /api/v1/task/load-documents/ | 
 [**task_locate_get**](TaskApi.md#task_locate_get) | **GET** /api/v1/task/locate/ | 
 [**task_locate_post**](TaskApi.md#task_locate_post) | **POST** /api/v1/task/locate/ | 
+[**task_process_text_extraction_results_request_id_post**](TaskApi.md#task_process_text_extraction_results_request_id_post) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ | 
 [**task_purge_task_post**](TaskApi.md#task_purge_task_post) | **POST** /api/v1/task/purge-task/ | 
 [**task_recall_task_get**](TaskApi.md#task_recall_task_get) | **GET** /api/v1/task/recall-task/ | 
 [**task_recall_task_post**](TaskApi.md#task_recall_task_post) | **POST** /api/v1/task/recall-task/ | 
+[**task_reindexroutines_check_schedule_post**](TaskApi.md#task_reindexroutines_check_schedule_post) | **POST** /api/v1/task/reindexroutines/check_schedule | 
 [**task_task_log_get**](TaskApi.md#task_task_log_get) | **GET** /api/v1/task/task-log/ | 
 [**task_task_status_get**](TaskApi.md#task_task_status_get) | **GET** /api/v1/task/task-status/ | 
 [**task_tasks_get**](TaskApi.md#task_tasks_get) | **GET** /api/v1/task/tasks/ | 
 [**task_tasks_id_get**](TaskApi.md#task_tasks_id_get) | **GET** /api/v1/task/tasks/{id}/ | 
+[**task_tasks_project_project_id_active_tasks_get**](TaskApi.md#task_tasks_project_project_id_active_tasks_get) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ | 
+[**task_tasks_project_project_id_tasks_get**](TaskApi.md#task_tasks_project_project_id_tasks_get) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ | 
 [**task_update_elastic_index_get**](TaskApi.md#task_update_elastic_index_get) | **GET** /api/v1/task/update-elastic-index/ | 
 [**task_update_elastic_index_post**](TaskApi.md#task_update_elastic_index_post) | **POST** /api/v1/task/update-elastic-index/ | 
 
 
 # **task_clean_tasks_post**
-> dict(str, object) task_clean_tasks_post(request_body=request_body)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_clean_tasks_post()
 
 
 
@@ -32,10 +36,9 @@ Method | HTTP request | Description
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -49,37 +52,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_clean_tasks_post(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_clean_tasks_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -89,6 +93,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -98,7 +103,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_load_dictionaries_post**
-> dict(str, object) task_load_dictionaries_post(request_body=request_body)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_load_dictionaries_post()
 
 
 
@@ -108,10 +113,9 @@ Name | Type | Description  | Notes
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -125,37 +129,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_load_dictionaries_post(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_load_dictionaries_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -165,6 +170,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -174,7 +180,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_load_documents_get**
-> dict(str, object) task_load_documents_get()
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_load_documents_get()
 
 
 
@@ -184,10 +190,9 @@ Name | Type | Description  | Notes
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -201,33 +206,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    
+    api_instance = task_api.TaskApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.task_load_documents_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_load_documents_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -237,6 +240,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -246,7 +250,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_load_documents_post**
-> dict(str, object) task_load_documents_post(request_body=request_body)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_load_documents_post()
 
 
 
@@ -256,10 +260,9 @@ This endpoint does not need any parameter.
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -273,37 +276,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_load_documents_post(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_load_documents_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -313,6 +317,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -322,7 +327,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_locate_get**
-> dict(str, object) task_locate_get()
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_locate_get()
 
 
 
@@ -332,10 +337,9 @@ Name | Type | Description  | Notes
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -349,33 +353,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    
+    api_instance = task_api.TaskApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.task_locate_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_locate_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -385,6 +387,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -394,7 +397,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_locate_post**
-> dict(str, object) task_locate_post(request_body=request_body)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_locate_post()
 
 
 
@@ -404,10 +407,9 @@ This endpoint does not need any parameter.
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -421,37 +423,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_locate_post(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_locate_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -462,6 +465,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -469,8 +473,92 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **task_process_text_extraction_results_request_id_post**
+> bool, date, datetime, dict, float, int, list, str, none_type task_process_text_extraction_results_request_id_post(request_id)
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import task_api
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = task_api.TaskApi(api_client)
+    request_id = "request_id_example" # str | 
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.task_process_text_extraction_results_request_id_post(request_id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_process_text_extraction_results_request_id_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.task_process_text_extraction_results_request_id_post(request_id, request_body=request_body)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_process_text_extraction_results_request_id_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **request_id** | **str**|  |
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
+
+### Return type
+
+**bool, date, datetime, dict, float, int, list, str, none_type**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **task_purge_task_post**
-> dict(str, object) task_purge_task_post(request_body=request_body)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_purge_task_post()
 
 
 
@@ -480,10 +568,9 @@ Name | Type | Description  | Notes
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -497,37 +584,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_purge_task_post(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_purge_task_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -537,6 +625,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -546,7 +635,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_recall_task_get**
-> dict(str, object) task_recall_task_get()
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_recall_task_get()
 
 
 
@@ -556,10 +645,9 @@ Name | Type | Description  | Notes
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -573,33 +661,31 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    
+    api_instance = task_api.TaskApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
     try:
         api_response = api_instance.task_recall_task_get()
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_recall_task_get: %s\n" % e)
 ```
+
 
 ### Parameters
 This endpoint does not need any parameter.
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -610,6 +696,7 @@ This endpoint does not need any parameter.
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -618,7 +705,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_recall_task_post**
-> dict(str, object) task_recall_task_post(request_body=request_body)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_recall_task_post()
 
 
 
@@ -628,10 +715,9 @@ This endpoint does not need any parameter.
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -645,37 +731,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_recall_task_post(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_recall_task_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -686,6 +773,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -693,8 +781,83 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **task_reindexroutines_check_schedule_post**
+> bool, date, datetime, dict, float, int, list, str, none_type task_reindexroutines_check_schedule_post()
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import task_api
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.task_reindexroutines_check_schedule_post(request_body=request_body)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_reindexroutines_check_schedule_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
+
+### Return type
+
+**bool, date, datetime, dict, float, int, list, str, none_type**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **task_task_log_get**
-> dict(str, object) task_task_log_get(task_id=task_id, records_limit=records_limit)
+> [TaskLogResponse] task_task_log_get(task_id)
 
 
 
@@ -704,10 +867,10 @@ Get task log records GET params:     - task_id: int     - records_limit: int
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
+from openapi_client.model.task_log_response import TaskLogResponse
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -721,39 +884,49 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    task_id = 'task_id_example' # str |  (optional)
-records_limit = 56 # int |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    task_id = "task_id_example" # str | 
+    records_limit = 1 # int |  (optional)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.task_task_log_get(task_id=task_id, records_limit=records_limit)
+        api_response = api_instance.task_task_log_get(task_id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_task_log_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.task_task_log_get(task_id, records_limit=records_limit, jq_filters=jq_filters)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_task_log_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **task_id** | **str**|  | [optional] 
- **records_limit** | **int**|  | [optional] 
+ **task_id** | **str**|  |
+ **records_limit** | **int**|  | [optional]
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-**dict(str, object)**
+[**[TaskLogResponse]**](TaskLogResponse.md)
 
 ### Authorization
 
@@ -763,6 +936,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -772,7 +946,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_task_status_get**
-> dict(str, object) task_task_status_get(task_id=task_id)
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_task_status_get()
 
 
 
@@ -782,10 +956,9 @@ Check admin task status  GET params:     - task_id: int
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -799,37 +972,36 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    task_id = 'task_id_example' # str |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    task_id = "task_id_example" # str |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_task_status_get(task_id=task_id)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_task_status_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **task_id** | **str**|  | [optional] 
+ **task_id** | **str**|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -839,6 +1011,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -849,7 +1022,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_tasks_get**
-> list[Task] task_tasks_get(jq_filters=jq_filters)
+> [Task] task_tasks_get()
 
 
 
@@ -859,10 +1032,10 @@ Task List
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
+from openapi_client.model.task import Task
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -876,37 +1049,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = task_api.TaskApi(api_client)
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_tasks_get(jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_tasks_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**list[Task]**](Task.md)
+[**[Task]**](Task.md)
 
 ### Authorization
 
@@ -917,6 +1091,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -925,7 +1100,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **task_tasks_id_get**
-> Task task_tasks_id_get(id, jq_filters=jq_filters)
+> Task task_tasks_id_get(id)
 
 
 
@@ -935,10 +1110,10 @@ Retrieve Task
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
+from openapi_client.model.task import Task
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -952,35 +1127,43 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    id = 'id_example' # str | A unique value identifying this task.
-jq_filters = {'key': 'jq_filters_example'} # dict(str, str) | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+    api_instance = task_api.TaskApi(api_client)
+    id = "id_example" # str | A unique value identifying this task.
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.task_tasks_id_get(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_tasks_id_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.task_tasks_id_get(id, jq_filters=jq_filters)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling TaskApi->task_tasks_id_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **str**| A unique value identifying this task. | 
- **jq_filters** | [**dict(str, str)**](str.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **id** | **str**| A unique value identifying this task. |
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
@@ -995,6 +1178,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1002,21 +1186,19 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **task_update_elastic_index_get**
-> dict(str, object) task_update_elastic_index_get()
+# **task_tasks_project_project_id_active_tasks_get**
+> [ProjectActiveTasks] task_tasks_project_project_id_active_tasks_get(project_id)
 
 
-
-\"Update ElasticSearch Index\" admin task
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
+from openapi_client.model.project_active_tasks import ProjectActiveTasks
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1030,33 +1212,47 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    
+    api_instance = task_api.TaskApi(api_client)
+    project_id = "project_id_example" # str | 
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
+
+    # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.task_update_elastic_index_get()
+        api_response = api_instance.task_tasks_project_project_id_active_tasks_get(project_id)
         pprint(api_response)
-    except ApiException as e:
-        print("Exception when calling TaskApi->task_update_elastic_index_get: %s\n" % e)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_tasks_project_project_id_active_tasks_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.task_tasks_project_project_id_active_tasks_get(project_id, jq_filters=jq_filters)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_tasks_project_project_id_active_tasks_get: %s\n" % e)
 ```
 
+
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_id** | **str**|  |
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-**dict(str, object)**
+[**[ProjectActiveTasks]**](ProjectActiveTasks.md)
 
 ### Authorization
 
@@ -1067,6 +1263,7 @@ This endpoint does not need any parameter.
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1074,21 +1271,19 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **task_update_elastic_index_post**
-> dict(str, object) task_update_elastic_index_post(request_body=request_body)
+# **task_tasks_project_project_id_tasks_get**
+> [ProjectTasks] task_tasks_project_project_id_tasks_get(project_id)
 
 
-
-\"Update ElasticSearch Index\" admin task
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import task_api
+from openapi_client.model.project_tasks import ProjectTasks
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1102,37 +1297,194 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.TaskApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = task_api.TaskApi(api_client)
+    project_id = "project_id_example" # str | 
+    jq_filters = {
+        "key": "key_example",
+    } # {str: (str,)} | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional)
 
+    # example passing only required values which don't have defaults set
     try:
-        api_response = api_instance.task_update_elastic_index_post(request_body=request_body)
+        api_response = api_instance.task_tasks_project_project_id_tasks_get(project_id)
         pprint(api_response)
-    except ApiException as e:
-        print("Exception when calling TaskApi->task_update_elastic_index_post: %s\n" % e)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_tasks_project_project_id_tasks_get: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.task_tasks_project_project_id_tasks_get(project_id, jq_filters=jq_filters)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_tasks_project_project_id_tasks_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **project_id** | **str**|  |
+ **jq_filters** | **{str: (str,)}**| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-**dict(str, object)**
+[**[ProjectTasks]**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **task_update_elastic_index_get**
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_update_elastic_index_get()
+
+
+
+\"Update ElasticSearch Index\" admin task
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import task_api
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = task_api.TaskApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
+    try:
+        api_response = api_instance.task_update_elastic_index_get()
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_update_elastic_index_get: %s\n" % e)
+```
+
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **task_update_elastic_index_post**
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} task_update_elastic_index_post()
+
+
+
+\"Update ElasticSearch Index\" admin task
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import task_api
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = task_api.TaskApi(api_client)
+    request_body = {
+        "key": {},
+    } # {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.task_update_elastic_index_post(request_body=request_body)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling TaskApi->task_update_elastic_index_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **request_body** | **{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**|  | [optional]
+
+### Return type
+
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
 
 ### Authorization
 
@@ -1142,6 +1494,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

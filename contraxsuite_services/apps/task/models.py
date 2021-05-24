@@ -26,7 +26,6 @@
 
 import datetime
 # Standard imports
-import logging
 from dataclasses import dataclass
 from traceback import format_exc
 from typing import Generator, Dict, Any, List, Set
@@ -46,6 +45,7 @@ from elasticsearch import Elasticsearch
 
 # Project imports
 from apps.common.fields import StringUUIDField, TruncatingCharField
+from apps.common.logger import CsLogger
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.processes import terminate_processes_by_ids
 from apps.common.utils import fast_uuid
@@ -55,14 +55,14 @@ from apps.users.models import User
 from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger(__name__)
+logger = CsLogger.get_logger(__name__)
 es = Elasticsearch(hosts=settings.ELASTICSEARCH_CONFIG['hosts'])
 
 
@@ -227,7 +227,7 @@ class Task(models.Model):
     def write_log(self, message, level='info', exc_info: Exception = None, **kwargs):
         message = str(message)
 
-        extra = dict()
+        extra = {}
 
         if self.log_extra:
             extra.update(dict(self.log_extra))
@@ -428,8 +428,7 @@ class Task(models.Model):
 
         if terminate_where == 'locally':
             pids = [p for adr, p in self.spawned_processes]
-            terminate_processes_by_ids(pids,
-                                       lambda m: self.write_log(m))
+            terminate_processes_by_ids(pids, self.write_log)
             return
 
         # terminate on all nodes
@@ -443,3 +442,34 @@ class Task(models.Model):
         for adr in proc_by_adr:
             pids = proc_by_adr[adr]
             call_terminate_processes_task(adr, pids)
+
+
+class ReindexRoutine(models.Model):
+    TARGET_TABLE = 'TABLE'
+
+    TARGET_INDEX = 'INDEX'
+
+    # name of the DB index / table to reindex, e.g. 'analyze_textunitvector_transformer_id'
+    index_name = models.CharField(max_length=512, db_index=True, null=False,
+                                  help_text='Table or index name to reindex')
+
+    # entity to reindex: 'INDEX' or 'TABLE'
+    target_entity = models.CharField(
+        max_length=24,
+        db_index=True,
+        null=False,
+        default=TARGET_INDEX,
+        choices=[(TARGET_INDEX, 'index'), (TARGET_TABLE, 'table')],
+        help_text='Indicates what DB entity to reindex: index or table'
+    )
+
+    # crontab format string like '0 1 * * *'. Flags are separated by spaces.
+    # '0 0 0 0 0' means reindexing is turned off
+    schedule = models.CharField(max_length=24, db_index=True, null=False,
+                                help_text='crontab-format string, time is UTC+0')
+
+    def __str__(self):
+        return f'REINDEX {self.target_entity} "{self.index_name}" at "{self.schedule}"'
+
+    def __repr__(self):
+        return self.__str__()

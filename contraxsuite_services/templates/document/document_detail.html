@@ -394,6 +394,7 @@
       <li><a data-toggle="tab" href="#tab-33">Document Similarity<span class="badge badge-s similarity-badge"></span></a></li>
       <li><a data-toggle="tab" href="#tab-34">Extracted Tables<span class="badge badge-s tables-badge">{{ document.metadata.tables|length }}</span></a></li>
       <li><a data-toggle="tab" href="#tab-35">Document Log<span class="badge badge-s tables-badge"></span></a></li>
+      <li><a data-toggle="tab" href="#tab-36">Document Actions<span class="badge badge-s tables-badge"></span></a></li>
     </ul>
 
     <div class="tab-content">
@@ -446,6 +447,15 @@
 
       <div class="tab-pane clearfix" id="tab-35">
         {% include 'document/_document_tasks.html' %}
+      </div>
+
+      <div class="tab-pane clearfix" id="tab-36">
+        <div class="pull-right grid-controls">
+          {% include '_base_grid_buttons_block.html' %}
+        </div>
+        <div class="jqxgrid-container">
+          <div class="jqxgrid col-md-12 jqxgrid-activity"></div>
+        </div>
       </div>
 
    </div>
@@ -1868,7 +1878,7 @@
 
       // Document Similarity table
       var similarity_datafields = [
-        { name: 'document_b__pk', type: 'int' },
+        { name: 'document_b_id', type: 'int' },
         { name: 'document_b__name', type: 'string' },
         { name: 'document_b__document_type__title', type: 'string' },
         { name: 'document_b__project__name', type: 'string' },
@@ -1879,7 +1889,7 @@
         return linkFormatter(defaulthtml, row.document_b__url, value);
       };
       var similarity_columns = [
-        { text: 'ID', datafield: 'document_b__pk', width: 50,
+        { text: 'ID', datafield: 'document_b_id', width: 50,
           align: 'center', cellsalign: 'center' },
         { text: 'Name', datafield: 'document_b__name', width: 'auto', minwidth: 300,
           align: 'center', cellsalign: 'left',
@@ -1898,6 +1908,54 @@
         badgeClass: 'similarity-badge'
       };
       draw_patched_grid(".jqxgrid-similarity", similarity_datafields, similarity_columns, true, similarity_custom_source_data);
+
+      // Actions table
+      var actions_datafields = [
+        { name: 'id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'message', type: 'string' },
+        { name: 'view_action', type: 'string' },
+        { name: 'request_data', type: 'string' },
+        { name: 'user__name', type: 'string' },
+        { name: 'date', type: 'date' }
+      ];
+      var messageFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        if (value) {
+          value = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+        return renderCell(defaulthtml, value);
+      };
+      var requestDataFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        value = value && !$.isEmptyObject(value) ? JSON.stringify(value) : '';
+        $defaulthtml = $(defaulthtml)
+        $defaulthtml.prop('title', value)
+        return renderCell($defaulthtml, value);
+      };
+
+      var actions_columns = [
+        { text: 'Name', datafield: 'name', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'message', width: 'auto',
+          cellsrenderer: messageFormatter,
+          align: 'center', cellsalign: 'center' },
+        { text: 'View Action', datafield: 'view_action', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'User', datafield: 'user__name', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'date', width: 120,
+          filtertype: 'date',
+          format: 'MM-dd-yyyy HH:mm', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Request Data', datafield: 'request_data', width: 'auto',
+          cellsrenderer: requestDataFormatter,
+          align: 'center', cellsalign: 'center' }
+      ];
+
+      var actions_custom_source_data = {
+        url: "{% url "v1:document-actions" document.id %}"
+      };
+
+      draw_patched_grid(".jqxgrid-activity", actions_datafields, actions_columns, false, actions_custom_source_data);
 
       if (window.location.hash.indexOf('tab') != -1 ){
         var tab_map = window.location.hash.split('-');

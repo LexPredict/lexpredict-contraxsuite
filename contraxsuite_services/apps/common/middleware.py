@@ -26,20 +26,22 @@
 
 # Standard imports
 import re
+import weakref
 
 from django.utils.http import urlencode
+from django.dispatch.dispatcher import _make_id
 
 # Django imports
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from django.urls import reverse
 from django.db.models import signals
 from django.http import HttpResponseNotAllowed, HttpResponseForbidden, JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils.deprecation import MiddlewareMixin
 from django.utils.functional import curry
+from rest_framework.response import Response as RestFrameworkResponse
 
 # Project imports
 from apps.users.authentication import CookieAuthentication, token_cache
@@ -47,9 +49,9 @@ from apps.task.utils.task_utils import check_blocks
 # from apps.common.utils import get_test_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,6 +80,9 @@ class LoginRequiredMiddleware(MiddlewareMixin):
         # perm to explorer check
         if not request.user.has_perm('users.view_explorer'):
             if not any([m.match(path) for m in EXEMPT_URLS]):
+                # allow admin site urls for staff
+                if f'{settings.BASE_URL}admin/' in path and request.user.is_staff:
+                    return
                 response = HttpResponseForbidden()
                 msg = 'You do not have access to explorer.'
                 response.content = render(request, '403.html', context={'message': msg})
@@ -158,6 +163,8 @@ class Response404ErrorMiddleware(MiddlewareMixin):
     Custom page for 404 errors (404 Not Found).
     """
     def process_response(self, request, response):
+        if isinstance(response, (JsonResponse, RestFrameworkResponse)):
+            return response
         if response.status_code == 404:
             response = JsonResponse({'message': 'Not Found'})
             response.status_code = 404
@@ -169,6 +176,8 @@ class Response500ErrorMiddleware(MiddlewareMixin):
     Custom page for 500 error
     """
     def process_response(self, request, response):
+        if isinstance(response, (JsonResponse, RestFrameworkResponse)):
+            return response
         if response.status_code == 500 and settings.DEBUG is False and '/api/' in request.path:
             response = JsonResponse({'message': response.reason_phrase,
                                      'content': response.content.decode('utf-8')})
@@ -193,17 +202,47 @@ class RequestUserMiddleware(MiddlewareMixin):
                     user = None
             else:
                 user = None
-            update_save_info = curry(self.insert_user, user)
-            signals.pre_save.connect(
-                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
-            signals.post_save.connect(
-                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
-            signals.m2m_changed.connect(
-                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
-            signals.pre_delete.connect(
-                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
-            signals.post_delete.connect(
-                update_save_info, dispatch_uid=(self.__class__, request,), weak=False)
+            updated_signal_receiver = curry(self.insert_user, user)
+
+            self.connect_signal(signals.pre_save,
+                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
+            self.connect_signal(signals.post_save,
+                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
+            self.connect_signal(signals.m2m_changed,
+                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
+            self.connect_signal(signals.pre_delete,
+                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
+            self.connect_signal(signals.post_delete,
+                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
+
+    @classmethod
+    def connect_signal(cls, signal, receiver, sender=None, weak=True, dispatch_uid=None):
+        # this static method does almost the same "signal.connect(...)" does
+        # with one exception:
+        # - connect_signal makes the "receiver" callback first on the list of callbacks
+        # We need this to decorate the instance object before calling other callbacks
+        # (that actually implement some meaningful logic)
+
+        if dispatch_uid:
+            lookup_key = (dispatch_uid, _make_id(sender))
+        else:
+            lookup_key = (_make_id(receiver), _make_id(sender))
+
+        if weak:
+            ref = weakref.ref
+            receiver_object = receiver
+            # Check for bound methods
+            if hasattr(receiver, '__self__') and hasattr(receiver, '__func__'):
+                ref = weakref.WeakMethod
+                receiver_object = receiver.__self__
+            receiver = ref(receiver)
+            weakref.finalize(receiver_object, signal._remove_receiver)
+
+        with signal.lock:
+            signal._clear_dead_receivers()
+            if not any(r_key == lookup_key for r_key, _ in signal.receivers):
+                signal.receivers = [(lookup_key, receiver)] + signal.receivers
+            signal.sender_receivers_cache.clear()
 
     def process_response(self, request, response):
         signals.pre_save.disconnect(dispatch_uid=(self.__class__, request,))
@@ -237,7 +276,7 @@ class AppEnabledRequiredMiddleware(MiddlewareMixin):
         if hasattr(view_func, 'view_class') and hasattr(view_func.view_class, 'sub_app'):
             current_sub_app = view_func.view_class.sub_app
             from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
-            available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
+            available_locators = set(STANDARD_LOCATORS.val()) | set(OPTIONAL_LOCATORS.val())
             if current_sub_app not in available_locators:
                 messages.error(request, 'This locator is not enabled.')
                 if request.is_ajax() or request.META['CONTENT_TYPE'] == 'application/json':

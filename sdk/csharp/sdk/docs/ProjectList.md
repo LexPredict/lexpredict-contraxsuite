@@ -11,7 +11,7 @@ Name | Type | Description | Notes
 **StatusData** | [**ProjectListStatusData**](ProjectListStatusData.md) |  | [optional] 
 **Type** | **string** |  | [optional] 
 **TypeData** | [**ProjectListTypeData**](ProjectListTypeData.md) |  | 
-**CountOfDocuments** | **int** |  | [optional] [readonly] 
+**CountOfDocuments** | **int** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

@@ -38,23 +38,22 @@ from apps.document import signals
 from apps.document.constants import DocumentSystemField, FieldSpec
 from apps.document.models import Document, DocumentType, DocumentField
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.document import signals as document_signals
 from apps.project import signals as project_signals
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.users import signals as user_signals
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 def reindex_on_doc_type_change(document_type: DocumentType):
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         return
 
     from apps.rawdb.tasks import auto_reindex_not_tracked
@@ -64,12 +63,11 @@ def reindex_on_doc_type_change(document_type: DocumentType):
 
 def reindex_on_field_change(document_field: DocumentField):
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         return
 
     from apps.rawdb.tasks import auto_reindex_not_tracked
     from apps.task.tasks import call_task_func
-    from apps.document.models import DocumentField
 
     try:
         if document_field.document_type:
@@ -84,10 +82,19 @@ def document_delete_listener(sender, **kwargs):
     user = kwargs.get('user')
     document = kwargs.get('document')
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         return
     from apps.rawdb.field_value_tables import delete_document_from_cache
     delete_document_from_cache(user, document)
+
+
+@receiver(signals.doc_full_delete)
+def multiple_documents_delete_listener(sender, user, document_type_code, document_ids, **kwargs):
+    from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
+        return
+    from apps.rawdb.field_value_tables import delete_documents_from_cache_by_ids
+    delete_documents_from_cache_by_ids(user, document_type_code, document_ids)
 
 
 @receiver(signals.document_field_changed)
@@ -108,7 +115,7 @@ def document_type_change_listener(sender, **kwargs):
     reindex_on_doc_type_change(document_type)
 
 
-@receiver(document_signals.document_type_deleted)
+@receiver(signals.document_type_deleted)
 def document_type_delete_listener(sender, **kwargs):
     document_type = kwargs.get('document_type')
     from apps.rawdb.field_value_tables import _delete_document_fields_table
@@ -153,9 +160,14 @@ def document_change_listener_impl(sender,
                                   generic_fields_changed: FieldSpec = True,
                                   user_fields_changed: bool = True,
                                   changed_by_user: User = None,
-                                  document_initial_load: bool = False):
+                                  document_initial_load: bool = False,
+                                  skip_caching: bool = False):
+    # this listener only cares of caching
+    if skip_caching:
+        return
+
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         return
     from apps.rawdb.field_value_tables import cache_document_fields
     log = log or ProcessLogger()

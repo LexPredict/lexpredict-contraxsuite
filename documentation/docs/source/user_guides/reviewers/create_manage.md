@@ -10,77 +10,98 @@ Clicking on "New Batch Analysis" or "New Contract Analysis Project" will open up
 
 #### Batch Analysis
 
-You can also go to "Batch Analysis" in the main menu (left pane) and click "Add New". You do not need to select a [Document Type](./../power_users/create_document_type) for Batch Analysis, as Batch Analysis is used for those situations when you may not know exactly what kind of documents you're uploading.
+You can also go to **Batch Analysis** in the main menu on the left and click **Add New**. You do not need to select a [Document Type](./../power_users/create_document_type) for Batch Analysis, as Batch Analysis is used for those situations when you may not know exactly what kind of documents you're uploading.
 
-  ![MenuBatch](../../_static/img/guides/Reviewers/menu_batch.png)
+  ![BatchMenuNewBatch](../../_static/img/guides/Reviewers/BatchMenuNewBatch.png)
 
-  ![NewBatch](../../_static/img/guides/Reviewers/batch_analysis.png)
+In the "Create New Batch Analysis" pop-up, type in the name you would like for your new Batch Analysis. Check the box underneath the name form in order to receive an email when your document uploading and parsing is completed and your documents are ready to analyze (this box is checked by default). After naming your project and clicking "Create Batch Analysis", you will be taken to the "Add Contracts" pop-up.
 
-In the "Create New Batch Analysis" pop-up, type in the name you would like for your new Batch Analysis. You can also check the box underneath the name form in order to receive an email when your document uploading and parsing is completed, and your documents are ready to analyze. After naming your project and clicking "Create Batch Analysis", you will be taken to the "Add Contracts" pop-up.
+  ![AddContracts](../../_static/img/guides/Reviewers/AddContracts.png)
 
-  ![AddContracts](../../_static/img/guides/Reviewers/add_contracts.png)
+Browse for the specific documents you want, or drag and drop documents into the window. To add an entire folder of documents, click "Upload Directory" (*Note: If uploading a `.zip` folder, treat it as a file and either click "Browse" and browse for the `.zip` folder, or drag-and-drop the folder into the pop-up window*). Click the "Start Upload" button. If you want to add more documents from other locations later, just click the "Add Contracts" button in the top right of the main viewing pane.
 
-Browse for the specific documents you want, or drag and drop documents into the window. To add an entire folder of documents, click "Upload Directory". Click the "Start Upload" button. If you want to add more documents from other locations later, just click the "Add Contracts" button in the top right of the main viewing pane.
+Upload times may vary depending on the size and number of documents. Once documents are uploaded, ContraxSuite will begin parsing. Parsing usually takes a bit more time, but you can navigate away from the ContraxSuite page while parsing is ongoing, and return to your project after parsing is complete.
 
-Your documents will be uploaded rather quickly, though times may vary depending on the size and number of documents. Once documents are uploaded, ContraxSuite will begin parsing. Parsing usually takes a bit more time, but you can navigate away from the ContraxSuite page while parsing is ongoing, and return to your project after parsing is complete.
-
-Once your documents are uploaded into your Batch Analysis project, clicking on your new project will take you to the [Clustering page](./batch_analysis).
+Once your documents are uploaded into your Batch Analysis project, clicking on your new project will take you to the [Clustering page](./batch_analysis). If you clicked the checkbox to receive email updates, you will receive an email when uploading and parsing is complete.
 
 ---
 
 #### Contract Analysis
 
-To create a Contract Analysis project, click on "New Contract Analysis Project" from the homescreen, or click on "Contract Analysis Project" in the main menu (left pane) and click "Add New". In the pop-up, choose a name for your project, and choose a [Document Type](../power_users/create_document_type).
+To create a Contract Analysis project, click on "New Contract Analysis Project" from the homes page, or click on **Contract Analysis Project** in the main menu and click **Add New**.
 
-  ![NewContractAnalysis](../../_static/img/guides/Reviewers/contract_analysis.png)
+  ![NewContractAnalysis](../../_static/img/guides/Reviewers/NewCA.png)
+
+In the pop-up, choose the following:
+
+* Give your project a **Project Name**.
+* Choose a **[Document Type](../power_users/create_document_type)**.
+* For Technical Admins, clicking **Advanced** will display options for choosing either the Default Term Set (recommended), or [uploading custom term sets](../doc_exp/custom_project_terms).
+
+**Note on Custom Term Sets**: Default legal terms are all always extracted at document upload, and these terms are used by LexNLP extractors to find and annotate default Data Entities. ContraxSuite allows Admin and Power Users to upload a [custom term set](../doc_exp/custom_project_terms), and it can be selected as part of the document upload process to have the system extract those Terms in addition to, or instead of, the default terms. (*Note: This affects clustering by Terms, and will also have an effect on machine learning down the line.*)
 
 After naming your project and clicking "Create Project", you will be taken to the "Add Contracts" pop-up.
 
-  ![AddContracts](../../_static/img/guides/Reviewers/add_contracts.png)
+  ![AddContracts](../../_static/img/guides/Reviewers/AddContracts.png)
 
-Browse for the specific documents you want, or drag and drop documents into the window. To add an entire folder of documents, click "Upload Directory". Click the "Start Upload" button. If you want to add more documents from other locations later, just click the "Add Contracts" button in the top right of the main viewing pane.
+Browse for the specific documents you want, or drag and drop documents into the window. To add an entire folder of documents, click "Upload Directory" (*Note: If uploading a `.zip` folder, treat it as a file and either click "Browse" and browse for the `.zip` folder, or drag-and-drop the folder into the pop-up window*). Click the "Start Upload" button. If you want to add more documents from other locations later, just click the "Add Contracts" button in the top right of the main viewing pane.
 
 Once you have created a Contract Analysis project, if you are an admin or power user, you may want to set up permissions for reviewers and other resources who will be using this project. To do this, click "Settings" in the upper right of the main viewing screen for the project.
 
-  ![PermSettings](../../_static/img/guides/Reviewers/c_a_settings.png)
+  ![Settings](../../_static/img/guides/Reviewers/CASettings.png)
 
-On the Settings page, you can change the project name. The Document Type is listed underneath the project name (though you **cannot** change the Document Type after the project has been created). If you would like to add a reviewer to the project, you can select a reviewer from the "Add User" drop-down. All eligible reviewers will be listed in alphabetical order by their first name. You can either scroll through the drop-down, or type the first few letters of the reviewer you're looking for into the search bar.
+On the Settings page, you will see the following project-level information:
+* Project Name - Change a Project Name using the form.
+* Document Type - A Document Type ***cannot*** be changed once a project is created.
+* Detect Field Values - Click this button to re-run Field Detectors on a project (*see [Running Detect Field Values](./create_manage.html#running-detect-field-values) below*).
+* Make Searchable PDFs - Click this button to process PDFs for searchability.
+* Toggle "Clause-Level Review" (*see [the Clause Review page](./contract_clause_analysis) for more*)
+* An "Add User" form. Click the form for a drop-down list of all eligible users, listed in alphabetical order by first name (*see below*).
+* A list of users already assigned to the project, with their permission level accessible via a drop-down to the right (Administrators are able to change a user's permissions).
+  * **Junior Reviewer:** Can only see and edit documents assigned to them. They cannot delete the project or the documents in it, add users or documents to the project, or perform bulk assignment or status changes.
+  * **Reviewer:** Has all the same access as Junior Reviewer, and can additionally see and edit all documents in the project, regardless of assignment.
+  * **Reviewer Upload and Manage:** Has all the same access as a Reviewer, and can additionally upload documents and perform bulk assignment and status changes.
+  * **Project Owner:** Has all the same access as Reviewer Upload and Manage, and can additionally delete the project, delete documents from the project, and add users to the project.
 
-  ![SelectUsers](../../_static/img/guides/Reviewers/c_a_users.png)
+To add users to a project, type in the **Add User** form to search for users in a drop-down list of all users with access to the ContraxSuite instance.
 
-The reviewers you've selected to add to the project will be listed in the search bar. Once you've selected the reviewers you want to add to the project, click the "+ Add" button. The added reviewers will be displayed in the "Review Team" list, with their ranks (*e.g.*, "Reviewer", "Owner") listed next to their name.
+  ![SettingsUsersList](../../_static/img/guides/Reviewers/SettingsUsersList.png)
 
-  ![FinishedSelectUsers](../../_static/img/guides/Reviewers/c_a_user_select.png)
+The users you've selected to add to the project will be listed in the search bar. Once you've selected all users you want to add to the project, click the **+ Add** button. The new users will now be displayed in the "Review Team" list, with their ranks (*e.g.*, "Owner", "Can upload", or "Reviewer") listed next to their name.
+
+  ![SelectedUsers](../../_static/img/guides/Reviewers/SelectedUsers.png)
 
 If you have administrator privileges, you can change the rank of individuals in a project to expand or contract their permissions (*e.g.*, Reviewers cannot add Document Types or Fields; if you wanted to give a reviewer the permission to create Document Types or Fields, you would need to upgrade their rank here).
+
+*For more on user permissions, jump to the [User Roles](../power_users/user_roles) page.*
+
+---
 
 #### Deleting Documents
 
 Users can delete a Batch Analysis or a Contract Analysis Project in ContraxSuite by opening the project and selecting **Settings** > **Delete Project**.
 
-ContraxSuite's machine learning algorithms can only be successful at learning and improving over time if documents are not completely removed upon deletion. If a reviewer deletes a document, this document will no longer appear in the project in question; however, that document will be still be maintained at the database level to ensure that machine learning is not negatively impacted without administrator approval.
+ContraxSuite's machine learning algorithms can only be successful at learning and improving over time if documents are not completely removed upon deletion. If a reviewer deletes a document, this document will no longer appear in the project in question; however, that document will be still be maintained at the database level to ensure that machine learning is not negatively impacted without administrator approval. Requiring administrator approval before fully deleting documents ensures that users do not accidentally erase documents that contain information valuable to algorithms produced for ongoing and future projects.
 
-Fully deleting documents from a ContraxSuite instance requires administrator approval. This extra level of approval ensures that a user does not accidentally delete documents that contain information valuable to algorithms that power users or project administrators wish to maintain for ongoing and future projects.
+If you are an administrator, and wish to completely remove deleted documents from a project, follow the steps below. **Note:** *To permanently delete a document from any project, you must first delete it from that project in the main ContraxSuite UI*
 
-If you are an administrator who wishes to completely remove a deleted document from a project, follow the steps below. **Note:** *To permanently delete a document from any project, you must first delete it from that project in the main ContraxSuite UI*
+**1.** In the main menu, go to **Data Science** > **Document Explorer**.
 
-**1.** In the main menu, navigate to "Data Science" and then click "Document Explorer".
+  ![MainMenuDocExp](../../_static/img/guides/DocExp/MainMenuDocExp.png)
 
-  ![RemoveDocs1](../../_static/img/guides/Reviewers/remove_docs_1.png)
+**2.** In the Document Explorer's main menu, go to **Administration** > **Admin Site**.
 
-**2.** In the "Document Explorer" interface, navigate to "Administration" and then to "Admin Site".
+  ![AdminTab](../../_static/img/guides/DocExp/Admin/AdminTab.png)
 
-  ![RemoveDocs2](../../_static/img/guides/Reviewers/remove_docs_1.png)
+**3.** From the Admin Site, go to **Document** and then find **Soft delete documents**.
 
-**3.** From the Admin Site, navigate to "Document" and then to "Soft delete documents".
+  ![SoftDelete](../../_static/img/guides/Reviewers/SoftDelete.png)
 
-  ![RemoveDocs3](../../_static/img/guides/Reviewers/remove_docs_3.png)
-
-**4.** Use the search bar to search for the individual filename. You can also search via the project name or the Document Type.
+**4.** Use the search bar to narrow the list of individual documents. You can also search via project name or Document Type.
 
   ![RemoveDocs4](../../_static/img/guides/Reviewers/remove_docs_4.png)
 
-**5.** Select the documents you wish to delete, select "Delete checked documents" in the choice form below, then click "Go".
+**5.** Select the documents you wish to delete, select "Delete checked documents" in the choice form below, and click the "Go" button.
 
   ![RemoveDocs5](../../_static/img/guides/Reviewers/remove_docs_5.png)
 
@@ -92,4 +113,60 @@ Double-check that you have not selected documents you did not intend to select. 
 
 ---
 
-Click the "Next" button below to learn more about Batch Analysis projects. For more on how to review documents, [click here](./contract_analysis).
+#### Running "Detect Field Values"
+
+Users often create Document Types, Fields, and Field Detectors, then create a project, and then upload documents to that project, only to discover later that they need to make changes to their Fields and/or Field Detectors.
+
+ContraxSuite parses uploaded documents, then runs Field Detectors to extract data and populate the data in the Grid Views and Annotator. If you make changes to any Fields and/or Field Detectors, re-running this task will allow you to see the effects of any and all changes you've made. Follow the steps below to detect, or re-detect, Field Values in a project.
+
+**1.** Open a project in the Grid View and click "Settings" in the upper right corner.
+
+  ![RunDetectReact1](../../_static/img/guides/RunDetectReact1.png)
+
+**2.** On the Settings page, click "Detect Field Values".
+
+  ![RunDetectReact2](../../_static/img/guides/RunDetectReact2.png)
+
+**3.** A pop-up modal window will appear in which you can select specific options for how the system should re-run detection:
+
+  ![RunDetectReact3](../../_static/img/guides/RunDetectReact3.png)
+
+* **Select Level**: You can either choose "Select Documents" to select individual documents in the project to re-run detection for, or select "Whole Project".
+* **Existing Field Data**: 
+  * *Maintain Reviewed Data*: Projects and documents marked "Completed" or "Excluded", and any Field data that has been modifed by users, will not be altered.
+  * *Delete all field data from project and run fresh extraction*: Excluding projects and documents marked "Completed" or "Excluded", all Field data will be erased and Fields will be re-populated by current Fields and Field Detectors.
+* **Do not write detected values to DB**: Checking this box means that the task will not write any extracted values to the database. *Recommended for testing.*
+
+**4.** Click "Run Field Detector" once you have selected parameters. A new pop-up will appear that displays the progress of the detection task.
+
+  ![RunDetectReact4](../../_static/img/guides/RunDetectReact4.png)
+
+**5.** When the detection task has reached 100%, a new pop-up will appear that displays a log of all the individual system tasks that were conducted for this task. Click the "Copy Logs" button to copy this information. This information may be useful for IT personnel or Technical Admins who are troubleshooting individual Fields and Field Detectors. When logs are successfully copied, the "Copy Logs" button will change to say "Copied!".
+
+  ![RunDetectReact5](../../_static/img/guides/RunDetectReact5.png)
+  
+---
+
+#### Running "Make Searchable PDFs"
+
+Some documents are not searchable, often because they are scanned images in `pdf` format that do not contain any metadata and so are not searchable using `CTRL + F`. ContraxSuite makes it easy to turn un-searchable PDFs into searchable PDFs, using a simple process similar to "Detect Field Values" above.
+
+**1.** Open a project in the Grid View and click "Settings" in the upper right corner.
+
+  ![RunDetectReact1](../../_static/img/guides/RunDetectReact1.png)
+
+**2.** On the Settings page, click "Make Searchable PDFs".
+
+  ![MakeSearchable1](../../_static/img/guides/MakeSearchable1.png)
+
+**3.** A pop-up modal window will appear in which you can select either the Whole Project, or specific documents, to convert into searchable PDFs:
+
+  ![MakeSearchable2](../../_static/img/guides/MakeSearchable2.png)
+
+**4.** Click "Process PDFs". A new pop-up will appear that displays the progress of the task.
+
+  ![MakeSearchable3](../../_static/img/guides/MakeSearchable3.png)
+
+**5.** When the task has reached 100%, a new pop-up will appear with the option to copy the logs from the system tasks that were conducted for this task. This information may be useful for IT personnel or Technical Admins who are troubleshooting parsing and processing issues. When logs are successfully copied, the "Copy Logs" button will change to say "Copied!".
+
+  IMAGE PENDING

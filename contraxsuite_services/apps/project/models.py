@@ -34,23 +34,19 @@ from celery.states import UNREADY_STATES, PENDING, SUCCESS, FAILURE, REVOKED
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.mail import send_mail
-from django.db import models, connection
-from django.db.models import Q
-from django.db import transaction
-from django.db.models import Count, Max, Sum
+from django.db import models, connection, transaction
+from django.db.models import Count, Max, Sum, Q
 from django.db.models.deletion import CASCADE, SET_NULL
-from django.db.models.signals import m2m_changed, post_save, post_delete
+from django.db.models.signals import m2m_changed, post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 from guardian.shortcuts import assign_perm, get_content_type
 
 # Project imports
-from apps.common import redis
 from apps.common.fields import StringUUIDField
 from apps.common.models import get_default_status
-from apps.document.models import DocumentType
-from apps.extract.models import Term
+from apps.document.models import DocumentType, LazyTimeStampedModel
 from apps.project import signals
 from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 from apps.task.models import Task
@@ -58,9 +54,9 @@ from apps.users.models import User, CustomUserObjectPermission
 from apps.users.permissions import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,8 +141,6 @@ class TaskQueue(models.Model):
                 documents__pk=document_pk,
                 task_queue=self,
                 action='complete_document').latest('date')
-        else:
-            return None
 
 
 class TaskQueueHistory(models.Model):
@@ -220,7 +214,7 @@ class ProjectManager(models.Manager):
     use_in_migrations = True
 
     def get_queryset(self):
-        return super(ProjectManager, self).get_queryset().filter(delete_pending=False)
+        return super().get_queryset().filter(delete_pending=False)
 
     def qs_owners_reviewers_super_reviewers_by_doc_id(self, doc_id: int) -> models.QuerySet:
         from apps.document.models import Document
@@ -237,7 +231,7 @@ class ProjectManager(models.Manager):
                                    Q(project_super_reviewers__pk=project_id))
 
 
-class Project(models.Model):
+class Project(LazyTimeStampedModel):
     """Project object model
 
     Project is a class used to record zero or more task queues
@@ -282,6 +276,18 @@ class Project(models.Model):
         'document.DocumentType',
         default=DocumentType.generic_pk,
         null=True, blank=True, db_index=True, on_delete=CASCADE)
+
+    document_transformer = models.ForeignKey('analyze.MLModel',
+                                             blank=True, null=True, on_delete=SET_NULL,
+                                             related_name='document_transformer_id')
+    text_unit_transformer = models.ForeignKey('analyze.MLModel',
+                                              blank=True, null=True, on_delete=SET_NULL,
+                                              related_name='text_unit_transformer_id')
+    # Term tags being used for the project
+    term_tags = models.ManyToManyField(to='extract.TermTag', blank=True, db_index=True)
+
+    # Company types (aliases, abbreviations...) being used for the project
+    companytype_tags = models.ManyToManyField(to='extract.CompanyTypeTag', blank=True, db_index=True)
 
     all_objects = models.Manager()
 
@@ -332,11 +338,10 @@ class Project(models.Model):
         if not self.type:
             self.type = DocumentType.generic()
         old_instance = Project.objects.filter(pk=self.pk).first()
-        res = super().save(**kwargs)
+        super().save(**kwargs)
         self._fire_saved()
         with transaction.atomic():
             transaction.on_commit(lambda: self._fire_saved(old_instance))
-        return res
 
     def progress(self, as_dict=False):
         """
@@ -479,10 +484,9 @@ class Project(models.Model):
             for perm_name in super_reviewer_project_permissions:
                 assign_perm(perm_name, self.super_reviewers.all(), self)
 
-        reviewers = self.reviewers.difference(self.super_reviewers.all())
-        if reviewers.exists():
+        if self.reviewers.exists():
             for perm_name in reviewer_project_permissions:
-                assign_perm(perm_name, reviewers, self)
+                assign_perm(perm_name, self.reviewers.all(), self)
 
         if self.junior_reviewers.exists():
             for perm_name in junior_reviewer_project_permissions:
@@ -513,24 +517,30 @@ class Project(models.Model):
             document__project=self, assignee_id__in=removed_user_ids).update(assignee=None)
 
 
-@receiver(post_delete, sender=Project)
-def delete_cached_terms(sender, instance, **kwargs):
-    from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
-    DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.pk))
-    redis.r.delete(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.pk))
+@receiver(pre_save, sender=Project)
+def set_default_transformers(sender, instance, **kwargs):
+    if not instance.pk:
+        from apps.analyze.models import MLModel
+        if not instance.document_transformer:
+            default = MLModel.document_transformers.filter(default=True).first()
+            if default:
+                instance.document_transformer = default
+        if not instance.text_unit_transformer:
+            default = MLModel.textunit_transformers.filter(default=True).first()
+            if default:
+                instance.text_unit_transformer = default
 
 
-@receiver(post_save, sender=Project)
-def reviewers_total(sender, instance, **kwargs):
-
-    # TODO: add junior_reviewers into reviewers? it'd better keep all of them separate
-
-    all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
-    super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
-    extra_pk = super_reviewers_pk - all_reviewers_pk
-    if extra_pk:
-        instance.reviewers.add(*extra_pk)
-
+# @receiver(post_save, sender=Project)
+# def reviewers_total(sender, instance, **kwargs):
+#
+#     # TODO: add junior_reviewers into reviewers? it'd better keep all of them separate
+#
+#     all_reviewers_pk = set(instance.reviewers.values_list('pk', flat=True))
+#     super_reviewers_pk = set(instance.super_reviewers.values_list('pk', flat=True))
+#     extra_pk = super_reviewers_pk - all_reviewers_pk
+#     if extra_pk:
+#         instance.reviewers.add(*extra_pk)
 
 @receiver(post_delete, sender=Project)
 def delete_perms_on_project_removed(sender, instance, **kwargs):
@@ -632,10 +642,10 @@ class UploadSession(models.Model):
         """
         Progress per document (avg session document tasks progress)
         """
-        result = self.document_set.annotate(document_id=models.F('id')) \
+        result = self.document_set.filter(processed=True).annotate(document_id=models.F('id')) \
             .values('document_id', 'name', 'file_size', 'processed')
         for i in result:
-            i['tasks_overall_status'] = SUCCESS if i['processed'] is True else None
+            i['tasks_overall_status'] = SUCCESS
         result = {i['name']: i for i in result}
 
         from apps.project.tasks import LoadArchive
@@ -738,10 +748,11 @@ class UploadSession(models.Model):
         if self.completed:
             return True
         if not self.session_tasks.exists():
-            # session tasks already deleted but documents exist-i.e. session has ended some time ago
+            # session tasks already deleted but documents exist - i.e. session has ended some time ago
             if self.document_set.exists():
                 completed = True
-            # no documents uploaded into session and more that 1 day passed
+            # 1. no documents uploaded into session and more than 1 day passed
+            # 2. all documents failed to upload (exists, empty, delete_pending) ???
             elif (now() - self.created_date).days >= 1:
                 completed = True
             else:
@@ -762,7 +773,7 @@ class UploadSession(models.Model):
         from apps.notifications.mail_server_config import MailServerConfig
         from apps.common.app_vars import SUPPORT_EMAIL
         backend = MailServerConfig.make_connection_config()
-        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
+        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL,
                   recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_started = True
         self.save()
@@ -778,23 +789,23 @@ class UploadSession(models.Model):
         from apps.notifications.mail_server_config import MailServerConfig
         backend = MailServerConfig.make_connection_config()
         from apps.common.app_vars import SUPPORT_EMAIL
-        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
+        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL,
                   recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_completed = True
         self.save()
 
 
-@receiver(models.signals.post_save, sender=UploadSession)
+@receiver(post_save, sender=UploadSession)
 def save_upload(sender, instance, created, **kwargs):
     """
     Store created_by from request
     """
     if hasattr(instance, 'request_user'):
-        models.signals.post_save.disconnect(save_upload, sender=sender)
+        post_save.disconnect(save_upload, sender=sender)
         if created and not instance.created_by:
             instance.created_by = instance.request_user
             instance.save()
-        models.signals.post_save.connect(save_upload, sender=sender)
+        post_save.connect(save_upload, sender=sender)
 
 
 class ProjectClustering(models.Model):
@@ -840,45 +851,6 @@ class ProjectClustering(models.Model):
             return
         self.status = new_status
         self.save(update_fields=['status'])
-
-
-class ProjectTermConfiguration(models.Model):
-    """
-    This object allows for the configuration of project-specific terms,
-    i.e., enabling/disabling terms for individual project.
-    """
-    # Project link
-    project = models.OneToOneField(Project, db_index=True, on_delete=CASCADE)
-
-    # Term link
-    terms = models.ManyToManyField('extract.Term', db_index=True)
-
-    class Meta:
-        ordering = ['project__name']
-
-    def __str__(self):
-        return "ProjectTermConfiguration (project={})" \
-            .format(self.project)
-
-    def excluded_terms(self):
-        all_terms = Term.objects.all()
-        project_terms = self.terms.all()
-        return all_terms.difference(project_terms)
-
-
-@receiver(m2m_changed, sender=ProjectTermConfiguration.terms.through)
-def cache_terms(instance, action, pk_set, **kwargs):
-    # cache project terms only in case if terms have changed, i.e. pk_set != {}
-    if action.startswith('post') and pk_set:
-        from apps.extract.dict_data_cache import cache_term_stems
-        cache_term_stems(instance.project.pk)
-
-
-@receiver(post_delete, sender=ProjectTermConfiguration)
-def delete_cached_terms_2(sender, instance, **kwargs):
-    from apps.extract.dict_data_cache import CACHE_KEY_TERM_STEMS_PROJECT_PTN, DbCache
-    DbCache.clean_cache(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.project.pk))
-    redis.r.delete(CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(instance.project.pk))
 
 
 class UserProjectsSavedFilter(models.Model):

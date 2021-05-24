@@ -13,8 +13,8 @@ Name | Type | Description | Notes
 **ClusterBy** | **string** |  | 
 **Using** | **string** |  | 
 **CreatedDate** | **DateTime** |  | [optional] 
-**TextUnitCount** | **string** |  | [optional] [readonly] 
-**TextUnitData** | **string** |  | [optional] [readonly] 
+**TextUnitCount** | **int** |  | [optional] [readonly] 
+**TextUnitData** | **List&lt;Object&gt;** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

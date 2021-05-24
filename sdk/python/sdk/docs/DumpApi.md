@@ -15,7 +15,7 @@ Method | HTTP request | Description
 
 
 # **dump_document_config_get**
-> dict(str, object) dump_document_config_get()
+> object dump_document_config_get()
 
 
 
@@ -25,10 +25,9 @@ Dump document types, fields, field detectors and  document filters to json.
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -42,33 +41,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    
+    api_instance = dump_api.DumpApi(api_client)
+    download = True # bool | Download as file (optional)
+    document_type_codes = "document_type_codes_example" # str | Document Type codes separated by comma (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
-        api_response = api_instance.dump_document_config_get()
+        api_response = api_instance.dump_document_config_get(download=download, document_type_codes=document_type_codes)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_document_config_get: %s\n" % e)
 ```
 
+
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool**| Download as file | [optional]
+ **document_type_codes** | **str**| Document Type codes separated by comma | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**object**
 
 ### Authorization
 
@@ -78,6 +82,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -88,20 +93,20 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_document_config_put**
-> file dump_document_config_put(request_body=request_body)
+> str dump_document_config_put()
 
 
 
-Upload field values
+Dump document types, fields, field detectors and  document filters to json.
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
+from openapi_client.model.dump_put_error_response import DumpPUTErrorResponse
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -115,37 +120,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = dump_api.DumpApi(api_client)
+    request_body = [
+        {},
+    ] # [{str: (bool, date, datetime, dict, float, int, list, str, none_type)}] |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.dump_document_config_put(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_document_config_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **[{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]**|  | [optional]
 
 ### Return type
 
-**file**
+**str**
 
 ### Authorization
 
@@ -153,18 +159,20 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_fixture_post**
-> file dump_dump_fixture_post(dump_fixture=dump_fixture)
+> file_type dump_dump_fixture_post()
 
 
 
@@ -174,10 +182,10 @@ Download model fixture
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
+from openapi_client.model.dump_fixture import DumpFixture
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -191,37 +199,42 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    dump_fixture = openapi_client.DumpFixture() # DumpFixture |  (optional)
+    api_instance = dump_api.DumpApi(api_client)
+    dump_fixture = DumpFixture(
+        app_name="app_name_example",
+        model_name="model_name_example",
+        file_name="file_name_example",
+        filter_options={},
+        indent=4,
+    ) # DumpFixture |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.dump_dump_fixture_post(dump_fixture=dump_fixture)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_dump_fixture_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **dump_fixture** | [**DumpFixture**](DumpFixture.md)|  | [optional] 
+ **dump_fixture** | [**DumpFixture**](DumpFixture.md)|  | [optional]
 
 ### Return type
 
-**file**
+**file_type**
 
 ### Authorization
 
@@ -232,6 +245,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -240,20 +254,19 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_get**
-> dict(str, object) dump_dump_get()
+> object dump_dump_get()
 
 
 
-Dump all users, roles, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -267,33 +280,36 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    
+    api_instance = dump_api.DumpApi(api_client)
+    download = True # bool | Download as file (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
-        api_response = api_instance.dump_dump_get()
+        api_response = api_instance.dump_dump_get(download=download)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_dump_get: %s\n" % e)
 ```
 
+
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool**| Download as file | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**object**
 
 ### Authorization
 
@@ -303,6 +319,7 @@ This endpoint does not need any parameter.
 
  - **Content-Type**: Not defined
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -313,20 +330,20 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_put**
-> file dump_dump_put(request_body=request_body)
+> str dump_dump_put()
 
 
 
-Upload field values
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
+from openapi_client.model.dump_put_error_response import DumpPUTErrorResponse
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -340,37 +357,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = dump_api.DumpApi(api_client)
+    request_body = [
+        {},
+    ] # [{str: (bool, date, datetime, dict, float, int, list, str, none_type)}] |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.dump_dump_put(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_dump_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **[{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]**|  | [optional]
 
 ### Return type
 
-**file**
+**str**
 
 ### Authorization
 
@@ -378,31 +396,32 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_field_values_get**
-> dict(str, object) dump_field_values_get()
+> object dump_field_values_get()
 
 
 
-Download field values
+Dump field values to json.
 
 ### Example
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -416,33 +435,36 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    
+    api_instance = dump_api.DumpApi(api_client)
+    download = True # bool | Download as file (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
-        api_response = api_instance.dump_field_values_get()
+        api_response = api_instance.dump_field_values_get(download=download)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_field_values_get: %s\n" % e)
 ```
 
+
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool**| Download as file | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**object**
 
 ### Authorization
 
@@ -453,6 +475,7 @@ This endpoint does not need any parameter.
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -462,7 +485,7 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_field_values_put**
-> file dump_field_values_put(request_body=request_body)
+> str dump_field_values_put()
 
 
 
@@ -472,10 +495,10 @@ Upload field values
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
+from openapi_client.model.dump_put_error_response import DumpPUTErrorResponse
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -489,37 +512,38 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    request_body = None # dict(str, object) |  (optional)
+    api_instance = dump_api.DumpApi(api_client)
+    request_body = [
+        {},
+    ] # [{str: (bool, date, datetime, dict, float, int, list, str, none_type)}] |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.dump_field_values_put(request_body=request_body)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_field_values_put: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **request_body** | [**dict(str, object)**](object.md)|  | [optional] 
+ **request_body** | **[{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]**|  | [optional]
 
 ### Return type
 
-**file**
+**str**
 
 ### Authorization
 
@@ -527,18 +551,20 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_load_fixture_post**
-> dict(str, object) dump_load_fixture_post(load_fixture=load_fixture)
+> [{str: (bool, date, datetime, dict, float, int, list, str, none_type)}] dump_load_fixture_post()
 
 
 
@@ -548,10 +574,10 @@ Install model fixtures
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import dump_api
+from openapi_client.model.load_fixture import LoadFixture
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -565,37 +591,40 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.DumpApi(api_client)
-    load_fixture = openapi_client.LoadFixture() # LoadFixture |  (optional)
+    api_instance = dump_api.DumpApi(api_client)
+    load_fixture = LoadFixture(
+        fixture="fixture_example",
+        mode="default",
+        encoding="utf=8",
+    ) # LoadFixture |  (optional)
 
+    # example passing only required values which don't have defaults set
+    # and optional values
     try:
         api_response = api_instance.dump_load_fixture_post(load_fixture=load_fixture)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling DumpApi->dump_load_fixture_post: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **load_fixture** | [**LoadFixture**](LoadFixture.md)|  | [optional] 
+ **load_fixture** | [**LoadFixture**](LoadFixture.md)|  | [optional]
 
 ### Return type
 
-**dict(str, object)**
+**[{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]**
 
 ### Authorization
 
@@ -605,6 +634,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

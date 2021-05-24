@@ -10,7 +10,7 @@ from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 
 def do_rename(apps, schema_editor):
     DocumentField = apps.get_model('document', 'DocumentField')
-    to_rename = list()  # type: List[Tuple[str, str, str]]
+    to_rename = []  # type: List[Tuple[str, str, str]]
     for field in DocumentField.objects.filter(type='ratio'):
         table_name = doc_fields_table_name(field.document_type.code)
         handler = RatioRawdbFieldHandler(field.code, field.type, field.title, table_name)

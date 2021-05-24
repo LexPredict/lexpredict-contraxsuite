@@ -16,11 +16,11 @@ from datetime import datetime
 from django.conf import settings
 from django.utils.safestring import mark_safe
 
-sys.path.append('../../../contraxsuite_services')
+sys.path.insert(0, os.path.abspath('../../../contraxsuite_services'))
 
 # Documentation contributors may not have a local installation of ContraxSuite
 try:
-    os.environ["DJANGO_SETTINGS_MODULE"] = "settings"
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
     django.setup()
     # The full version, including alpha/beta/rc tags
     release = settings.VERSION_NUMBER
@@ -32,7 +32,7 @@ except Exception as e:
 author = 'LexPredict, LLC'
 project = 'LexPredict ContraxSuite'
 copyright = mark_safe(
-    '2019, LexPredict, LLC'
+    '2019-2020, LexPredict, LLC'
     '<span style="margin-left: 40px">Last updated: '
     + datetime.now().strftime('%m/%d/%Y, %H:%M:%S %Z') + '</span>'
 )
@@ -40,19 +40,21 @@ copyright = mark_safe(
 # -- General configuration ---------------------------------------------------
 
 # Custom Extensions
-
-sys.path.append(os.path.abspath("./_ext"))
+sys.path.append(os.path.abspath('./_ext'))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'formfield_extension',
+extensions: tuple = (
     'recommonmark',
     'sphinx.ext.napoleon',
     'sphinx.ext.coverage',
     'sphinx.ext.autodoc',
-]
+    'sphinx.ext.intersphinx',
+    'sphinxcontrib_django2',
+    'sphinx_autodoc_annotation',
+    'celery.contrib.sphinx',
+)
 
 include_formfield = True
 
@@ -108,3 +110,5 @@ html_theme_options = {
 
 coverage_ignore_c_items = True
 
+# # Configure the path to the Django settings module
+# django_settings = 'settings'

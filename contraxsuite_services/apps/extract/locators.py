@@ -25,49 +25,56 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import random
 from collections import defaultdict
 from typing import List, Set, Dict, Type, Optional
 
 from django.db import transaction
 from django.conf import settings
 from django.db.models import Sum
-from lexnlp.extract.en import (
-    amounts, citations, copyright, courts, dates, distances, definitions,
-    durations, geoentities, money, percents, ratios, regulations, trademarks, urls)
-from lexnlp.nlp.en.tokens import get_stems, get_token_list
+from lexnlp.extract.all_locales import amounts, citations, courts, dates, definitions, durations, percents, money
+from lexnlp.extract.en import copyright, distances, geoentities, ratios, regulations, trademarks, urls
+from lexnlp.nlp.en.tokens import get_stems, get_tokens_by_regex
 
 from apps.common.log_utils import ProcessLogger
 from apps.common.model_utils.safe_bulk_create import SafeBulkCreate
-from apps.companies_extractor import CompaniesExtractor
 from apps.document.models import TextUnitTag
 from apps.extract import dict_data_cache
+from apps.extract.companies_extractor import CompaniesExtractor
+from apps.extract.dict_data_cache import clean_geo_config_cache
 from apps.extract.locating_performance_meter import LocatingPerformanceMeter
-from apps.extract.models import (
-    AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage,
-    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
-    GeoAliasUsage, GeoEntityUsage, PercentUsage, RatioUsage, RegulationUsage,
-    Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage, Usage, DocumentTermUsage, DocumentDefinitionUsage)
-from apps.extract.models import ProjectGeoEntityUsage, ProjectPartyUsage, ProjectTermUsage, \
-    ProjectDefinitionUsage
+from apps.extract.models import AmountUsage, CitationUsage, CopyrightUsage, CourtUsage, CurrencyUsage, \
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage, \
+    GeoAliasUsage, GeoEntityUsage, PercentUsage, RatioUsage, RegulationUsage, \
+    Party, PartyUsage, TermUsage, TrademarkUsage, UrlUsage, Usage, DocumentTermUsage, DocumentDefinitionUsage, \
+    ProjectGeoEntityUsage, ProjectPartyUsage, ProjectTermUsage, ProjectDefinitionUsage
+from apps.extract.term_stems import TermStemsCache
 from apps.materialized_views.mat_views import MaterializedViews
 from settings import DEFAULT_FLOAT_PRECISION
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-MAT_VIEWS_REFRESH_ON_LOCATE_FINISHED = (ProjectGeoEntityUsage, ProjectPartyUsage, ProjectTermUsage,
-                                        ProjectDefinitionUsage)
+MAT_VIEWS_REFRESH_ON_LOCATE_FINISHED = {
+    'definition': ProjectDefinitionUsage,
+    'geoentity': ProjectGeoEntityUsage,
+    'party': ProjectPartyUsage,
+    'term': ProjectTermUsage,
+}
 
 
-def request_mat_views_refresh():
+def request_mat_views_refresh(locate_entities: List = None):
     mat_views = MaterializedViews()
-    for model_class in MAT_VIEWS_REFRESH_ON_LOCATE_FINISHED:
-        mat_views.request_refresh_by_model_class(model_class)
+    for entity_name, model_class in MAT_VIEWS_REFRESH_ON_LOCATE_FINISHED.items():
+        # 1. either no locate_entities passed - see apps.extract.locators.doc_full_delete_listener
+        # 2. or passed from Locate.save_summary_on_locate_finished
+        if locate_entities is None or entity_name in locate_entities:
+            mat_views.request_refresh_by_model_class(model_class)
 
 
 class ParseResults:
@@ -117,10 +124,10 @@ class LocationResults:
                         for entity_class in self.processed_usage_entity_classes:
                             entity_class.objects.filter(text_unit_id__in=self.processed_text_unit_ids).delete()
 
-                tag_models = list()
+                tag_models = []
                 from apps.document.app_vars import LOCATE_TEXTUNITTAGS
                 tags_saved = 0
-                if LOCATE_TEXTUNITTAGS.val:
+                if LOCATE_TEXTUNITTAGS.val():
                     for text_unit_id, tags in self.tags.items():
                         for tag in tags:
                             tag_models.append(TextUnitTag(user_id=user_id,
@@ -152,18 +159,34 @@ class Locator:
 
     locates_usage_model_classes = []
 
-    def parse(self, log: ProcessLogger, text: str, text_unit_id: int,
-              text_unit_lang: str, document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         pass
 
-    def try_parsing(self, log: ProcessLogger, locate_results: LocationResults, text: str,
-                    text_unit_id: int, text_unit_lang: str, document_id: int, document_project_id: int, **kwargs):
+    def try_parsing(self,
+                    log: ProcessLogger,
+                    locate_results: LocationResults,
+                    text: str,
+                    text_unit_id: int,
+                    text_unit_lang: str,
+                    document_id: int,
+                    document_project_id: int,
+                    parsing_context_id: Optional[str] = None,
+                    **kwargs):
         if not text:
             return
         start = datetime.datetime.now()
         try:
-            parse_results = self.parse(log, text, text_unit_id, text_unit_lang, locate_results.document_initial_load,
-                                       **kwargs)  # type: ParseResults
+            parse_results = self.parse(
+                log, text, text_unit_id, text_unit_lang, document_project_id,
+                locate_results.document_initial_load, parsing_context_id, **kwargs)  # type: ParseResults
             if parse_results:
                 parse_results.update_doc_project_ids(document_id, document_project_id)
                 locate_results.collect(self, text_unit_id, parse_results)
@@ -189,12 +212,19 @@ class AmountLocator(Locator):
 
     locates_usage_model_classes = [AmountUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        precision = DEFAULT_FLOAT_PRECISION
-        found = list(amounts.get_amount_annotations(text,
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        found = list(amounts.get_amount_annotations(text_unit_lang,
+                                                    text,
                                                     extended_sources=False,
-                                                    float_digits=precision))
+                                                    float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
             unique = set(found)
             return ParseResults({AmountUsage: [AmountUsage(text_unit_id=text_unit_id,
@@ -208,9 +238,16 @@ class CitationLocator(Locator):
     code = 'citation'
     locates_usage_model_classes = [CitationUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        found = list(citations.get_citation_annotations(text))
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        found = list(citations.get_citation_annotations(text_unit_lang, text))
         if found:
             unique = set(found)
             return ParseResults({CitationUsage: [CitationUsage(text_unit_id=text_unit_id,
@@ -230,16 +267,26 @@ class CourtLocator(Locator):
 
     locates_usage_model_classes = [CourtUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         from apps.extract.app_vars import SIMPLE_LOCATOR_TOKENIZATION
-        simple_norm = SIMPLE_LOCATOR_TOKENIZATION.val
+        simple_norm = SIMPLE_LOCATOR_TOKENIZATION.val(project_id=document_project_id)
+        # TODO: load DE courts?
         court_config = dict_data_cache.get_court_config()
-        found = [i[0].id
-                 for i in courts.get_courts(text,
-                                            court_config_list=court_config,
-                                            text_languages=[text_unit_lang],
-                                            simplified_normalization=simple_norm)]
+        found = [a.entity_id
+                 for a in courts.get_court_annotations(
+                     text_unit_lang,
+                     text,
+                     court_config_list=court_config,
+                     text_locales=[text_unit_lang],
+                     simplified_normalization=simple_norm)]
         if found:
             unique = set(found)
             return ParseResults({CourtUsage: [CourtUsage(text_unit_id=text_unit_id,
@@ -252,8 +299,15 @@ class DistanceLocator(Locator):
 
     locates_usage_model_classes = [DistanceUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         precision = DEFAULT_FLOAT_PRECISION
         found = list(distances.get_distance_annotations(text, float_digits=precision))
         if found:
@@ -270,11 +324,19 @@ class DateLocator(Locator):
 
     locates_usage_model_classes = [DateUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        from apps.document.app_vars import STRICT_PARSE_DATES
-        strict = kwargs.get(Locator.STRICT_DATES_PTR, STRICT_PARSE_DATES.val)
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        from apps.extract.app_vars import STRICT_PARSE_DATES
+        strict = kwargs.get(Locator.STRICT_DATES_PTR, STRICT_PARSE_DATES.val(project_id=document_project_id))
         found = list(dates.get_date_annotations(
+            text_unit_lang,
             text,
             strict=strict))
         if found:
@@ -291,7 +353,8 @@ class DefinitionLocator(Locator):
     locates_usage_model_classes = [DefinitionUsage]
 
     @classmethod
-    def update_document_summary(cls, log: ProcessLogger, doc_id: int, document_initial_load: bool = False):
+    def update_document_summary(cls, log: ProcessLogger, doc_id: int,
+                                document_initial_load: bool = False):
         doc_usages = list(DefinitionUsage.objects
                           .filter(text_unit__document_id=doc_id)
                           .values('definition')
@@ -310,20 +373,25 @@ class DefinitionLocator(Locator):
                 return True
         return False
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        found = [
-            definition_caught
-            for definition_caught in definitions.get_definition_list_in_sentence((0, len(text), text,))
-            if self._is_any_alphanumeric(definition_caught.name)
-        ]
-        if found:
-            unique = set(found)
-            return ParseResults({DefinitionUsage: [DefinitionUsage(text_unit_id=text_unit_id,
-                                                                   definition=item.name.upper()
-                                                                   if item.name is not None else None,
-                                                                   count=found.count(item)
-                                                                   ) for item in unique]})
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        defs = [d for d in definitions.get_definition_annotations(text_unit_lang, text)
+                if self._is_any_alphanumeric(d.name)]
+        if defs:
+            unique = set(defs)
+            return ParseResults({DefinitionUsage:
+                                     [DefinitionUsage(text_unit_id=text_unit_id,
+                                                      definition=item.name.upper()
+                                                      if item.name is not None else None,
+                                                      count=defs.count(item)
+                                                      ) for item in unique]})
 
 
 class DurationLocator(Locator):
@@ -331,11 +399,17 @@ class DurationLocator(Locator):
 
     locates_usage_model_classes = [DateDurationUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         precision = DEFAULT_FLOAT_PRECISION
-        found = durations.get_duration_annotations_list(
-            text, float_digits=precision)
+        found = list(durations.get_duration_annotations(text_unit_lang, text, float_digits=precision))
         if found:
             unique = set(found)
             return ParseResults({DateDurationUsage: [DateDurationUsage(text_unit_id=text_unit_id,
@@ -352,10 +426,17 @@ class CurrencyLocator(Locator):
 
     locates_usage_model_classes = [CurrencyUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        found = list(money.get_money_annotations(text,
-                                                 float_digits=DEFAULT_FLOAT_PRECISION))
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        found = list(money.get_money_annotations(
+            text_unit_lang, text, float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
             unique = set(found)
             return ParseResults({CurrencyUsage: [CurrencyUsage(text_unit_id=text_unit_id,
@@ -371,13 +452,22 @@ class PartyLocator(Locator):
 
     locates_usage_model_classes = [PartyUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> Optional[ParseResults]:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> Optional[ParseResults]:
         # Here we override saving logic to workaround race conditions on party creation vs party usage saving
+        project_id = kwargs.get('project_id', None)
         if not document_initial_load:
             PartyUsage.objects.filter(text_unit_id=text_unit_id).delete()
         found = list(CompaniesExtractor.get_companies(
-            text, count_unique=True, detail_type=True, name_upper=True))
+            project_id, text, count_unique=True, detail_type=True, name_upper=True,
+            selected_tags=kwargs.get('selected_tags')))
         if found:
             results = []
             for _party in found:
@@ -403,18 +493,26 @@ class PercentLocator(Locator):
 
     locates_usage_model_classes = [PercentUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        found = list(percents.get_percent_annotations(text,
-                                                      float_digits=DEFAULT_FLOAT_PRECISION))
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        found = list(percents.get_percent_annotations(
+            text_unit_lang, text, float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
             unique = set(found)
-            return ParseResults({PercentUsage: [PercentUsage(text_unit_id=text_unit_id,
-                                                             amount=item.amount,
-                                                             amount_str=item.text,
-                                                             unit_type=item.sign,
-                                                             total=item.fraction,
-                                                             count=found.count(item)) for item in unique]})
+            return ParseResults({PercentUsage: [
+                PercentUsage(text_unit_id=text_unit_id,
+                             amount=item.amount,
+                             amount_str=item.text,
+                             unit_type=item.sign,
+                             total=item.fraction,
+                             count=found.count(item)) for item in unique]})
 
 
 class RatioLocator(Locator):
@@ -422,8 +520,15 @@ class RatioLocator(Locator):
 
     locates_usage_model_classes = [RatioUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         found = list(ratios.get_ratio_annotations(text,
                                                   float_digits=DEFAULT_FLOAT_PRECISION))
         if found:
@@ -441,8 +546,15 @@ class RegulationLocator(Locator):
 
     locates_usage_model_classes = [RegulationUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         found = list(regulations.get_regulation_annotations(text))
         if found:
             unique = set(found)
@@ -456,8 +568,15 @@ class CopyrightLocator(Locator):
     code = 'copyright'
     locates_usage_model_classes = [CopyrightUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         # TODO: what's the logic behind [:200] ... < 100 ?
         found = list(copyright.get_copyright_annotations(text, return_sources=True))
         if found:
@@ -474,8 +593,15 @@ class TrademarkLocator(Locator):
     code = 'trademark'
     locates_usage_model_classes = [TrademarkUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         found = [t.trademark for t in trademarks.get_trademark_annotations(text)]
         if found:
             unique = set(found)
@@ -490,8 +616,15 @@ class UrlLocator(Locator):
 
     locates_usage_model_classes = [UrlUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
         found = [u.url for u in urls.get_url_annotations(text)]
         if found:
             unique = set(found)
@@ -505,17 +638,25 @@ class GeoEntityLocator(Locator):
 
     locates_usage_model_classes = [GeoEntityUsage, GeoAliasUsage]
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        priority = kwargs.get('priority', True)
-        geo_config = dict_data_cache.get_geo_config()
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        priority_check = kwargs.get('priority', True)
+        geo_config = dict_data_cache.get_geo_config(parsing_context_id)
         from apps.extract.app_vars import SIMPLE_LOCATOR_TOKENIZATION
-        simple_norm = SIMPLE_LOCATOR_TOKENIZATION.val
-        entity_alias_pairs = list(geoentities.get_geoentities(text,
-                                                              geo_config,
-                                                              text_languages=[text_unit_lang],
-                                                              priority=priority,
-                                                              simplified_normalization=simple_norm))
+        simple_norm = SIMPLE_LOCATOR_TOKENIZATION.val()
+        entity_alias_pairs = list(geoentities.get_geoentities(
+            text,
+            geo_config,
+            text_languages=[text_unit_lang],
+            conflict_resolving_field='priority' if priority_check else 'none',
+            simplified_normalization=simple_norm))
 
         entity_ids = [entity.id for entity, _alias in entity_alias_pairs]
         if entity_ids:
@@ -549,12 +690,22 @@ class TermLocator(Locator):
             [DocumentTermUsage(document_id=doc_id, term_id=item['term_id'], count=item['total_count'])
              for item in doc_term_usages], ignore_conflicts=True)
 
-    def parse(self, log: ProcessLogger, text, text_unit_id, _text_unit_lang,
-              document_initial_load: bool = False, **kwargs) -> ParseResults:
-        project_id = kwargs.get('project_id')
-        term_stems = dict_data_cache.get_term_config(project_id)
+    def parse(self,
+              log: ProcessLogger,
+              text: str,
+              text_unit_id: int,
+              _text_unit_lang: str,
+              document_project_id: int,
+              document_initial_load: bool = False,
+              parsing_context_id: Optional[str] = None,
+              **kwargs) -> ParseResults:
+        # w/o local caching this code takes 90% of the function call
+        term_stems = TermStemsCache.get_term_stems(
+            document_project_id, parsing_context_id, kwargs.get('selected_tags'))
         text_stems = ' %s ' % ' '.join(get_stems(text, lowercase=True))
-        text_tokens = get_token_list(text, lowercase=True)
+        # this call would make the whole method ~5% slower
+        # get_token_list(text, lowercase=True) # this
+        text_tokens = list(get_tokens_by_regex(text, lowercase=True))
         term_usages = []
         for stemmed_term, data in term_stems.items():
             # stem not found in text
@@ -600,3 +751,20 @@ class LocatorsCollection:
         cls._LOCATORS = {locator_class.code: locator_class()
                          for locator_class in cls._LOCATOR_CLASSES}
         return cls._LOCATORS
+
+    @classmethod
+    def make_parsing_context_id(cls) -> str:
+        """
+        Make random string that is the key for future local cache calls.
+        """
+        return str(random.uniform(0, 10000))
+
+    @classmethod
+    def clean_parsing_context(cls, context_id: Optional[str] = None) -> None:
+        """
+        The calling code cleans caches stored for this code by "context_id" key
+        """
+        if not context_id:
+            return
+        TermStemsCache.clean_local_cache(context_id, False)
+        clean_geo_config_cache(context_id, False)

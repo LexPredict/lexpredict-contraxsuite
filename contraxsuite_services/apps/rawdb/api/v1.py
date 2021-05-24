@@ -47,7 +47,7 @@ from apps.common.errors import APIRequestError
 from apps.common.schemas import ObjectResponseSchema
 from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import Document, DocumentType
-from apps.document.scheme_migrations.scheme_migration import MIGRATION_TAGS, CURRENT_VERSION
+from apps.extract.models import TermTag, CompanyTypeTag
 from apps.project.models import Project
 from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG, \
     FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, \
@@ -57,37 +57,15 @@ from apps.rawdb.field_value_tables import get_columns, get_annotation_columns, \
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb.query_parsing import parse_order_by
 from apps.rawdb.rawdb.rawdb_field_handlers import ColumnDesc
-from apps.rawdb.schemas import DocumentsAPIViewSchema
+from apps.rawdb.rawdb.system_rawdb_config import SystemRawDBConfig
+from apps.rawdb.schemas import DocumentsAPIViewSchema, SocialAccountsAPISchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-def _column_to_dto(column: ColumnDesc, add_query_syntax: bool = False) -> Dict:
-    res = {
-        'column': column.name,
-        'title': column.title,
-        'type': column.value_type.value,
-    }
-    if add_query_syntax:
-        res['query_syntax'] = column.get_field_filter_syntax_hint()
-    return res
-
-
-def _document_type_schema_to_dto(document_type: DocumentType, columns: List[ColumnDesc], default_columns: Set[str],
-                                 add_query_syntax: bool = False) -> Dict:
-    document_type_data = {
-        'code': document_type.code,
-        'title': document_type.title,
-        'columns': [_column_to_dto(column, add_query_syntax) for column in columns],
-        'default_columns': default_columns
-    }
-
-    return document_type_data
 
 
 class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, APIView):
@@ -96,83 +74,16 @@ class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        start = time.time()
         add_query_syntax = as_bool(request.GET, 'add_query_syntax', False)
-
-        document_type_schema = dict()
-        for document_type in DocumentType.objects.all():
-            columns = get_columns(document_type,
-                                  include_generic=document_type.is_generic(),
-                                  is_select=True)  # type: List[ColumnDesc]
-            columns = [c for c in columns if c.field_code not in FIELD_CODES_HIDE_FROM_CONFIG_API]
-
-            system_fields = FIELD_CODES_SHOW_BY_DEFAULT_GENERIC \
-                if document_type.is_generic() else FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC
-            search_fields = set(document_type.search_fields.all().values_list('code', flat=True))
-
-            default_columns = {c.name for c in columns
-                               if c.field_code not in FIELD_CODES_HIDE_FROM_CONFIG_API and
-                               c.field_code not in FIELD_CODES_HIDE_BY_DEFAULT and
-                               (c.field_code in system_fields or c.field_code in search_fields)}
-
-            document_type_schema[document_type.code] = _document_type_schema_to_dto(document_type,
-                                                                                    columns,
-                                                                                    default_columns,
-                                                                                    add_query_syntax)
-
-        common_filters_by_document_type = defaultdict(list)  # type: Dict[List]
-
-        for document_type_code, filter_id, title, display_order in SavedFilter.objects \
-                .filter(project_id__isnull=True, filter_type=FT_COMMON_FILTER) \
-                .filter(Q(user__isnull=True) | Q(user=request.user)) \
-                .values_list('document_type__code', 'id', 'title', 'display_order'):
-            common_filters_by_document_type[document_type_code].append({
-                'id': filter_id,
-                'title': title,
-                'display_order': display_order
-            })
-
-        common_filters_by_project = defaultdict(list)  # type: Dict[List]
-
-        for project_id, filter_id, title, display_order in SavedFilter.objects \
-                .filter(project_id__isnull=False, filter_type=FT_COMMON_FILTER) \
-                .filter(Q(user__isnull=True) | Q(user=request.user)) \
-                .values_list('project_id', 'id', 'title', 'display_order'):
-            common_filters_by_project[project_id].append({
-                'id': filter_id,
-                'title': title,
-                'display_order': display_order
-            })
-
-        user_doc_grid_configs_by_project = defaultdict(list)  # type: Dict[List]
-
-        for project_id, columns, column_filters, order_by in SavedFilter.objects \
-                .filter(user=request.user, project_id__isnull=False, filter_type=FT_USER_DOC_GRID_CONFIG) \
-                .filter(document_type_id=F('project__type_id')) \
-                .order_by('pk') \
-                .values_list('project_id', 'columns', 'column_filters', 'order_by'):
-            user_doc_grid_configs_by_project[project_id] = {
-                'columns': columns,
-                'column_filters': column_filters,
-                'order_by': order_by
-            }
-
-        return Response({
-            'document_type_schema': document_type_schema,
-            'common_filters_by_document_type': common_filters_by_document_type,
-            'common_filters_by_project': common_filters_by_project,
-            'user_doc_grid_configs_by_project': user_doc_grid_configs_by_project,
-            'time': time.time() - start,
-            'scheme_migrations': {
-                'migrations': MIGRATION_TAGS,
-                'current_version': CURRENT_VERSION
-            }
-        })
+        conf = SystemRawDBConfig.get_config(add_query_syntax, request.user)
+        return Response(conf)
 
 
 class SocialAccountsAPIView(apps.common.mixins.APILoggingMixin, APIView):
     permission_classes = (AllowAny,)
     authentication_classes = []
+    schema = SocialAccountsAPISchema()
+    action = 'retrieve'    # need for schema to treat response as single object, not list
 
     def get(self, request, *_args, **_kwargs):
         root_url = request.build_absolute_uri('/')
@@ -247,7 +158,7 @@ class DocumentsAPIView(APIView):
 
             saved_filters = as_int_list(request.GET, 'saved_filters')  # type: List[int]
 
-            column_filters = list()
+            column_filters = []
             for param, value in request.GET.items():  # type: str, str
                 if param.startswith(self.URL_PARAM_PREFIX_FILTER):
                     column_filters.append((param[len(self.URL_PARAM_PREFIX_FILTER):], value))
@@ -270,7 +181,7 @@ class DocumentsAPIView(APIView):
             ignore_errors = as_bool(request.GET, 'ignore_errors', True)
 
             if project_ids and save_filter:
-                column_filters_dict = {c: f for c, f in column_filters}
+                column_filters_dict = dict(column_filters)
                 for project_id in project_ids:
                     with transaction.atomic():
                         obj = SavedFilter.objects.create(user=request.user,
@@ -292,13 +203,17 @@ class DocumentsAPIView(APIView):
                             .exclude(pk=obj.pk) \
                             .delete()
 
-            # show_unprocessed = as_bool(request.GET, 'show_unprocessed', False)
-            # if show_unprocessed is False:
-            #     column_filters.append((FIELD_CODE_DOC_PROCESSED, 'true'))
             total_documents_query = Document.objects.filter(
                 document_type=document_type)
+
+            show_unprocessed = as_bool(request.GET, 'show_unprocessed', False)
+            if not show_unprocessed:
+                # column_filters.append((FIELD_CODE_DOC_PROCESSED, 'true'))
+                total_documents_query = total_documents_query.filter(processed=True)
+
             if project_ids:
                 total_documents_query = total_documents_query.filter(project_id__in=project_ids)
+
             total_documents_of_type = total_documents_query.count()
 
             columns_to_query = columns
@@ -306,7 +221,7 @@ class DocumentsAPIView(APIView):
                 columns_to_query = leave_unique_values(
                     ['document_id', 'document_name'] + columns)
 
-            query_results = query_documents(
+            query_results: DocumentQueryResults = query_documents(
                 requester=request.user,
                 document_type=document_type,
                 project_ids=project_ids,
@@ -320,36 +235,37 @@ class DocumentsAPIView(APIView):
                 return_reviewed_count=return_reviewed,
                 return_total_count=return_total,
                 ignore_errors=ignore_errors,
-                include_annotation_fields=True)  # type: DocumentQueryResults
+                include_annotation_fields=True)
 
             if query_results is None:
                 if fmt in {self.FMT_XLSX, self.FMT_CSV} and not return_data:
                     raise APIRequestError('Empty data, nothing to export')
-                return Response({'time': time.time() - start})
+                return Response({'time': time.time() - start, 'items': []})
 
             # get assignees stats
-            assignees_query_results = query_documents(
-                requester=request.user,
-                document_type=document_type,
-                project_ids=project_ids,
-                column_names=['document_id', 'assignee_name', 'assignee_id'],
-                saved_filter_ids=saved_filters,
-                column_filters=column_filters,
-                return_documents=True,
-                return_reviewed_count=False,
-                include_annotation_fields=include_annotations)  # type: DocumentQueryResults
+            if _kwargs.get('query_assignee_stats') is False:
+                assignees_query_results: DocumentQueryResults = query_documents(
+                    requester=request.user,
+                    document_type=document_type,
+                    project_ids=project_ids,
+                    column_names=['document_id', 'assignee_name', 'assignee_id'],
+                    saved_filter_ids=saved_filters,
+                    column_filters=column_filters,
+                    return_documents=True,
+                    return_reviewed_count=False,
+                    include_annotation_fields=include_annotations)
 
-            query_results.assignees = []
-            if assignees_query_results is not None:
-                df = pd.DataFrame(assignees_query_results.fetch_dicts())
-                if not df.empty:
-                    df = df.groupby(['assignee_id', 'assignee_name'])\
-                        .agg({'document_id': [('document_ids', lambda x: list(x)), ('documents_count', 'count')]})
+                query_results.assignees = []
+                if assignees_query_results is not None:
+                    df = pd.DataFrame(assignees_query_results.fetch_dicts())
                     if not df.empty:
-                        df.columns = df.columns.droplevel()
-                        df = df.reset_index()
-                        df['assignee_id'] = df['assignee_id'].astype(int)
-                        query_results.assignees = df.to_dict('records')
+                        df = df.groupby(['assignee_id', 'assignee_name']) \
+                            .agg({'document_id': [('document_ids', list), ('documents_count', 'count')]})
+                        if not df.empty:
+                            df.columns = df.columns.droplevel()
+                            df = df.reset_index()
+                            df['assignee_id'] = df['assignee_id'].astype(int)
+                            query_results.assignees = df.to_dict('records')
 
             query_results.unfiltered_count = total_documents_of_type
 
@@ -358,17 +274,16 @@ class DocumentsAPIView(APIView):
 
             if fmt == self.FMT_CSV:
                 return query_results.to_csv(as_zip=as_zip)
-            elif fmt == self.FMT_XLSX:
+            if fmt == self.FMT_XLSX:
                 return query_results.to_xlsx(as_zip=as_zip)
-            else:
-                query_dict = query_results.to_json(time_start=start)
-                if columns and 'items' in query_dict:
-                    columns_to_remove = []
-                    if 'document_id' not in columns:
-                        columns_to_remove.append('document_id')
-                    query_dict['items'] = self.expand_items(
-                        query_dict['items'], columns_to_remove)
-                return Response(query_dict)
+            query_dict = query_results.to_json(time_start=start)
+            if columns and 'items' in query_dict:
+                columns_to_remove = []
+                if 'document_id' not in columns:
+                    columns_to_remove.append('document_id')
+                query_dict['items'] = self.expand_items(
+                    query_dict['items'], columns_to_remove)
+            return Response(query_dict)
         except APIRequestError as e:
             return e.to_response()
         except Exception as e:
@@ -396,7 +311,7 @@ class DocumentsAPIView(APIView):
         return self.get(request, document_type_code, *args, **kwargs)
 
     @classmethod
-    def simulate_get(cls, user, project, return_ids=True, use_saved_filter=True):
+    def simulate_get(cls, user, project, return_ids=True, use_saved_filter=True, query_assignee_stats=False):
         """
         Re-use DocumentsAPIView and SavedFilter to fetch all filtered project documents
         """
@@ -423,7 +338,8 @@ class DocumentsAPIView(APIView):
                 the_self.GET = {'columns': 'document_id',
                                 'project_ids': str(project.id),
                                 'order_by': ','.join('{}:{}'.format(field, order) for field, order in order_by),
-                                'save_filter': 'false'}
+                                'save_filter': 'false',
+                                'query_assignee_stats': query_assignee_stats}
                 if filters:
                     for field_name, condition in filters.items():
                         the_self.GET['where_{}'.format(field_name)] = condition

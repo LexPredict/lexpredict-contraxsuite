@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import datetime
 import json
 import mimetypes
 import os
@@ -32,7 +33,7 @@ import tarfile
 import zipfile
 from collections import OrderedDict
 from io import BytesIO
-from typing import BinaryIO, Union, Optional, List
+from typing import BinaryIO, Union, Optional, List, Any, Dict
 
 # Django imports
 from django.conf import settings
@@ -40,8 +41,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.db import connection, transaction
-from django.db.models import Count, Subquery, Q, F, Avg, Case, When, DecimalField, Value, \
-    CharField, OuterRef
+from django.db.models import Count, Subquery, Q, F, Avg, Case, When, DecimalField, \
+    Value, CharField, OuterRef, IntegerField
 from django.http import JsonResponse, HttpRequest
 from django.http.request import QueryDict
 from django.urls import path, include
@@ -50,54 +51,50 @@ from django.utils.timezone import now
 # Third-party imports
 from celery.states import PENDING, SUCCESS
 from guardian.shortcuts import get_objects_for_user
-from rest_framework import serializers, routers, viewsets, views
-from rest_framework import status
+from rest_framework import routers, viewsets, views, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, APIException
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from rest_framework.response import Response
+from rest_framework.schemas.openapi import AutoSchema
+from rest_framework.views import APIView
 
 # Project imports
 import apps.common.mixins
-from apps.analyze.models import DocumentCluster
+from apps.analyze.models import DocumentCluster, SimilarityRun
 from apps.analyze.tasks import Cluster
+from apps.common.api.v1 import ActionViewSchema, ActionViewSet
 from apps.common.archive_file import ArchiveFile
 from apps.common.file_storage import get_file_storage
 from apps.common.log_utils import render_error
-from apps.common.models import ReviewStatus
+from apps.common.logger import CsLogger
+from apps.common.models import Action, ReviewStatus, AppVarStorage
+from apps.common.schemas import object_list_content
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module, safe_to_int, cap_words
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.models import Document, DocumentType, DocumentField, \
     FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationStatus
-from apps.document.tasks import plan_process_documents_status_changed, \
-    plan_process_documents_assignee_changed
-from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, \
-    UserProjectsSavedFilter
-from apps.project.schemas import ProjectStatsSchema, SendClusterToProjectSchema, \
-    CleanupProjectSchema, SelectProjectsSchema, MarkUnmarkForDeleteProjectsSchema, \
-    AssignProjectDocumentsSchema, SetProjectDocumentsStatusSchema, ClusterProjectSchema, \
-    ProjectClusteringStatusSchema, AssignProjectAnnotationsSchema, \
-    SetProjectAnnotationsStatusSchema, DetectProjectFieldValuesSchema, MakeSearchablePDFSchema, \
-    UploadSessionStatusSchema, UploadSessionFilesSchema, UploadSessionUploadSchema, \
-    UploadSessionBatchUploadSchema, UploadSessionDeleteFileSchema, ProjectProgressSchema, \
-    ProjectDocumentsAssigneesSchema, RecentProjectsSchema, ProjectAnnotationsAssigneesSchema, \
-    ProjectUploadSessionProgressSchema, AssignProjectDocumentSchema
-from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, \
-    CleanProject, CancelUpload, LoadArchive, track_session_completed, SetAnnotationsStatus, \
-    CreateSearchablePDF
-from apps.rawdb.constants import FIELD_CODE_STATUS_ID
+from apps.document.repository.document_field_repository import DocumentFieldRepository
+from apps.document.pdf_coordinates.coord_text_map import CoordTextMap
+from apps.document.tasks import plan_process_documents_status_changed, plan_process_documents_assignee_changed
+from apps.extract.models import TermTag, CompanyTypeTag
+from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, UserProjectsSavedFilter
+from apps.project.schemas import *
+from apps.project.signals import project_soft_deleted
+from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, CleanProject, CancelUpload, \
+    LoadArchive, track_session_completed, SetAnnotationsStatus, UpdateProjectDocumentsFields
+from apps.rawdb.constants import FIELD_CODE_STATUS_ID, FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE
 from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task, LoadDocuments, call_task_func
-from apps.task.utils.logger import get_django_logger
+from apps.task.schemas import ProjectTasksSchema, ProjectActiveTasksSchema, ProjectTaskLogSchema
 from apps.users.models import User
-from apps.users.permissions import remove_perm, document_permissions
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -127,7 +124,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['pk', 'username', 'role']
+        fields = ['pk', 'username']
 
 
 class TaskQueueSerializer(serializers.ModelSerializer):
@@ -320,19 +317,46 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentType.objects.all(), many=False, required=False)
     type_data = DocumentTypeSerializer(source='type', many=False)
+
     progress = serializers.SerializerMethodField()
+    progress.output_field = serializers.DictField(child=serializers.IntegerField())    # needed for schema
+
     user_permissions = serializers.SerializerMethodField()
+    user_permissions.output_field = serializers.ListField(child=serializers.CharField())    # needed for schema
+
+    app_vars = serializers.SerializerMethodField()
+    app_vars.output_field = serializers.JSONField()
+
+    created_by_name = serializers.CharField()
+    modified_by_name = serializers.CharField()
+
+    document_similarity_run_params = serializers.SerializerMethodField()
+    document_similarity_run_params.output_field = serializers.DictField()
+
+    text_unit_similarity_run_params = serializers.SerializerMethodField(allow_null=True)
+    text_unit_similarity_run_params.output_field = serializers.DictField()
+
+    document_similarity_process_allowed = serializers.SerializerMethodField()
+    document_similarity_process_allowed.output_field = serializers.BooleanField()
+
+    text_unit_similarity_process_allowed = serializers.SerializerMethodField()
+    text_unit_similarity_process_allowed.output_field = serializers.BooleanField()
 
     class Meta:
         model = Project
         fields = ['pk', 'name', 'description',
+                  'created_date', 'created_by_name', 'modified_date', 'modified_by_name',
                   'send_email_notification', 'hide_clause_review',
                   'status', 'status_data',
                   'owners', 'owners_data',
                   'reviewers', 'reviewers_data',
                   'super_reviewers', 'super_reviewers_data',
                   'junior_reviewers', 'junior_reviewers_data',
-                  'type', 'type_data', 'progress', 'user_permissions']
+                  'type', 'type_data', 'progress', 'user_permissions',
+                  'term_tags', 'document_transformer', 'text_unit_transformer',
+                  'companytype_tags', 'app_vars',
+                  'document_similarity_run_params', 'text_unit_similarity_run_params',
+                  'document_similarity_process_allowed', 'text_unit_similarity_process_allowed']
 
     def get_progress(self, obj):
         return project_progress(obj)
@@ -340,6 +364,38 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     def get_user_permissions(self, obj):
         user = self.context['request'].user
         return sorted(user.get_all_permissions(obj))
+
+    def get_app_vars(self, obj):
+        from apps.common.api.v1 import ProjectAppVarSerializer
+        app_vars = AppVarStorage.get_project_app_vars(obj.id, self.context['request'].user)
+        app_vars_data = ProjectAppVarSerializer(app_vars, many=True).data
+        return app_vars_data
+
+    def get_document_similarity_run_params(self, obj):
+        run = SimilarityRun.objects.filter(project=obj, unit_source='document').order_by('created_date').last()
+        if run:
+            return {'similarity_threshold': run.similarity_threshold,
+                    'distance_type': run.distance_type,
+                    'use_tfidf': run.use_tfidf,
+                    'feature_source': run.feature_source}
+
+    def get_text_unit_similarity_run_params(self, obj):
+        run = SimilarityRun.objects.filter(project=obj, unit_source='text_unit').order_by('created_date').last()
+        if run:
+            return {'similarity_threshold': run.similarity_threshold,
+                    'distance_type': run.distance_type,
+                    'use_tfidf': run.use_tfidf,
+                    'feature_source': run.feature_source,
+                    'unit_type': run.unit_type}
+
+    def get_document_similarity_process_allowed(self, obj):
+        from apps.analyze.app_vars import SIMILARITY_MAX_BASE
+        return 1 < obj.document_set.filter(delete_pending=False).count() < SIMILARITY_MAX_BASE.val()
+
+    def get_text_unit_similarity_process_allowed(self, obj):
+        from apps.analyze.app_vars import SIMILARITY_MAX_BASE
+        sentence_count = obj.textunit_set.filter(unit_type='sentence', document__delete_pending=False).count()
+        return 1 < sentence_count < SIMILARITY_MAX_BASE.val()
 
 
 class CustomErrorMessageSerializer:
@@ -355,7 +411,9 @@ class CustomErrorMessageSerializer:
 class ProjectCreateSerializer(CustomErrorMessageSerializer, serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['pk', 'name', 'description', 'type', 'send_email_notification']
+        fields = ['pk', 'name', 'description', 'type',
+                  'send_email_notification', 'term_tags',
+                  'companytype_tags']
 
 
 class ProjectUpdateSerializer(CustomErrorMessageSerializer, ProjectDetailSerializer):
@@ -363,7 +421,8 @@ class ProjectUpdateSerializer(CustomErrorMessageSerializer, ProjectDetailSeriali
         model = Project
         fields = ['pk', 'name', 'description', 'status', 'send_email_notification',
                   'owners', 'reviewers', 'super_reviewers', 'junior_reviewers',
-                  'type', 'hide_clause_review']
+                  'type', 'hide_clause_review', 'term_tags', 'companytype_tags',
+                  'document_transformer', 'text_unit_transformer']
 
     def update(self, instance, validated_data):
         prev_team_ids = set(instance.get_team().values_list('id', flat=True))
@@ -384,20 +443,23 @@ class ProjectUpdateSerializer(CustomErrorMessageSerializer, ProjectDetailSeriali
 
 
 class ProjectListSerializer(ProjectDetailSerializer):
-    count_of_documents = serializers.SerializerMethodField()
-    count_of_documents.output_field = serializers.IntegerField()
+    count_of_documents = serializers.IntegerField()
+
+    # CS-6593, see ProjectViewSet.get_queryset below
+    # count_of_documents.output_field = serializers.IntegerField()
 
     class Meta(ProjectDetailSerializer.Meta):
         model = Project
         fields = ['pk', 'name', 'status', 'status_data',
                   'type', 'type_data', 'count_of_documents']
 
-    def get_count_of_documents(self, obj):
-        user = self.context['request'].user
-        if user.has_perm('project.view_documents', obj):
-            return obj.document_set.count()
-        return obj.document_set.filter(assignee=user).count()
-    get_count_of_documents.output_field = serializers.IntegerField()
+    # CS-6593, see ProjectViewSet.get_queryset below
+    # def get_count_of_documents(self, obj):
+    #     user = self.context['request'].user
+    #     if user.has_perm('project.view_documents', obj):
+    #         return obj.document_set.filter(processed=True).count()
+    #     return obj.document_set.filter(assignee=user, processed=True).count()
+    # get_count_of_documents.output_field = serializers.IntegerField()
 
 
 class ProjectStatsSerializer(serializers.Serializer):
@@ -468,11 +530,15 @@ class ProjectPermissions(IsAuthenticated):
         user = request.user
         if view.action in ['detect_field_values']:
             return user.has_perm('project.detect_field_values', obj)
-        # annotations itself should be filtered by permissions, so noneed for additional check
-        if view.action in ['retrieve', 'progress', 'make_searchable_pdf']:
+        # annotations itself should be filtered by permissions, so no need for additional check
+        if view.action in ['retrieve', 'progress', 'tasks', 'active_tasks', 'task_log']:
             return user.has_perm('project.view_project', obj)
-        if view.action in ['update', 'partial_update']:
+        # TODO: make a separate permission on project to view "actions"?
+        if view.action in ['update', 'partial_update', 'actions']:
             return user.has_perm('project.change_project', obj)
+        # TODO: make a separate permission on project?
+        if view.action in ['search_similar_documents', 'search_similar_text_units']:
+            return user.has_perm('project.view_project', obj)
         if view.action in ['delete', 'mark_delete', 'unmark_delete', 'cleanup']:
             return user.has_perm('project.delete_project', obj)
         if view.action in ['cluster', 'clustering-status', 'send_clusters_to_project']:
@@ -508,6 +574,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                      ProjectPermissionViewMixin,
                      apps.common.mixins.APIActionMixin,
                      apps.common.mixins.JqListAPIMixin,
+                     apps.common.mixins.APIFormFieldsMixin,
                      viewsets.ModelViewSet):
     """
     list: Project List
@@ -517,29 +584,92 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
     partial_update: Partial Update Project
     delete: Delete Project
     """
+    options_serializer = ProjectDetailSerializer
     queryset = Project.objects.all()
+    track_view_actions = ['create', 'update', 'partial_update', 'cluster', 'retrieve']
 
-    def dispatch(self, request, *args, **kwargs):
-        self.initialize_request(request, *args, **kwargs)
-        if self.action == 'retrieve':
-            request.needs_action_logging = True
-        return super().dispatch(request, *args, **kwargs)
+    # The actions below should be tracked manually to save non-standard action message/name
+    # 'assign_document', 'assign_documents', 'set_status', 'update_document_fields',
+    # 'set_annotation_status', 'assign_annotations'
 
     def perform_create(self, serializer):
         project = super().perform_create(serializer)
         project.owners.add(self.request.user)
         project.reset_project_team_perms()
+        return project
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create Document/TextUnit Vectors if needed
+        """
+        app_vars = request.data.get('app_vars')
+        if app_vars is not None:
+            del request.data['app_vars']
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance: Project = self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        data = serializer.data
+
+        if app_vars is not None:
+            self.apply_project_appvars(app_vars, instance, request)
+
+        if app_vars is not None:
+            from apps.common.api.v1 import ProjectAppVarSerializer
+            app_vars = AppVarStorage.get_project_app_vars(instance.pk, request.user)
+            app_var_json = ProjectAppVarSerializer(app_vars, many=True).data
+            data['app_vars'] = app_var_json
+
+        # check the term tags and company types are provided
+        if not instance.term_tags.exists():
+            default_tag = TermTag.objects.get(name=TermTag.DEFAULT_TAG)
+            instance.term_tags.add(default_tag)
+            instance.save()
+        if not instance.companytype_tags.exists():
+            default_tag = CompanyTypeTag.objects.get(name=CompanyTypeTag.DEFAULT_TAG)
+            instance.companytype_tags.add(default_tag)
+            instance.save()
+
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Create Document/TextUnit Vectors if needed
+        Update ocr_enable project app var if needed
+        """
+        if 'ocr_enable' in request.data:
+            del request.data['ocr_enable']
+
+        _instance = self.get_object()
+
+        app_vars = request.data.get('app_vars')
+        if app_vars is not None:
+            del request.data['app_vars']
+
+        response = super().update(request, *args, **kwargs)
+        instance = Project.objects.get(pk=_instance.pk)
+
+        if app_vars is not None:
+            self.apply_project_appvars(app_vars, instance, request)
+
+        if app_vars is not None:
+            from apps.common.api.v1 import ProjectAppVarSerializer
+            app_vars = AppVarStorage.get_project_app_vars(instance.pk, request.user)
+            app_var_json = ProjectAppVarSerializer(app_vars, many=True).data
+            response.data['app_vars'] = app_var_json
+
+        return response
 
     def get_serializer_class(self):
         if self.action == 'create':
             return ProjectCreateSerializer
-        elif self.action in ['update', 'partial_update']:
+        if self.action in ['update', 'partial_update']:
             return ProjectUpdateSerializer
-        elif self.action == 'list':
+        if self.action == 'list':
             return ProjectListSerializer
-        elif self.action == 'stats':
+        if self.action == 'stats':
             return ProjectStatserializer
-        elif self.action == 'project_stats':
+        if self.action == 'project_stats':
             return ProjectStatsSerializer
         return ProjectDetailSerializer
 
@@ -608,19 +738,50 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if self.action == 'project_stats':
             qs = self.get_project_stats_qs(qs.order_by('name'))
 
+        elif self.action == 'retrieve':
+            qs = qs \
+                .select_related('created_by', 'modified_by') \
+                .annotate(created_by_name=F('created_by__name'),
+                          modified_by_name=F('modified_by__name'))
+
+        elif self.action == 'list':
+            # try to fetch document counts in ORM query rather than in serializer method to avoid lots of DB requests
+            # CS-6593, see serializer above
+            owner_project_ids = get_objects_for_user(
+                self.request.user, 'project.view_documents', Project).values_list('id', flat=True)
+            owner_documents_subq = Document.objects \
+                .filter(project_id=OuterRef('id'), project_id__in=owner_project_ids, processed=True) \
+                .order_by('project_id').values('project_id').annotate(c=Count('project_id')).values('c')
+            assigned_documents_subq = Document.objects \
+                .filter(project_id=OuterRef('id'), assignee=self.request.user, processed=True) \
+                .order_by('project_id').values('project_id').annotate(c=Count('project_id')).values('c')
+            qs = qs.annotate(
+                count_of_documents=Case(
+                    When(id__in=owner_project_ids, then=Subquery(owner_documents_subq, output_field=IntegerField())),
+                    default=Subquery(assigned_documents_subq, output_field=IntegerField())))
+
         elif self.action not in ['list', 'project_stats']:
-            qs = qs.prefetch_related('owners', 'owners__role',
-                                     'super_reviewers', 'super_reviewers__role',
-                                     'junior_reviewers', 'junior_reviewers__role',
-                                     'reviewers', 'reviewers__role')
+            qs = qs.prefetch_related('owners',
+                                     'super_reviewers',
+                                     'junior_reviewers',
+                                     'reviewers')
         else:
             pass
             # qs = qs.annotate(count_of_documents=Count('document'))
         return qs
 
-    def get_extra_data(self, queryset):
+    def get_extra_data(self, queryset, initial_queryset):
         return {'available_statuses': common_api_module.ReviewStatusSerializer(
             ReviewStatus.objects.select_related('group'), many=True).data}
+
+    def apply_project_appvars(self,
+                              app_vars: List[Dict[str, Any]],
+                              instance: Project,
+                              request):
+        user_id = request.user.pk if request.user else None
+        from apps.common.api.v1 import ProjectAppVarSerializer
+        app_var_list = ProjectAppVarSerializer.deserialize(app_vars)
+        AppVarStorage.apply_project_app_vars(instance.pk, app_var_list, user_id)
 
     @action(detail=True, methods=['get'], schema=ProjectProgressSchema())
     def progress(self, request, **kwargs):
@@ -736,7 +897,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if not force:
             if project.uploadsession_set.filter(completed=False).exists():
                 raise APIException('Project has uncompleted upload sessions.')
-            elif not project.uploadsession_set.filter(completed=True).exists():
+            if not project.uploadsession_set.filter(completed=True).exists():
                 raise APIException("Project hasn't completed upload sessions.")
 
         if request.data.get('require_confirmation'):
@@ -767,6 +928,87 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                             method=request.data.get('method', 'kmeans'),
                             cluster_by=cluster_by)
         return Response(res)
+
+    def search_similar(self, request, task, transformer_id_field):
+        project = self.get_object()
+        data = self.schema.request_serializer.__class__(data=request.data)
+        if not data.is_valid():
+            return Response(data.errors, status=400)
+        data = data.data
+        data['project'] = project.id
+        data['user_id'] = request.user.id
+        if 'selection' in data:
+            # we got location of the annotation as coordinates
+            selection = data['selection']
+            location = CoordTextMap.get_text_location_by_coords(
+                data['document_id'], selection)
+            data['location_start'] = location[0]
+            data['location_end'] = location[1]
+
+        # get feature_source and optional transformer_id
+        transformer_id = getattr(project, transformer_id_field)
+        if transformer_id:
+            data['feature_source'] = 'vector'
+            data['transformer_id'] = transformer_id
+        else:
+            data['feature_source'] = 'term'
+        task_id = call_task(task, **data)
+        return Response({'task_id': task_id})
+
+    @action(detail=True, methods=['post'], schema=ProjectSearchSimilarDocumentsSchema())
+    def search_similar_documents(self, request, **kwargs):
+        from apps.similarity.tasks import DocumentSimilarityByFeatures
+        return self.search_similar(request,
+                                   task=DocumentSimilarityByFeatures,
+                                   transformer_id_field='document_transformer_id')
+
+    @action(detail=True, methods=['post'], schema=ProjectSearchSimilarTextUnitsSchema())
+    def search_similar_text_units(self, request, **kwargs):
+        from apps.similarity.tasks import TextUnitSimilarityByFeatures
+        return self.search_similar(request,
+                                   task=TextUnitSimilarityByFeatures,
+                                   transformer_id_field='text_unit_transformer_id')
+
+    def delete_similarity_task_results(self, request, task):
+        project = self.get_object()
+        task_id = call_task(task, project_id=project.id, user_id=request.user.id)
+        return Response({'task_id': task_id})
+
+    @action(detail=True, methods=['delete'])
+    def delete_document_similarity_results(self, request, **kwargs):
+        from apps.similarity.tasks import DeleteDocumentSimilarityResults
+        return self.delete_similarity_task_results(request, task=DeleteDocumentSimilarityResults)
+
+    @action(detail=True, methods=['delete'])
+    def delete_text_unit_similarity_results(self, request, **kwargs):
+        from apps.similarity.tasks import DeleteTextUnitSimilarityResults
+        return self.delete_similarity_task_results(request, task=DeleteTextUnitSimilarityResults)
+
+    @action(detail=True, methods=['get'], schema=ProjectTasksSchema())
+    def tasks(self, request, **kwargs):
+        from apps.task.api.v1 import TaskViewSet
+        view = TaskViewSet(request=self.request, kwargs={'project_id': kwargs['pk']},
+                           format_kwarg='project_id', action='project_tasks')
+        view.permission_classes = []
+        return view.project_tasks(self.request, project_id=kwargs['pk'])
+
+    @action(detail=True, methods=['get'], schema=ProjectActiveTasksSchema())
+    def active_tasks(self, request, **kwargs):
+        from apps.task.api.v1 import TaskViewSet
+        view = TaskViewSet(request=self.request, kwargs={'project_id': kwargs['pk']},
+                           format_kwarg='project_id', action='project_active_tasks')
+        view.permission_classes = []
+        return view.project_active_tasks(self.request, project_id=kwargs['pk'])
+
+    @action(detail=True, methods=['get'], schema=ProjectTaskLogSchema(), url_path=r'task/(?P<task_id>[\w-]+)/task-logs')
+    def task_log(self, request, **kwargs):
+        from apps.task.api.v1 import TaskLogAPIView
+        self.request.GET._mutable = True
+        self.request.GET['task_id'] = kwargs['task_id']
+        self.request.GET._mutable = False
+        view = TaskLogAPIView(request=self.request, action='project_task_logs')
+        view.permission_classes = []
+        return view.get(self.request)
 
     @require_generic_contract_type
     def clustering_status(self, request, **kwargs):
@@ -957,6 +1199,8 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             proj = Project.all_objects.get(pk=project_id)  # type: Project
             proj.delete_pending = delete_pending
             proj.save()
+            if delete_pending:
+                project_soft_deleted.send(sender='Project marked Soft Deleted', instance=proj, user=request.user)
         return Response({"count_deleted": count_deleted}, status=200)
 
     @action(detail=True, methods=['get'], schema=ProjectDocumentsAssigneesSchema())
@@ -987,6 +1231,81 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         from apps.rawdb.api.v1 import DocumentsAPIView
         return DocumentsAPIView.simulate_get(user, project, return_ids=False)
 
+    def get_document_ids(self, request):
+        """
+        Method to apply "document_ids", "no_document_ids" and "all" filters
+        using SavedFilter from rawdb.DocumentsAPIView
+        """
+        if request.data.get('all'):
+            documents = self.get_document_queryset()
+            if request.data.get('no_document_ids'):
+                documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
+            return documents.values_list('pk', flat=True)
+        return request.data.get('document_ids')
+
+    def save_mass_action(self, action_name, action_message, document_ids, request_data=None, cache_documents=False):
+        date = now()
+        actions = [Action(name=action_name,
+                          message=action_message,
+                          view_action=self.action,
+                          user=self.request.user,
+                          date=date,
+                          content_type=ContentType.objects.get_for_model(Document),
+                          object_pk=doc_id,
+                          model_name='Document',
+                          app_label='document',
+                          request_data=request_data or self.request.data)
+                   for doc_id in document_ids]
+        Action.objects.bulk_create(actions)
+        Document.objects.filter(pk__in=document_ids).update(modified_by=self.request.user, modified_date=date)
+
+        # cache document modified_date/modified_by only
+        if cache_documents:
+            from apps.document.tasks import plan_process_document_changed
+            for doc_id in document_ids:
+                plan_process_document_changed(doc_id,
+                                              system_fields_changed=['modified_date', 'modified_by'],
+                                              generic_fields_changed=False,
+                                              user_fields_changed=False,
+                                              changed_by_user_id=self.request.user.id)
+
+    @action(detail=True, methods=['post'], schema=UpdateProjectDocumentsFieldsSchema())
+    def update_document_fields(self, request, *args, **kwargs):
+        """
+        Bulk update project documents field, similar to /fields/ API in document app\n
+            Params:
+                document_ids: list[int]
+                all: any value - update all documents if any value
+                no_document_ids: list[int] - exclude those docs from action (if "all" is set)
+                fields_data: - dict {field_code: [values]}
+                on_existing_value: "replace_all" | "add_new" (for multi-choice fields)
+            Returns:
+                task_id
+        """
+        document_ids = self.get_document_ids(request)
+        if not document_ids:
+            raise APIException('document_ids not found')
+        fields_data = request.data.get('fields_data')
+        if not fields_data:
+            raise APIException('fields_data not found')
+
+        task_id = call_task(
+            UpdateProjectDocumentsFields,
+            document_ids=document_ids,
+            project_id=kwargs['pk'],
+            fields_data=request.data['fields_data'],
+            on_existing_value=request.data.get('on_existing_value'),
+            user_id=request.user.pk)
+
+        # TODO: move into task? OR just count an attempt?
+        msg_tip = ', '.join([f'"{field_code}" to "{value}"' for field_code, value in fields_data.items()])
+        self.save_mass_action(action_name='Field Value Changed',
+                              action_message=f'Document fields bulk changed: {msg_tip}',
+                              document_ids=document_ids,
+                              request_data=request.data['fields_data'])
+
+        return Response({'task_id': task_id})
+
     @action(detail=True, methods=['post'], schema=AssignProjectDocumentsSchema())
     def assign_documents(self, request, **kwargs):
         """
@@ -1001,14 +1320,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         """
         project = self.get_object()    # noqa: permissions check
         assignee_id = request.data.get('assignee_id')
-
-        if request.data.get('all'):
-            documents = self.get_document_queryset()
-            if request.data.get('no_document_ids'):
-                documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
-            document_ids = documents.values_list('pk', flat=True)
-        else:
-            document_ids = request.data.get('document_ids')
+        document_ids = self.get_document_ids(request)
         return self.assign_multiple_documents(assignee_id, project, request.user.pk, document_ids)
 
     @action(detail=True, methods=['post'], schema=AssignProjectDocumentSchema())
@@ -1043,6 +1355,10 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                                 new_assignee_id=assignee_id,
                                                 changed_by_user_id=changed_by_id)
 
+        # TODO: move into task? OR just count an attempt?
+        self.save_mass_action(action_name='Assignee Changed',
+                              action_message=f'Document assignee bulk changed to "{assignee.name if assignee else None}"',
+                              document_ids=document_ids)
         return Response({'success': len(document_ids)})
 
     @action(detail=True, methods=['post'], schema=SetProjectDocumentsStatusSchema())
@@ -1061,33 +1377,30 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         project = self.get_object()
         status_id = request.data.get('status_id')
 
-        if request.data.get('all'):
-            documents = self.get_document_queryset()
-            if request.data.get('no_document_ids'):
-                documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
-            document_ids = list(documents.values_list('pk', flat=True))
-        else:
-            document_ids = request.data.get('document_ids')
-        documents = Document.objects \
-            .filter(project=project, pk__in=document_ids)
+        document_ids = self.get_document_ids(request)
+        documents = Document.objects.filter(project=project, pk__in=document_ids)
 
         import apps.document.repository.document_field_repository as dfr
         field_repo = dfr.DocumentFieldRepository()
 
         with transaction.atomic():
             review_status = ReviewStatus.objects.get(pk=status_id)
-            modified_fields = field_repo.get_modified_field_ids(
-                documents, review_status.is_active)
-            DocumentField.objects.filter(
-                pk__in=Subquery(modified_fields)).update(dirty=True)
+            modified_fields = field_repo.get_modified_field_ids(documents, review_status.is_active)
+            DocumentField.objects.filter(pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
-            # TODO: do not hardcode doc status code
-            if review_status.code in ('completed', 'excluded'):
-                target_status = FieldAnnotationStatus.accepted_status()
+
+            # set Unreviewed annotations to Accepted
+            if review_status.is_final:
+                ann_final_status = FieldAnnotationStatus.accepted_status()
                 field_repo.update_field_annotations_by_doc_ids(
-                    document_ids, [(f'{FIELD_CODE_STATUS_ID}', target_status.pk)])
+                    document_ids, [(f'{FIELD_CODE_STATUS_ID}', ann_final_status.pk)])
 
         plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
+
+        # TODO: move into task? OR just count an attempt?
+        self.save_mass_action(action_name='Status Changed',
+                              action_message=f'Document status bulk changed to "{review_status.name}"',
+                              document_ids=document_ids)
         return Response({'success': ret})
 
     def get_annotations_queryset(self, only_true_annotations=False):
@@ -1119,7 +1432,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         # get only "true" annotations as "false" annotations don't have assignee field
         annotation_qs = self.get_annotations_queryset(only_true_annotations=True).values('assignee_id', 'uid')
 
-        assignee_ids = set([i['assignee_id'] for i in annotation_qs if i['assignee_id']])
+        assignee_ids = {i['assignee_id'] for i in annotation_qs if i['assignee_id']}
 
         result = []
         for user in User.objects.filter(pk__in=assignee_ids):
@@ -1155,11 +1468,19 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         # re-fetch annotations as initial values-qs doesn't allow update
         ant_uids = [i['uid'] for i in annotations]
-        true_annotations = FieldAnnotation.objects.filter(uid__in=ant_uids)
-        true_annotations.update(assignee=assignee_id, assign_date=now())
-        false_annotations = FieldAnnotationFalseMatch.objects.filter(uid__in=ant_uids)
-        false_annotations.update(assignee=assignee_id, assign_date=now())
+        print(f'Updating {len(ant_uids)} annotations')
+        field_repo = DocumentFieldRepository()
+        field_repo.update_field_annotations_by_ant_ids(
+            ant_uids, [(FIELD_CODE_ASSIGNEE_ID, assignee_id or 'null'),
+                       (FIELD_CODE_ASSIGN_DATE, f"'{now().isoformat()}'")],
+            update_false_matches=True)
 
+        document_ids = {i['document_id'] for i in annotations}
+        assignee_name = User.objects.get(id=assignee_id).name if assignee_id else None
+        self.save_mass_action(action_name='Field Annotation Changed',
+                              action_message=f'Document Annotation assignee bulk changed to "{assignee_name}"',
+                              document_ids=document_ids,
+                              cache_documents=True)
         return Response({'success': annotations.count()})
 
     @action(detail=True, methods=['post'], schema=SetProjectAnnotationsStatusSchema())
@@ -1176,7 +1497,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 int (number of reassigned annotations)
         """
         MAX_ANTS_TO_RUN_SYNC = 20
-        project = self.get_object()    # noqa: permissions check
+        self.get_object()    # noqa: permissions check
         # "sync" - process request in foreground
         # "background" - process request in background as a separate Celery task
         # "smart" - process request in foreground if there are less than N annotations found
@@ -1197,6 +1518,14 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         run_sync = run_mode == 'sync'
         if not run_sync:
             run_sync = run_mode == 'smart' and len(ant_uids) < MAX_ANTS_TO_RUN_SYNC
+
+        # TODO: move into task? OR just count an attempt?
+        document_ids = {i['document_id'] for i in annotations}
+        status_name = FieldAnnotationStatus.objects.get(id=status_id).name
+        self.save_mass_action(action_name='Field Annotation Changed',
+                              action_message=f'Document Annotation status bulk changed to "{status_name}"',
+                              document_ids=document_ids,
+                              cache_documents=True)
 
         if run_sync:
             sync_task = SetAnnotationsStatus()
@@ -1259,7 +1588,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         '''.format(document_ids=','.join([str(i) for i in user.user_document_ids]) or 0,
                    project_ids=','.join([str(i) for i in user_projects.values_list('pk', flat=True)]))
 
-        result = list()
+        result = []
         with connection.cursor() as cursor:
             cursor.execute(sql, [DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, content_type_id, user.id, last_n])
             for project_id, project_name, is_generic, extracted_doc_count, reviewed_doc_count in cursor.fetchall():
@@ -1295,31 +1624,164 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response({'task_id': task_id})
 
-    @action(detail=True, methods=['post'], url_path='make-searchable-pdf',
-            schema=MakeSearchablePDFSchema())
-    def make_searchable_pdf(self, request, **kwargs):
-        if not kwargs.get('pk') and not request.data.get('document_ids'):
-            raise APIException('Either provide project id or document_ids')
-        task_id = call_task(
-            CreateSearchablePDF,
-            project_id=kwargs.get('pk'),
-            document_ids=request.data.get('document_ids'),
-            user_id=request.user.id
-        )
-        return Response({'task_id': task_id})
+    @action(detail=True, methods=['post'])
+    def locate_items(self, request, **kwargs):
+        items_to_locate = request.data.get('items_to_locate', [])  # i.e. ['term']
+        if not items_to_locate:
+            raise ValueError('"items_to_locate" argument missed', 'items_to_locate')
+        project_id = request.data.get('project_id')
+        if not project_id:
+            raise ValueError('"project_id" argument missed', 'project_id')
+        delete_existing = request.data.get('delete_existing', True)
+        search_in = request.data.get('search_in', ['sentence'])
 
-    # TODO: if cross-project - need to check all doc perms
-    # @action(detail=False, methods=['post'], url_path='make-searchable-pdf',
-    #         schema=MakeSearchablePDFSchema())
-    # def _make_searchable_pdf(self, request, **kwargs):
-    #     return self.make_searchable_pdf(request, **kwargs)
+        task_id = call_task(
+            'Locate',
+            tasks={t: {'locate': True, 'delete': delete_existing} for t in items_to_locate},
+            parse=search_in,
+            user_id=request.user.pk,
+            project_id=int(project_id),
+            selected_tags=request.data.get('selected_tags'))
+        return Response({'task_id': task_id}, status=status.HTTP_200_OK)
+
+    def filter_queryset(self, queryset):
+        # do not apply passed JQ filters for parent object (Project) - pass them into child view only
+        if self.action in ['settings_actions', 'cluster_actions', 'tasks']:
+            self.skip_jq_filters = True
+        return super().filter_queryset(queryset)
+
+    # actions
+
+    def save_action_parent(self):
+        # sync created/modified fields with action object
+        if self.action in ['retrieve', 'cluster']:
+            return
+        obj = self.user_action.object
+        if not obj:
+            return
+        if self.action == 'create':
+            obj.created_by = self.user_action.user
+            obj.created_date = self.user_action.date
+        obj.modified_by = self.user_action.user
+        obj.modified_date = self.user_action.date
+        obj.save()
+
+    @staticmethod
+    def get_object_state(obj):
+        obj_state = dict()
+        for field in obj._meta.fields:
+            field_name = field.name
+            # avoid loading whole transformer.model_object - it takes much time
+            if field_name in ['document_transformer', 'text_unit_transformer']:
+                field_name += '_id'
+            obj_state[field.name] = getattr(obj, field_name)
+        for field in obj._meta.many_to_many:
+            obj_state[field.name] = list(getattr(obj, field.name).order_by('pk'))
+        return obj_state
+
+    def get_action_name(self):
+        if self.action == 'cluster':
+            return 'Cluster Project'
+        return super().get_action_name()
+
+    def get_action_message(self):
+        if self.action == 'cluster':
+            return f'Cluster Project with parameters: {dict(self.request.data)}'
+        return super().get_action_message()
+
+    def get_updated_fields_message(self, old_instance_state, new_instance_state):
+        """
+        Create description for updated fields
+        :param old_instance_state: dict
+        :param new_instance_state: dict
+        """
+        changes = []
+        for field in old_instance_state:
+            old_field_value = old_instance_state[field]
+            new_field_value = new_instance_state[field]
+            if old_field_value != new_field_value:
+                if field in ['owners', 'reviewers', 'super_reviewers', 'junior_reviewers']:
+                    added = set(new_field_value).difference(old_field_value)
+                    for user in added:
+                        changes.append(f'User "{user.name}" added to Project\'s "{cap_words(field)}"')
+                    removed = set(old_field_value).difference(new_field_value)
+                    for user in removed:
+                        changes.append(f'User "{user.name}" removed from Project\'s "{cap_words(field)}"')
+                    continue
+                if field in ['document_transformer', 'text_unit_transformer']:
+                    old_field_value = f'#{old_field_value}' if old_field_value else None
+                    new_field_value = f'#{new_field_value}' if new_field_value else None
+                    field = cap_words(field)
+                else:
+                    field = f'field "{field}"'
+                changes.append(
+                    f'{self.model_name} {field} changed '
+                    f'from "{old_field_value}" '
+                    f'to "{new_field_value}"')
+        if changes:
+            return ', '.join(changes)
+
+    def actions(self, view_action_names):
+        project = self.get_object()    # project permissions check goes in get_object
+        # re-use ActionViewSet to handle jq-widgets-like filter/sort/pagination
+        view = ActionViewSet(request=self.request,
+                             kwargs={'project_id': project.pk,
+                                     'view_actions': view_action_names,
+                                     # 'init_action': 'create'
+                                     })
+        view.action = 'list'
+        view.permission_classes = []
+        view.format_kwarg = {}
+        data = view.list(self.request)
+        return data
+
+    @action(detail=True, methods=['get'], schema=ActionViewSchema())
+    def settings_actions(self, request, **kwargs):
+        return self.actions(view_action_names=['create', 'update', 'partial_update'])
+
+    @action(detail=True, methods=['get'], schema=ActionViewSchema())
+    def cluster_actions(self, request, **kwargs):
+        return self.actions(view_action_names=['cluster'])
+
+
+class LocaleAPIViewSchema(AutoSchema):
+    def get_responses(self, path, method):
+        response = {'200': object_list_content,
+                    '500': string_content}
+        return response
+
+
+class LocaleListView(APIView):
+    permission_classes = (IsAuthenticated, )
+    schema = LocaleAPIViewSchema()
+
+    def get(self, request, *args, **kwargs):
+        return Response(self.represent_data(settings.LOCALES))
+
+    def represent_data(self, data: dict):
+        representation = {"data": []}
+        for locale, title in data.items():
+            try:
+                lng, loc = locale.split("_")
+                lng_title, loc_title = title.split(" / ")
+            except ValueError:
+                continue
+
+            representation["data"].append({
+                "language_code": lng,
+                "locale_code": loc,
+                "full_code": locale,
+                "language": lng_title,
+                "locale": loc_title,
+            })
+        return representation
 
 
 # --------------------------------------------------------
 # UploadSession Views
 # --------------------------------------------------------
 
-class UploadSessionSerializer(serializers.ModelSerializer):
+class UploadSessionCreateSerializer(serializers.ModelSerializer):
     project = serializers.PrimaryKeyRelatedField(
         queryset=Project.objects.all(), many=False, required=False)
     created_by = serializers.PrimaryKeyRelatedField(
@@ -1333,21 +1795,33 @@ class UploadSessionSerializer(serializers.ModelSerializer):
         fields = ['uid', 'project', 'created_by', 'upload_files', 'review_files', 'force']
 
 
-class UploadSessionDetailSerializer(serializers.ModelSerializer):
-    created_by = UserSerializer(many=False)
-    project = ProjectDetailSerializer(many=False, required=False)
-    document_type = serializers.SerializerMethodField()
-    progress = serializers.SerializerMethodField()
+class UploadSessionUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UploadSession
-        fields = ['uid', 'project', 'created_by', 'created_date', 'document_type', 'progress']
+        fields = ['pk', 'project', 'created_by', 'created_date', 'completed']
+
+
+class UploadSessionDetailSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(many=False)
+    # project = ProjectDetailSerializer(many=False, required=False)
+    document_type = serializers.SerializerMethodField()
+    progress = serializers.SerializerMethodField()
+    is_canceling = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UploadSession
+        fields = ['uid', 'project', 'created_by', 'created_date',
+                  'document_type', 'progress', 'completed', 'is_canceling']
 
     def get_progress(self, obj):
         return obj.document_tasks_progress(details=True)
 
     def get_document_type(self, obj):
         return DocumentTypeSerializer(obj.project.type, many=False).data if obj.project else None
+
+    def get_is_canceling(self, obj: UploadSession):
+        return Task.objects.filter(upload_session_id=obj.pk, name='Cancel Upload', status=PENDING).exists()
 
 
 class UploadSessionPermissions(IsAuthenticated):
@@ -1368,12 +1842,12 @@ class UploadSessionPermissions(IsAuthenticated):
     def has_object_permission(self, request, view, obj):
         action = view.action
         user = request.user
-        if action in ['update', 'partial_update']:
+        if action in ['update']:
             return user.has_perm('project.change_project', obj.project)
         if action in ['destroy']:
             return user.has_perm('project.delete_project', obj.project)
         if action in ['upload', 'batch_upload', '_batch_upload', 'files', 'progress',
-                      'cancel_upload', 'delete_file']:
+                      'cancel_upload', 'delete_file', 'partial_update']:
             return user.has_perm('project.add_project_document', obj.project)
         return super().has_object_permission(request, view, obj)
 
@@ -1401,32 +1875,49 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
     delete: Delete Session Upload
     """
     queryset = UploadSession.objects.all()
-    http_method_names = ['get', 'post', 'delete']
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return UploadSessionSerializer
+            return UploadSessionCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            return UploadSessionUpdateSerializer
         return UploadSessionDetailSerializer
 
     @staticmethod
     @transaction.atomic
     def can_upload_file(project: Project,
                         file_name: str,
-                        file_size: Optional[int]):
+                        file_size: Optional[int],
+                        upload_session_id: str = None):
         """
         Check whether a file is new and should be uploaded
         :param project: Project
         :param file_name: file name
         :param file_size: file size in bytes
+        :param upload_session_id: uid, None in case if reassign_cluster task
         :return: bool
         """
+        # o. empty document
         if not file_size:
             return 'empty'
-        # 1. if a Document of file name and size already uploaded and parsed
+
+        # 1.1 if a document is duplicated in current session (except check in ReassignProjectClusterDocuments task)
+        if upload_session_id:
+            similar_documents_task_query = Task.objects.main_tasks().filter(
+                name=LoadDocuments.name,
+                upload_session_id=upload_session_id,
+                metadata__file_name=file_name)
+            if file_size is not None:
+                similar_documents_task_query = similar_documents_task_query.filter(metadata__file_size=file_size)
+            if similar_documents_task_query.exists():
+                return 'duplicate_in_this_session'
+
+        # 1.2 if a Document of file name and size already uploaded and parsed
         doc_query = Document.objects.filter(
             project=project,
             name=file_name,
-            documentmetadata__metadata__upload_status='DONE')
+            processed=True)
         if file_size is not None:
             doc_query = doc_query.filter(file_size=file_size)
         if doc_query.exists():
@@ -1437,13 +1928,13 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
             delete_pending=True,
             project=project,
             name=file_name,
-            documentmetadata__metadata__upload_status='DONE')
+            processed=True)
         if file_size is not None:
             doc_query = doc_query.filter(file_size=file_size)
         if doc_query.exists():
             return 'delete_pending'
 
-        # 3. if a Document is not created yet or flag 'upload_status="DONE"' is not set yet
+        # 3. if a Document is not created yet or processed=True is not set yet
         # so parsing is in progress
         # and Task for file name and size exists with appropriate status
         task_query = Task.objects.main_tasks().filter(
@@ -1489,6 +1980,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         #             = it's the same document, in storing on disk process - load: False (TODO)
         #             = it's the same document but uploading was interrupted - load: True
 
+        # 7. LD Task has FAILURE status, document has processed=False, but DeleteDocument task failed FSR as well
+        # just allow to upload the same document - TODO: check possible issues
+
         # since we does double check in /upload method, - skip RARE cases for now
         return True
 
@@ -1500,24 +1994,27 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         upload_files = request.data.pop('upload_files', None)
         review_files = request.data.pop('review_files', False)
 
+        upload_session_id = response.data['uid']
+
         if upload_files and review_files:
 
             force_rename = request.data.get('force') or request.META.get('HTTP_FORCE', False) == 'true'
 
             if force_rename is None:
-                from apps.document.app_vars import FORCE_REWRITE_DOC
-                force_rename = FORCE_REWRITE_DOC.val
+                from apps.document.app_vars import ALLOW_DUPLICATE_DOCS
+                force_rename = not ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
 
-            do_upload_files = dict()
-            upload_unique_files = list()
-            exists = list()
-            delete_pending = list()
-            processing = list()
+            do_upload_files = {}
+            upload_unique_files = []
+            exists = []
+            delete_pending = []
+            processing = []
             empty = []
+            duplicate_in_this_session = []
 
             for file_path, file_size in upload_files.items():
                 file_name = os.path.basename(file_path)
-                status = self.can_upload_file(project, os.path.basename(file_path), file_size)
+                status = self.can_upload_file(project, os.path.basename(file_path), file_size, upload_session_id)
 
                 if (force_rename and status not in {'delete_pending', 'empty'}) or \
                         (status is True and (file_name, file_size) not in upload_unique_files):
@@ -1525,7 +2022,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                     upload_unique_files.append((file_name, file_size))
                 else:
                     do_upload_files[file_path] = False
-                    if status == 'exists':
+                    if status == 'duplicate_in_this_session':
+                        duplicate_in_this_session.append(file_path)
+                    elif status == 'exists':
                         exists.append(file_path)
                     elif status == 'delete_pending':
                         delete_pending.append(file_path)
@@ -1581,7 +2080,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         try:
             session.notify_upload_started()
         except Exception as exc:
-            get_django_logger().exception(exc)
+            CsLogger.get_django_logger().exception(exc)
 
     def upload_file(self,
                     file_name: str,
@@ -1603,26 +2102,26 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
         :param review_file: whether check or not for empty/exists/delete_pending/processing status
         :return:
         """
-        logger = get_django_logger()
+        logger = CsLogger.get_django_logger()
         from apps.document.app_vars import MAX_DOCUMENT_SIZE
-        if file_size > MAX_DOCUMENT_SIZE.val * 1024 * 1024:
+        if file_size > MAX_DOCUMENT_SIZE.val() * 1024 * 1024:
             logger.error(f'uploading: file {file_name} is too large ({file_size})')
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data=f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val} Mb')
+                            data=f'File size is greater than allowed max {MAX_DOCUMENT_SIZE.val()} Mb')
 
         try:
             session = self.get_object()
         except (UploadSession.DoesNotExist, ValidationError):
-            logger.error(f'uploading: session was not found')
+            logger.error('Uploading: session was not found')
             return Response(status=status.HTTP_400_BAD_REQUEST,
                             data='Wrong upload session uid.')
 
         project = session.project
-        from apps.document.app_vars import FORCE_REWRITE_DOC
-        force_rename = force or FORCE_REWRITE_DOC.val
+        from apps.document.app_vars import ALLOW_DUPLICATE_DOCS
+        force_rename = force or not ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
 
         if review_file or force_rename:
-            can_upload_status = self.can_upload_file(project, file_name, file_size)
+            can_upload_status = self.can_upload_file(project, file_name, file_size, session.pk)
         else:
             can_upload_status = True
 
@@ -1635,7 +2134,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 file_copy_name_ptn = '{0} copy {1:02d}{2}'
                 for n in range(1, 999):
                     file_copy_name = file_copy_name_ptn.format(file_base_name, n, file_ext)
-                    can_upload_copy_status = self.can_upload_file(project, file_copy_name, file_size)
+                    can_upload_copy_status = self.can_upload_file(project, file_copy_name, file_size, session.pk)
                     if can_upload_copy_status is True:
                         file_name = file_copy_name
                         break
@@ -1679,6 +2178,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 source_data=source_path,
                 user_id=user_id,
                 session_id=session.pk,
+                project_id=project.id,
                 run_standard_locators=True,
                 metadata={'file_name': file_name, 'file_size': file_size},
                 linked_tasks=None,
@@ -1715,9 +2215,9 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
     def upload_archive(self, request, file_, archive_type, directory_path=None):
         from apps.document.app_vars import MAX_ARCHIVE_SIZE
-        if file_.size > MAX_ARCHIVE_SIZE.val * 1024 * 1024:
+        if file_.size > MAX_ARCHIVE_SIZE.val() * 1024 * 1024:
             return Response(status=status.HTTP_400_BAD_REQUEST,
-                            data=f'Archive size is greater than allowed max {MAX_ARCHIVE_SIZE.val} Mb')
+                            data=f'Archive size is greater than allowed max {MAX_ARCHIVE_SIZE.val()} Mb')
 
         try:
             session = self.get_object()
@@ -1851,6 +2351,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
                 source_data=file_path,
                 user_id=request.user.id,
                 session_id=session_id,
+                project_id=project.id,
                 metadata={'file_name': file_name},
                 run_standard_locators=True,
                 linked_tasks=None)
@@ -1964,7 +2465,7 @@ class DocumentClusterSerializer(serializers.ModelSerializer):
         fields = ['pk', 'cluster_id', 'name', 'documents_count']
 
     def get_documents_count(self, obj):
-        return obj.documents.count()
+        return obj.documents.filter(processed=True).count()
     get_documents_count.output_field = serializers.IntegerField()
 
 
@@ -2020,5 +2521,6 @@ urlpatterns = [
          ProjectViewSet.as_view({'get': 'clustering_status'}, schema=ProjectClusteringStatusSchema()),
          name='clustering_status'),
     path('projects/<int:pk>/cluster/',
-         ProjectViewSet.as_view({'post': 'cluster'}, schema=ClusterProjectSchema()), name='cluster')
+         ProjectViewSet.as_view({'post': 'cluster'}, schema=ClusterProjectSchema()), name='cluster'),
+    path('locales/', LocaleListView.as_view(), name='locales')
 ]

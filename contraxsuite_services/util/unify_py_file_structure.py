@@ -8,6 +8,7 @@
     - code block
 """
 
+import datetime
 import os
 import re
 import sys
@@ -44,7 +45,7 @@ coding = '''# -*- coding: utf-8 -*-'''
 
 author = '''
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
+__copyright__ = "Copyright 2015-0000, ContraxSuite, LLC"
 __license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/0.0.0/LICENSE"
 __version__ = "0.0.0"
 __maintainer__ = "LexPredict, LLC"
@@ -54,7 +55,7 @@ __email__ = "support@contraxsuite.com"
 
 header_ptn = re.escape(header.strip())
 coding_ptn = re.escape(coding.strip())
-author_ptn = re.escape(author.strip()).replace("0\.0\.0", "\d\.\d\.\d+")
+author_ptn = re.escape(author.strip()).replace("0\.0\.0", "\d\.\d\.\d+").replace('0000', '\d{4}')
 
 py_file_struc_ptn = f'(?P<header>{header_ptn}){{,1}}\n*' \
                     f'(?P<docstr>(?:\'\'\'.+?\'\'\'|""".+?""")){{,1}}\n*' \
@@ -76,12 +77,12 @@ def unify_file_structure(release_number):
     files = sorted([os.path.join(a, i)
                     for a, _, b in os.walk(path)
                     for i in b
-                    if i.endswith('.py') and 'migrations' not in a])
+                    if i.endswith('.py') and '/migrations' not in a])
     files = files + [os.path.join(base_dir, i) for i in os.listdir(base_dir)
                      if i.endswith('.py') and i not in exclude_paths]
 
     global author
-    author = release_version_re.sub(release_number, author)
+    author = release_version_re.sub(release_number, author).replace('0000', str(datetime.datetime.now().year))
 
     for a_file in files:
         with open(a_file, 'r') as f:

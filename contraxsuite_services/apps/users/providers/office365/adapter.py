@@ -23,25 +23,25 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-import logging
 
 from django.http import HttpResponseForbidden
 
 from allauth.exceptions import ImmediateHttpResponse
-from allauth.socialaccount.adapter import DefaultSocialAccountAdapter, get_adapter
+from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.providers import registry
 
-from .provider import Office365Provider
+from apps.common.logger import CsLogger
+from apps.users.providers.office365.provider import Office365Provider
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):

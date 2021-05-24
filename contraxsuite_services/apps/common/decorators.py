@@ -42,14 +42,15 @@ from django.http import HttpRequest
 
 # Project imports
 from apps.common import redis
+from apps.common.logger import CsLogger
 from apps.common.models import MethodStats, MethodStatsCollectorPlugin
 from apps.common.singleton import Singleton
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,7 +62,7 @@ def get_string_db_logger():
     >>> call_stuff_to_debug_with_logger(logger=logger)
     >>> print output.getvalue()
     """
-    logger = logging.getLogger('django.db.backends')
+    logger = CsLogger.get_django_db_backends_logger()
     logger.setLevel(logging.DEBUG)
     try:
         fmt = settings.LOGGING['formatters']['verbose']['format']
@@ -272,7 +273,7 @@ def get_function_from_str(path):
                     parents_chain = local_path_chain[:-1]
                     for _parent in parents_chain:
                         method_parent = getattr(method_parent, _parent)
-                    if type(method_parent) is Singleton:
+                    if isinstance(method_parent, Singleton):
                         method_parent = method_parent.clz
                 method = getattr(method_parent, method_name)
                 return method_parent, method, method_name

@@ -29,56 +29,89 @@ import abc
 import io
 import json
 import traceback
-import coreapi
-import coreschema
-
 from tempfile import NamedTemporaryFile
 
 # Django imports
 from django.conf.urls import url
-from django.contrib.sites.models import Site
 from django.core.management import call_command
-from django.http import HttpResponse
+from django.http import JsonResponse, HttpResponse
 
 # Third-party imports
-from rest_framework import serializers, generics, schemas, views
+from rest_framework import serializers, generics, views
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 # Project imports
-from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema
-from apps.dump.app_dump import get_full_dump, get_field_values_dump,\
+from apps.common.schemas import CustomAutoSchema, json_ct, string_content, object_content, object_list_content
+from apps.dump.app_dump import get_full_dump, get_field_values_dump, \
     get_model_fixture_dump, load_fixture_from_dump, download, get_app_config_dump
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-json_ct = 'application/json'
+class DumpPUTErrorResponseSerializer(serializers.Serializer):
+    log = serializers.CharField()
+    exception = serializers.CharField()
 
 
 class BaseDumpViewSchema(CustomAutoSchema):
 
+    get_parameters = [
+        {'name': 'download',
+         'in': 'query',
+         'required': False,
+         'description': 'Download as file',
+         'schema': {
+             'type': 'boolean'}
+         }
+    ]
+
     def get_responses(self, path, method):
-        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}},
-                    '400': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}}}
+        if method == 'GET':
+            return {'200': {
+                        'content': {
+                            json_ct: {
+                                'schema': {
+                                    'oneOf': [
+                                        {'type': 'array', 'items': {'type': 'object', 'additionalProperties': True}},
+                                        {'type': 'string', 'format': 'binary',
+                                         'description': 'Json file with dumped fixture'}]}}},
+                        'description': ''},
+                    '400': object_content}
+
         if method == 'PUT':
-            response = {
-                '200': {
-                    'content': {
-                        json_ct: {
-                            'schema': {'type': 'string',
-                                       'format': 'binary',
-                                       'description': 'Json file with dumped data'}
-                        },
-                    }
-                }
-            }
-        return response
+            return {'200': string_content,
+                    '400': {
+                        'content': {
+                            json_ct: {
+                                'schema': self._get_reference(DumpPUTErrorResponseSerializer())}},
+                        'description': ''}}
+        raise NotImplementedError()
+
+    def get_components(self, path, method):
+        res = super().get_components(path, method)
+        bad_response_component_name = self.get_component_name(DumpPUTErrorResponseSerializer())
+        bad_response_component_content = self.map_serializer(DumpPUTErrorResponseSerializer())
+        res[bad_response_component_name] = bad_response_component_content
+        return res
+
+    def get_operation(self, path, method):
+        op = super().get_operation(path, method)
+
+        if method == 'GET':
+            op['parameters'].extend(self.get_parameters)
+            if hasattr(self, '_get_parameters'):
+                op['parameters'].extend(self._get_parameters)
+
+        elif method == 'PUT' and not self.get_request_serializer(path, method):
+            op['requestBody'] = object_list_content
+
+        return op
 
 
 class RunTaskPermission(IsAuthenticated):
@@ -102,12 +135,12 @@ class BaseDumpView(views.APIView):
         raise Exception('Not implemented')
 
     def get(self, request, *args, **kwargs):
-        return HttpResponse(self.get_json_dump(), content_type=json_ct)
+        response = HttpResponse(content=self.get_json_dump(), content_type=json_ct)
+        if request.GET.get('download') == 'true':
+            response['Content-Disposition'] = 'attachment; filename="dump.json"'
+        return response
 
     def put(self, request, *args, **kwargs):
-        """
-        Upload field values
-        """
         data = self.get_request_data(request)
         buf = io.StringIO()
         try:
@@ -116,24 +149,17 @@ class BaseDumpView(views.APIView):
                 f.seek(0)
                 call_command(self._command, f.name, stdout=buf)
                 buf.seek(0)
-            return HttpResponse(content=self.get_json_dump(),
-                                content_type=json_ct,
-                                status=200)
+            return JsonResponse(data='OK', status=200, safe=False)
         except:
             log = buf.read()
             tb = traceback.format_exc()
-            data = {
-                'log': log,
-                'exception': tb
-            }
-            return HttpResponse(content=json.dumps(data),
-                                content_type=json_ct,
-                                status=400)
+            data = {'log': log, 'exception': tb}
+            return JsonResponse(data=data, status=400)
 
 
 class DumpConfigView(BaseDumpView):
     """
-    Dump all users, roles, email addresses, review statuses, review status groups,
+    Dump all users, email addresses, review statuses, review status groups,
     app vars, document types, fields, field detectors and document filters to json.
     """
 
@@ -145,10 +171,25 @@ class DumpConfigView(BaseDumpView):
         return get_full_dump()
 
 
+class DumpDocumentConfigSchema(BaseDumpViewSchema):
+
+    _get_parameters = [
+        {'name': 'document_type_codes',
+         'in': 'query',
+         'required': False,
+         'description': 'Document Type codes separated by comma',
+         'schema': {
+             'type': 'string'}
+         }
+    ]
+
+
 class DumpDocumentConfigView(BaseDumpView):
     """
     Dump document types, fields, field detectors and  document filters to json.
     """
+    schema = DumpDocumentConfigSchema()
+
     def get_json_dump(self) -> str:
         document_type_codes = self.request.GET.get('document_type_codes') or None
         if document_type_codes:
@@ -156,42 +197,38 @@ class DumpDocumentConfigView(BaseDumpView):
         return get_app_config_dump(document_type_codes)
 
 
+class FieldValuesDumpAPISchema(BaseDumpViewSchema):
+
+    def get_operation(self, path, method):
+        op = super().get_operation(path, method)
+        if method == 'PUT':
+            op['requestBody'] = object_list_content
+        return op
+
+
 class FieldValuesDumpAPIView(BaseDumpView):
     """
     Dump field values to json.
     """
-    def get(self, request, *args, **kwargs):
-        """
-        Download field values
-        """
-        response = HttpResponse(content_type=json_ct)
-        response['Content-Disposition'] = 'attachment; filename="{}.{}.{}"'.format(
-            Site.objects.get_current(), 'field-values', 'json')
-        json_data = get_field_values_dump()
-        response.write(json_data)
-        return response
+    schema = FieldValuesDumpAPISchema()
+
+    def get_json_dump(self) -> str:
+        return get_field_values_dump()
 
     def put(self, request, *args, **kwargs):
         """
         Upload field values
         """
-        file_ = request.FILES.dict().get('file')
-        data = file_.read()
         try:
-            with NamedTemporaryFile(mode='w+b', suffix='.json') as f:
-                f.write(data)
+            with NamedTemporaryFile(mode='w+', suffix='.json') as f:
+                f.write(json.dumps(request.data))
                 f.flush()
                 call_command('loaddata', f.name)
-            return Response("OK")
+            return Response('OK')
         except Exception as e:
             tb = traceback.format_exc()
-            data = {
-                'log': str(e),
-                'exception': tb
-            }
-            return HttpResponse(content=json.dumps(data),
-                                content_type=json_ct,
-                                status=400)
+            data = {'log': str(e), 'exception': tb}
+            return JsonResponse(data=data, status=400)
 
 
 class DumpFixtureSerializer(serializers.Serializer):
@@ -213,10 +250,9 @@ class DumpFixtureAPIViewSchema(CustomAutoSchema):
                         'schema': {'type': 'string',
                                    'format': 'binary',
                                    'description': 'Json file with dumped fixture'}
-                    },
-                }
+                    }},
+                'description': ''}
             }
-        }
         return response
 
 
@@ -227,39 +263,6 @@ class DumpFixtureAPIView(generics.CreateAPIView):
     permission_classes = [RunTaskPermission]
     serializer_class = DumpFixtureSerializer
     schema = DumpFixtureAPIViewSchema()
-
-    coreapi_schema = schemas.ManualSchema(fields=[
-        coreapi.Field(
-            "app_name",
-            required=True,
-            location="form",
-            schema=coreschema.String(max_length=10)
-        ),
-        coreapi.Field(
-            "model_name",
-            required=True,
-            location="form",
-            schema=coreschema.String(max_length=50)
-        ),
-        coreapi.Field(
-            "filter_options",
-            required=False,
-            location="form",
-            schema=coreschema.Object()
-        ),
-        coreapi.Field(
-            "file_name",
-            required=True,
-            location="form",
-            schema=coreschema.String(max_length=50)
-        ),
-        coreapi.Field(
-            "indent",
-            required=False,
-            location="form",
-            schema=coreschema.Integer(default=4)
-        ),
-    ])
 
     def post(self, request, *args, **kwargs):
         """
@@ -276,15 +279,15 @@ class DumpFixtureAPIView(generics.CreateAPIView):
 
 class LoadFixtureSerializer(serializers.Serializer):
     fixture = serializers.CharField(required=True)
-    mode = serializers.CharField(max_length=10, required=False)
-    encoding = serializers.CharField(max_length=10, required=False)
+    mode = serializers.ChoiceField(choices=['default', 'shift', 'partial', 'soft'], required=False, default='default')
+    encoding = serializers.CharField(max_length=10, required=False, default='utf=8')
 
 
 class LoadFixtureAPIViewSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
-        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}},
-                    '400': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}}}
+        response = {'200': object_list_content,
+                    '400': object_content}
         return response
 
 

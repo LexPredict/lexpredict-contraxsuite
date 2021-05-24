@@ -5,4 +5,4 @@ Generator command for csharp:
 openapi-generator generate -g csharp -o csharp/sdk -i openapi_schema.json --skip-validate-spec
 
 Generator command for java:
-openapi-generator generate -g java -o java/sdk -i openapi_schema.json --artifact-version 1.8.0 --skip-validate-spec -c java/java.conf
+openapi-generator generate -g java -o java/sdk -i openapi_schema.json --artifact-version 2.0.0 --skip-validate-spec -c java/java.conf

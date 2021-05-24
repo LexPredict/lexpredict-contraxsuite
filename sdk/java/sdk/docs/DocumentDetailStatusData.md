@@ -2,6 +2,7 @@
 
 # DocumentDetailStatusData
 
+
 ## Properties
 
 Name | Type | Description | Notes

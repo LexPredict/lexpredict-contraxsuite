@@ -38,9 +38,9 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
     DocumentNotificationSubscription
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,7 @@ class DocumentDigestConfigForm(ModelForm):
         if csv is None:
             return
 
-        errors = list()
+        errors = []
         items = 0
         for s in csv.split(','):
             items += 1
@@ -88,19 +88,16 @@ class DocumentDigestConfigForm(ModelForm):
     USER_FIELDS = 'user_fields'
     GENERIC_FIELDS = 'generic_fields'
     FOR_USER = 'for_user'
-    FOR_ROLE = 'for_role'
     DOCUMENT_TYPE = 'document_type'
 
     def clean(self):
         for_user = self.cleaned_data.get(self.FOR_USER)
-        for_role = self.cleaned_data.get(self.FOR_ROLE)
-        if not for_user and not for_role:
-            self.add_error(self.FOR_USER, 'Either "For user" or "For role" must be specified.')
-            self.add_error(self.FOR_ROLE, 'Either "For user" or "For role" must be specified.')
+        if not for_user:
+            self.add_error(self.FOR_USER, '"For user" must be specified.')
 
         dt = self.cleaned_data[self.DOCUMENT_TYPE]
         fields = self.cleaned_data[self.USER_FIELDS]
-        wrong_fields = list()
+        wrong_fields = []
         for field in fields.all():  # type: DocumentField
             if field.document_type_id != dt.pk:
                 wrong_fields.append(field)
@@ -150,7 +147,7 @@ class DocumentNotificationSubscriptionForm(ModelForm):
             if bad_addrrs:
                 self.add_error('recipients_cc', 'Invalid emails in CC: {0}'.format(bad_addrrs))
 
-        wrong_fields = list()
+        wrong_fields = []
         for field in fields.all():  # type: DocumentField
             if field.document_type_id != dt.pk:
                 wrong_fields.append(field)
@@ -182,9 +179,9 @@ class DocumentDigestSendDateAdmin(admin.ModelAdmin):
 
 class DocumentDigestConfigAdmin(admin.ModelAdmin):
     list_display = (
-        'pk', 'document_type', 'for_role', 'for_user', 'documents_filter', 'period',
+        'pk', 'document_type', 'for_user', 'documents_filter', 'period',
         'run_at_day_of_week', 'run_at_hour', 'run_at_minute')
-    search_fields = ('pk', 'document_type__code', 'for_role__name', 'for_user__name', 'documents_filter', 'period')
+    search_fields = ('pk', 'document_type__code', 'for_user__name', 'documents_filter', 'period')
 
     form = DocumentDigestConfigForm
 
@@ -195,8 +192,8 @@ class DocumentDigestConfigAdmin(admin.ModelAdmin):
 
 class DocumentNotificationSubscriptionAdmin(admin.ModelAdmin):
     list_display = (
-        'pk', 'document_type', 'event', 'recipients', 'specified_role', 'specified_user', 'enabled')
-    search_fields = ('pk', 'document_type__code', 'event', 'recipients', 'specified_role__name', 'specified_user__name')
+        'pk', 'document_type', 'event', 'recipients', 'specified_user', 'enabled')
+    search_fields = ('pk', 'document_type__code', 'event', 'recipients', 'specified_user__name')
 
     form = DocumentNotificationSubscriptionForm
 

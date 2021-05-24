@@ -2,6 +2,7 @@
 
 # TextUnitClassification
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -17,7 +18,7 @@ Name | Type | Description | Notes
 **className** | **String** |  | 
 **classValue** | **String** |  | 
 **userUsername** | **String** |  |  [optional] [readonly]
-**timestamp** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
+**timestamp** | **OffsetDateTime** |  |  [optional]
 
 
 

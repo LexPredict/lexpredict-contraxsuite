@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import difflib
+import time
 from collections import defaultdict
 from typing import List, Dict, Any, Generator, Union, Iterable, Tuple, Callable
 from typing import Set, Optional
@@ -54,9 +55,9 @@ from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_HIDE_UNTIL_PYTHON
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,6 +87,11 @@ class ChangingDocumentNotPermitted(APIException):
 
 class ChangingFieldNotPermitted(APIException):
     pass
+
+class TextLocationDoesNotMatchAnyTextUnit(APIException):
+
+    def __init__(self, detail=None, code=None):
+        super().__init__(detail or 'Selected text is not contained in any detected sentence/paragraph/text unit.', code)
 
 
 @Singleton
@@ -120,7 +126,7 @@ class DocumentFieldRepository:
                                                                 location_in_doc_end=location_end,
                                                                 extraction_hint_name=extraction_hint))
 
-        field_code_to_fvals = dict()  # type: Dict[str, FieldValueDTO]
+        field_code_to_fvals = {}  # type: Dict[str, FieldValueDTO]
         for field_code, value in qr_field_values.values_list('field__code', 'value'):
             field_code_to_fvals[field_code] = FieldValueDTO(field_value=value,
                                                             annotations=field_code_to_ants.get(field_code))
@@ -266,7 +272,7 @@ class DocumentFieldRepository:
 
         field_code_to_field = {f.code: f for f in fields}  # type: Dict[str, DocumentField]
 
-        res = dict()
+        res = {}
 
         for field_code, value in qr.values_list('field__code', 'value'):
             if field_code not in field_code_to_field:
@@ -295,7 +301,7 @@ class DocumentFieldRepository:
         if field_codes_only:
             qr_values = qr_values.filter(field__code__in=field_codes_only)
 
-        return {field_code: value for field_code, value in qr_values.values_list('field__code', 'value')}
+        return dict(qr_values.values_list('field__code', 'value'))
 
     def get_field_uid_to_python_value(self,
                                       doc_id: int,
@@ -315,7 +321,7 @@ class DocumentFieldRepository:
 
         field_uid_to_field = {f.pk: f for f in fields}  # type: Dict[str, DocumentField]
 
-        res = dict()
+        res = {}
 
         for field_uid, value in qr.values_list('field_id', 'value'):
             field = field_uid_to_field.get(field_uid)
@@ -378,7 +384,7 @@ class DocumentFieldRepository:
                     if doc_limit and doc_count >= doc_limit:
                         return
                 last_document_id = document_id
-                last_field_values = dict()
+                last_field_values = {}
             field = field_code_to_field[field_code]
             typed_field = TypedField.by(field)
             last_field_values[field_code] = typed_field.field_value_json_to_python(value)
@@ -436,10 +442,9 @@ class DocumentFieldRepository:
                 .filter(hide_until_python__isnull=False) \
                 .exclude(hide_until_python='') \
                 .values_list('pk', 'code', 'hide_until_python'):
-            eval_locals = dict()
+            eval_locals = {}
 
             if settings.DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC:
-                import time
                 time.sleep(settings.DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC)
 
             # Hide-until formulas are translated from Python to JavaScript
@@ -520,7 +525,7 @@ class DocumentFieldRepository:
 
             all_fields = {f.code: f for f in DocumentField.objects.filter(document_type=document_type)}
 
-            to_save = list()  # type: List[FieldValue]
+            to_save = []  # type: List[FieldValue]
             for field_code, python_val in field_codes_to_python_values.items():
                 field = all_fields.get(field_code)  # type: DocumentField
                 if not field:
@@ -953,7 +958,21 @@ class DocumentFieldRepository:
             field_value_model.modified_by = modified_by
             field_value_model.save(update_fields={'value', 'modified_date', 'modified_by'})
 
-    def _store_field_value(self, doc, field, field_value, user) -> FieldValue:
+    def _store_field_value(self,
+                           doc: Document,
+                           field: DocumentField,
+                           field_value: Any,
+                           user: User,
+                           on_existing_value: str = 'replace_all') -> FieldValue:
+        typed_field = TypedField.by(field)
+        if typed_field.is_choice_field and typed_field.multi_value and on_existing_value == 'add_new':
+            # combine old value with the new one
+            existing_field_value: FieldValue = FieldValue.objects.filter(
+                document=doc, field=field).first()
+            existing_value = existing_field_value.value or [] if existing_field_value else []
+            existing_value += field_value
+            field_value = list(set(existing_value))
+
         field_value_model, _ = FieldValue.objects \
             .update_or_create(document=doc,
                               field=field,
@@ -965,9 +984,10 @@ class DocumentFieldRepository:
     def update_field_values(self,
                             doc: Document,
                             user: User,
-                            fval_by_code: Dict[str, Any]) -> List[Tuple[DocumentField, FieldValue]]:
+                            fval_by_code: Dict[str, Any],
+                            on_existing_value: str = 'replace_all') -> List[Tuple[DocumentField, FieldValue]]:
 
-        res = list()
+        res = []
         with connection.cursor() as cursor:
             self.lock_document(cursor, doc.pk)  # will unlock on transaction end
             field_by_code = {f.code: f for f in DocumentField.objects.filter(document_type_id=doc.document_type_id)}
@@ -994,7 +1014,7 @@ class DocumentFieldRepository:
                     raise BadValueForField(f'Wrong value format for field {field_code} ({typed_field.type_code}):\n'
                                            f'{str(value)}')
 
-                field_value_model = self._store_field_value(doc, field, value, user)
+                field_value_model = self._store_field_value(doc, field, value, user, on_existing_value)
 
                 for ex_ant in ex_ants:
                     if not typed_field.annotation_value_matches_field_value(field_value=value,
@@ -1021,8 +1041,11 @@ class DocumentFieldRepository:
                 location_start__lte=location_end,
                 location_end__gte=location_start)
 
-        # note that there might be no row matching the query - that would lead to exception
-        return query.order_by().values_list('pk', flat=True)[:1].get()
+        try:
+            # note that there might be no row matching the query - that would lead to exception
+            return query.order_by().values_list('pk', flat=True)[:1].get()
+        except TextUnit.DoesNotExist as e:
+            raise TextLocationDoesNotMatchAnyTextUnit() from e
 
     def get_annotation_stats_by_field_value(self, field_value: FieldValue) -> Dict[str, int]:
         return {str(val or ''): count
@@ -1081,21 +1104,27 @@ class DocumentFieldRepository:
 
     def update_field_annotations_by_ant_ids(self,
                                             annotation_ids: Iterable[int],
-                                            field_data: Iterable[Tuple[str, str]]):
+                                            field_data: Iterable[Tuple[str, str]],
+                                            update_false_matches: bool = False):
         if not annotation_ids or not field_data:
             return
         where_clause = ','.join([f"'{id}'" for id in annotation_ids])
         where_clause = f'WHERE "uid" in ({where_clause})'
-        self.update_field_annotations(where_clause, field_data)
+        self.update_field_annotations(where_clause, field_data, update_false_matches)
 
     def update_field_annotations(self,
                                  where_clause: str,
-                                 field_data: Iterable[Tuple[str, str]]):
+                                 field_data: Iterable[Tuple[str, str]],
+                                 update_false_matches: bool = False):
         if not where_clause or not field_data:
             return
 
         tables = [FieldAnnotation.objects.model._meta.db_table,
                   FieldAnnotation.history.model._meta.db_table]
+        if update_false_matches:
+            tables += [FieldAnnotationFalseMatch.objects.model._meta.db_table,
+                       FieldAnnotationFalseMatch.history.model._meta.db_table,]
+
         set_clause = ', '.join([f'"{col}" = {val}' for col, val in field_data])
 
         try:
@@ -1135,7 +1164,7 @@ class DocumentFieldRepository:
         ants_to_delete = []  # type:List[Tuple[int, int]]
 
         for field_id, doc_id, val in field_values:
-            if type(val) is not list:
+            if not isinstance(val, list):
                 # TODO: what should we do if values stored are incorrect?
                 if isinstance(val, str):
                     val = [val]
@@ -1162,7 +1191,7 @@ class DocumentFieldRepository:
                     elif misfit_action == 'DELETE':
                         new_val.remove(item)
                         fields_to_update[field_id] = new_val
-                        ants_to_delete.append((field_id, doc_id,))
+                        ants_to_delete.append((field_id, doc_id))
                 else:
                     if item not in old_to_new:
                         continue
@@ -1174,9 +1203,9 @@ class DocumentFieldRepository:
             return op_status
 
         # delete annotations
-        deleting_ant_fields = list(set([a[0] for a in ants_to_delete]))
+        deleting_ant_fields = {a[0] for a in ants_to_delete}
         for ant_pack in chunks(ants_to_delete, 100):
-            doc_ids = list(set([a[1] for a in ant_pack]))
+            doc_ids = {a[1] for a in ant_pack}
             ants = FieldAnnotation.objects.filter(document_id__in=doc_ids,
                                                   field_id__in=deleting_ant_fields)
             for a in ants:  # type: FieldAnnotation
@@ -1188,7 +1217,7 @@ class DocumentFieldRepository:
 
         # check what fields have no values now and should be deleted
         fields_to_delete = []
-        ids_to_delete = [k for k in fields_to_update]
+        ids_to_delete = list(fields_to_update)
         for field_id in ids_to_delete:
             if not fields_to_update[field_id]:
                 fields_to_delete.append(field_id)
@@ -1203,7 +1232,7 @@ class DocumentFieldRepository:
                 return op_status
         op_status['deleted'] = len(fields_to_delete)
 
-        field_ids = [k for k in fields_to_update]
+        field_ids = list(fields_to_update)
         for field_ids_pack in chunks(field_ids, 500):
             fvals = FieldValue.objects.filter(pk__in=field_ids_pack)
             for fval in fvals:  # type: FieldValue
@@ -1236,7 +1265,7 @@ class DocumentFieldRepository:
 
         old_new_map = {}  # type:Dict[str, str]
         for _, doc_id, val in field_values:
-            if type(val) is not list:
+            if not isinstance(val, list):
                 # TODO: what should we do if values stored are incorrect?
                 if isinstance(val, str):
                     val = [val]
@@ -1263,7 +1292,7 @@ class DocumentFieldRepository:
 
         # replace document ids with document names
         if wrong_vals:
-            doc_ids = set([d[0] for d in wrong_vals])
+            doc_ids = {d[0] for d in wrong_vals}
             doc_names = Document.all_objects.filter(pk__in=doc_ids).values_list(
                 'pk', 'name', 'document_type_id', 'project_id')
             doc_names = {d[0]: (d[1], d[2], d[3]) for d in doc_names}
@@ -1273,7 +1302,7 @@ class DocumentFieldRepository:
                     # doc_editor_url(document_type_code, project_id, document_id)
                     doc_url = doc_editor_url(doc_data[1], doc_data[2], wrong_vals[i][0])
                     doc_name = doc_data[0]
-                    wrong_vals[i] = (doc_name, doc_url, wrong_vals[i][2], wrong_vals[i][3],)
+                    wrong_vals[i] = (doc_name, doc_url, wrong_vals[i][2], wrong_vals[i][3])
 
         return has_more_values, wrong_vals
 
@@ -1301,11 +1330,16 @@ class DocumentFieldRepository:
                                  document_type: DocumentType,
                                  include_user_fields: bool,
                                  exclude_hidden_always_fields: bool) -> Iterable[DocumentField]:
-        doc_field_qr = DocumentField.objects.filter(document_type=document_type)
-        if isinstance(include_user_fields, set) or isinstance(include_user_fields, list):
+        doc_field_qr = document_type.fields.all()
+        if isinstance(include_user_fields, (set, list)):
             doc_field_qr = doc_field_qr.filter(code__in=include_user_fields)
 
         if exclude_hidden_always_fields:
             doc_field_qr = doc_field_qr.filter(hidden_always=False)
 
-        return doc_field_qr.order_by('order', 'code')
+        return doc_field_qr \
+            .order_by('order', 'code') \
+            .only('code', 'title', 'type', 'requires_text_annotations', 'hidden_always',
+                  'uid', 'default_value', 'document_type_id', 'long_code', 'order',
+                  'allow_values_not_specified_in_choices', 'vectorizer_stop_words',
+                  'value_regexp', 'choices')

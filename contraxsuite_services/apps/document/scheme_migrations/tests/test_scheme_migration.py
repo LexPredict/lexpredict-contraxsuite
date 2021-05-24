@@ -23,15 +23,16 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-from unittest import TestCase
+
 import json
+from unittest import TestCase
 from apps.document.scheme_migrations.scheme_migration import SchemeMigration
 from tests.testutils import load_resource_document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 

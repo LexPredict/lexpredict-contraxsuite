@@ -1,5 +1,6 @@
 # SetProjectAnnotationsStatusAsyncResponse
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

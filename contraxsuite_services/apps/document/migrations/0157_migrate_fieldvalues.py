@@ -27,7 +27,6 @@ class FieldValuePopulator:
             ChoiceField(),
             MultiChoiceField(),
             PersonField(),
-            AmountField(),
             MoneyField(),
             GeographyField(),
             LinkedDocumentsField()
@@ -143,12 +142,12 @@ class FieldValuePopulator:
             for dfv in doc_dfvs:
                 doc_dfvs_by_field[dfv.field].append(dfv)
 
-            false_matches = list()
-            ants = list()
-            field_values = list()
+            false_matches = []
+            ants = []
+            field_values = []
 
             for field, dfvs in doc_dfvs_by_field.items():
-                ant_values = list()
+                ant_values = []
                 last_modified_by = None
                 last_modified_date = None
 

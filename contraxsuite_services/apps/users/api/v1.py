@@ -40,40 +40,15 @@ from rest_framework.response import Response
 
 # Project imports
 from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer, APIFormFieldsMixin
-from apps.common.schemas import CustomAutoSchema, ObjectToItemResponseMixin, string_schema
-from apps.users.models import User, Role
+from apps.common.schemas import CustomAutoSchema, ObjectToItemResponseMixin, string_content
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-# --------------------------------------------------------
-# Role View
-# --------------------------------------------------------
-
-class RoleSerializer(SimpleRelationSerializer):
-    class Meta:
-        model = Role
-        fields = ['id', 'name', 'code', 'abbr', 'order',
-                  'is_admin', 'is_top_manager', 'is_manager', 'is_reviewer']
-
-
-class RoleViewSet(JqListAPIMixin, viewsets.ModelViewSet):
-    """
-    list: Role List
-    create: Create Role
-    retrieve: Retrieve Role
-    update: Update Role
-    partial_update: Partial Update Role
-    """
-    queryset = Role.objects.all()
-    serializer_class = RoleSerializer
-    http_method_names = ['get', 'post', 'put', 'patch']
-    permission_classes = [DjangoModelPermissions]
 
 
 # --------------------------------------------------------
@@ -81,7 +56,6 @@ class RoleViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # --------------------------------------------------------
 
 class UserSerializer(SimpleRelationSerializer):
-    role_data = RoleSerializer(source='role', many=False, required=False)
     photo = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
 
@@ -89,13 +63,10 @@ class UserSerializer(SimpleRelationSerializer):
         model = User
         fields = ['id', 'username', 'last_name', 'first_name',
                   'email', 'is_superuser', 'is_staff', 'is_active',
-                  'name', 'role', 'role_data', 'organization', 'photo', 'permissions', 'groups']
+                  'name', 'initials', 'organization', 'photo', 'permissions', 'groups']
 
     def get_photo(self, obj):
         return obj.photo.url if obj.photo else None
-
-    def get_full_name(self, obj):
-        return obj.get_full_name()
 
     def get_permissions(self, obj):
         view_documenttype_stats = obj.has_perm('document.view_documenttype_stats')
@@ -132,15 +103,14 @@ class UserProfileSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'last_name', 'first_name', 'name',
+        fields = ['username', 'last_name', 'first_name', 'name', 'initials',
                   'email', 'organization', 'groups']
-        read_only_fields = ('username', 'email')
+        read_only_fields = ('username', 'email', 'initials')
 
 
 class UserStatsSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     user_name = serializers.CharField()
-    role_name = serializers.CharField(allow_null=True)
     group_name = serializers.CharField(allow_null=True)
     total_projects = serializers.IntegerField()
     documents_assigned = serializers.IntegerField()
@@ -187,7 +157,7 @@ class UserViewSet(JqListAPIMixin, APIFormFieldsMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'user_stats':
             return UserStatsSerializer
-        elif self.action in ['create', 'update', 'partial_update']:
+        if self.action in ['create', 'update', 'partial_update']:
             return UserProfileSerializer
         return UserSerializer
 
@@ -207,7 +177,6 @@ class UserViewSet(JqListAPIMixin, APIFormFieldsMixin, viewsets.ModelViewSet):
         qs = self.get_queryset()
         qs1 = qs.annotate(
             user_name=F('name'),
-            role_name=F('role__name'),
             group_name=StringAgg('groups__name', delimiter=', ', distinct=True),
             total_projects=Count('project_junior_reviewers', distinct=True) +
                            Count('project_reviewers', distinct=True) +
@@ -227,7 +196,7 @@ class UserViewSet(JqListAPIMixin, APIFormFieldsMixin, viewsets.ModelViewSet):
                 When(Q(documents_assigned=0), then=0),
                 default=100.0 * F('documents_todo') / F('documents_assigned'),
                 output_field=DecimalField(max_digits=5, decimal_places=2)),
-        ).values('id', 'user_name', 'role_name', 'group_name', 'total_projects',
+        ).values('id', 'user_name', 'group_name', 'total_projects',
                  'documents_assigned', 'documents_completed', 'documents_todo',
                  'documents_completed_pcnt', 'documents_todo_pcnt')
 
@@ -247,7 +216,7 @@ class UserViewSet(JqListAPIMixin, APIFormFieldsMixin, viewsets.ModelViewSet):
                     When(Q(clauses_assigned=0), then=0),
                     default=100.0 * F('clauses_todo') / F('clauses_assigned'),
                     output_field=DecimalField(max_digits=5, decimal_places=2)),
-        ).values('id', 'clauses_assigned', 'clauses_todo',  'clauses_completed',
+        ).values('id', 'clauses_assigned', 'clauses_todo', 'clauses_completed',
                  'clauses_completed_pcnt', 'clauses_todo_pcnt')
 
         qs = {i['id']: i for i in qs1}
@@ -277,7 +246,7 @@ class VerifyAuthTokenAPIViewSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
         resp = super().get_responses(path, method)
-        resp['403'] = string_schema
+        resp['403'] = string_content
         return resp
 
 
@@ -319,14 +288,13 @@ class VerifyAuthTokenAPIView(views.APIView):
                 'key': auth_token,
                 'user_name': tok_usr.username,
                 'user': UserSerializer(tok_usr).data,
-                'release_version': settings.VERSION_NUMBER }
+                'release_version': settings.VERSION_NUMBER}
             return Response(resp_data)
         return Response()
 
 
 router = routers.DefaultRouter()
 router.register('users', UserViewSet, 'user')
-router.register('roles', RoleViewSet, 'role')
 
 
 urlpatterns = [

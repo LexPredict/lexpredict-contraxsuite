@@ -28,11 +28,12 @@
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 REMOVE_READY_TASKS_DELAY_IN_HOURS = AppVar.set(
     'Task', 'remove_ready_tasks_delay_in_hours', 48,
@@ -67,30 +68,6 @@ MIN_FREE_DISK_BLOCK_TASKS = AppVar.set(
 TASK_DIALOG_FREEZE_MS = AppVar.set(
     'Task', 'task_dialog_freeze_ms', 100,
     'Time interval (ms) for the new task window to load.')
-
-TIKA_CUSTOM_CONFIG = AppVar.set(
-    'Task', 'tika_custom_config', 'tika.config',
-    'Tika''s custom config file from "jars" folder, like "tika.config"')
-
-TIKA_NOOCR_CUSTOM_CONFIG = AppVar.set(
-    'Task', 'tika_noocr_custom_config', 'tika.noocr.config',
-    'Tika''s custom config file from "jars" folder, fo NO_OCR case like "tika.noocr.config"')
-
-TIKA_LEXNLP_CUSTOM_CONFIG = AppVar.set(
-    'Task', 'tika_lexnlp_custom_config', 'tika.lexp.config',
-    'Tika LexNLP custom config file from "jars" folder, like "tika.lexp.config"')
-
-USE_PDF2PDFA_CONVERTER = AppVar.set(
-    'Task', 'use_pdf2pdfa_converter', False,
-    'Convert pdf to pdf-A during parsing a document')
-
-USE_PDF2PDFA_CONVERTER_RESULT = AppVar.set(
-    'Task', 'use_pdf2pdfa_converter_result', False,
-    'Use Converted pdf for further processing instead of source document')
-
-PDF2PDFA_CONVERTER_TIMEOUT = AppVar.set(
-    'Task', 'pdf2pdfa_converter_timeout', 60 * 60 * 3,
-    'Time limit to Convert pdf to pdf-A, sec.')
 
 EXTRA_EXCLUDED_FROM_TRACKING = AppVar.set(
     'Task', 'extra_excluded_from_tracking', '',

@@ -39,8 +39,6 @@ class NoDbTestRunner(DiscoverRunner):
 
     def setup_databases(self, **kwargs):
         print("setup_databases.........")
-        pass
 
     def teardown_databases(self, old_config, **kwargs):
         print("teardown_databases.........")
-        pass

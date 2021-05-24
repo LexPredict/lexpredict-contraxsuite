@@ -28,12 +28,12 @@ from django.contrib.auth.models import Group
 from django.core.management import BaseCommand
 
 from allauth.account.models import EmailAddress
-from apps.users.models import User, Role
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,15 +52,12 @@ class Command(BaseCommand):
                             help='Email')
 
     def handle(self, *args, **options):
-        tech_admin_role_id = Role.objects.filter(code='technical_admin').values_list('pk', flat=True)[0]
-
         user, created = User.objects.update_or_create(
             username=options['username'],
             is_superuser=True,
             is_staff=True,
             defaults=dict(
                 email=options['email'],
-                role_id=tech_admin_role_id,
                 is_active=True))
 
         if created:

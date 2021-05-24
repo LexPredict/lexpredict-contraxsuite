@@ -27,20 +27,25 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
-# Standard imports
+# Standard library imports
 import json
 import re
+from tempfile import TemporaryDirectory
+import urllib.parse
 
 # Third-party imports
 import pandas as pd
 
 # Django imports
 from django.conf import settings
+from django.core.management import call_command
 from django.db import connection
+from django.http import HttpResponse
+from django.shortcuts import render
 
 # Project imports
 from apps.common import redis
-from apps.common.forms import ReindexDBForm
+from apps.common.forms import ReindexDBForm, DBSchemaSelectionForm
 from apps.common.mixins import JqPaginatedListView, AjaxListView
 from apps.common.models import MethodStats
 from apps.common.permissions import SuperuserRequiredMixin
@@ -48,9 +53,9 @@ from apps.common.tasks import ReindexDB
 from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -278,7 +283,7 @@ class DockerStatsView(SuperuserRequiredMixin, AjaxListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         from apps.task.app_vars import DISK_USAGE
-        ctx['disk_usage'] = DISK_USAGE.val
+        ctx['disk_usage'] = DISK_USAGE.val()
         return ctx
 
 
@@ -292,7 +297,7 @@ class RedisStatsView(SuperuserRequiredMixin, AjaxListView):
         for key in redis.r.scan_iter('*'):
             key = key.decode('utf-8')
             try:
-                value = str(redis.unpickle(redis.r.get(key)))
+                value = str(redis.unpickle(redis.r.get(key)))[:100]
             except:
                 value = 'unpickle error'
             data.append({'key': key, 'value': value})
@@ -302,3 +307,49 @@ class RedisStatsView(SuperuserRequiredMixin, AjaxListView):
 class ReindexDBView(BaseAjaxTaskView):
     task_class = ReindexDB
     form_class = ReindexDBForm
+
+
+def create_db_schema_graph_model_view(request) -> HttpResponse:
+    """
+    Renders a checkbox form or an SVG.
+
+    Once the form is submitted, this function creates a temporary output file,
+        calls the django extension "graph_models" command, and then sends the
+        SVG to the output template.
+
+    Args:
+        request (WSGIRequest)
+
+    Returns:
+        An HttpResponse object which renders the selection or visualization page.
+    """
+    if request.method == 'POST':
+        form = DBSchemaSelectionForm(request.POST)
+        if form.is_valid():
+            apps = form.cleaned_data['contraxsuite_apps']
+            with TemporaryDirectory() as tmpdir:
+                _output_filepath: str = f'{tmpdir}/db_schema.svg'
+                call_command(
+                    'graph_models',
+                    '--group-models', *apps,
+                    '--output', _output_filepath,
+                    '--arrow-shape', 'normal',
+                    '--theme', 'contraxsuite_with_repository_permalinks'
+                )
+                with open(_output_filepath, 'r') as file_svg:
+                    svg: str = file_svg.read()
+                    svg: str = svg[svg.find('<svg'):]
+                    svg: str = svg.replace(' xlink:title="&lt;TABLE&gt;"', '')
+                    svg: str = urllib.parse.quote(svg)
+            return render(
+                request=request,
+                template_name='common/db_schema_visualization/output.html',
+                context={'svg': svg}
+            )
+    else:
+        form = DBSchemaSelectionForm()
+    return render(
+        request=request,
+        template_name='common/db_schema_visualization/input.html',
+        context={'form': form}
+    )

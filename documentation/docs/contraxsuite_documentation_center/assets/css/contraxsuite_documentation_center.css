@@ -148,9 +148,9 @@ div.card:hover {
     cursor: pointer;
 }
 
-div.card:hover img.icon {
-    /* consider doing something */
-}
+/*div.card:hover img.icon {
+    consider doing something
+}*/
 
 div.card-text {
     display: flex;

@@ -36,9 +36,9 @@ from apps.analyze import views
 from apps.analyze.models import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -99,9 +99,14 @@ urlpatterns += [
         name='train-text-unit-doc2vec-model',
     ),
     url(
-        r'^build-doc2vec-vectors/$',
-        views.BuildFeatureVectorsTaskView.as_view(),
-        name='build-doc2vec-vectors',
+        r'^build-document-vectors/$',
+        views.BuildDocumentVectorsTaskView.as_view(),
+        name='build-document-vectors',
+    ),
+    url(
+        r'^build-text-unit-vectors/$',
+        views.BuildTextUnitVectorsTaskView.as_view(),
+        name='build-text-unit-vectors',
     ),
 
     url(

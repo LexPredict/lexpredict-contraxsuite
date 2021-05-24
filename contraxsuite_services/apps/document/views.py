@@ -45,16 +45,14 @@ from django.conf import settings
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.sites.models import Site
 from django.urls import reverse
-from django.db.models import Count, F, Prefetch, Q
-from django.http import FileResponse, HttpResponseForbidden
+from django.db.models import Count, Prefetch, Q
+from django.http import HttpResponseForbidden, HttpResponse, FileResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import DetailView
+from django.views.generic import DetailView, TemplateView
 
 # Project imports
-from apps.analyze.models import (
-    DocumentCluster, TextUnitCluster,
-    TextUnitClassification, TextUnitClassifierSuggestion)
 import apps.common.mixins
+from apps.analyze.models import DocumentCluster, TextUnitCluster, TextUnitClassification, TextUnitClassifierSuggestion
 from apps.common.file_storage import get_file_storage
 from apps.common.models import ExportFile
 from apps.common.utils import cap_words
@@ -62,19 +60,15 @@ from apps.document.forms import DetectFieldValuesForm, TrainDocumentFieldDetecto
     LoadDocumentWithFieldsForm, FindBrokenDocumentFieldValuesForm, ImportCSVFieldDetectionConfigForm, \
     FixDocumentFieldCodesForm, ExportDocumentTypeForm, ImportDocumentTypeForm, IdentifyContractsForm, \
     ExportDocumentsForm, ImportDocumentsForm
-from apps.document.models import (
-    Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag,
-    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag)
+from apps.document.models import Document, DocumentProperty, DocumentRelation, DocumentNote, DocumentTag, \
+    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag
 from apps.document.scheme_migrations.scheme_migration import TAGGED_VERSION
 from apps.document.tasks import ImportCSVFieldDetectionConfig, FindBrokenDocumentFieldValues, ImportDocumentType, \
     FixDocumentFieldCodes, identify_contracts, ImportDocuments, ExportDocuments, TrainAndTest
 from apps.dump.app_dump import download, get_app_config_versioned_dump
-from apps.extract.models import (
-    AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage,
-    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage,
-    GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, GeoRelation,
-    Party, PartyUsage, PercentUsage,
-    RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage)
+from apps.extract.models import AmountUsage, CitationUsage, CopyrightUsage, Court, CourtUsage, CurrencyUsage, \
+    DateDurationUsage, DateUsage, DefinitionUsage, DistanceUsage, GeoAlias, GeoAliasUsage, GeoEntity, GeoEntityUsage, \
+    GeoRelation, Party, PartyUsage, PercentUsage, RatioUsage, RegulationUsage, Term, TermUsage, TrademarkUsage, UrlUsage
 from apps.project.models import TaskQueue
 from apps.project.views import ProjectListView, TaskQueueListView
 from apps.task.models import Task
@@ -83,9 +77,9 @@ from apps.task.views import BaseAjaxTaskView, TaskListView, LoadFixturesView
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -186,7 +180,8 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
             try:
                 qs = Document.ql_objects.djangoql(ql)
             except Exception as e:
-                self.query_errors = [str(e)]
+                warning = f'Error. Check your syntax for errors. ERROR: "{str(e)}". QUERY: "{ql}"'
+                self.query_errors = warning
                 qs = Document.objects.none()
 
         project_ids = list(self.request.user.userprojectssavedfilter.
@@ -195,8 +190,8 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
 
         document_text_search = self.request.GET.get("document_text_search")
         if document_text_search:
-            document_ids = TextUnit.objects.filter(textunittext__text__full_text_search=document_text_search)\
-                .values_list('document_id', flat=True)\
+            document_ids = TextUnit.objects.filter(textunittext__text__full_text_search=document_text_search) \
+                .values_list('document_id', flat=True) \
                 .distinct()
             qs = qs.filter(id__in=document_ids)
 
@@ -229,7 +224,7 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
 
         data['has_contracts'] = self.has_contracts
         if self.query_errors:
-            data['query_errors'] = self.query_errors
+            data['error'] = self.query_errors
         data['help_url'] = self.full_reverse('document:document-query-help')
         return data
 
@@ -254,6 +249,15 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
             del filters['is_contract']
             filters['document_class'] = fvals
         return filters
+
+
+class DocumentActionListView(TemplateView):
+    template_name = 'document/document_action_list.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['document'] = Document.objects.get(pk=self.kwargs['pk'])
+        return ctx
 
 
 class DjangoQLDocumentIntrospectView(DjangoQLIntrospectView):
@@ -428,7 +432,7 @@ class DocumentDetailView(PermissionRequiredMixin, DetailView):
             elif record.log_level == 'ERROR':
                 color = 'red'
             msg_type = record.log_level or 'INFO'
-            records.append((record.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            records.append((record.timestamp.strftime('%Y-%m-%d %H:%M:%S') if record.timestamp else None,
                             msg_type, record.message, color, record.timestamp,))
         records.sort(key=lambda r: r[-1], reverse=True)
         return records
@@ -460,9 +464,8 @@ def show_document(request, pk):
     to avoid nginx base authentication
     """
     document = Document.objects.get(pk=pk)
-    file_name = document.name
+    file_name = os.path.basename(document.name)
     file_path = document.source_path
-    alt_file_path = document.alt_source_path
 
     # perm check
     if not (request.user.has_perm('project.view_documents', document.project) or
@@ -473,15 +476,27 @@ def show_document(request, pk):
         return response
 
     # get alternative file if it exists
-    alt = request.GET.get('alt', 'true')
-    if alt == 'true' and alt_file_path and file_storage.document_exists(alt_file_path):
-        file_path = alt_file_path
+    alt = request.GET.get('alt')
+    if alt == 'true':
+        file_path = document.get_source_path(mode=Document.SourceMode.alt)
+    elif alt in Document.SourceMode.modes():
+        file_path = document.get_source_path(mode=alt)
 
     with file_storage.get_document_as_local_fn(file_path) as (full_name, _):
         mimetype = python_magic.from_file(full_name)
         response = FileResponse(open(full_name, 'rb'), content_type=mimetype)
         response['Content-Disposition'] = 'inline; filename="{}"'.format(file_name)
         return response
+
+
+def can_user_access_doc(request, document: Document) -> Tuple[bool, Optional[HttpResponse]]:
+    if not (request.user.has_perm('project.view_documents', document.project) or
+            request.user.has_perm('document.view_document', document)):
+        response = HttpResponseForbidden()
+        msg = 'You do not have access to this document.'
+        response.content = render(request, '403.html', context={'message': msg})
+        return False, response
+    return True, None
 
 
 class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
@@ -590,7 +605,10 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             try:
                 qs = TextUnit.ql_objects.djangoql(ql).order_by('document_id', 'unit_type')
             except Exception as e:
-                self.query_errors = [str(e)]
+                warning = f'Error. Check your syntax for errors. ERROR: "{str(e)}". QUERY: "{ql}"'
+                self.query_errors = warning
+                qs = TextUnit.objects.none()
+
         if "document_pk" not in self.request.GET:
             # we don't filter by "projects" when QL is provided
             project_ids = list(self.request.user.userprojectssavedfilter.
@@ -642,7 +660,7 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             item['detail_url'] = self.full_reverse('document:text-unit-detail', args=[item['pk']])
 
         if self.query_errors:
-            data['query_errors'] = self.query_errors
+            data['error'] = self.query_errors
         data['help_url'] = self.full_reverse('document:textunit-query-help')
         return data
 
@@ -1167,7 +1185,7 @@ def view_stats(request):
         project_completed_weight = round(project_completed_count / project_total_count * 100, 1)
         project_progress_avg = round(project_df.mean().progress, 1)
         project_documents_total_count = project_df_sum.total_documents_count
-        project_documents_unique_count = Document.objects.filter().distinct('name', 'file_size').count()
+        project_documents_unique_count = Document.objects.distinct('name', 'file_size').count()
 
     task_queue_df = pd.DataFrame(TaskQueueListView(request=request).get_json_data()['data'])
     if task_queue_df.empty:
@@ -1188,7 +1206,6 @@ def view_stats(request):
         task_queue_reviewers_unique_count = User.objects.filter(taskqueue__isnull=False) \
             .distinct().count()
 
-    # set counts depending on user role
     documents = Document.objects
     document_properties = DocumentProperty.objects
     document_tags = DocumentTag.objects
@@ -1541,5 +1558,10 @@ class IdentifyContractsView(BaseAjaxTaskView):
         force = data.get('recheck_contract') or False
         proj = data.get('project') or None
         proj_id = proj.pk if proj else None  # type:Optional[int]
-        call_task_func(identify_contracts, (document_type_code, force, proj_id),
+        check_is_contract = data.get('check_is_contract')
+        set_contract_type = data.get('set_contract_type')
+
+        call_task_func(identify_contracts,
+                       (check_is_contract, set_contract_type, document_type_code,
+                        force, proj_id),
                        data['user_id'])

@@ -29,13 +29,12 @@ import datetime
 import importlib
 import io
 import re
+import subprocess
 import sys
 import uuid
-from typing import Union
+from typing import Union, Optional, Dict, Any
 
 # Third-party imports
-from typing import Any, Tuple, Iterator
-
 import django_excel as excel
 import pandas as pd
 import pdfkit as pdf
@@ -45,22 +44,24 @@ from weasyprint import HTML
 # Django imports
 from django.conf import settings
 from django.conf.urls import url
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.sites.models import Site
 from django.core.handlers.wsgi import WSGIRequest
-from django.db.models import Aggregate, CharField, Value
+from django.db.models import Aggregate, CharField, Value, IntegerField, Func
 from django.db.models.functions import Cast
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import numberformat
 from django.utils.text import slugify
 
+
 # App imports
-from apps.users.models import User, Role
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -102,7 +103,7 @@ class Map(dict):
         del self.__dict__[key]
 
 
-def cap_words(value):
+def cap_words(value: Optional[str]) -> Optional[str]:
     """
     Capitalizes the first character of every word in the value.
     Use except_words dict for exceptions.
@@ -151,6 +152,7 @@ def full_reverse(*args, **kwargs):
     """
     # keep for further using, delete "request" kwarg from from callers if needed
     _ = kwargs.pop('request', None)
+
     if 'protocol' in kwargs:
         protocol = kwargs.pop('protocol')
     else:
@@ -377,12 +379,13 @@ def download(data: [list, pd.DataFrame], fmt='csv', file_name='output'):
     data[data.select_dtypes(['object', 'datetime64[ns, UTC]']).columns] = data.select_dtypes(
         ['object', 'datetime64[ns, UTC]']).apply(lambda x: x.astype(str))
     data.fillna('', inplace=True)
+    columns = {i: cap_words(i) for i in data.columns}
+    data.rename(columns=columns, inplace=True)
     if fmt == 'xlsx':
         return download_xls(data, file_name=file_name)
     if fmt == 'pdf':
         return download_pdf(data, file_name=file_name)
-    else:
-        return download_csv(data, file_name=file_name)
+    return download_csv(data, file_name=file_name)
 
 
 def get_test_user():
@@ -425,6 +428,9 @@ class Serializable(dict):
         # hack to fix _json.so make_encoder serialize properly
         self.__setitem__('dummy', 1)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return self.__dict__
+
     def _myattrs(self):
         return [
             (x, self._repr(getattr(self, x)))
@@ -435,8 +441,7 @@ class Serializable(dict):
     def _repr(self, value):
         if isinstance(value, (str, int, float, list, tuple, dict)):
             return value
-        else:
-            return repr(value)
+        return repr(value)
 
     def __repr__(self):
         return '<%s.%s object at %s>' % (
@@ -521,21 +526,33 @@ class GroupConcat(Aggregate):
         return super().as_sql(compiler, connection)
 
 
-def topological_sort(items: Iterator[Tuple[Any, Any]]) -> None:
-    provided = set()
-    while items:
-        remaining_items = []
-        emitted = False
+class ArrayPosition(Func):
+    """
+    Annotate/sort by some external order
+    qs.annotate(ordering=ArrayPosition(external_pk_list, F('pk'), base_field=UUIDField())).order_by('ordering')
+    """
+    function = 'array_position'
+    output_field = IntegerField()
 
-        for item, dependencies in items:
-            if dependencies.issubset(provided):
-                yield item
-                provided.add(item)
-                emitted = True
+    def __init__(self, items, *expressions, **extra):
+        if 'base_field' in extra:
+            base_field = extra['base_field']
+        else:
+            if isinstance(items[0], int):
+                base_field = IntegerField()
             else:
-                remaining_items.append((item, dependencies))
+                base_field = CharField(max_length=max(len(i) for i in items))
+        first_arg = Value(list(items), output_field=ArrayField(base_field))
+        expressions = (first_arg,) + expressions
+        extra['output_field'] = self.output_field
+        super().__init__(*expressions, **extra)
 
-        if not emitted:
-            raise ValueError("Cyclic or missing dependency detected")
 
-        items = remaining_items
+def get_free_mem() -> str:
+    process = subprocess.Popen(['free', '-m'], stdout=subprocess.PIPE)
+    output, _error = process.communicate()
+    data = output.decode('utf-8')
+    values = [int(m.group(0)) for m in re.finditer(r'\d+', data)]
+    if len(values) > 3:
+        return f'Total={values[0]} MB. Used={values[1]} MB. Free={values[2]} MB.'
+    return data

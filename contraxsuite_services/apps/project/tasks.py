@@ -31,18 +31,19 @@ import re
 import tarfile
 import time
 import zipfile
-# Third-party imports
 from typing import Optional, Dict, Any, List
 
+# Third-party imports
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.states import FAILURE, PENDING, SUCCESS
+from psycopg2 import InterfaceError, OperationalError
+
 # Django imports
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db.models import BooleanField, Case, When, Value
 from django.http import HttpRequest
 from django.utils.timezone import now
-from psycopg2 import InterfaceError, OperationalError
 
 # Project imports
 import task_names
@@ -50,6 +51,7 @@ from apps.analyze.ml.cluster import ClusterDocuments
 from apps.analyze.ml.features import EmptyDataSetError
 from apps.celery import app
 from apps.common.file_storage import get_file_storage
+from apps.common.models import Action
 from apps.document import signals
 from apps.document.constants import DocumentGenericField
 from apps.document.field_detection import field_detection
@@ -59,17 +61,17 @@ from apps.document.repository.base_document_repository import BaseDocumentReposi
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
 from apps.project.notifications import notify_active_upload_sessions, \
-    notify_cancelled_upload_session, notify_active_pdf2pdfa_tasks
+    notify_cancelled_upload_session, notify_update_project_document_fields_completed
 from apps.project.utils.unique_name import UniqueNameBuilder
 from apps.rawdb.constants import FIELD_CODE_STATUS_ID
-from apps.task.tasks import CeleryTaskLogger, Task, purge_task, _call_task_func, ExtendedTask
+from apps.task.tasks import CeleryTaskLogger, Task, purge_task, ExtendedTask
 from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -211,8 +213,6 @@ class ReassignProjectClusterDocuments(ExtendedTask):
         new_project_id = kwargs.get('new_project_id')
         new_project = Project.objects.get(pk=new_project_id)
 
-        _p_cl = ProjectClustering.objects.get(id=project_clustering_id)
-
         documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
 
         self.set_doc_unique_name_and_project(documents, new_project, new_project.type)
@@ -239,8 +239,7 @@ class ReassignProjectClusterDocuments(ExtendedTask):
 
         def strict_check_unique_name(doc_new_name: str) -> bool:
             from apps.project.api.v1 import UploadSessionViewSet
-            return UploadSessionViewSet.can_upload_file(new_project,
-                                                        doc_new_name, 1) is True
+            return UploadSessionViewSet.can_upload_file(new_project, doc_new_name, 1) is True
 
         project_doc_names = set(Document.all_objects.filter(
             project_id=new_project.pk).values_list('name', flat=True))
@@ -402,7 +401,7 @@ class CleanProject(ExtendedTask):
         from apps.document.repository.document_bulk_delete \
             import get_document_bulk_delete
 
-        doc_bulk_delete = get_document_bulk_delete(safe_delete)
+        doc_bulk_delete = get_document_bulk_delete(safe_delete, user=self.task.user)
         proj_doc_count = len(proj_doc_ids)
         for start_pos in range(0, len(proj_doc_ids), self.document_chunk_size):
             end_pos = min([proj_doc_count, start_pos + self.document_chunk_size])
@@ -468,7 +467,9 @@ class CancelUpload(ExtendedTask):
         self.log_info(f'Purge {session_tasks.count()} session tasks.')
         for a_task in session_tasks:
             try:
-                purge_task(a_task.id, log_func=lambda m: self.log_info(m))
+                # celery_task = AsyncResult(a_task.pk)
+                # revoke_task(celery_task)
+                purge_task(a_task.id, log_func=self.log_info)
             except:
                 # case when task is already deleted as subtask
                 pass
@@ -486,7 +487,7 @@ class CancelUpload(ExtendedTask):
         attempts = 3
         delay = 60
         attempts_made = 0
-        delete_manager = get_document_bulk_delete()
+        delete_manager = get_document_bulk_delete(user=self.task.user)
         error_logged = False
 
         for attempt in range(1, attempts + 1):
@@ -529,19 +530,12 @@ class CancelUpload(ExtendedTask):
             raise Exception(f"Couldn't find session by id ({session_id})")
 
         self.log_info(f'Send WS notification that session uid="{session_id}" is cancelled.')
-        notify_cancelled_upload_session(session, kwargs.get('user_id'))
+        notify_cancelled_upload_session(session, kwargs.get('user_id'), document_ids)
 
         self.log_info(f'Remove session uid="{session_id}".')
-        project = session.project
         Task.objects.filter(upload_session_id=session_id).update(upload_session=None)
         session.delete()
         self.track_timelog('4 - delete session')
-
-        # 5. Reindex Project
-        self.log_info(f'Reindex project id="{project.id}" documents.')
-        from apps.rawdb.tasks import reindex_all_project_documents
-        _call_task_func(reindex_all_project_documents, (project.pk,), None)
-        self.track_timelog('5 - reindex project')
 
     def track_timelog(self, msg: str):
         now_time = datetime.datetime.now()
@@ -578,55 +572,22 @@ def track_session_completed(_celery_task):
                                                 completed=True,
                                                 project__type__code=DocumentType.GENERIC_TYPE_CODE):
         ProjectViewSet._cluster(project=session.project, user_id=session.created_by.id)
+        # TODO: move it in "cluster" task? Or better just count a try? Either use API ProjectViewSet.cluster
+        Action.objects.create(
+            user_id=session.created_by.id,
+            name='Cluster Project',
+            message='Cluster Project with default parameters',
+            view_action='cluster',
+            object_pk=session.project.pk,
+            content_type=ContentType.objects.get_for_model(Project),
+            model_name='Project',
+            app_label='project')
 
     for session in UploadSession.objects.filter(
             notified_upload_started=True,
             notified_upload_completed=False):
         if session.check_and_set_completed():
             session.notify_upload_completed()
-
-
-@app.task(name=task_names.TASK_NAME_TRACK_PDEF2PDFA_STATUS, bind=True)
-def track_pdf2pdfa_status(_celery_task):
-    """
-    Track uncompleted CreateSearchablePDF tasks and send WS notification.
-    """
-    TaskUtils.prepare_task_execution()
-
-    qs = Task.objects.filter(name=CreateSearchablePDF.name).exclude(completed=True)
-
-    if not qs.exists():
-        return
-
-    data = list(qs.values('pk', 'name', 'progress', 'user_id', 'status', 'kwargs'))
-    for task_data in data:
-        task_data['details'] = []
-        if task_data['kwargs'] and 'document_ids' in task_data['kwargs']:
-            document_ids = task_data['kwargs']['document_ids']
-            task_data['details'] = list(Document.objects.filter(pk__in=document_ids).annotate(
-                done=Case(
-                    When(alt_source_path__isnull=False,
-                         then=Value(True)),
-                    default=Value(False),
-                    output_field=BooleanField())).values('name', 'id', 'done'))
-
-        del task_data['kwargs']
-
-    # for task_data in data:
-    #     task_data['details'] = []
-    #     subtasks = Task.objects.get(pk=task_data['pk']).subtasks
-    #     if subtasks:
-    #         subtasks_data = subtasks.values('status', 'args')
-    #         for subtask_data in subtasks_data:
-    #             task_data['details'].append({
-    #                 'status': subtask_data['status'],
-    #                 'file_name': subtask_data['args'][0] if subtask_data['args'] else None,
-    #                 'document_id': subtask_data['args'][1] if subtask_data['args'] else None,
-    #             })
-
-    if data:
-        notify_active_pdf2pdfa_tasks(data)
-        qs.filter(progress=100).update(completed=True)
 
 
 class LoadArchive(ExtendedTask):
@@ -661,7 +622,7 @@ class LoadArchive(ExtendedTask):
         if archive_type == 'zip':
             return self.process_zip()
 
-        elif archive_type == 'tar':
+        if archive_type == 'tar':
             return self.process_tar()
 
         # else fail silently - it should be caught in API view
@@ -758,10 +719,6 @@ class LoadArchive(ExtendedTask):
                             contents=tempfile,
                             directory_path=directory_path)
 
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        super().on_failure(exc, task_id, args, kwargs, einfo)
-        pass
-
 
 class SetAnnotationsStatus(ExtendedTask):
     """
@@ -812,11 +769,11 @@ class SetAnnotationsStatus(ExtendedTask):
                                                document_ids=list(ant_docs))
 
 
-class CreateSearchablePDF(ExtendedTask):
+class UpdateProjectDocumentsFields(ExtendedTask):
     """
-    Convert PDF files to PDF-A
+    Mass Update fields in project documents
     """
-    name = task_names.TASK_NAME_CREATE_SEARCHABLE_PDF
+    name = 'Update Project Documents Fields'
 
     soft_time_limit = 6000
     default_retry_delay = 10
@@ -827,35 +784,38 @@ class CreateSearchablePDF(ExtendedTask):
     def process(self, **kwargs):
         project_id = kwargs.get('project_id')
         document_ids = kwargs.get('document_ids')
-        user_id = kwargs.get('user_id')
+        fields_data = kwargs.get('fields_data')
+        on_existing_value = kwargs.get('on_existing_value', 'replace_all')
 
-        if not document_ids:
-            document_ids = list(Document.objects.filter(project_id=project_id).values_list('id', flat=True))
+        self.log_info(f'Update fields in {len(document_ids)} documents in project #{project_id}')
 
-        if not document_ids:
-            self.log_info('No documents found, exit')
-            return
+        from apps.document.repository.document_field_repository import DocumentFieldRepository
+        from apps.document.tasks import DetectFieldValues
 
-        subtask_args = list(
-            Document.objects.filter(id__in=document_ids).values_list('id', 'name', 'source_path'))
+        field_repo = DocumentFieldRepository()
+        documents = list(Document.objects.filter(id__in=document_ids).only('pk'))
+        fields = set()
+        subtask_args = []
 
-        self.log_info(f'Convert PDF to PDF-A, project id={project_id} document ids={document_ids}')
+        for document in documents:
+            _fields = [f.code for f, _ in
+                       field_repo.update_field_values(document, self.task.user, fields_data, on_existing_value)]
+            fields.update(_fields)
+            data = {'document_id': document.pk,
+                    'do_not_write': False,
+                    'updated_field_codes': _fields}
+            subtask_args.append((data,))
 
-        # skip non-pdf
-        from apps.task.tasks import LoadDocuments
-        args = []
-        for item in subtask_args:
-            _, name, source_path = item
-            with file_storage.get_document_as_local_fn(source_path) as (local_path, __):
-                if LoadDocuments.get_file_extension(name, local_path)[0] == '.pdf':
-                    args.append(item)
-        self.run_sub_tasks('Convert pdf to pdf-a', self.convert, args)
+        self.log_info(f'Cache and update field values for fields [{fields}]')
 
-        # TODO: if needed - f.e. email a user
-        # self.run_after_sub_tasks_finished(
-        #     'Notify processing completed',
-        #     CreateSearchablePDF.notify_task_completed,
-        #     [(project_id, document_ids, user_id)])
+        self.run_sub_tasks('Detect Field Values',
+                           DetectFieldValues.detect_field_values_for_document,
+                           subtask_args)
+
+        self.run_after_sub_tasks_finished(
+            'Notify update project documents fields completed',
+            UpdateProjectDocumentsFields.notify_task_completed,
+            [(self.task.pk, project_id, document_ids, list(fields))])
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -873,10 +833,14 @@ class CreateSearchablePDF(ExtendedTask):
         with file_storage.get_document_as_local_fn(file_path) as (local_file_path, _):
             from apps.task.tasks import LoadDocuments
             task.log_info(f'Convert PDF to PDF-A, document id={document_id}, file_name={file_name}')
-            alt_source_path = LoadDocuments.convert_pdf2pdfa(task, local_file_path, file_path,
-                                                             fail_silently=False, force=True)
+            document: Document = Document.objects.get(id=document_id)
+            alt_source_path = LoadDocuments.convert_pdf2pdfa(task=task,
+                                                             local_file_path=local_file_path,
+                                                             source_path=file_path,
+                                                             project_id=document.project.id,
+                                                             fail_silently=False,
+                                                             force=True)
             if alt_source_path:
-                document = Document.objects.get(id=document_id)
                 document.alt_source_path = alt_source_path
                 document.save()
 
@@ -890,11 +854,12 @@ class CreateSearchablePDF(ExtendedTask):
                  max_retries=3,
                  priority=9)
     def notify_task_completed(task: ExtendedTask,
+                              task_id,
                               project_id: int,
                               document_ids: List[int],
-                              user_id: int):
-        # TODO: if needed - f.e. email a user
-        task.log_info(f'Notification sent to user id={user_id}')
+                              fields: List[str]):
+        notify_update_project_document_fields_completed(
+            task_id, project_id, document_ids, fields)
 
 
 app.register_task(ClusterProjectDocuments())
@@ -904,4 +869,4 @@ app.register_task(CleanProjects())
 app.register_task(CancelUpload())
 app.register_task(LoadArchive())
 app.register_task(SetAnnotationsStatus())
-app.register_task(CreateSearchablePDF())
+app.register_task(UpdateProjectDocumentsFields())

@@ -1,5 +1,6 @@
 # UserProfile
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
@@ -8,8 +9,8 @@ Name | Type | Description | Notes
 **first_name** | **str** |  | [optional] 
 **name** | **str** |  | [optional] 
 **email** | **str** |  | [optional] [readonly] 
-**organization** | **str** |  | [optional] 
-**groups** | **list[int]** | The groups this user belongs to. A user will get all permissions granted to each of their groups. | [optional] [readonly] 
+**organization** | **str, none_type** |  | [optional] 
+**groups** | **[int]** | The groups this user belongs to. A user will get all permissions granted to each of their groups. | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

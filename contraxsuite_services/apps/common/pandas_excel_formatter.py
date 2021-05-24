@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,6 +50,12 @@ class PandasExcelFormatter:
         writer = pd.ExcelWriter(path=output_file_path, engine='xlsxwriter',
                                 options={'remove_timezone': True})
         for df in [data_frame]:
+
+            # seems that options={'remove_timezone': True} doesn't work and datetime with timezone still give error
+            datetime_columns = df.select_dtypes(['datetimetz']).columns
+            for dtz_column in datetime_columns:
+                df[dtz_column] = df[dtz_column].dt.tz_localize(None)
+
             df.to_excel(writer, sheet_name=sheet_name, index=False)
             worksheet = writer.sheets[sheet_name]
             cls.adjust_columns_width(df, writer.book, worksheet)
@@ -63,7 +69,7 @@ class PandasExcelFormatter:
                              worksheet: Worksheet):
         # wrap_format = wb.add_format({'shrink': True})
         for idx, col in enumerate(df):
-            series = df[col]
+            series = df.iloc[:, idx]    # vs df[col] - col may not be unique
             max_len = max((
                 series.astype(str).map(len).max(),  # len of largest item
                 len(str(series.name))  # len of column name/header

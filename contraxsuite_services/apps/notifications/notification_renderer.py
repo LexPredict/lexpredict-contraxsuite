@@ -44,9 +44,9 @@ from apps.rawdb.constants import FIELD_CODES_HIDE_BY_DEFAULT, \
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,7 +68,7 @@ class NotificationRenderer:
     def render_notification(package_id: str,
                             subscription: DocumentNotificationSubscription,
                             data: DocumentNotificationSource,
-                            log_routine: Optional[Callable[[str], None]]=None) -> Optional[RenderedNotification]:
+                            log_routine: Optional[Callable[[str], None]] = None) -> Optional[RenderedNotification]:
         if package_id in NotificationRenderer.package_already_sent_user_ids:
             already_sent_user_ids = NotificationRenderer.package_already_sent_user_ids[package_id]
         else:
@@ -92,7 +92,7 @@ class NotificationRenderer:
         if not recipients:
             return None
 
-        changes_filtered = dict()
+        changes_filtered = {}
         if data.changes:
             for code, old_new in data.changes.items():
                 if code in FIELD_CODES_HIDE_BY_DEFAULT:
@@ -222,7 +222,7 @@ class NotificationRenderer:
                 doc_field_values = msg_data.field_values
                 display_fields = set(doc_field_values.keys())
 
-                changes_filtered = dict()
+                changes_filtered = {}
 
                 if msg_data.changes:
                     for code, old_new in msg_data.changes.items():

@@ -32,23 +32,32 @@ from rest_framework.views import APIView
 from django.conf.urls import url
 
 # Project imports
-from apps.similarity.views import SimilarityView, PartySimilarityView, SimilarityByFeaturesView
+from apps.similarity.views import SimilarityView, PartySimilarityView, \
+    DocumentSimilarityByFeaturesView, TextUnitSimilarityByFeaturesView, \
+    ProjectDocumentsSimilarityByVectorsView, ProjectTextUnitsSimilarityByVectorsView
+from apps.common.serializers import FormSerializer
 from apps.common.schemas import ObjectResponseSchema, json_ct
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class SimilaritySchema(ObjectResponseSchema):
+class SimilarityTaskAPISchema(ObjectResponseSchema):
     object_response_for_methods = ['GET', 'POST']
 
     class SimilarityPOSTObjectResponseSerializer(serializers.Serializer):
         detail = serializers.CharField()
+        task_id = serializers.CharField(required=False)
         confirm = serializers.BooleanField(required=False)
+
+    def get_request_serializer(self, path, method):
+        serializer = FormSerializer(form=self.view.form_class)
+        serializer.schema_component_name = self.view.form_class.__name__
+        return serializer
 
     def get_responses(self, path, method):
         res = super().get_responses(path, method)
@@ -56,10 +65,14 @@ class SimilaritySchema(ObjectResponseSchema):
             return res
         return {
             '200': {
-                'content': {json_ct: {'schema': {'$ref': 'SimilarityPOSTObjectResponse'}}}}}
+                'content': {json_ct: {'schema': {'$ref': 'SimilarityPOSTObjectResponse'}}},
+                'description': ''}}
 
     def get_components(self, path, method):
-        return {'SimilarityPOSTObjectResponse': self.map_serializer(self.SimilarityPOSTObjectResponseSerializer())}
+        components = super().get_components(path, method)
+        components['SimilarityPOSTObjectResponse'] = self.map_serializer(
+            self.SimilarityPOSTObjectResponseSerializer())
+        return components
 
 
 class RunTaskPermission(IsAuthenticated):
@@ -67,7 +80,13 @@ class RunTaskPermission(IsAuthenticated):
         return request.user.has_perm('task.add_task')
 
 
-class SimilarityAPIView(APIView, SimilarityView):
+class RunTaskAPIView(APIView):
+    http_method_names = ["get", "post"]
+    schema = SimilarityTaskAPISchema()
+    permission_classes = [RunTaskPermission]
+
+
+class SimilarityAPIView(RunTaskAPIView, SimilarityView):
     """
     "Similarity" admin task\n
     POST params:
@@ -78,19 +97,28 @@ class SimilarityAPIView(APIView, SimilarityView):
         - delete: bool
         - project: bool
     """
-    http_method_names = ["get", "post"]
-    schema = SimilaritySchema()
-    permission_classes = [RunTaskPermission]
 
 
-class SimilarityByFeaturesAPIView(APIView, SimilarityByFeaturesView):
+class DocumentSimilarityByFeaturesAPIView(RunTaskAPIView, DocumentSimilarityByFeaturesView):
     """
     "Similarity" admin task\n
     POST params:
-        - search_similar_documents: bool
-        - search_similar_text_units: bool
         - similarity_threshold: int
-        - use_idf: bool
+        - use_tfidf: bool
+        - delete: bool
+        - project: int
+        - feature_source: list - list[date, definition, duration, court,
+          currency_name, currency_value, term, party, geoentity]
+        - distance_type: str - see scipy.spatial.distance._METRICS
+    """
+
+
+class TextUnitSimilarityByFeaturesAPIView(RunTaskAPIView, TextUnitSimilarityByFeaturesView):
+    """
+    "Similarity" admin task\n
+    POST params:
+        - similarity_threshold: int
+        - use_tfidf: bool
         - delete: bool
         - project: int
         - feature_source: list - list[date, definition, duration, court,
@@ -98,12 +126,45 @@ class SimilarityByFeaturesAPIView(APIView, SimilarityByFeaturesView):
         - unit_type: str sentence|paragraph
         - distance_type: str - see scipy.spatial.distance._METRICS
     """
-    http_method_names = ["get", "post"]
-    schema = SimilaritySchema()
-    permission_classes = [RunTaskPermission]
 
 
-class PartySimilarityAPIView(APIView, PartySimilarityView):
+class ProjectDocumentsSimilarityByVectorsAPIView(RunTaskAPIView, ProjectDocumentsSimilarityByVectorsView):
+    """
+    "Similarity" admin task\n
+    POST params:
+        - project_id: int
+        - distance_type: str - see scipy.spatial.distance._METRICS
+        - similarity_threshold: int
+        - feature_source: "vector"
+        - create_reverse_relations: bool - create B-A relations
+        - item_id: int
+        - use_tfidf: bool
+        - delete: bool
+    """
+    def post(self, request, *args, **kwargs):
+        request.data['feature_source'] = 'vector'
+        return super().post(request, *args, **kwargs)
+
+
+class ProjectTextUnitsSimilarityByVectorsAPIView(RunTaskAPIView, ProjectTextUnitsSimilarityByVectorsView):
+    """
+    "Similarity" admin task\n
+    POST params:
+        - project_id: int
+        - distance_type: str - see scipy.spatial.distance._METRICS
+        - similarity_threshold: int
+        - unit_type: str sentence|paragraph
+        - feature_source: "vector"
+        - create_reverse_relations: bool - create B-A relations
+        - use_tfidf: bool
+        - delete: bool
+    """
+    def post(self, request, *args, **kwargs):
+        request.data['feature_source'] = 'vector'
+        return super().post(request, *args, **kwargs)
+
+
+class PartySimilarityAPIView(RunTaskAPIView, PartySimilarityView):
     """
     "Party Similarity" admin task\n
     POST params:
@@ -112,16 +173,22 @@ class PartySimilarityAPIView(APIView, PartySimilarityView):
         - similarity_threshold: int
         - delete: bool
     """
-    http_method_names = ["get", "post"]
-    schema = SimilaritySchema()
-    permission_classes = [RunTaskPermission]
 
 
 urlpatterns = [
     url(r'^similarity/$', SimilarityAPIView.as_view(),
         name='similarity'),
-    url(r'^similarity-by-features/$', SimilarityByFeaturesAPIView.as_view(),
-        name='similarity-by-features'),
+
+    url(r'^document-similarity-by-features/$', DocumentSimilarityByFeaturesAPIView.as_view(),
+        name='document-similarity-by-features'),
+    url(r'^text-unit-similarity-by-features/$', TextUnitSimilarityByFeaturesAPIView.as_view(),
+        name='text-unit-similarity-by-features'),
+
+    url(r'^project-documents-similarity-by-vectors/$', ProjectDocumentsSimilarityByVectorsAPIView.as_view(),
+        name='project-documents-similarity-by-vectors'),
+    url(r'^project-text-units-similarity-by-vectors/$', ProjectTextUnitsSimilarityByVectorsAPIView.as_view(),
+        name='project-text-units-similarity-by-vectors'),
+
     url(r'^party-similarity/$', PartySimilarityAPIView.as_view(),
         name='party-similarity'),
 ]

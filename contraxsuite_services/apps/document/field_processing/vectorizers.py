@@ -31,9 +31,9 @@ from typing import List, Union, Callable, Dict, Set
 from sklearn.feature_extraction.text import strip_accents_unicode
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,12 +70,12 @@ def whole_value_as_token(value: str) -> List[str]:
 
 
 def set_items_as_tokens(value: Union[str, Set, List]) -> List[str]:
-    return [str(i) for i in sorted(value)] if isinstance(value, set) or isinstance(value, list) else [str(value)]
+    return [str(i) for i in sorted(value)] if isinstance(value, (set, list)) else [str(value)]
 
 
 def set_items_as_tokens_preprocessor(value: Union[str, Set, List]):
     return [strip_accents_unicode(str(i).lower()) for i in value] \
-        if isinstance(value, set) or isinstance(value, list) \
+        if isinstance(value, (set, list)) \
         else [strip_accents_unicode(str(value).lower())]
 
 
@@ -115,9 +115,9 @@ class RecurringDateVectorizer(VectorizerStep):
     def transform(self, field_values: List[Union[datetime, date]], *args, **kwargs):
         # TODO Optimize list manipulations
 
-        res = list()
+        res = []
         for d in field_values:
-            vect = list()
+            vect = []
 
             year = d.year if d else 1  # 1 - 9999
             year = 0 if year < self.MIN_YEAR else self.MAX_YEAR if year > self.MAX_YEAR else year
@@ -158,9 +158,9 @@ class SerialDateVectorizer(VectorizerStep):
     def transform(self, field_values: List[Union[datetime, date]], *args, **kwargs):
         # TODO Optimize list manipulations
 
-        res = list()
+        res = []
         for d in field_values:
-            vect = list()
+            vect = []
 
             year = d.year if d else 1  # 0 ... 1
             year = 0 if year < self.MIN_YEAR else self.MAX_YEAR if year > self.MAX_YEAR else year
@@ -208,7 +208,7 @@ class NumberVectorizer(VectorizerStep):
         return self.transform(field_values_or_anything)
 
     def transform(self, field_values_or_anything: List, *args, **kwargs):
-        res = list()
+        res = []
         for n in field_values_or_anything:
             n = self.to_float_converter(n) if self.to_float_converter else float(n)
             n = (n - self.min_value) / (self.max_value - self.min_value)

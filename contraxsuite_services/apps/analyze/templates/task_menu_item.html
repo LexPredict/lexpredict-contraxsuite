@@ -1,32 +1,103 @@
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "analyze:train-document-doc2vec-model" %}"
-     data-btn-text="Train">
-    <i class="fa fa-object-group"></i>
-    Analyze: Train doc2vec model from Document queryset
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "analyze:train-text-unit-doc2vec-model" %}"
-     data-btn-text="Train">
-    <i class="fa fa-object-group"></i>
-    Analyze: Train doc2vec model from Text Unit queryset
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "analyze:build-doc2vec-vectors" %}"
-     data-btn-text="Build">
-    <i class="fa fa-object-group"></i>
-    Analyze: Build feature vectors
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "task:build-ocr-model" %}"
-     data-btn-text="Build">
-    <i class="fa fa-object-group"></i>
-    Analyze: Build OCR Rating Model
-  </a>
+<li class="dropdown-submenu">
+  <a class="dropdown-item" href="#" tabindex="-1">
+    <i class="fa fa-object-group"></i> Analyze</a>
+  <ul class="dropdown-menu">
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:cluster" %}"
+         data-btn-text="Cluster">
+        <i class="fa fa-object-group"></i>
+        Cluster Documents/Text Units</a>
+    </li>
+
+    <li class="divider"></li>
+
+    {% if active_document_classifiers %}
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "analyze:run-document-classifier" %}"
+           data-btn-text="Classify">
+          <i class="fa fa-object-group"></i>
+          Classify Documents (Use Existing Classifier)</a>
+      </li>
+    {% endif %}
+    {% if active_text_unit_classifiers %}
+      <li class="dropdown-item">
+        <a class="task" href="#"
+           data-href="{% url "analyze:run-text-unit-classifier" %}"
+           data-btn-text="Classify">
+          <i class="fa fa-object-group"></i>
+          Classify Text Units (Use Existing Classifier)</a>
+      </li>
+    {% endif %}
+    {% if active_document_classifiers or active_text_unit_classifiers %}
+      <li class="divider"></li>
+    {% endif %}
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:train-document-classifier" %}"
+         data-btn-text="Train">
+        <i class="fa fa-object-group"></i>
+        Train Documents Classifier</a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:train-text-unit-classifier" %}"
+         data-btn-text="Train">
+        <i class="fa fa-object-group"></i>
+        Train Text Units Classifier</a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:train-document-doc2vec-model" %}"
+         data-btn-text="Train">
+        <i class="fa fa-object-group"></i>
+        Train doc2vec model from Document queryset
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:train-text-unit-doc2vec-model" %}"
+         data-btn-text="Train">
+        <i class="fa fa-object-group"></i>
+        Train doc2vec model from Text Unit queryset
+      </a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:build-document-vectors" %}"
+         data-btn-text="Build">
+        <i class="fa fa-object-group"></i>
+        Build Document vectors
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "analyze:build-text-unit-vectors" %}"
+         data-btn-text="Build">
+        <i class="fa fa-object-group"></i>
+        Build Text Unit vectors
+      </a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "task:build-ocr-model" %}"
+         data-btn-text="Build">
+        <i class="fa fa-object-group"></i>
+        Build OCR Rating Model
+      </a>
+    </li>
+
+  </ul>
 </li>

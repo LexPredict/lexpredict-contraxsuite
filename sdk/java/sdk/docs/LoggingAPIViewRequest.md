@@ -2,6 +2,7 @@
 
 # LoggingAPIViewRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes

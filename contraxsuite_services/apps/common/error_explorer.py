@@ -26,22 +26,22 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-import logging
 from time import sleep
 from typing import Any
 
 import regex as re
 from django.db import connection, OperationalError
 
+from apps.common.logger import CsLogger
 
-logger = logging.getLogger('django.db.backends')
+logger = CsLogger.get_django_db_backends_logger()
 
 
 class OperationalErrorExplorer:
@@ -56,8 +56,7 @@ class OperationalErrorExplorer:
         module = o.__class__.__module__
         if module is None or module == str.__class__.__module__:
             return o.__class__.__name__
-        else:
-            return module + '.' + o.__class__.__name__
+        return module + '.' + o.__class__.__name__
 
     @classmethod
     def log_operational_error(cls, exception: Any):
@@ -136,9 +135,7 @@ def retry_for_operational_error(
                         if try_num < retries_count:
                             sleep(cooldown_interval)
                             continue
-                        raise
-                    else:
-                        raise
+                    raise
             return ret_value
         return _caller
     return _dec(function) if function is not None else _dec

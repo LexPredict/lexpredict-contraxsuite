@@ -36,16 +36,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from django.db.models import Q
 
-from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
+from apps.analyze.ml.similarity import TextUnitSimilarityEngine
+from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity, SimilarityRun
 from apps.document.models import Document
-from apps.similarity.similarity_model_reference import SimilarityObjectReference
 from apps.task.tasks import ExtendedTask
 from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,8 +76,14 @@ class ChunkSimilarity(ExtendedTask):
         ignore_case = kwargs['ignore_case']
         self.log_info('Min similarity: %d' % similarity_threshold)
 
+        run = SimilarityRun.objects.create(
+            created_date=datetime.datetime.now(),
+            created_by_id=kwargs.get('user_id'),
+            feature_source=term_type,
+            name=kwargs.get('run_name')
+        )
         proc = DocumentChunkSimilarityProcessor(
-            self, should_delete, proj_id,
+            self, run.id, should_delete, proj_id,
             search_similar_documents, search_similar_text_units,
             similarity_threshold, use_idf, term_type, ngram_len, ignore_case)
         proc.process_pack()
@@ -88,7 +94,7 @@ class ChunkSimilarity(ExtendedTask):
         search_target = kwargs['search_target']
 
         if search_target == 'document':
-            count = Document.objects.all().count() if not proj_id \
+            count = Document.objects.count() if not proj_id \
                 else Document.objects.filter(project_id=proj_id).count()
             estimated_time = 0.0005 * count * count + 0.0527 * count + 0.0054
         else:
@@ -119,6 +125,7 @@ class DocumentChunkSimilarityProcessor:
 
     def __init__(self,
                  task: ExtendedTask,  # task object to log messages and report progress
+                 run_id,    # run id or None
                  should_delete: bool = True,  # delete existing DocumentSimilarity entries
                  project_id: Optional[int] = None,  # optional project filter
                  search_similar_documents: bool = True,  # we either search for similar documents...
@@ -133,6 +140,7 @@ class DocumentChunkSimilarityProcessor:
                  char_ngrams_length: int = 6,
                  ignore_case: bool = True):
         self.task = task
+        self.run_id = run_id
         self.project_id = project_id
         self.should_delete = should_delete
         self.similarity_threshold = similarity_threshold
@@ -163,7 +171,7 @@ class DocumentChunkSimilarityProcessor:
         self.timings = []  # type:List[Tuple[str, datetime.datetime]]
         # used when search_similar_documents is True - all documents or
         # just the documents of the specified project
-        self.doc_query = Document.objects.all().order_by('pk') if not self.project_id \
+        self.doc_query = Document.objects.order_by('pk') if not self.project_id \
             else Document.objects.filter(project_id=self.project_id).order_by('pk')
         # used when search_similar_text_units is True - all text units or
         # just the text units of the specified project
@@ -244,6 +252,7 @@ class DocumentChunkSimilarityProcessor:
                 if similarity < self.similarity_threshold:
                     continue
                 ds = DocumentSimilarity(
+                    run_id=self.run_id,
                     document_a_id=document_a,
                     document_b_id=document_b,
                     similarity=similarity)
@@ -350,9 +359,8 @@ class DocumentChunkSimilarityProcessor:
         if len(self.unsim_store_buffer) < self.store_buf_flush_count and not flush:
             return
         # unit -> document -> project
+        TextUnitSimilarityEngine().set_refs(self.unsim_store_buffer)
         if self.unsim_store_buffer:
-            SimilarityObjectReference.ensure_unit_similarity_model_refs(
-                self.unsim_store_buffer, self.project_id)
             TextUnitSimilarity.objects.bulk_create(self.unsim_store_buffer, ignore_conflicts=True)
         self.unsim_store_buffer = []
 
@@ -546,7 +554,7 @@ class DocumentChunkSimilarityProcessor:
             ngram_set = set()  # type:Set[str]
             # create 1-grams, 2-grams and 3-grams and zip() them all.
             for g in zip(ngrams(allterms, 1), ngrams(allterms, 2), ngrams(allterms, 3)):
-                for w in map(lambda wrd: ' '.join(wrd), g):
+                for w in map(' '.join, g):
                     ngram_set.add(w)
             for w in ngram_set:
                 all_ngrams.append(w)

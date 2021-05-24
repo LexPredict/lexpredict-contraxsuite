@@ -1,17 +1,18 @@
 # Task
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **pk** | **str** |  | [optional] 
-**name** | **str** |  | [optional] 
+**name** | **str, none_type** |  | [optional] 
 **date_start** | **datetime** |  | [optional] 
-**date_work_start** | **datetime** |  | [optional] 
+**date_work_start** | **datetime, none_type** |  | [optional] 
 **user__username** | **str** |  | [optional] [readonly] 
-**date_done** | **datetime** |  | [optional] 
+**date_done** | **datetime, none_type** |  | [optional] 
 **duration** | **str** |  | [optional] [readonly] 
-**progress** | **int** |  | [optional] 
-**status** | **str** |  | [optional] 
+**progress** | **int, none_type** |  | [optional] 
+**status** | **str, none_type** |  | [optional] 
 **has_error** | **str** |  | [optional] [readonly] 
 **description** | **str** |  | [optional] [readonly] 
 

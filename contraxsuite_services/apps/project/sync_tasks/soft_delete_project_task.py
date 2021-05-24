@@ -26,11 +26,12 @@
 
 from typing import List, Tuple
 from apps.project.models import Project
+from apps.project.signals import project_soft_deleted
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,8 +42,8 @@ class SoftDeleteProjectSyncTask:
                 project_id: int,
                 delete_pending: bool,
                 remove_all: bool = False,
-                included_ids: List[int] = list(),
-                excluded_ids: List[int] = list()
+                included_ids: List[int] = [],
+                excluded_ids: List[int] = []
                 ) -> Tuple[int, int]:
         """
         Mark document as "soft deleted" or uncheck this flag.
@@ -61,6 +62,8 @@ class SoftDeleteProjectSyncTask:
         if remove_all or not delete_pending:
             project.delete_pending = delete_pending
             project.save()
+            if delete_pending:
+                project_soft_deleted.send(sender='Project marked Soft Deleted', instance=proj, user=request.user)
 
         if delete_pending and remove_all:
             return 1, 0

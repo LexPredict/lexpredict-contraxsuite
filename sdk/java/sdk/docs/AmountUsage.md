@@ -2,11 +2,12 @@
 
 # AmountUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**amount** | **BigDecimal** |  |  [optional]
 **amountStr** | **String** |  |  [optional]
 **count** | **Integer** |  |  [optional]
 **pk** | **Integer** |  |  [optional] [readonly]

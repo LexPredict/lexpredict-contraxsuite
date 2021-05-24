@@ -24,23 +24,28 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
 import math
+import sys
 from collections import defaultdict
-from typing import Optional, List
+from typing import Optional
 
 import fuzzywuzzy.fuzz
 import nltk
-import pandas as pd
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.states import FAILURE, SUCCESS, PENDING
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from psycopg2 import InterfaceError, OperationalError
 from django.db.models import Q
+from django.db.models.functions import Length
+from django.dispatch import receiver
 
+import task_names
 from apps.analyze.ml.similarity import DocumentSimilarityEngine, TextUnitSimilarityEngine
-from apps.analyze.models import (
-    DocumentSimilarity, TextUnitSimilarity, PartySimilarity as PartySimilarityModel)
+from apps.analyze.models import SimilarityRun, DocumentSimilarity, TextUnitSimilarity, \
+    PartySimilarity as PartySimilarityModel
 from apps.celery import app
 from apps.common import redis
 from apps.document import signals
@@ -50,13 +55,16 @@ from apps.extract.models import Party
 from apps.rawdb.constants import FIELD_CODE_DOC_ID
 from apps.similarity.chunk_similarity_task import ChunkSimilarity
 from apps.similarity.models import DocumentSimilarityConfig, DST_FIELD_SIMILARITY_CONFIG_ATTR
-from apps.similarity.similarity_model_reference import SimilarityObjectReference
-from apps.task.tasks import ExtendedTask, remove_punctuation_map, CeleryTaskLogger
+from apps.similarity.notifications import notify_similarity_task_completed, notify_delete_similarity_completed
+from apps.task.models import Task
+from apps.task.signals import task_deleted
+from apps.task.tasks import ExtendedTask, remove_punctuation_map, CeleryTaskLogger, purge_task, _call_task
+from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,6 +120,16 @@ class PartySimilarity(ExtendedTask):
         # 2. Select scorer
         scorer = getattr(fuzzywuzzy.fuzz, kwargs['similarity_type'])
 
+        run = SimilarityRun.objects.create(
+            name=kwargs.get('run_name'),
+            created_date=datetime.datetime.now(),
+            created_by_id=kwargs.get('user_id'),
+            feature_source='party',
+            similarity_threshold=kwargs['similarity_threshold'],
+            # use_tfidf=kwargs.get('use_idf', False),    # TODO: not used in a form for now
+            unit_source='party',
+        )
+
         # 3. Iterate through all pairs
         similar_results = []
         for party_a_pk, party_a_name in parties:
@@ -128,19 +146,20 @@ class PartySimilarity(ExtendedTask):
                 if score >= kwargs['similarity_threshold']:
                     similar_results.append(
                         PartySimilarityModel(
+                            run=run,
                             party_a_id=party_a_pk,
                             party_b_id=party_b_pk,
                             similarity=score))
             self.push()
 
         # 4. Bulk create similarity objects
-        PartySimilarityModel.objects.bulk_create(similar_results)
+        PartySimilarityModel.objects.bulk_create(similar_results, ignore_conflicts=True)
         self.push()
 
 
 class Similarity(ExtendedTask):
     """
-    Find Similar Documents, Text Units
+    Find Similar Documents, Text Units by vectorized text
     """
     name = 'Similarity'
     verbose = True
@@ -150,11 +169,9 @@ class Similarity(ExtendedTask):
 
     def process(self, **kwargs):
         """
-
         :param kwargs:
         :return:
         """
-
         search_similar_documents = kwargs['search_similar_documents']
         search_similar_text_units = kwargs['search_similar_text_units']
         similarity_threshold = kwargs['similarity_threshold']
@@ -207,6 +224,18 @@ class Similarity(ExtendedTask):
             # step #4
             similarity_matrix = cosine_similarity(X) * 100
             pks = documents.values_list('pk', flat=True)
+            sim_objs = []
+
+            run = SimilarityRun.objects.create(
+                name=kwargs.get('run_name'),
+                created_date=datetime.datetime.now(),
+                created_by_id=kwargs.get('user_id'),
+                feature_source='text',
+                similarity_threshold=similarity_threshold,
+                use_tfidf=kwargs.get('use_idf', False),
+                unit_source='document',
+            )
+
             for x in range(len(pks) - 1):
                 document_a = pks[x]
                 # use it to search for unique a<>b relations
@@ -214,13 +243,16 @@ class Similarity(ExtendedTask):
                 for y in range(x + 1, len(pks)):
                     document_b = pks[y]
                     similarity = similarity_matrix[x, y]
-                    if similarity < similarity_threshold:
-                        continue
-                    DocumentSimilarity.objects.create(
-                        document_a_id=document_a,
-                        document_b_id=document_b,
-                        similarity=similarity)
-                    total_stored += 1
+                    # TODO: check similarity and similarity_threshold are both the same type int or floatL .75 vs 75
+                    if similarity >= similarity_threshold:
+                        sim_obj = DocumentSimilarity(
+                            run=run,
+                            document_a_id=document_a,
+                            document_b_id=document_b,
+                            similarity=similarity)
+                        sim_objs.append(sim_obj)
+            DocumentSimilarity.objects.bulk_create(sim_objs, ignore_conflicts=True)
+            total_stored = len(sim_objs)
             self.push()
 
         # similar Text Units
@@ -249,6 +281,17 @@ class Similarity(ExtendedTask):
             self.push()
 
             # step #4
+            run = SimilarityRun.objects.create(
+                name=kwargs.get('run_name'),
+                created_date=datetime.datetime.now(),
+                created_by_id=kwargs.get('user_id'),
+                feature_source='text',
+                similarity_threshold=similarity_threshold,
+                distance_type='cosine',
+                use_tfidf=kwargs.get('use_idf', False),
+                unit_source='text_unit',
+            )
+
             for i in range(0, len_tu_set, self.step):
                 for j in range(i + 1, len_tu_set, self.step):
                     similarity_matrix = cosine_similarity(
@@ -257,114 +300,154 @@ class Similarity(ExtendedTask):
                     for g in range(similarity_matrix.shape[0]):
                         tu_sim = [
                             TextUnitSimilarity(
+                                run=run,
                                 text_unit_a_id=pks[i + g],
                                 text_unit_b_id=pks[j + h],
                                 similarity=similarity_matrix[g, h])
                             for h in range(similarity_matrix.shape[1])
                             if i + g != j + h and similarity_matrix[g, h] >= similarity_threshold]
-                        total_stored += self.save_similarity_records(tu_sim, project_id)
+                        TextUnitSimilarityEngine().set_refs(tu_sim)
+                        TextUnitSimilarity.objects.bulk_create(tu_sim, ignore_conflicts=True)
+                        total_stored += len(tu_sim)
                     self.push()
 
         self.log_info(f'{total_stored} records stored')
 
-    def save_similarity_records(self,
-                                records: List[TextUnitSimilarity],
-                                project_id: Optional[int]) -> int:
-        SimilarityObjectReference.ensure_unit_similarity_model_refs(records, project_id)
-        TextUnitSimilarity.objects.bulk_create(records)
-        return len(records)
 
+class DocumentSimilarityByFeatures(ExtendedTask):
+    """
+    Find Similar Documents by extracted features
+    """
+    name = 'Document Similarity By Features'
+    engine_class = DocumentSimilarityEngine
+    unit_source = 'document'
+    run_id = None
+    item_id = None
 
-class SimilarityByFeatures(ExtendedTask):
-    """
-    Find Similar Documents, Text Units by extracted features
-    """
-    name = 'Similarity By Features'
+    def delete_existing(self, project_id, log_info, run_id=None, item_id=None, feature_source_str=None):
+        # added log_info param allow use this method from another tasks
+        # TODO: delete more granular using item_id / feature_source / run_id
+        run_qs = SimilarityRun.objects.filter(unit_source=self.unit_source)
+        task_qs = Task.objects.filter(name=self.name, status=PENDING)
+        if project_id:
+            run_qs = run_qs.filter(project_id=project_id)
+            task_qs = task_qs.filter(Q(kwargs__project=int(project_id)) |
+                                     Q(kwargs__project=str(project_id)) |
+                                     Q(project_id=project_id))
+        elif run_id:
+            run_qs = run_qs.filter(id=run_id)
+            task_qs = task_qs.filter(metadata__run_id=run_id)
+        else:
+            raise RuntimeError('either project_id or run_id must be provided')
+
+        try:
+            task_qs = task_qs.exclude(pk=self.task.pk)
+        except:
+            # case then call is from another task
+            pass
+
+        log_info(f'Purge {task_qs.count()} tasks')
+        for task_id in task_qs.values_list('pk', flat=True):
+            # set send_signal_task_deleted to False to prevent cyclic deletion from remove_similarity_results_on_purge
+            purge_task(task_id, log_func=log_info, send_signal_task_deleted=False)
+        deleted = run_qs.delete()
+        log_info(f'Deleted {deleted[1]}')
+
+    def get_item_id(self, kwargs):
+        return kwargs.get('item_id'), kwargs
 
     def process(self, **kwargs):
-        search_similar_documents = kwargs['search_similar_documents']
-        search_similar_text_units = kwargs['search_similar_text_units']
+        feature_source = kwargs.get('feature_source', 'term')
+        similarity_threshold = kwargs.pop('similarity_threshold', 75)
+        distance_type = kwargs.pop('distance_type', 'cosine')
+        delete = kwargs.pop('delete', True)
+        project_id = kwargs.get('project')
 
-        project = kwargs['project']
-        project_id = project['pk'] if project else None
-        unit_type = kwargs['unit_type']
-        feature_source = kwargs['feature_source']
-        use_tfidf = kwargs['use_tfidf']
-        distance_type = kwargs['distance_type']
-        similarity_threshold = kwargs['similarity_threshold'] / 100
+        item_id, kwargs = self.get_item_id(kwargs)
+        if item_id:
+            self.log_info(f'Search similar to object with id: {item_id}')
+            self.item_id = item_id
+        self.log_info(f'Min similarity: {similarity_threshold}')
 
-        self.log_info('Min similarity: {}'.format(similarity_threshold))
+        # for cases like when ['terms', 'dates'] passed
+        feature_source_str = ', '.join(feature_source) if isinstance(feature_source, (list, tuple)) \
+            else feature_source
 
-        if search_similar_documents:
-            engine_class = DocumentSimilarityEngine
-        elif search_similar_text_units:
-            engine_class = TextUnitSimilarityEngine
-        else:
-            self.log_error("Classify task target (documents or text units) is not specified.")
-            return
+        # delete similarity objects from previous run
+        if delete:
+            self.delete_existing(project_id=project_id, log_info=self.log_info,
+                                 item_id=item_id, feature_source_str=feature_source_str)
 
-        if kwargs['delete']:
-            if search_similar_text_units:
-                if project_id:
-                    deleted = TextUnitSimilarity.objects.filter(
-                        Q(project_a__id=project_id) |
-                        Q(project_b__id=project_id)).delete()
-                else:
-                    deleted = TextUnitSimilarity.objects.all().delete()
-            else:
-                if project_id:
-                    deleted = DocumentSimilarity.objects.filter(
-                        Q(document_a__project__id=project_id) |
-                        Q(document_b__project__id=project_id)).delete()
-                else:
-                    deleted = DocumentSimilarity.objects.all().delete()
+        run = SimilarityRun.objects.create(
+            name=kwargs.get('run_name'),
+            created_date=datetime.datetime.now(),
+            created_by_id=kwargs.get('user_id'),
+            project_id=project_id,
+            feature_source=feature_source_str,
+            similarity_threshold=similarity_threshold,
+            distance_type=distance_type,
+            use_tfidf=kwargs.get('use_tfidf', False),
+            unit_source=self.unit_source,
+            unit_type=kwargs.get('unit_type'),
+            unit_id=item_id,
+        )
+        self.run_id = run.id
 
-            self.log_info('Deleted "{}"'.format(deleted[1]))
+        if not self.task.metadata:
+            self.task.metadata = {}
+        self.task.metadata['run_id'] = run.id
+        self.task.save()
+
+        args = [project_id, kwargs.get('user_id'), self.task.id, self.name, run.id, item_id, SUCCESS]
+        self.run_after_sub_tasks_finished('Notify Task Succeed', self.finalize, [tuple(args)])
+        args[-1] = FAILURE
+        self.run_if_task_or_sub_tasks_failed(self.finalize, args=tuple(args))
 
         similarity_engine_kwargs = dict(
             project_id=project_id,
-            unit_type=unit_type,
-            feature_source=feature_source,
-            use_tfidf=use_tfidf,
+            threshold=similarity_threshold / 100,
             distance_type=distance_type,
-            threshold=similarity_threshold
+            created_date=datetime.datetime.now().timestamp(),
+            run_id=run.id,
+            **kwargs    # the rest kwargs are passed as is and may be different for inherited tasks
         )
-        similarity_engine = engine_class(**similarity_engine_kwargs)
+        similarity_engine = self.engine_class(**similarity_engine_kwargs)
+        self.log_info(f'Start getting features, engine: {similarity_engine.__class__.__name__}')
         features = similarity_engine.get_features()
-        feature_matrix = features.term_frequency_matrix
-        feature_records = feature_matrix.shape[0]
+        self.log_info(f'Features are obtained, shape: {features.feature_df.shape}; '
+                      f'memory usage: {features.feature_df.memory_usage().sum()}')
 
         subtasks_args = []
 
-        for block_i_start in range(0, feature_records, similarity_engine.block_step):
+        # let's use cached data expiration date the same as for similarity objects
+        from apps.analyze.app_vars import DOCUMENT_SIMILARITY_OBJECTS_EXPIRE_IN, TEXT_UNIT_SIMILARITY_OBJECTS_EXPIRE_IN
+        exp_val = DOCUMENT_SIMILARITY_OBJECTS_EXPIRE_IN if self.unit_source == 'document' \
+            else TEXT_UNIT_SIMILARITY_OBJECTS_EXPIRE_IN
 
-            block_i_end = block_i_start + similarity_engine.block_step
-            df1_redis_key = f'{self.task.pk}_{block_i_start}_{block_i_end}'
-            if not redis.exists(df1_redis_key):
-                df1_data = (feature_matrix[block_i_start:block_i_end],
-                            features.item_index[block_i_start:block_i_end],
-                            features.feature_names)
-                redis.push(key=df1_redis_key, value=df1_data, pickle_value=True)
+        features_redis_key = f'sim_{self.task.pk}_features'
+        features_data = (features.term_frequency_matrix, features.item_index)
+        redis.push(key=features_redis_key, value=features_data, pickle_value=True, ex=exp_val.val())
 
-            for block_j_start in range(0, feature_records, similarity_engine.block_step):
+        if item_id:
+            subtasks_args.append((
+                features_redis_key,
+                None,
+                None,
+                item_id,
+                self.engine_class.__name__,
+                similarity_engine_kwargs,
+            ))
 
-                block_j_end = block_j_start + similarity_engine.block_step
-                self.log_info(f'Cache data for blocks: '
-                              f'{block_i_start}:{block_i_end} - {block_j_start}:{block_j_end}')
-
-                df2_redis_key = f'{self.task.pk}_{block_j_start}_{block_j_end}'
-                if not redis.exists(df2_redis_key):
-                    df2_data = (feature_matrix[block_j_start:block_j_end],
-                                features.item_index[block_j_start:block_j_end],
-                                features.feature_names)
-                    redis.push(key=df2_redis_key, value=df2_data, pickle_value=True)
-
+        else:
+            for block_start in range(0, features.term_frequency_matrix.shape[0], similarity_engine.block_step):
+                block_end = block_start + similarity_engine.block_step
                 subtasks_args.append((
-                    df1_redis_key,
-                    df2_redis_key,
-                    search_similar_documents,
+                    features_redis_key,
+                    block_start,
+                    block_end,
+                    None,
+                    self.engine_class.__name__,
                     similarity_engine_kwargs,
-                    project_id
                 ))
 
         self.run_sub_tasks(
@@ -372,7 +455,6 @@ class SimilarityByFeatures(ExtendedTask):
             self.calc_block_similarity,
             subtasks_args
         )
-        self.run_after_sub_tasks_finished('Clear redis keys.', self.finalize, [()])
 
     def log_routine(self, msg: str, msg_key='') -> None:
         self.log_info(msg)
@@ -384,35 +466,33 @@ class SimilarityByFeatures(ExtendedTask):
                  default_retry_delay=10,
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
-                 max_retries=3)
+                 max_retries=3,
+                 priority=4)
     def calc_block_similarity(task,
-                              df1_redis_key,
-                              df2_redis_key,
-                              search_similar_documents,
-                              engine_kwargs,
-                              project_id: Optional[int]):
-        task.log_info(
-            f'Calculate similarity for feature_df blocks with keys: '
-            f'"{df1_redis_key}" and "{df2_redis_key}"')
+                              features_redis_key,
+                              block_start,
+                              block_end,
+                              item_id,
+                              engine_class_name,
+                              engine_kwargs):
+        TaskUtils.prepare_task_execution()
 
-        engine_class = DocumentSimilarityEngine if search_similar_documents else TextUnitSimilarityEngine
+        task.log_info(f'Calculate similarity for features block ({block_start}-{block_end}) items')
+        engine_kwargs['log_routine'] = task.log_info
+        engine_class = getattr(sys.modules[__name__], engine_class_name)
+        engine = engine_class(**engine_kwargs)
 
-        df1_data, df1_index, df1_columns = redis.pop(df1_redis_key)
-        df2_data, df2_index, df2_columns = redis.pop(df2_redis_key)
+        feature_df_data, feature_df_index = redis.pop(features_redis_key)
+        sim_obj_list = engine.calc_block_similarity(
+            feature_df_data, feature_df_index, block_start, block_end, item_id)
 
-        df1 = pd.DataFrame(df1_data, index=df1_index, columns=df1_columns)
-        df2 = pd.DataFrame(df2_data, index=df2_index, columns=df2_columns)
+        save_step = 1000
+        for step_start in range(0, len(sim_obj_list), save_step):
+            engine.similarity_model.objects.bulk_create(sim_obj_list[step_start:step_start + save_step],
+                                                        ignore_conflicts=True)
 
-        engine_kwargs['log_routine'] = lambda m: task.log_info(m)
-        sim_obj = engine_class(**engine_kwargs)
-
-        records = sim_obj.calc_block_similarity(df1, df2)
-        if not search_similar_documents:
-            SimilarityObjectReference.ensure_unit_similarity_model_refs(records, project_id)
-        sim_obj.similarity_model.objects.bulk_create(records)
-        count = len(records)
-
-        task.log_info(f'Created {count} records')
+        count = len(sim_obj_list)
+        task.log_info(f'Created {count} db records for block ({block_start}-{block_end}) items')
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -423,11 +503,62 @@ class SimilarityByFeatures(ExtendedTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3,
                  priority=9)
-    def finalize(_self: ExtendedTask):
+    def finalize(_self: ExtendedTask, project_id, user_id, task_id, task_name, run_id, item_id, task_status):
         _self.log_info('Cleanup redis keys')
-        for k in redis.list_keys(f'{_self.main_task_id}_*'):
+        for k in redis.list_keys(f'sim_{task_id}_*'):
             redis.r.delete(k)
             _self.log_info(f'Deleted redis key "{k}"')
+
+        if task_status == FAILURE:
+            res = SimilarityRun.objects.filter(pk=run_id).delete()
+            _self.log_info(f'Deleted on task failure: {res}')
+
+        notify_similarity_task_completed(project_id, user_id, task_id, task_name, run_id, item_id, task_status)
+        _self.log_info('Notification sent')
+
+
+class TextUnitSimilarityByFeatures(DocumentSimilarityByFeatures):
+    """
+    Find Similar Text Units by extracted features
+    """
+    name = 'Text Unit Similarity By Features'
+    engine_class = TextUnitSimilarityEngine
+    unit_source = 'text_unit'
+
+    def get_item_id(self, kwargs):
+        item_id = kwargs.get('item_id')
+        document_id = kwargs.get('document_id')
+        location_start = kwargs.get('location_start')
+        location_end = kwargs.get('location_end')
+
+        unit_type = kwargs.get('unit_type')
+        unit_types = ['sentence', 'paragraph']
+        # if unit type specified by a user, use it only
+        if unit_type:
+            unit_types = [unit_type]
+
+        # get text unit ID having document coordinates
+        if document_id and location_start and location_end:
+            item_id = None
+            for unit_type in unit_types:
+                text_unit_qs = TextUnit.objects \
+                    .filter(document_id=document_id, unit_type=unit_type) \
+                    .filter(Q(location_start__lte=location_start, location_end__gte=location_start) |
+                            Q(location_start__gte=location_start, location_end__lte=location_end) |
+                            Q(location_start__lte=location_end, location_end__gte=location_end)) \
+                    .distinct()
+                if not text_unit_qs.exists():
+                    continue
+                if text_unit_qs.count() == 1:
+                    item_id = text_unit_qs.last().id
+                    break
+                # if many - get the biggest one
+                item_id = text_unit_qs.annotate(length=Length('textunittext__text')).order_by('length').last().id
+            if item_id is None:
+                raise RuntimeError('Wrong location range - text units not found')
+            unit_type = TextUnit.objects.get(pk=item_id).unit_type
+            kwargs['unit_type'] = unit_type
+        return item_id, kwargs
 
 
 class PreconfiguredDocumentSimilaritySearch(ExtendedTask):
@@ -472,7 +603,7 @@ class PreconfiguredDocumentSimilaritySearch(ExtendedTask):
                                                           doc_ids=qr_doc_ids,
                                                           field_codes_only=feature_vector_field_codes)
 
-        field_values_list = list()
+        field_values_list = []
         for doc_id, values in doc_ids_to_code_to_value:
             values[FIELD_CODE_DOC_ID] = doc_id
             field_values_list.append(values)
@@ -521,14 +652,61 @@ class PreconfiguredDocumentSimilaritySearch(ExtendedTask):
         for doc_id in doc_ids_to_values.keys():
             try:
                 doc = Document.objects.get(pk=doc_id)
-                signals.fire_document_changed(log=log, document=doc, changed_by_user=None, system_fields_changed=False,
-                                              generic_fields_changed=False, user_fields_changed=[dst_field.code])
+                signals.fire_document_changed(sender=self, log=log, document=doc, changed_by_user=None,
+                                              system_fields_changed=False, generic_fields_changed=False,
+                                              user_fields_changed=[dst_field.code])
             except Exception as ex:
                 self.log_error(f'Unable to fire doc id change event for doc #{doc_id}', exc_info=ex)
 
 
+class DeleteDocumentSimilarityResults(ExtendedTask):
+    name = 'Delete Document Similarity Results'
+    delete_task = DocumentSimilarityByFeatures
+
+    def process(self, **kwargs):
+        project_id = kwargs.get('project_id')
+
+        # if task revoked, there should be passed run_id - send notification for user who ran similarity task
+        # see remove_similarity_results_on_purge signal handler
+        run_id = kwargs.get('run_id')
+        if run_id:
+            run = SimilarityRun.objects.get(pk=run_id)
+            # store these params to get them in notification from self.task - see notify_delete_similarity_completed
+            self.task.kwargs['project_id'] = run.project_id
+            self.task.user_id = kwargs.get('user_id')
+
+        self.delete_task().delete_existing(project_id=project_id, run_id=run_id, log_info=self.log_info)
+
+    def on_success(self, *args, **kwargs):
+        super().on_success(*args, **kwargs)
+        notify_delete_similarity_completed(self.task, SUCCESS)
+
+    def on_failure(self, *args, **kwargs):
+        super().on_failure(*args, **kwargs)
+        notify_delete_similarity_completed(self.task, FAILURE)
+
+
+class DeleteTextUnitSimilarityResults(DeleteDocumentSimilarityResults):
+    name = 'Delete Text Unit Similarity Results'
+    delete_task = TextUnitSimilarityByFeatures
+
+
+@receiver(task_deleted)
+def remove_similarity_results_on_purge(sender, instance, **kwargs):
+    if instance.name in [DocumentSimilarityByFeatures.name, TextUnitSimilarityByFeatures.name]:
+        if isinstance(instance.metadata, dict) and 'run_id' in instance.metadata:
+            run_id = instance.metadata['run_id']
+            user_id = kwargs.get('user_id')
+            delete_task = DeleteDocumentSimilarityResults if instance.name == DocumentSimilarityByFeatures.name \
+                else DeleteTextUnitSimilarityResults
+            _call_task(delete_task, run_id=run_id, user_id=user_id)
+
+
 app.register_task(PreconfiguredDocumentSimilaritySearch())
 app.register_task(Similarity())
-app.register_task(SimilarityByFeatures())
+app.register_task(DocumentSimilarityByFeatures())
+app.register_task(TextUnitSimilarityByFeatures())
 app.register_task(ChunkSimilarity())
 app.register_task(PartySimilarity())
+app.register_task(DeleteDocumentSimilarityResults())
+app.register_task(DeleteTextUnitSimilarityResults())

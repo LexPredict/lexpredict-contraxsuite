@@ -2,6 +2,7 @@
 
 # AnnotationUpdateResponse
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -17,7 +18,7 @@ Name | Type | Description | Notes
 **locationEnd** | **Integer** |  | 
 **locationText** | **String** |  |  [optional]
 **modifiedBy** | **Integer** |  |  [optional]
-**modifiedDate** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional] [readonly]
+**modifiedDate** | **OffsetDateTime** |  |  [optional] [readonly]
 
 
 

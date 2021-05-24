@@ -49,6 +49,10 @@ location /rest-auth {
     include /etc/nginx/uwsgi_params;
 }
 
+location ~ ^${DOCKER_JUPYTER_BASE_URL}/?$ {
+    return 301 ${DOCKER_JUPYTER_BASE_URL}/lab/;
+}
+
 location ${DOCKER_JUPYTER_BASE_URL} {
     # workaround to start nginx, if host is unreachable
     set ${DOLLAR}target http://${DOCKER_JUPYTER_HOST_NAME}:${DOCKER_JUPYTER_PORT};
@@ -156,4 +160,11 @@ location /websocket/ {
     proxy_http_version 1.1;
     proxy_set_header Upgrade ${DOLLAR}http_upgrade;
     proxy_set_header Connection "upgrade";
+}
+
+location /text_extraction_system {
+    rewrite /text_extraction_system/(.*) /${DOLLAR}1 break;
+    proxy_pass http://tes-web-api:8000;
+    auth_basic "Contraxsuite";
+    auth_basic_user_file /etc/nginx/.kibana_htpasswd;
 }

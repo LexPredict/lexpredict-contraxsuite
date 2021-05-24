@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 def do_migrate(apps, schema_editor):
     DocumentType = apps.get_model('document', 'DocumentType')
-    codes = dict()
+    codes = {}
     for dt in DocumentType.objects.all():
         code = dt.code
         num = codes.get(code) or 0

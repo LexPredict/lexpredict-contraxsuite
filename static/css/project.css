@@ -336,12 +336,23 @@ body {
 }
 
 .sidebar .version {
-  bottom: 20px;
+  bottom: 45px;
 }
 
 .sidebar .version,
 .sidebar .copyright {
   display: block;
+}
+
+.sidebar .copyright.first-line {
+  margin-bottom: 20px;
+}
+
+.sidebar .version .version_number,
+.sidebar .version .build_date_value,
+.sidebar .copyright .secondary,
+.sidebar .copyright.first-line a {
+  font-weight: 600;
 }
 /*---------------------------------------------------------
     2.3 Main Container

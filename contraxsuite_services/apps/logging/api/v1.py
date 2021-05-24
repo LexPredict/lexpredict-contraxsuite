@@ -36,18 +36,19 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.errors import APIRequestError
-from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, string_schema, json_ct
+from apps.common.logger import CsLogger
+from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, string_content, json_ct
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger("frontend")
-server_logger = logging.getLogger("django.server")
+logger = CsLogger.get_frontend_logger()
+server_logger = CsLogger.get_django_server_logger()
 
 
 class ApiLogFilter(logging.Filter):
@@ -118,14 +119,14 @@ class LoggingAPIViewSchema(CustomAutoSchema):
 
     class LoggingAPIViewRequestSerializer(serializers.Serializer):
         queryInfo = serializers.DictField()
-        records = serializers.ListField()
+        records = serializers.ListField(child=serializers.DictField())
 
     request_serializer = LoggingAPIViewRequestSerializer()
 
     def get_responses(self, path, method):
-        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}},
-                    '400': string_schema,
-                    '500': string_schema}
+        response = {'200': {'content': {json_ct: {'schema': ObjectResponseSchema.object_schema}}, 'description': ''},
+                    '400': string_content,
+                    '500': string_content}
         return response
 
 
@@ -165,8 +166,7 @@ class LoggingAPIView(APIView):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             return x_forwarded_for.split(',')[0]
-        else:
-            return request.META.get('REMOTE_ADDR')
+        return request.META.get('REMOTE_ADDR')
 
     def write_log(self, message: ClientLogMessage) -> bool:
         level = message.level

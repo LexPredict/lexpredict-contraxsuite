@@ -31,9 +31,9 @@ from django.db import connection
 from pydash.strings import snake_case
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,13 +60,8 @@ def first_or_none(l: List):
     return None
 
 
-def extend_list(list1: List, list2: Optional[List]):
-    if list2:
-        list1.extend(list2)
-
-
 def sum_list(lists: List[List]) -> List:
-    res = list()
+    res = []
     for l in lists:
         if l:
             res.extend(l)
@@ -87,8 +82,8 @@ class SQLClause:
 
 def join_clauses(separator: str, clauses: List[Optional['SQLClause']], add_parentheses: bool = False) \
         -> Optional['SQLClause']:
-    sql = list()
-    params = list()
+    sql = []
+    params = []
     for clause in clauses:  # type: SQLClause
         if clause is None:
             continue
@@ -96,7 +91,7 @@ def join_clauses(separator: str, clauses: List[Optional['SQLClause']], add_paren
             sql.append('(' + clause.sql + ')')
         else:
             sql.append(clause.sql)
-        extend_list(params, clause.params)
+        params += (clause.params or [])
     if not sql:
         return None
     return SQLClause(separator.join(sql), params)
@@ -109,9 +104,9 @@ def format_clause(sql_template: str, *args, **kwargs) -> SQLClause:
     sql = sql_template.format(*format_args, **format_kwargs)
     clauses_from_args = [c for c in args if isinstance(c, SQLClause)] if args else []
 
-    clauses_from_kwargs = list()
+    clauses_from_kwargs = []
 
-    r = '{(?P<arg>' + '|'.join(['(' + arg_name + ')' for arg_name in kwargs.keys()]) + ')}'
+    r = '{(?P<arg>' + '|'.join(['(' + arg_name + ')' for arg_name in kwargs]) + ')}'
 
     for m in re.finditer(r, sql_template):
         arg_name = m.group('arg')
@@ -141,8 +136,8 @@ class SQLInsertClause:
         if not clauses:
             return None, None
 
-        columns_clauses = list()
-        values_clauses = list()
+        columns_clauses = []
+        values_clauses = []
         for c in clauses:
             columns_clauses.append(c.columns_clause)
             values_clauses.append(c.values_clause)

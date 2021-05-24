@@ -27,10 +27,11 @@
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F, Case, When, BooleanField, IntegerField
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.views.generic.base import TemplateView
 from guardian.shortcuts import get_objects_for_user
 
 # Project imports
@@ -44,24 +45,23 @@ from apps.project.forms import (
     TaskQueueChoiceForm, TaskQueueForm, ProjectChoiceForm, ProjectForm)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ProjectListView(JqPaginatedListView):
     model = Project
-    json_fields = ['name', 'description', 'type__title', 'status__name', 'total_documents_count', 'reviewed_documents_count']
+    json_fields = ['name', 'description', 'type__title', 'status__name',
+                   'total_documents_count', 'reviewed_documents_count', 'progress', 'completed']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
             item['url'] = self.full_reverse('project:project-update', args=[item['pk']])
-            item['progress'] = round(item['reviewed_documents_count'] / item['total_documents_count'] * 100, 1) \
-                if item['total_documents_count'] else 0
-            item['completed'] = item['progress'] == 100
+            item['actions_url'] = self.full_reverse('project:project-actions', args=[item['pk']])
         return data
 
     def get_queryset(self):
@@ -71,11 +71,26 @@ class ProjectListView(JqPaginatedListView):
             total_documents_count=Count('document', filter=Q(document__delete_pending=False)),
             reviewed_documents_count=Count('document', filter=Q(document__delete_pending=False, status__group__is_active=False))
         )
+        qs = qs.annotate(progress=Case(
+            When(total_documents_count__gt=0, then=F('reviewed_documents_count') / F('total_documents_count') * 100),
+            default=0, output_field=IntegerField()))
+        qs = qs.annotate(completed=Case(
+            When(progress=100, then=True),
+            default=False, output_field=BooleanField()))
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['can_add_project'] = self.request.user.has_perm('project.add_project')
+        return ctx
+
+
+class ProjectActionListView(TemplateView):
+    template_name = 'project/project_action_list.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['project'] = Project.objects.get(pk=self.kwargs['pk'])
         return ctx
 
 
@@ -296,7 +311,7 @@ class SelectProjectsView(LoginRequiredMixin, JSONResponseView):
     """
     @staticmethod
     def get_user_projects(user):
-        return get_objects_for_user(user, 'project.view_project', Project)
+        return get_objects_for_user(user, 'project.view_project', Project).filter(delete_pending=False)
 
     def post(self, request, *args, **kwargs):
         project_ids = request.POST.getlist('project_ids[]')

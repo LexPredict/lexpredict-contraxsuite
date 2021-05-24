@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 POSTGRES_MAX_BACKUP_NUMBER=${DOCKER_PG_MAX_BACKUP_NUMBER}
 POSTGRES_DB=${DOCKER_PG_DB_NAME}
@@ -8,7 +8,23 @@ BACKUP_DIR=/backup/db
 BACKUP_FILE=backup_${DOLLAR}(date +%Y-%m-%d_%H-%M-%S).backup
 MAX_BACKUP_NUMBER=${DOLLAR}((${DOLLAR}{POSTGRES_MAX_BACKUP_NUMBER}+1))
 
-psql -d ${DOLLAR}{POSTGRES_DB} -U ${DOLLAR}{POSTGRES_USER} -c "REINDEX DATABASE ${DOLLAR}{POSTGRES_DB};" -c 'VACUUM ANALYZE;'
+if [[ "${DOLLAR}{POSTGRES_ENABLE_DAILY_REINDEX,}" = "true" ]]; then
+    # Example output of "select version()":
+    # PostgreSQL 11.5 (Debian 11.5-3.pgdg90+1) on x86_64-pc-linux-gnu......
+    # We split it by space, take 2nd element (11.5), next split by dot and take 1st element (11)
+    PG_VER=$(psql -qtAX -U ${DOLLAR}{POSTGRES_USER} -d ${DOLLAR}{POSTGRES_DB} -c "select (string_to_array((string_to_array(version(), ' '))[2], '.'))[1];")
+
+    if (( ${PG_VER} < 12 )); then
+        # concurrently is not supported
+        psql -d ${DOLLAR}{POSTGRES_DB} -U ${DOLLAR}{POSTGRES_USER} -c "REINDEX ( VERBOSE ) DATABASE ${DOLLAR}{POSTGRES_DB};";
+    else
+        # concurrently is supported
+        psql -d ${DOLLAR}{POSTGRES_DB} -U ${DOLLAR}{POSTGRES_USER} -c "REINDEX ( VERBOSE ) DATABASE CONCURRENTLY ${DOLLAR}{POSTGRES_DB};";
+    fi
+fi
+
+
+psql -d ${DOLLAR}{POSTGRES_DB} -U ${DOLLAR}{POSTGRES_USER} -c "VACUUM VERBOSE ANALYZE;"
 
 if [ ! -z ${DOLLAR}{POSTGRES_MAX_BACKUP_NUMBER} ] && [ ${DOLLAR}{POSTGRES_MAX_BACKUP_NUMBER} -gt 0 ]; then
     mkdir -p ${DOLLAR}{BACKUP_DIR}

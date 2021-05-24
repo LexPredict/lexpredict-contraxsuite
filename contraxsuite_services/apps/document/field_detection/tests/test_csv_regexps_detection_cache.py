@@ -23,19 +23,20 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+# pylint: disable=anomalous-backslash-in-string
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 from tests.django_test_case import *
 from django.test import TestCase
-from apps.common.log_utils import ProcessLogger, ConsoleLogger
+from apps.common.log_utils import ConsoleLogger
 from typing import List, Dict
 from apps.document.field_detection.csv_regexps_field_detection_strategy import CsvRegexpsDetectionCache, \
     CsvRegexpsFieldDetectionStrategy

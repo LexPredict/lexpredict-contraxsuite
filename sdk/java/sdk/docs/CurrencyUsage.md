@@ -2,13 +2,14 @@
 
 # CurrencyUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **usageType** | **String** |  | 
 **currency** | **String** |  | 
-**amount** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**amount** | **BigDecimal** |  |  [optional]
 **amountStr** | **String** |  |  [optional]
 **pk** | **Integer** |  |  [optional] [readonly]
 **textUnitPk** | **String** |  |  [optional] [readonly]

@@ -30,9 +30,9 @@ from typing import Dict, Any
 from django.core.mail.backends.base import BaseEmailBackend
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,18 +44,16 @@ class MailServerConfig:
     def make_connection_config() -> BaseEmailBackend:
         from apps.notifications.app_vars import APP_VAR_EMAIL_HOST, APP_VAR_EMAIL_USE_TLS, \
             APP_VAR_EMAIL_PORT, APP_VAR_EMAIL_HOST_USER, APP_VAR_EMAIL_HOST_PASSWORD
-        from apps.common.models import AppVar
 
-        cache_vars = AppVar.get_values_by_category(AppVar.MAIL_CATEGORY)
-        from apps.notifications.app_vars import APP_VAR_EMAIL_BACKEND
-        backend_class = APP_VAR_EMAIL_BACKEND.get_cached_value(cache_vars)
+        from apps.notifications.app_vars import get_email_backend_class
+        backend_class = get_email_backend_class()
         ctor = MailServerConfig.import_class(backend_class)
 
-        return ctor(host=APP_VAR_EMAIL_HOST.get_cached_value(cache_vars),
-                    port=APP_VAR_EMAIL_PORT.get_cached_value(cache_vars),
-                    username=APP_VAR_EMAIL_HOST_USER.get_cached_value(cache_vars),
-                    password=APP_VAR_EMAIL_HOST_PASSWORD.get_cached_value(cache_vars),
-                    use_tls=APP_VAR_EMAIL_USE_TLS.get_cached_value(cache_vars),
+        return ctor(host=APP_VAR_EMAIL_HOST.val(),
+                    port=APP_VAR_EMAIL_PORT.val(),
+                    username=APP_VAR_EMAIL_HOST_USER.val(),
+                    password=APP_VAR_EMAIL_HOST_PASSWORD.val(),
+                    use_tls=APP_VAR_EMAIL_USE_TLS.val(),
                     fail_silently=False)
 
     @staticmethod

@@ -2,6 +2,7 @@
 
 # ProjectDetail
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -9,6 +10,10 @@ Name | Type | Description | Notes
 **pk** | **Integer** |  |  [optional] [readonly]
 **name** | **String** |  | 
 **description** | **String** |  |  [optional]
+**createdDate** | **OffsetDateTime** |  |  [optional]
+**createdByName** | **String** |  | 
+**modifiedDate** | **OffsetDateTime** |  |  [optional]
+**modifiedByName** | **String** |  | 
 **sendEmailNotification** | **Boolean** |  |  [optional]
 **hideClauseReview** | **Boolean** |  |  [optional]
 **status** | **Integer** |  |  [optional]
@@ -25,6 +30,15 @@ Name | Type | Description | Notes
 **typeData** | [**ProjectListTypeData**](ProjectListTypeData.md) |  | 
 **progress** | **String** |  |  [optional] [readonly]
 **userPermissions** | **String** |  |  [optional] [readonly]
+**termTags** | **List&lt;Integer&gt;** |  |  [optional]
+**documentTransformer** | **Integer** |  |  [optional]
+**textUnitTransformer** | **Integer** |  |  [optional]
+**companytypeTags** | **List&lt;Integer&gt;** |  |  [optional]
+**appVars** | **String** |  |  [optional] [readonly]
+**documentSimilarityRunParams** | **String** |  |  [optional] [readonly]
+**textUnitSimilarityRunParams** | **String** |  |  [optional] [readonly]
+**documentSimilarityProcessAllowed** | **String** |  |  [optional] [readonly]
+**textUnitSimilarityProcessAllowed** | **String** |  |  [optional] [readonly]
 
 
 

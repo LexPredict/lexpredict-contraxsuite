@@ -28,7 +28,6 @@ from __future__ import absolute_import, unicode_literals
 
 import copy
 import datetime
-import logging
 import warnings
 from functools import wraps
 from itertools import count, groupby
@@ -36,21 +35,23 @@ from traceback import format_exception
 from typing import Tuple, Dict
 
 from celery.beat import SchedulingError
-from celery.states import READY_STATES, SUCCESS, UNREADY_STATES, FAILURE, ALL_STATES, PENDING
+from celery.states import READY_STATES, SUCCESS, UNREADY_STATES, \
+    FAILURE, ALL_STATES, PENDING
 from django.conf import settings
 from django.db import connections, router, transaction, models, connection
 from django.db.models import F, Q, Value
 from django.db.utils import IntegrityError, InterfaceError, OperationalError
 
+from apps.common.logger import CsLogger
 from apps.task.celery_backend.utils import now
 from apps.task.task_visibility import TaskVisibility
 from apps.task.utils.task_utils import TaskUtils
 from task_names import TASK_FRIENDLY_NAME
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,7 +68,7 @@ within the same transaction may give outdated results.
 Be sure to commit the transaction for each poll iteration.
 """
 
-celery_task_logger = logging.getLogger('apps.task.models')
+celery_task_logger = CsLogger.get_logger('apps.task.models')
 
 
 class TxIsolationWarning(UserWarning):
@@ -127,13 +128,12 @@ def log_task_failure(exc_info, *args, **kwargs):
         return
     try:
         task_id = kwargs['task_id']
-        msg = f'Uncaught exception'
+        msg = 'Uncaught exception'
         celery_task_logger.error(msg, exc_info,
                                  extra={'log_task_id': task_id})
         print(f'logged for task {task_id}')
     except Exception as e:
         print(f'Error while logging: {e}')
-        pass
 
 
 class QuerySet(models.QuerySet):
@@ -376,7 +376,7 @@ class TaskManager(models.Manager):
     def _prepare_task_result(cls, result):
         if result and isinstance(result, dict) and result.get('exc_message') \
                 and isinstance(result['exc_message'], tuple):
-            values = list()
+            values = []
             for value in result['exc_message']:
                 value = ''.join(format_exception(None, value, None)) if isinstance(value, BaseException) else value
                 values.append(value)

@@ -28,9 +28,9 @@ from apps.common.models import AppVar
 from apps.rawdb.constants import APP_VAR_DISABLE_RAW_DB_CACHING_NAME
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,3 +41,15 @@ APP_VAR_DISABLE_RAW_DB_CACHING = AppVar.set(
     'when document type / document field structures are changed '
     'via the admin app or when a document is loaded / changed. '
     'Values: true / false (json)')
+
+APP_VAR_RAW_DB_REINDEX_PACK_SIZE = AppVar.set(
+    'RawDB', 'app_var_raw_db_reindex_pack_size', 100,
+    'Count of documents being cached per one Celery task. '
+    '0 means unlimited count are to be processed within one task.')
+
+APP_VAR_RAW_DB_REINDEX_PRIORITY = AppVar.set(
+    'RawDB', 'app_var_raw_db_reindex_priority', 0,
+    'Reindex Celery task priority from 1 (lowest) to 9 '
+    '(highest). 0 means default priority (5). Setting priority above 7 is '
+    'not recommended for the Reindex task, because the task would be routed '
+    'to a separate high-priority worker.')

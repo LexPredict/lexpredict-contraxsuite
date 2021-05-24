@@ -29,6 +29,9 @@ from __future__ import absolute_import, unicode_literals
 
 # Python imports
 import datetime
+import difflib
+import regex as re
+from typing import Tuple, Match, List
 
 # Django imports
 from django.urls import reverse
@@ -38,18 +41,84 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 # Project imports
 from apps.analyze.models import *
 from apps.analyze.forms import *
-from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster, BuildFeatureVectorsTask
+from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster, \
+    BuildDocumentVectorsTask, BuildTextUnitVectorsTask
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
 from apps.document.views import SubmitTextUnitTagView
 from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+class DiffRenderer:
+    REG_SPACE = re.compile(r'\s+')
+    TAG_DELETED = ('<strike>', '</strike>',)
+    TAG_ADDED = ('<u>', '</u>',)
+
+    @classmethod
+    def render_diff(cls, text_a: str, text_b: str) -> str:
+        if text_a == text_b:
+            return ''
+        tokens_a = cls.get_token_list(text_a)
+        tokens_b = cls.get_token_list(text_b)
+        diff = cls.get_diff_tokens(tokens_a, tokens_b)
+        markup = ''
+
+        last_item = ''
+        last_close_tag = ''
+        for d in diff:
+            cur_item = d[0]
+            if cur_item == last_item:
+                if cur_item == '?':
+                    continue
+                markup += d[2:] + ' '
+                continue
+            if last_close_tag:
+                markup += last_close_tag
+            last_close_tag = cls.TAG_DELETED[1] if cur_item == '-' else \
+                cls.TAG_ADDED[1] if cur_item == '+' else ''
+            cur_tag = cls.TAG_DELETED[0] if cur_item == '-' else \
+                cls.TAG_ADDED[0] if cur_item == '+' else ''
+            markup += cur_tag + d[2:] + ' '
+            last_item = cur_item
+        if last_close_tag:
+            markup += last_close_tag
+
+        return markup.replace('\n', '<br/>')
+
+    @classmethod
+    def get_diff_tokens(cls,
+                        tokens_a: List[Tuple[str, int, int]],
+                        tokens_b: List[Tuple[str, int, int]]):
+        d = difflib.Differ()
+        words_a = [t[0] for t in tokens_a]
+        words_b = [t[0] for t in tokens_b]
+        diff = list(d.compare(words_a, words_b))
+        return diff
+
+    @classmethod
+    def get_token_list(cls, text: str) -> List[Tuple[str, int, int]]:
+        tokens = []
+
+        wrd_start = 0
+        for t in cls.REG_SPACE.finditer(text):  # type: Match
+            start, end = t.start(), t.end()
+            wrd = text[wrd_start: start]
+            if not wrd:
+                continue
+            tokens.append((wrd, wrd_start, wrd_start + len(wrd),))
+            wrd_start = end
+        if wrd_start < len(text) - 1:
+            wrd = text[wrd_start:].strip(' ')
+            if wrd:
+                tokens.append((wrd, wrd_start, wrd_start + len(wrd),))
+        return tokens
 
 
 class TextUnitClassificationListView(apps.common.mixins.JqPaginatedListView):
@@ -395,7 +464,7 @@ class DocumentClusterListView(PermissionRequiredMixin, apps.common.mixins.JqPagi
 
             documents = documents.values('pk', 'name', 'description', 'project__name', 'document_type__title')
             for document in documents:
-                document['url'] = self.full_reverse('document:document-detail', args=[document['pk']]),
+                document['url'] = self.full_reverse('document:document-detail', args=[document['pk']])
             item['documents'] = list(documents)
         return data
 
@@ -427,14 +496,21 @@ class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
     template_name = "analyze/document_similarity_list.html"
     document_lookup = ['document_a', 'document_b']
     json_fields = ['document_a__name', 'document_a__project__name',
-                   'document_a__pk', 'document_a__document_type__title',
+                   'document_a_id', 'document_a__document_type__title',
                    'document_b__name', 'document_b__project__name',
-                   'document_b__pk', 'document_b__document_type__title',
+                   'document_b_id', 'document_b__document_type__title',
                    'similarity',
                    'document_a__project_id',
                    'document_b__project_id',
                    'document_a__document_type__code',
                    'document_b__document_type__code']
+    export_json_fields = ['document_a_id', 'document_a__name',
+                          'document_b_id', 'document_b__name',
+                          'similarity',
+                          'document_a__project_id',
+                          'document_b__project_id',
+                          'document_a__document_type__code',
+                          'document_b__document_type__code']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -442,10 +518,10 @@ class DocumentSimilarityListView(apps.common.mixins.JqPaginatedListView):
         for item in data['data']:
             item['document_a__url'] = \
                 doc_editor_url(item['document_a__document_type__code'],
-                               item['document_a__project_id'], item['document_a__pk'])
+                               item['document_a__project_id'], item['document_a_id'])
             item['document_b__url'] = \
                 doc_editor_url(item['document_b__document_type__code'],
-                               item['document_b__project_id'], item['document_b__pk'])
+                               item['document_b__project_id'], item['document_b_id'])
             item['project_a__url'] = \
                 project_documents_url(item['document_a__document_type__code'],
                                       item['document_a__project_id'])
@@ -475,6 +551,7 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     template_name = "analyze/text_unit_similarity_list.html"
     document_lookup = ['text_unit_a__document', 'text_unit_b__document']
     json_fields = ['similarity', 'text_unit_a_id', 'text_unit_b_id']
+    #extra_json_fields = ['text_diff']
     LIMIT_QUERY = 100000
 
     def get_json_data(self, **kwargs):
@@ -489,8 +566,10 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
             item['text_unit_b__unit_type'] = unit_b.unit_type
             item['text_unit_a__language'] = unit_a.language
             item['text_unit_b__language'] = unit_b.language
+
             item['text_unit_a__textunittext__text'] = unit_a.text
             item['text_unit_b__textunittext__text'] = unit_b.text
+            item['text_diff'] = DiffRenderer.render_diff(unit_a.text, unit_b.text) or ''
 
             item['text_unit_a__document__pk'] = unit_a.document_id
             item['text_unit_b__document__pk'] = unit_b.document_id
@@ -498,13 +577,13 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
             item['text_unit_b__document__name'] = unit_b.document.name
 
             item['text_unit_a__url'] = self.full_reverse('document:text-unit-detail',
-                                                         args=[item['text_unit_a__pk']]),
+                                                         args=[item['text_unit_a__pk']])
             item['text_unit_b__url'] = self.full_reverse('document:text-unit-detail',
-                                                         args=[item['text_unit_b__pk']]),
+                                                         args=[item['text_unit_b__pk']])
             item['text_unit_a_document_url'] = self.full_reverse('document:document-detail',
-                                                                 args=[item['text_unit_a__document__pk']]),
+                                                                 args=[item['text_unit_a__document__pk']])
             item['text_unit_b_document_url'] = self.full_reverse('document:document-detail',
-                                                                 args=[item['text_unit_b__document__pk']]),
+                                                                 args=[item['text_unit_b__document__pk']])
         return data
 
     def get_queryset(self):
@@ -528,19 +607,15 @@ class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):
     """
     model = PartySimilarity
     # document_lookup = ['document_a', 'document_b']
-    json_fields = ['party_a__name', 'party_a__description',
-                   'party_a__pk', 'party_a__type_abbr',
-                   'party_b__name', 'party_a__description',
-                   'party_b__pk', 'party_b__type_abbr',
+    json_fields = ['party_a__name', 'party_a__description', 'party_a__pk', 'party_a__type_abbr',
+                   'party_b__name', 'party_a__description', 'party_b__pk', 'party_b__type_abbr',
                    'similarity']
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
         for item in data['data']:
-            item['party_a__url'] = self.full_reverse('extract:party-summary',
-                                                     args=[item['party_a__pk']]),
-            item['party_b__url'] = self.full_reverse('extract:party-summary',
-                                                     args=[item['party_b__pk']]),
+            item['party_a__url'] = self.full_reverse('extract:party-summary', args=[item['party_a__pk']])
+            item['party_b__url'] = self.full_reverse('extract:party-summary', args=[item['party_b__pk']])
         return data
 
     def get_queryset(self):
@@ -609,7 +684,6 @@ class SubmitTextUnitClassificationView(SubmitTextUnitTagView):
 
 class TrainDocumentDoc2VecModelView(BaseAjaxTaskView):
     task_class = TrainDoc2VecModel
-    module_name = 'apps.analyze.tasks'
     form_class = TrainDocumentDoc2VecTaskForm
 
 
@@ -617,42 +691,40 @@ class TrainTextUnitDoc2VecModelView(TrainDocumentDoc2VecModelView):
     form_class = TrainTextUnitDoc2VecTaskForm
 
 
-class BuildFeatureVectorsTaskView(BaseAjaxTaskView):
-    task_class = BuildFeatureVectorsTask
-    module_name = 'apps.analyze.tasks'
-    form_class = BuildFeatureVectorsTaskForm
-    html_form_class = 'popup-form build-features-form'
+class BuildDocumentVectorsTaskView(BaseAjaxTaskView):
+    task_class = BuildDocumentVectorsTask
+    form_class = BuildDocumentVectorsTaskForm
+
+
+class BuildTextUnitVectorsTaskView(BaseAjaxTaskView):
+    task_class = BuildTextUnitVectorsTask
+    form_class = BuildTextUnitVectorsTaskForm
 
 
 class RunDocumentClassifierView(BaseAjaxTaskView):
     task_class = RunClassifier
-    module_name = 'apps.analyze.tasks'
     form_class = RunDocumentClassifierForm
 
 
 class RunTextUnitClassifierView(BaseAjaxTaskView):
     task_class = RunClassifier
-    module_name = 'apps.analyze.tasks'
     form_class = RunTextUnitClassifierForm
 
 
 class TrainTextUnitClassifierView(BaseAjaxTaskView):
     task_class = TrainClassifier
-    module_name = 'apps.analyze.tasks'
     form_class = TrainTextUnitClassifierForm
     html_form_class = 'popup-form classify-form'
 
 
 class TrainDocumentClassifierView(BaseAjaxTaskView):
     task_class = TrainClassifier
-    module_name = 'apps.analyze.tasks'
     form_class = TrainDocumentClassifierForm
     html_form_class = 'popup-form classify-form'
 
 
 class ClusterView(BaseAjaxTaskView):
     task_class = Cluster
-    module_name = 'apps.analyze.tasks'
     form_class = ClusterForm
     html_form_class = 'popup-form cluster-form'
 

@@ -20,22 +20,25 @@
         { name: 'total_documents_count', type: 'int' },
         { name: 'completed_documents_count', type: 'int' },
         { name: 'progress', type: 'float' },
-        { name: 'url', type: 'string' }
+        { name: 'url', type: 'string' },
+        { name: 'actions_url', type: 'string' }
       ];
       var menu_renderer = function (row_number, event) {
         var grid = $(event.currentTarget).parents('.jqxgrid');
         var row = grid.jqxGrid('getrowdata', row_number);
         var menu_data = [
-          { url: row.url,
-            icon: 'fa fa-pencil',
-            text: 'Update Project' }
+          { url: row.actions_url,
+            icon: 'fa fa-users',
+            text: 'Show Project Actions' }
         ];
         show_menu(menu_data, grid, row.pk);
       };
       var columns = [
+        { text: 'ID', datafield: 'pk', width: 50,
+          align: 'center', cellsalign: 'center' },
         { text: 'Name', datafield: 'name', width: '30%',
-          align: 'center', cellsalign: 'center',
-          cellsrenderer: defaultLinkFormatter },
+          // cellsrenderer: defaultLinkFormatter,
+          align: 'center', cellsalign: 'center' },
         { text: 'Type', datafield: 'type__title', width: 'auto',
           align: 'center', cellsalign: 'center' },
         { text: 'Status', datafield: 'status__name', width: 'auto',

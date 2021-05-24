@@ -1,5 +1,6 @@
 # AnnotationSuggestRequest
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

@@ -38,16 +38,15 @@ from django.conf import settings
 from django.urls import reverse
 
 from apps.common.forms import checkbox_field
-from apps.common.utils import fast_uuid
 from apps.common.widgets import LTRCheckgroupWidget
 from apps.document.models import DocumentType
 from apps.project.models import Project
 from apps.task.models import Task, TaskLogEntry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -169,7 +168,7 @@ class LocateForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
-        available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
+        available_locators = set(STANDARD_LOCATORS.val()) | set(OPTIONAL_LOCATORS.val())
 
         for field in list(self.fields.keys()):
             if field in ['parse', 'locate_all', 'project']:
@@ -179,7 +178,7 @@ class LocateForm(forms.Form):
                 del self.fields[field]
 
     def is_valid(self):
-        is_form_valid = super(LocateForm, self).is_valid()
+        is_form_valid = super().is_valid()
 
         # check at least one "locate" choice is selected
         has_locate_chosen = bool([1 for k, v in self.cleaned_data.items() if 'locate' in k and v is True])
@@ -225,7 +224,7 @@ class TaskDetailForm(forms.Form):
         self.fields['parents'].initial = ''
         self.fields['child_tasks'].initial = ''
 
-        logs = list()  # type: List[str]
+        logs = []  # type: List[str]
         # on this stage it was quite hard to implement proper formatting in templates
         # so putting some html/js right here.
         # TODO: Refactor, put formatting to the templates
@@ -283,7 +282,7 @@ class TaskDetailForm(forms.Form):
             level = record.log_level or 'INFO'
             message = record.message or ''
             message = '<br />' + message if '\n' in message else message
-
+            message = message.replace('\n', '<br />')
             log_add = f'<b><span style="color: {color}">{level}</span> {ts} | {record.task_name or "no task"} |</b> ' \
                       f'{message}'
             logs.append(log_add)
@@ -328,6 +327,7 @@ class TaskDetailForm(forms.Form):
             color = 'red'
         return color
 
+
 class CleanProjectForm(forms.Form):
     header = 'Clean Project (delete project content or project itself as well.'
     _project = forms.ModelChoiceField(queryset=Project.objects.order_by('-pk'), required=True)
@@ -345,6 +345,8 @@ class LoadFixtureForm(forms.Form):
     mode = forms.ChoiceField(
         label='Algorithm',
         choices=[('default', 'Default - Install all, replace existing objects by id'),
+                 ('shift', 'Shift - Install all, make new object if object with that id exists, '
+                           'either skip for non-unique object'),
                  ('partial', 'Partial - Install only new objects by id'),
                  ('soft', 'Soft - do not install if any objects already exists')],
         required=True,
@@ -398,3 +400,11 @@ class BuildOCRRatingLanguageModelForm(forms.Form):
     extension = forms.ChoiceField(choices=(('*', 'all files inside the archive (*.*)'),
                                            ('txt', 'text files only (*.txt)')),
                                   required=True, label='Extension')
+
+
+class LoadTermsForm(forms.Form):
+    source_file = forms.FileField(required=True, allow_empty_file=False)
+
+
+class LoadCompanyTypesForm(forms.Form):
+    source_file = forms.FileField(required=True, allow_empty_file=False)

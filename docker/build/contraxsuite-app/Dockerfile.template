@@ -1,8 +1,6 @@
 FROM ${CONTRAXSUITE_IMAGE_FROM}
 ENV DEBIAN_FRONTEND noninteractive
 ENV LANG C.UTF-8
-ADD https://github.com/krallin/tini/releases/download/v0.19.0/tini /tini
-RUN chmod +x /tini
 
 COPY ./temp/contraxsuite_services /contraxsuite_services
 COPY ./temp/python-requirements-additional.txt /contraxsuite_services/python-requirements-additional.txt
@@ -11,12 +9,11 @@ COPY ./temp/ssl_certs /
 COPY ./install_ssl_certs_to_python.sh /
 COPY ./temp/build.info /
 COPY ./temp/build.uuid /
-COPY ./start.sh /
+COPY ./temp/start.sh /contraxsuite_services/
 COPY ./webdav_upload.sh /
-COPY ./dump.sh /contraxsuite_services
+COPY ./dump.sh /contraxsuite_services/
 COPY ./check_celery.sh /
 COPY ./temp/static /static
-ENV LANG C.UTF-8
 
 RUN adduser -u ${SHARED_USER_ID} --disabled-password --gecos "" ${SHARED_USER_NAME}
 RUN usermod -a -G root ${SHARED_USER_NAME}
@@ -28,40 +25,35 @@ RUN usermod -a -G root ${SHARED_USER_NAME}
 # Not using mirrors here because it returns non-working mirrors.
 
 RUN apt-get -y update --fix-missing && \
-    apt-get install -y -q apt-utils lsb-release gcc-5 software-properties-common wget apt-transport-https locales && \
+    apt-get install -y -q apt-utils lsb-release gcc-9 g++ software-properties-common wget apt-transport-https locales && \
 	echo "Ubuntu version: " && lsb_release -a && \
-	echo "GCC 5 version: " && gcc-5 -v && \
-	wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-	add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main" && \
-	wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - && \
-	echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | tee -a /etc/apt/sources.list.d/elastic-6.x.list && \
+	echo "GCC version: " && gcc-9 -v && \
 	add-apt-repository -y ppa:openjdk-r/ppa && \
 	apt-get -y update --fix-missing && \
-	apt-get install -y openjdk-8-jdk postgresql-client-11 && \
+	apt-get install -y openjdk-8-jdk libpq5 postgresql-client-12 && \
 	cat /contraxsuite_services/deploy/base/debian-requirements.txt \
     | grep -v -E "^postgresql${DOLLAR}" \
     | grep -v -E "^#" \
     | xargs -r apt-get -y -q install && \
-	locale-gen --purge  en_US en_US.UTF-8 && \
+  egrep -v '^(#|$)' /contraxsuite_services/deploy/base/supported_locales.txt \
+    | xargs -r locale-gen --purge && \
 	echo -e \'LANG="en_US.UTF-8"\nLANGUAGE="en_US:en"\n\' > /etc/default/locale && \
 	npm -g install yuglify && \
-	apt-get install -y git && \
-	apt-get install -y curl && \
-	apt-get install -y htop && \
-	virtualenv -p /usr/bin/python3 /contraxsuite_services/venv && chmod ug+x /contraxsuite_services/venv/bin/activate && \
-	. /contraxsuite_services/venv/bin/activate && python --version && pip install -r /contraxsuite_services/deploy/base/python-requirements-all.txt && pip install --no-warn-conflicts --no-deps -r /contraxsuite_services/deploy/base/python-requirements-ignore-conflicts.txt${LEXNLP_MASTER_INSTALL_CMD} && pip install -r /contraxsuite_services/python-requirements-additional.txt && pip uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && deactivate && \
+	apt-get install -y curl htop python3-dev python3-pip dnsutils iputils-ping nano mc && \
+	python3 --version && pip3 install -r /contraxsuite_services/deploy/base/python-requirements-all-3.8.txt && pip3 install --no-warn-conflicts --no-deps -r /contraxsuite_services/deploy/base/python-requirements-ignore-conflicts.txt${LEXNLP_MASTER_INSTALL_CMD} ${TEXT_EXTRACTION_API_INSTALL_CMD} && pip3 install -r /contraxsuite_services/python-requirements-additional.txt && pip3 uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && \
 	if [ -f  /contraxsuite_services/deploy/base/customer-requirements.txt ]; then \
-    . /contraxsuite_services/venv/bin/activate && \
-    pip install -r /contraxsuite_services/deploy/base/customer-requirements.txt && deactivate; fi && \
-    su - ${SHARED_USER_NAME} -c ". /contraxsuite_services/venv/bin/activate && python -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet && deactivate" && \
-    su - ${SHARED_USER_NAME} -c "test -f \"/static/vendor/jqwidgets/jqx-all.js\" && echo \"JQWidgets are bundled within the image. Running collectstatic...\" && . /contraxsuite_services/venv/bin/activate && python manage.py collectstatic --noinput && deactivate || echo \"JQWidgets not bundled within the image.\"" && \
+    pip3 install -r /contraxsuite_services/deploy/base/customer-requirements.txt; fi && \
+    su - ${SHARED_USER_NAME} -c "python3 -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet" && \
+    su - ${SHARED_USER_NAME} -c "test -f \"/static/vendor/jqwidgets/jqx-all.js\" && echo \"JQWidgets are bundled within the image. Running collectstatic...\" && python3 manage.py collectstatic --noinput || echo \"JQWidgets not bundled within the image.\"" && \
     cat /build.info && cat /build.uuid && ls /static -l && \
     . /install_ssl_certs_to_python.sh && \
-    apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-ita tesseract-ocr-fra tesseract-ocr-spa tesseract-ocr-deu tesseract-ocr-rus && \
-    apt-get purge -y gcc-5 build-essential linux-headers* && \
+    apt-get purge -y gcc-9 g++ build-essential linux-headers* && \
 	apt-get clean autoclean && \
     apt-get autoremove -y && \
-    rm -rf /var/lib/{apt,dpkg,cache,log}/ && \
+    rm -rf /var/lib/apt && \
+    rm -rf /var/lib/dpkg && \
+    rm -rf /var/lib/cache && \
+    rm -rf /var/lib/log && \
     rm -rf /root/.cache/pip/ && \
     rm -rf /lexpredict-contraxsuite-core/.git/ && \
     rm -rf /var/lib/apt/lists && \
@@ -76,11 +68,18 @@ RUN apt-get -y update --fix-missing && \
     echo "Customer repo commit: ${BUILD_CUSTOMER_REPO_GIT_COMMIT}" >> /build_info.txt && \
     mkdir -p /contraxsuite_services/staticfiles && \
     chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_services && \
+    chmod ugo+x /contraxsuite_services/start.sh && \
     mkdir -p /data/data && \
     mkdir -p /data/logs && \
     mkdir -p /static && \
     mkdir -p /deployment_uuid && \
     mkdir -p /data/celery_worker_state && \
-    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data
+    mkdir -p /contraxsuite_frontend_nginx_volume && \
+    if [ -d  /contraxsuite_frontend ]; then chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_frontend; fi && \
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data && \
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_frontend_nginx_volume
 
-ENTRYPOINT ["/tini", "--"]
+STOPSIGNAL SIGQUIT
+USER ${SHARED_USER_NAME}
+WORKDIR /contraxsuite_services
+ENTRYPOINT ["./start.sh"]

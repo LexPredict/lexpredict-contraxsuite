@@ -1,33 +1,44 @@
 #Autoscaler
 
-apiVersion: autoscaling/v1
-kind: HorizontalPodAutoscaler
-metadata:
-  name: contrax-celery
-  namespace: {{ .Values.namespace }}
-spec:
-  maxReplicas: {{ .Values.celery_replicas }}
-  minReplicas: 1
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: contrax-celery
-  targetCPUUtilizationPercentage: {{ .Values.celery_target_cpu_usage }}
+#apiVersion: autoscaling/v1
+#kind: HorizontalPodAutoscaler
+#metadata:
+#  name: contrax-celery
+#  namespace: {{ .Values.namespace }}
+#spec:
+#  maxReplicas: {{ .Values.celery_replicas }}
+#  minReplicas: 1
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: StatefulSet
+#    name: contrax-celery
+#  targetCPUUtilizationPercentage: {{ .Values.celery_target_cpu_usage }}
 # status: {}
 
----
+#---
 
-apiVersion: autoscaling/v1
-kind: HorizontalPodAutoscaler
-metadata:
-  name: contrax-celery-doc-load
-  namespace: {{ .Values.namespace }}
-spec:
-  maxReplicas: {{ .Values.celery_doc_load_replicas }}
-  minReplicas: 1
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: contrax-celery-doc-load
-  targetCPUUtilizationPercentage: {{ .Values.celery_doc_load_target_cpu_usage }}
+#apiVersion: autoscaling/v2beta2
+#kind: HorizontalPodAutoscaler
+#metadata:
+#  name: contrax-text-extraction-system
+#  namespace: {{ .Values.namespace }}
+#spec:
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: StatefulSet
+#    name: tes-celery-worker
+#  maxReplicas: {{ .Values.tes_replicas }}
+#  minReplicas: 1
+#  metrics:
+#  - type: Resource
+#    resource:
+#      name: cpu
+#      target:
+#        type: Utilization
+#        averageUtilization: 80
+#  behavior:
+#    scaleDown:
+#      stabilizationWindowSeconds: 900
+#  
+#  #targetCPUUtilizationPercentage: {{ .Values.tes_target_cpu_usage }}
 # status: {}

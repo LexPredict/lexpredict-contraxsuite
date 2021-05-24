@@ -47,9 +47,9 @@ from apps.rawdb.field_value_tables import query_documents
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -88,7 +88,7 @@ class HighQiSheetColumnChoiceMappingAdminForm(ModelForm):
 class HighQiSheetColumnAssociationFormSet(BaseInlineFormSet):
     def get_form_kwargs(self, index) -> dict:
         kwargs: dict = \
-            super(HighQiSheetColumnAssociationFormSet, self).get_form_kwargs(index)
+            super().get_form_kwargs(index)
         kwargs.update({'parent': self.instance})
         return kwargs
 
@@ -105,7 +105,7 @@ class HighQiSheetColumnAssociationForm(ModelForm):
         - HighQConfiguration iSheet ID
         """
         parent = kwargs.pop('parent', None)
-        super(HighQiSheetColumnAssociationForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if parent is not None:
             if parent.contraxsuite_documenttype_id:
                 document_type: DocumentType = \
@@ -167,6 +167,7 @@ class HighQConfigurationAdmin(admin.ModelAdmin):
         'title',
         'enabled',
         'update_existing_isheet_items',
+        'get_highq_files_from_subfolders',
         'project',
         'sync_frequency_minutes',
         'highq_site_id',
@@ -215,10 +216,10 @@ class HighQConfigurationAdmin(admin.ModelAdmin):
     modified_by.admin_order_field = '_latest_log_entry_user'
 
     def response_add(
-            self,
-            request,
-            obj,
-            post_url_continue=None
+        self,
+        request,
+        obj,
+        post_url_continue=None
     ) -> HttpResponseRedirect:
         """
         Override the default behavior by redirecting to an authentication page.
@@ -226,10 +227,10 @@ class HighQConfigurationAdmin(admin.ModelAdmin):
         return get_initial_access_code(obj)
 
     def response_change(
-            self,
-            request,
-            obj,
-            post_url_continue=None
+        self,
+        request,
+        obj,
+        post_url_continue=None
     ) -> HttpResponseRedirect:
         """
         Override the default behavior by redirecting to an authentication page.
@@ -247,6 +248,7 @@ class HighQDocumentAdmin(admin.ModelAdmin):
         'highq_isheet_item_id',
         'in_highq_folder',
         'recorded_in_isheet',
+        'removed_from_highq',
     )
 
     list_display: Tuple[str] = (
@@ -257,6 +259,7 @@ class HighQDocumentAdmin(admin.ModelAdmin):
         'highq_isheet_item_id',
         'in_highq_folder',
         'recorded_in_isheet',
+        'removed_from_highq',
     )
 
 

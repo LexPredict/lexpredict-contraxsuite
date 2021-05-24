@@ -1,6 +1,16 @@
 {% extends "base_list_ajax.html" %}
 {% load static %}
 
+{% block css_extra %}
+  {{ block.super }}
+  <style type="text/css">
+    .hint_cell:hover {
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  </style>
+{% endblock %}
+
 {% block js_extra %}
   {{ block.super }}
   <script type="text/javascript">
@@ -13,12 +23,12 @@
         { name: 'text_unit_a__url', type: 'string' },
         { name: 'text_unit_a_document_url', type: 'string' },
         { name: 'text_unit_b__pk', type: 'int' },
-        { name: 'text_unit_b__unit_type', type: 'string' },
         { name: 'text_unit_b__language', type: 'string' },
         { name: 'text_unit_b__textunittext__text', type: 'string' },
         { name: 'text_unit_b__url', type: 'string' },
         { name: 'text_unit_b_document_url', type: 'string' },
-        { name: 'similarity', type: 'float' }
+        { name: 'similarity', type: 'float' },
+        { name: 'text_diff', type: 'string' },
       ];
       var menu_renderer = function(row, event) {
         var grid = $(event.currentTarget).parents('.jqxgrid');
@@ -50,19 +60,16 @@
           enabletooltips: true, columngroup: 'Text Unit A',
           align: 'center', cellsalign: 'center' },
         { text: 'Text', datafield: 'text_unit_a__textunittext__text', width: 'auto',
-          align: 'center', cellsalign: 'center',
+          align: 'center', cellsalign: 'center', cellclassname: 'hint_cell',
           columngroup: 'Text Unit A' },
         { text: 'ID', datafield: 'text_unit_b__pk', width: 70,
-          align: 'center', cellsalign: 'center',
-          columngroup: 'Text Unit B' },
-        { text: 'Type', datafield: 'text_unit_b__unit_type', width: 70,
           align: 'center', cellsalign: 'center',
           columngroup: 'Text Unit B' },
         { text: 'Language', datafield: 'text_unit_b__language', width: 70,
           enabletooltips: true, columngroup: 'Text Unit B',
           align: 'center', cellsalign: 'center' },
         { text: 'Text', datafield: 'text_unit_b__textunittext__text', width: 'auto',
-          align: 'center', cellsalign: 'center',
+          align: 'center', cellsalign: 'center', cellclassname: 'hint_cell',
           columngroup: 'Text Unit B' },
         { text: 'Similarity', datafield: 'similarity', width: 70,
           align: 'center', cellsalign: 'center', cellsformat: 'p2' },
@@ -80,6 +87,27 @@
         ]
       };
       draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+      $(".jqxgrid").bind("cellclick", function (event) {
+          var rowindex = event.args.rowindex;
+          var column = event.args.column;
+          if (column.datafield != 'text_unit_a__textunittext__text' &&
+            column.datafield != 'text_unit_b__textunittext__text')
+            return;
+          var datarow = $(".jqxgrid").jqxGrid('getrowdata', rowindex);
+          window.showDiff(datarow.text_diff);
+        });
     });
+
+    window.showDiff = function(diffMarkup) {
+        var title = diffMarkup ? 'Difference' : 'The texts are identical';
+        $.confirm({
+              title: title,
+              backgroundDismiss: true,
+              content: diffMarkup,
+              buttons: {
+                  close: function () {},
+              }});
+    }
+
   </script>
 {% endblock %}

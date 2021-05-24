@@ -27,23 +27,22 @@
 from typing import Dict, Optional
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
 from django.dispatch import receiver
 
+from apps.common.logger import CsLogger
 from apps.document.models import FieldValue, FieldAnnotation, Document, DocumentField
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.signals import document_field_detection_failed
 from apps.project.models import Project
-from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 from apps.websocket import channel_message_types as message_types
 from apps.websocket.channel_message import ChannelMessage
 from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,7 +76,7 @@ def safe_failure(func):
         try:
             return func(*args, **kwargs)
         except ObjectDoesNotExist as e:
-            logger = get_django_logger()
+            logger = CsLogger.get_django_logger()
             logger.warning(f'{func.__name__} failed because related object was probably deleted, '
                            f'original exception is "{e}"')
     return decorator

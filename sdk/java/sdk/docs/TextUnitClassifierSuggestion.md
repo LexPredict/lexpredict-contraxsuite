@@ -2,6 +2,7 @@
 
 # TextUnitClassifierSuggestion
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -14,8 +15,8 @@ Name | Type | Description | Notes
 **textUnitPk** | **String** |  |  [optional] [readonly]
 **className** | **String** |  | 
 **classValue** | **String** |  | 
-**classifierRun** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional]
-**classifierConfidence** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**classifierRun** | **OffsetDateTime** |  |  [optional]
+**classifierConfidence** | **BigDecimal** |  |  [optional]
 
 
 

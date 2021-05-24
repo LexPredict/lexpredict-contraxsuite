@@ -2,11 +2,12 @@
 
 # AnnotationBatchRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**operationUid** | [**UUID**](UUID.md) |  | 
+**operationUid** | **UUID** |  | 
 **action** | [**ActionEnum**](#ActionEnum) |  | 
 **id** | **Integer** |  | 
 **data** | **Object** |  | 

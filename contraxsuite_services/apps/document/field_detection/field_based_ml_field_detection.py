@@ -36,7 +36,6 @@ from apps.common.script_utils import eval_script
 from apps.document.field_detection.field_classifier_suggestion import store_classification_suggestion
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy, ProcessLogger
-from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.field_processing.document_vectorizers import FieldValueExtractor, \
     wrap_feature_names_with_field_code
 from apps.document.field_types import TypedField, ChoiceField
@@ -46,9 +45,9 @@ from apps.document.repository.document_field_repository import DocumentFieldRepo
 from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -131,7 +130,7 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
     @classmethod
     def get_depends_on_code_type(cls, field: DocumentField) -> List[Tuple[str, str]]:
-        return list(field.depends_on_fields.all().values_list('code', 'type'))
+        return list(field.depends_on_fields.values_list('code', 'type'))
 
     @classmethod
     def remove_empty_fields(cls, depends_on_code_type, train_data) -> List[Tuple[str, str]]:
@@ -203,8 +202,8 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
 
         test_size = 0.2
 
-        train_feature_data = list()
-        train_target_data = list()
+        train_feature_data = []
+        train_target_data = []
 
         for doc_field_values in train_data:
             field_value = doc_field_values.get(field.code)
@@ -276,44 +275,17 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                                                                       project_ids=train_data_project_ids,
                                                                       doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)
                     if field_values.get(field.code) in field_values_only]
-        else:
-            qs_modified_document_ids = fd_repo.get_qs_active_modified_document_ids(field, train_data_project_ids)
 
-            qs_finished_document_ids = fd_repo.get_qs_finished_document_ids(field.document_type, train_data_project_ids)
+        qs_modified_document_ids = fd_repo.get_qs_active_modified_document_ids(field, train_data_project_ids)
 
-            qs_train_doc_ids = qs_modified_document_ids.union(qs_finished_document_ids)
-            return [field_values for _doc_id, field_values in
-                    repo.get_field_code_to_python_value_multiple_docs(document_type_id=field.document_type_id,
-                                                                      doc_ids=qs_train_doc_ids,
-                                                                      doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)
-                    if field_values.get(field.code) in field_values_only]
+        qs_finished_document_ids = fd_repo.get_qs_finished_document_ids(field.document_type, train_data_project_ids)
 
-    @classmethod
-    def maybe_detect_with_stop_words(cls,
-                                     field: DocumentField,
-                                     doc: Document,
-                                     cached_fields: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        if field.stop_words:
-            depends_on_field_codes = list(field.depends_on_fields
-                                          .all()
-                                          .values_list('code', flat=True))  # type: List[str]
-            depends_on_full_text = []
-
-            if not any(cached_fields):
-                return None
-
-            for field_code in depends_on_field_codes:
-                v = cached_fields.get(field_code)
-                if v:
-                    depends_on_full_text.append(str(v))
-
-            detected_with_stop_words, detected_field_value = \
-                detect_with_stop_words_by_field_and_full_text(field=field,
-                                                              doc=doc,
-                                                              full_text='\n'.join(depends_on_full_text))
-            if detected_with_stop_words:
-                return FieldValueDTO(field_value=TypedField.by(field).field_value_python_to_json(detected_field_value))
-        return None
+        qs_train_doc_ids = qs_modified_document_ids.union(qs_finished_document_ids)
+        return [field_values for _doc_id, field_values in
+                repo.get_field_code_to_python_value_multiple_docs(document_type_id=field.document_type_id,
+                                                                  doc_ids=qs_train_doc_ids,
+                                                                  doc_limit=settings.ML_TRAIN_DATA_SET_GROUP_LEN)
+                if field_values.get(field.code) in field_values_only]
 
     @classmethod
     def detect_field_value(cls,
@@ -323,9 +295,6 @@ class FieldBasedMLOnlyFieldDetectionStrategy(FieldDetectionStrategy):
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
         log.debug('detect_field_value: field_based_ml_field_detection, ' +
                   f'field {field.code}({field.pk}), document #{doc.pk}')
-        dto = cls.maybe_detect_with_stop_words(field, doc, field_code_to_value)
-        if dto is not None:
-            return dto
 
         try:
             classifier_model = ClassifierModel.objects.get(document_field=field)
@@ -367,9 +336,6 @@ class FieldBasedMLWithUnsureCatFieldDetectionStrategy(FieldBasedMLOnlyFieldDetec
                            field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
 
         # If changing this code make sure you update similar code in notebooks/demo/Train and Debug Decision Tree...
-        detected_value = cls.maybe_detect_with_stop_words(field, doc, field_code_to_value)
-        if detected_value is not None:
-            return detected_value
 
         try:
             classifier_model = ClassifierModel.objects.get(document_field=field)  # type: ClassifierModel

@@ -36,9 +36,9 @@ from apps.task.tasks import purge_task
 from apps.users.models import CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,8 +65,9 @@ def cleanup_document_relations(document):
             purge_task(file_task.id, delete=False)
 
     # 3. Remove files
-    if file_storage.document_exists(document.source_path):
-        file_storage.delete_document(document.source_path)
+    if document.source_path:
+        if file_storage.document_exists(document.source_path):
+            file_storage.delete_document(document.source_path)
 
     # 4. Remove object permissions
     ctype = get_content_type(Document)

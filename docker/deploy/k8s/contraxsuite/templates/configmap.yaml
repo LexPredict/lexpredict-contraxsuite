@@ -13,12 +13,22 @@ metadata:
 
 apiVersion: v1
 data:
-  local_settings.py: {{ tpl (.Files.Get "files/local_settings.py") . | quote }}
+  local_settings.py: {{ tpl (.Files.Get "files/local_settings_celery.py") . | quote }}
 kind: ConfigMap
 metadata:
   namespace: {{ .Values.namespace}}
   creationTimestamp: null
-  name: local-settings-py-configmap
+  name: local-settings-celery
+---
+
+apiVersion: v1
+data:
+  local_settings.py: {{ tpl (.Files.Get "files/local_settings_websrv.py") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: local-settings-websrv
 
 ---
 
@@ -39,7 +49,7 @@ metadata:
 
 apiVersion: v1
 data:
-  config.yaml: {{ tpl (.Files.Get "files/config.yaml") . | quote }}
+  config.yaml: {{ tpl (.Files.Get "files/elastalert-config.yaml") . | quote }}
 kind: ConfigMap
 metadata:
   namespace: {{ .Values.namespace}}
@@ -61,7 +71,7 @@ metadata:
 
 apiVersion: v1
 data:
-  config.json: {{ tpl (.Files.Get "files/config.json") . | quote }}
+  config.json: {{ tpl (.Files.Get "files/elastalert-server-config.json") . | quote }}
 kind: ConfigMap
 metadata:
   namespace: {{ .Values.namespace}}
@@ -97,26 +107,22 @@ metadata:
 #contrax-kibana
 
 apiVersion: v1
-data:
-  kibana.yml: {{ tpl (.Files.Get "files/kibana.yml") . | quote }}
+data: 
+  kibana.yml: |
+    server.name: kibana
+    server.host: "0"
+    server.basePath: "/kibana"
+    server.rewriteBasePath: true
+    elasticsearch.hosts: [ "http://contrax-elasticsearch:9200" ]
+    elastalert-kibana-plugin.serverHost: "contrax-elastalert"
+    elastalert-kibana-plugin.serverPort: 3030
+  # kibana.yml: {{ tpl (.Files.Get "files/kibana.yml") . | quote }}
 kind: ConfigMap
 metadata:
   namespace: {{ .Values.namespace}}
   creationTimestamp: null
   name: contrax-kibana-conf-configmap
 
----
-
-#contrax-metricbeat
-
-apiVersion: v1
-data:
-  metricbeat.yml: {{ tpl (.Files.Get "files/metricbeat.yml") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: metricbeat-99b4e27a4f53a7c722f3e17e204d86c2
 
 ---
 
@@ -129,14 +135,19 @@ metadata:
   name: nginx-conf
 data:
   nginx.conf: {{ tpl (.Files.Get "files/nginx.conf") . | quote }}
-  cors_enable: {{ tpl (.Files.Get "files/cors_enable") . | quote }}
+  cors_enable: {{ tpl (.Files.Get "files/nginx/cors_enable") . | quote }}
+  cors_disable: {{ tpl (.Files.Get "files/nginx/cors_disable") . | quote }}
   default.conf: {{ tpl (.Files.Get "files/default.conf") . | quote }}
   internal.conf: {{ tpl (.Files.Get "files/internal.conf") . | quote }}
-  kibana_htpasswd: {{ tpl (.Files.Get "files/kibana_htpasswd") . | quote }}
-  mime.types: {{ tpl (.Files.Get "files/mime.types") . | quote }}
+  kibana_htpasswd: |
+    Administrator:$apr1$yc07e2od$U638sCmxqSKUcNSjfWoYU0
+  mime.types: {{ tpl (.Files.Get "files/nginx/mime.types") . | quote }}
   nginx-customer.conf: {{ tpl (.Files.Get "files/nginx-customer.conf") . | quote }}
   powa.conf: {{ tpl (.Files.Get "files/powa.conf") . | quote }}
-  uwsgi_params: {{ tpl (.Files.Get "files/uwsgi_params") . | quote }}
+  uwsgi_params: {{ tpl (.Files.Get "files/nginx/uwsgi_params") . | quote }}
+  .env: |
+    API_HOST={{ .Values.domain_name }}
+    WS_HOST={{ .Values.domain_name }}
 
 ---
 
@@ -163,3 +174,120 @@ metadata:
   namespace: {{ .Values.namespace}}
   creationTimestamp: null
   name: powa-web-configmap
+
+---
+
+# pgbouncer daphne
+apiVersion: v1
+data:
+  pgbouncer.ini: |
+    [databases]
+    contrax1 = host={{ .Values.pg_host_name }} port=5432 user={{ .Values.pg_user }} password={{ .Values.pg_password }} dbname={{ .Values.pg_db_name }}
+    [pgbouncer]
+    listen_addr = 0.0.0.0
+    listen_port = 5432
+    unix_socket_dir =
+    # user = postgres
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = session
+    max_client_conn = 1000
+    default_pool_size = 20
+    ignore_startup_parameters = extra_float_digits
+    application_name_add_host = 1
+    # Log settings
+    admin_users = contrax1
+    stats_users = contrax1
+    log_connections = 0
+    log_disconnections = 0
+    # Connection sanity checks, timeouts
+    server_reset_query = DISCARD ALL
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  name: pgbouncer-websrv-ini-configmap
+
+---
+
+# pgbouncer celery
+
+apiVersion: v1
+data:
+  pgbouncer.ini: |
+    [databases]
+    contrax1 = host={{ .Values.pg_host_name }} port=5432 user={{ .Values.pg_user }} password={{ .Values.pg_password }} dbname={{ .Values.pg_db_name }}
+    [pgbouncer]
+    listen_addr = 0.0.0.0
+    listen_port = 5432
+    unix_socket_dir =
+    # user = postgres
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = transaction
+    max_client_conn = 1000
+    default_pool_size = 150
+    ignore_startup_parameters = extra_float_digits
+    application_name_add_host = 1
+    # Log settings
+    admin_users = contrax1
+    stats_users = contrax1
+    log_connections = 0
+    log_disconnections = 0
+    # Connection sanity checks, timeouts
+    server_reset_query = DISCARD ALL
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: pgbouncer-celery-ini-configmap
+
+---
+
+# pgbouncer userlist.txt
+
+apiVersion: v1
+data:
+  userlist.txt: {{ tpl (.Files.Get "files/pgbouncer.userlist.txt") . | quote }}
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  creationTimestamp: null
+  name: userlist-txt-configmap
+
+{{ if eq .Values.pg_host_name "contrax-db" }}
+---
+#contrax-db
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace}}
+  name: postgres-conf
+data:
+  ####
+  - source: pg_${PG_CONFIG_VERSION}
+        target: /contraxsuite/postgresql.conf
+      - source: pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}
+        target: /contraxsuite/db-backup.sh
+      - source: pg_backup_cron_${PG_BACKUP_CRON_CONFIG_VERSION}
+        target: /etc/crontab
+      - source: pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}
+        target: /docker-entrypoint-initdb.d/postgres_init.sql
+  ####
+
+  postgesql.conf: {{ tpl (.Files.Get "files/postgresql.conf") . | quote }}
+  db-backup.sh: {{ tpl (.Files.Get "files/db-backup.sh") . | quote }}
+  pg_crontab: {{ tpl (.Files.Get "files/nginx/pg_backup_cron") . | quote }}
+  pg_init.sql: {{ tpl (.Files.Get "files/postgres_init.sql") . | quote }}
+  internal.conf: {{ tpl (.Files.Get "files/internal.conf") . | quote }}
+  kibana_htpasswd: |
+    Administrator:$apr1$yc07e2od$U638sCmxqSKUcNSjfWoYU0
+  mime.types: {{ tpl (.Files.Get "files/nginx/mime.types") . | quote }}
+  nginx-customer.conf: {{ tpl (.Files.Get "files/nginx-customer.conf") . | quote }}
+  powa.conf: {{ tpl (.Files.Get "files/powa.conf") . | quote }}
+  uwsgi_params: {{ tpl (.Files.Get "files/nginx/uwsgi_params") . | quote }}
+  .env: |
+    API_HOST={{ .Values.domain_name }}
+    WS_HOST={{ .Values.domain_name }}
+
+{{ end }}

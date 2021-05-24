@@ -37,9 +37,9 @@ from apps.deployment.models import Deployment
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,6 +69,5 @@ def usage_stats(_celery_task):
 
     if not resp or resp.status_code != 200:
         raise usage_stats.retry(countdown=60)
-    else:
-        d.last_report_date = now()
-        d.save()
+    d.last_report_date = now()
+    d.save()

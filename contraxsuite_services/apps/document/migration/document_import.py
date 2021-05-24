@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -151,9 +151,9 @@ class DocumentImporter:
         finally:
             rmtree(self.source_path)
 
-    def push(self, push_steps = 1):
+    def push(self, push_steps=1):
         if self.task:
-            for i in range(push_steps):
+            for _ in range(push_steps):
                 self.task.push()
 
     def unzip_files(self, source_path: str):
@@ -266,7 +266,7 @@ class DocumentImporter:
         'source_type', 'source_path', 'paragraphs', 'sentences',
         'title', 'document_type_id', 'project_id', 'status_id',
         'language', 'file_size', 'assign_date', 'delete_pending',
-        'processed', 'folder', 'document_class', 'fields_dirty'],
+        'processed', 'folder', 'document_class'],
         """
         mapping, doc_df = self.get_mapping_and_df('document_document')
 
@@ -700,8 +700,8 @@ class DocumentImporter:
                                                text_unit_b_id=unit_id_b).count():
                 return None
             record = TextUnitRelation()
-            record.text_unit_a_id=unit_id_a
-            record.text_unit_b_id=unit_id_b
+            record.text_unit_a_id = unit_id_a
+            record.text_unit_b_id = unit_id_b
             return record
 
         mapping = self.mappings.mapping_by_table['document_textunitrelation']  # type: TableExportMap
@@ -728,7 +728,7 @@ class DocumentImporter:
         doc.processed = values['processed'] == 't'
         doc.folder = values['folder']
         doc.document_class = values['document_class']
-        doc.fields_dirty = values['fields_dirty']
+        doc.document_contract_class = values.get('document_class', '')
         if not pd.isnull(values['assignee_id']):
             doc.assignee = self.target_user
         doc.source_path = values['source_path']

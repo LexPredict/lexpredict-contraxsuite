@@ -16,6 +16,10 @@ Name | Type | Description | Notes
 **JuniorReviewers** | **List&lt;int&gt;** |  | [optional] 
 **Type** | **string** |  | [optional] 
 **HideClauseReview** | **bool** |  | [optional] 
+**TermTags** | **List&lt;int&gt;** |  | [optional] 
+**CompanytypeTags** | **List&lt;int&gt;** |  | [optional] 
+**DocumentTransformer** | **int?** |  | [optional] 
+**TextUnitTransformer** | **int?** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

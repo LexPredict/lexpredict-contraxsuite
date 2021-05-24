@@ -57,6 +57,11 @@ systemctl daemon-reload
 service docker restart
 docker run hello-world
 
+crontab -l > mycron
+echo "00,30 * * * * docker system prune -fa" >> mycron
+crontab mycron
+rm mycron
+
 # Connect worker to cluster - replace token and IP with the ones returned from manager
 
 ${DOCKER_REGISTRY_LOGIN}

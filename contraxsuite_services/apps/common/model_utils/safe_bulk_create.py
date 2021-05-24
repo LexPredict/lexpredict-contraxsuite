@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -81,7 +81,7 @@ class SafeBulkCreate:
             return None
         match_str = match.group(0)[len('Key '):]
         match_str = match_str[:-len(' is not present')]
-        match_parts = [g for g in re.findall(r'\([^\)]+\)', match_str)]
+        match_parts = re.findall(r'\([^\)]+\)', match_str)
         if len(match_parts) != 2:
             return None
 
@@ -96,10 +96,10 @@ class SafeBulkCreate:
             try:
                 keys = key_value[0]
                 values = key_value[1]
-                for i in range(len(keys)):
+                for i, key in enumerate(keys):
                     # casting PK value to string is OK because our key is supposed to be
                     # either int or str
-                    obj_val = str(getattr(item, keys[i]))
+                    obj_val = str(getattr(item, key))
                     if obj_val != values[i]:
                         return False
                 return True

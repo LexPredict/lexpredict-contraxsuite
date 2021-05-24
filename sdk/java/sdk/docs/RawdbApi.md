@@ -309,7 +309,7 @@ Name | Type | Description  | Notes
 
 <a name="rawdbSocialAccountsGET"></a>
 # **rawdbSocialAccountsGET**
-> List&lt;Object&gt; rawdbSocialAccountsGET()
+> SocialAccountsResponse rawdbSocialAccountsGET()
 
 
 
@@ -336,7 +336,7 @@ public class Example {
 
     RawdbApi apiInstance = new RawdbApi(defaultClient);
     try {
-      List<Object> result = apiInstance.rawdbSocialAccountsGET();
+      SocialAccountsResponse result = apiInstance.rawdbSocialAccountsGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling RawdbApi#rawdbSocialAccountsGET");
@@ -354,7 +354,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 

@@ -24,14 +24,23 @@
 """
 # -*- coding: utf-8 -*-
 
+from allauth.utils import build_absolute_uri
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import password_validation
+from django.contrib.sites.shortcuts import get_current_site
 from django.utils.translation import ugettext as _
+from django.urls import reverse
+
+from allauth.account.forms import EmailAwarePasswordResetTokenGenerator
+from allauth.account.utils import user_pk_to_url_str, user_username, filter_users_by_email
+from allauth.account import app_settings
+from allauth.account.adapter import get_adapter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,3 +72,69 @@ class CustomSetPasswordForm(forms.Form):
         if commit:
             self.user.save()
         return self.user
+
+
+class CustomResetPasswordForm(forms.Form):
+    """
+    Overrides default django-allauth `ResetPasswordForm`.
+    """
+    email = forms.EmailField(
+        label=_("E-mail"),
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "type": "email",
+                "placeholder": _("E-mail address"),
+                "autocomplete": "email",
+            }
+        ),
+    )
+
+    def clean_email(self):
+        """
+        Same as default method.
+        """
+        email = self.cleaned_data["email"]
+        email = get_adapter().clean_email(email)
+        self.users = filter_users_by_email(email, is_active=True)
+        if not self.users:
+            raise forms.ValidationError(
+                _("The e-mail address is not assigned" " to any user account")
+            )
+        return self.cleaned_data["email"]
+
+    def save(self, request, **kwargs):
+        """
+        Overrides default method by adding
+        `support_email` and `site_name` to `context`.
+        """
+        from apps.common.app_vars import SUPPORT_EMAIL
+
+        current_site = get_current_site(request)
+        email = self.cleaned_data['email']
+        token_generator = kwargs.get('token_generator', EmailAwarePasswordResetTokenGenerator())
+
+        for user in self.users:
+            temp_key = token_generator.make_token(user)
+            # send the password reset email
+            path = reverse(
+                'account_reset_password_from_key',
+                kwargs=dict(uidb36=user_pk_to_url_str(user), key=temp_key),
+            )
+            url = build_absolute_uri(request, path)
+
+            context = {
+                'current_site': current_site,
+                'user': user,
+                'password_reset_url': url,
+                'request': request,
+                'support_email': SUPPORT_EMAIL.val(),
+                'site_name': settings.HOST_NAME,
+            }
+
+            if app_settings.AUTHENTICATION_METHOD != app_settings.AuthenticationMethod.EMAIL:
+                context['username'] = user_username(user)
+            get_adapter(request).send_mail(
+                'account/email/password_reset_key', email, context
+            )
+        return self.cleaned_data['email']

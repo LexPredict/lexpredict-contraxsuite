@@ -24,12 +24,16 @@
 """
 # -*- coding: utf-8 -*-
 
+from drf_braces.serializers.form_serializer import make_form_serializer_field
+from drf_braces.serializers.form_serializer import FormSerializer as BaseFormSerializer
 from rest_framework import serializers
 
+from apps.common.widgets import CustomLabelModelChoiceField, LTRCheckboxField
+
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -44,13 +48,11 @@ class WritableSerializerMethodField(serializers.Field):
         self.to_internal_method_name = to_internal_method_name
 
     def bind(self, field_name, parent):
-        retval = super().bind(field_name, parent)
+        super().bind(field_name, parent)
         if not self.to_repr_method_name:
             self.to_repr_method_name = f'get_{field_name}'
         if not self.to_internal_method_name:
             self.to_internal_method_name = f'deserialize_{field_name}'
-
-        return retval
 
     def to_internal_value(self, data):
         method = getattr(self.parent, self.to_internal_method_name)
@@ -59,3 +61,25 @@ class WritableSerializerMethodField(serializers.Field):
     def to_representation(self, value):
         method = getattr(self.parent, self.to_repr_method_name)
         return method(value)
+
+
+class FormSerializer(BaseFormSerializer):
+
+    def __init__(self, *args, **kwargs):
+        if 'form' in kwargs:
+            form = kwargs.pop('form')
+            self.Meta.form = form
+        super().__init__(*args, **kwargs)
+
+    class Meta:
+        form = True
+        field_mapping = {
+            LTRCheckboxField: make_form_serializer_field(serializers.BooleanField),
+            CustomLabelModelChoiceField: make_form_serializer_field(serializers.ChoiceField)
+        }
+
+    def _get_field_kwargs(self, form_field, serializer_field_class):
+        kwargs = super()._get_field_kwargs(form_field, serializer_field_class)
+        if isinstance(form_field, LTRCheckboxField):
+            kwargs.pop('default', None)
+        return kwargs

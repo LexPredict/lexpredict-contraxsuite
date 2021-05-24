@@ -1,40 +1,81 @@
-# apiVersion: batch/v1
-# kind: Job
-# metadata:
-#   namespace: {{ .Values.namespace}}
-#   name: "{{ .Release.Name }}"
-#   labels:
-#     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-#     app.kubernetes.io/instance: {{ .Release.Name | quote }}
-#     app.kubernetes.io/version: {{ .Chart.AppVersion }}
-#     helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-#   annotations:
-#     "helm.sh/hook": post-install, pre-upgrade, pre-rollback
-#     "helm.sh/hook-weight": "-5"
-#     "helm.sh/hook-delete-policy": hook-succeeded
-# spec:
-#   template:
-#     metadata:
-#       name: "{{ .Release.Name }}"
-#       labels:
-#         app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-#         app.kubernetes.io/instance: {{ .Release.Name | quote }}
-#         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-#     spec:
-#       restartPolicy: Never
-#       containers:
-#       - name: copy-frontend
-#         image: {{ .Values.docker_image}}
-#         command: ["/bin/bash","touch /contraxsuite_frontend_nginx_volume/index.html"]
-#         volumeMounts:
-#         - mountPath: /contraxsuite_frontend_nginx_volume
-#           name: contraxsuite-frontend-nginx-volume
-#           readOnly: false
-#       volumes:
-#       - name: contraxsuite-frontend-nginx-volume
-#         flexVolume:
-#           driver: ceph.rook.io/rook
-#           fsType: ceph
-#           options:
-#             fsName: nginxcephfs
-#             clusterNamespace: rook-ceph
+## tes-celery-worker
+#---
+#apiVersion: apps/v1
+#kind: Job
+#metadata:
+#  name: tes-celery-worker
+#  namespace: {{ .Values.namespace}}
+#spec:
+#  selector:
+#    matchLabels:
+#      app: contrax-text-extraction-system # has to match .spec.template.metadata.labels
+#  #serviceName: "tes-celery-worker"
+#  #replicas: 1 # by default is 1
+#  template:
+#    metadata:
+#      labels:
+#        app: contrax-text-extraction-system # has to match .spec.selector.matchLabels
+#    spec:
+#      tolerations:
+#        - key: "kubernetes.azure.com/scalesetpriority"
+#          operator: "Equal"
+#          value: "spot"
+#          effect: "NoSchedule"
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchExpressions:
+#                - key: "contraxsuite.com/role"
+#                  operator: In
+#                  values:
+#                  - worker
+#            topologyKey: "kubernetes.io/hostname"
+#      nodeSelector:
+#        contraxsuite.com/role: worker
+#      terminationGracePeriodSeconds: 60
+#      containers:
+#      - args: 
+#        - celery-worker
+#        env:
+#        - name: text_extraction_system_celery_broker
+#          value: redis://contrax-redis:6379/8
+#        - name: text_extraction_system_celery_backend
+#          value: redis://contrax-redis:6379/8
+#        - name: text_extraction_system_webdav_url
+#          value: http://contrax-tes-webdav:80
+#        - name: text_extraction_system_webdav_username
+#          value: {{.Values.tes_webdav_username}}
+#        - name: text_extraction_system_webdav_password
+#          value: {{.Values.tes_webdav_password}}
+#        - name: text_extraction_system_delete_temp_files_on_request_finish
+#          value: "true"
+#        - name: text_extraction_system_keep_failed_files
+#          value: "true"
+#        name: lexpredict-text-extraction-system
+#        image: {{ .Values.docker_tes_image }}
+#        lifecycle:
+#          preStop:
+#            exec:
+#              command: ["/bin/sh","-c","/bin/sleep 1; kill -QUIT 1"]
+#        resources:
+#          limits:
+#            cpu: {{ .Values.tes_cpu_limit }}
+#          requests:
+#            cpu: {{ .Values.tes_cpu_request }}
+#        volumeMounts:
+#        # - name: lexpredict-text-extraction-system-pvc
+#        #   mountPath: /data/celery_worker_state
+#        - name: local-settings-py
+#          mountPath: /contraxsuite_services/local_settings.py
+#          subPath: local_settings.py
+#      initContainers:
+#      - name: daphne-waiter
+#        image: {{ .Values.docker_tes_image }}
+#        command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+#      volumes:
+#      - name: local-settings-py
+#        configMap:
+#          name: local-settings-celery
+#      imagePullSecrets:
+#      - name: contraxsuitesecret

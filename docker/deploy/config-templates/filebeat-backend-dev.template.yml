@@ -1,0 +1,32 @@
+filebeat.inputs:
+- type: log
+  paths:
+    - "/hostfs${PROJECT_ROOT}/contraxsuite_services/logs/*.log_json"
+    - "/hostfs${PROJECT_ROOT}/contraxsuite_services/logs/*.log_json.*"
+  json.keys_under_root: true
+  json.add_error_key: true
+  json.message_key: message
+
+# If changing index names here - don't forget to change them in settings.py.
+# Celery task logs are loaded in Django UI by requesting Elasticsearch
+# with index pattern specified in settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE
+
+output.elasticsearch:
+  hosts: ["http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}"]
+  index: "filebeat-%{[special_log_type]:logs}-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+setup.dashboards.index: "filebeat-*"
+setup.template.overwrite: true
+
+setup.dashboards.enabled: true
+
+setup.kibana.host: "contrax-kibana"
+setup.kibana.protocol: "http"
+#setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"
+
+logging.metrics.enabled: false
+logging.level: info
+logging.to_files: true
+logging.to_syslog: false

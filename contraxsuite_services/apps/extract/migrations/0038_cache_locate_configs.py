@@ -15,10 +15,6 @@ def cache_geo_config(apps, schema_editor):
     dict_data_cache.cache_geo_config()
 
 
-def cache_term_stems(apps, schema_editor):
-    dict_data_cache.cache_term_stems()
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ('extract', '0037_geoentity_priority'),
@@ -27,5 +23,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(cache_court_config),
         migrations.RunPython(cache_geo_config),
-        migrations.RunPython(cache_term_stems),
     ]

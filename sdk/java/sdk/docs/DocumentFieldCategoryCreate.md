@@ -2,6 +2,7 @@
 
 # DocumentFieldCategoryCreate
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -10,7 +11,7 @@ Name | Type | Description | Notes
 **documentType** | **String** |  | 
 **name** | **String** |  | 
 **order** | **Integer** |  | 
-**fields** | **List&lt;Object&gt;** |  |  [optional] [readonly]
+**fields** | **List&lt;String&gt;** |  |  [optional] [readonly]
 **fieldsNumber** | **Integer** |  |  [optional] [readonly]
 
 

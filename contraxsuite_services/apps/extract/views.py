@@ -42,7 +42,7 @@ import icalendar
 from django.contrib.auth import authenticate
 from django.db.models import Count, F, Max, Min, Sum, Q, Value, Subquery, QuerySet
 from django.db.models.functions import TruncMonth, TruncYear, Left, Concat
-from django.http import Http404, HttpResponseForbidden, HttpResponse
+from django.http import Http404, HttpResponseForbidden, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.generic import DetailView, TemplateView
@@ -60,9 +60,9 @@ from apps.extract.models import (
     ProjectTermUsage, ProjectPartyUsage, ProjectGeoEntityUsage, ProjectDefinitionUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,7 +77,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
     document_lookup = 'document'
     field_types = dict(count=int)
     highlight_field = ''
-    extra_item_map = dict()
+    extra_item_map = {}
     search_field = ''
     annotate_after_filter = dict(
         text_unit__textunittext__text=Left('text_unit__textunittext__text', 300)
@@ -125,7 +125,7 @@ class BaseDocUsageListView(apps.common.mixins.JqPaginatedListView):
     document_lookup = 'document'
     field_types = dict(count=int)
     highlight_field = ''
-    extra_item_map = dict()
+    extra_item_map = {}
     search_field = ''
 
     def get_json_data(self, **kwargs):
@@ -278,7 +278,7 @@ class BaseTextUnitUsageListView(apps.common.mixins.JqPaginatedListView):
                    'language',
                    'pk']
     highlight_field = ''
-    extra_item_map = dict()
+    extra_item_map = {}
     search_field = ''
 
     filter_field_name = ''  # should be derived in descendant
@@ -441,10 +441,10 @@ class TextUnitTermUsageListView(BaseTextUnitUsageListView):
 
         if wheres:
             inner_query = inner_query + ' WHERE'
-            for i in range(len(wheres)):
+            for i, where in enumerate(wheres):
                 if i > 0:
-                    inner_query += f' {wheres[i][1]}'  # AND, OR
-                inner_query += f' {wheres[i][0]}'
+                    inner_query += f' {where[1]}'  # AND, OR
+                inner_query += f' {where[0]}'
 
         full_query = f'SELECT COUNT(text_unit_id) FROM ({inner_query} LIMIT 1000) AS temp;'
         qs.set_optional_count_query(full_query)
@@ -904,7 +904,7 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
                 reverse('extract:date-usage-list'), item['date'].isoformat())
 
         return {'data': data,
-                'years': sorted(set([i['date'].year for i in data]))}
+                'years': sorted({i['date'].year for i in data})}
 
 
 class DateDurationUsageListView(BaseUsageListView):
@@ -1533,9 +1533,7 @@ class TermSearchView(apps.common.mixins.JSONResponseView):
         password = request.POST.get('password')
         user = authenticate(username=username, password=password)
         if not user:
-            return HttpResponse('Wrong username or password.',
-                                content_type="application/json",
-                                status=401)
+            return JsonResponse('Wrong username or password.', status=401)
         request.user = user
         return super().post(request, *args, **kwargs)
 

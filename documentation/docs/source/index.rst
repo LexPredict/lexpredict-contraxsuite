@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. |version| replace:: 1.6.0
+.. |version| replace:: 2.0
 
 Introduction to ContraxSuite Documentation |version|
 ====================================================
@@ -24,62 +24,6 @@ ContraxSuite can help organizations across a wide range of problems, including:
 Learn more about these and other ContraxSuite use cases by `visiting our website <https://contraxsuite.com>`_.
 
 .. toctree::
-   :titlesonly:
-   :maxdepth: 1
-   :hidden:
-   :caption: Introduction
-
-   introduction/overview
-   introduction/pricing_support
-   introduction/intro_legal_analytics
-
-.. toctree::
-    :titlesonly:
-    :maxdepth: 1
-    :hidden:
-    :caption: Getting Started
-
-    configuration/setup
-    configuration/install
-    configuration/core_concepts
-
-.. toctree::
-    :titlesonly:
-    :hidden:
-    :caption: Using CxS - Reviewers
-    :maxdepth: 1
-
-    user_guides/reviewers/create_manage
-    user_guides/reviewers/batch_analysis
-    user_guides/reviewers/contract_analysis
-
-.. toctree::
-    :titlesonly:
-    :hidden:
-    :caption: Using CxS - Power Users
-    :maxdepth: 1
-
-    user_guides/cxs_roles
-    user_guides/power_users/create_document_type
-    user_guides/power_users/create_document_field
-    user_guides/power_users/create_field_detectors
-    user_guides/power_users/field_detection_examples
-    user_guides/power_users/writing_formulas
-    user_guides/doc_type_migration
-    user_guides/power_users/import_jupyter_notebooks
-
-.. toctree::
-    :titlesonly:
-    :hidden:
-    :caption: Using CxS - Document Explorer
-    :maxdepth: 1
-
-    user_guides/doc_exp/intro
-    user_guides/doc_exp/documents
-    user_guides/doc_exp/text_units
-    user_guides/doc_exp/admin
-
-.. toctree::
     :titlesonly:
     :maxdepth: 1
     :hidden:
@@ -87,3 +31,15 @@ Learn more about these and other ContraxSuite use cases by `visiting our website
     :glob:
 
     api/contraxsuite_orm/*
+
+.. toctree::
+    :titlesonly:
+    :maxdepth: 1
+    :hidden:
+    :caption: Additional Links
+
+    Documentation Center <https://publicdocs.contraxsuite.com>
+    ContraxSuite Technical Documentation <https://publicdocs.contraxsuite.com>
+    LexNLP <https://publicdocs.contraxsuite.com/lexnlp/index.html>
+    ContraxSuite Homepage <https://www.contraxsuite.com>
+    LexPredict Blog <https://www.lexpredict.com/blog>

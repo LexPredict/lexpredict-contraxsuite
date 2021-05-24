@@ -43,6 +43,7 @@ Method | HTTP request | Description
 [**extractRatioUsageTopGET**](ExtractApi.md#extractRatioUsageTopGET) | **GET** /api/v1/extract/ratio-usage/top/ | 
 [**extractRegulationUsageGET**](ExtractApi.md#extractRegulationUsageGET) | **GET** /api/v1/extract/regulation-usage/ | 
 [**extractRegulationUsageTopGET**](ExtractApi.md#extractRegulationUsageTopGET) | **GET** /api/v1/extract/regulation-usage/top/ | 
+[**extractTermTagsGET**](ExtractApi.md#extractTermTagsGET) | **GET** /api/v1/extract/term-tags/ | 
 [**extractTermUsageGET**](ExtractApi.md#extractTermUsageGET) | **GET** /api/v1/extract/term-usage/ | 
 [**extractTermUsageTopGET**](ExtractApi.md#extractTermUsageTopGET) | **GET** /api/v1/extract/term-usage/top/ | 
 [**extractTrademarkUsageGET**](ExtractApi.md#extractTrademarkUsageGET) | **GET** /api/v1/extract/trademark-usage/ | 
@@ -125,7 +126,7 @@ Name | Type | Description  | Notes
 
 <a name="extractAmountUsageTopGET"></a>
 # **extractAmountUsageTopGET**
-> List&lt;Object&gt; extractAmountUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractAmountUsageTopGET()
 
 
 
@@ -153,9 +154,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractAmountUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractAmountUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractAmountUsageTopGET");
@@ -169,14 +169,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -263,7 +260,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCitationUsageTopGET"></a>
 # **extractCitationUsageTopGET**
-> List&lt;Object&gt; extractCitationUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCitationUsageTopGET()
 
 
 
@@ -291,9 +288,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCitationUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCitationUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractCitationUsageTopGET");
@@ -307,14 +303,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -401,7 +394,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCopyrightUsageTopGET"></a>
 # **extractCopyrightUsageTopGET**
-> List&lt;Object&gt; extractCopyrightUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCopyrightUsageTopGET()
 
 
 
@@ -429,9 +422,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCopyrightUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCopyrightUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractCopyrightUsageTopGET");
@@ -445,14 +437,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -539,7 +528,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCourtUsageTopGET"></a>
 # **extractCourtUsageTopGET**
-> List&lt;Object&gt; extractCourtUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCourtUsageTopGET()
 
 
 
@@ -567,9 +556,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCourtUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCourtUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractCourtUsageTopGET");
@@ -583,14 +571,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -677,7 +662,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCurrencyUsageTopGET"></a>
 # **extractCurrencyUsageTopGET**
-> List&lt;Object&gt; extractCurrencyUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCurrencyUsageTopGET()
 
 
 
@@ -705,9 +690,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCurrencyUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCurrencyUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractCurrencyUsageTopGET");
@@ -721,14 +705,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -815,7 +796,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDateDurationUsageTopGET"></a>
 # **extractDateDurationUsageTopGET**
-> List&lt;Object&gt; extractDateDurationUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDateDurationUsageTopGET()
 
 
 
@@ -843,9 +824,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDateDurationUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDateDurationUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractDateDurationUsageTopGET");
@@ -859,14 +839,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -1152,7 +1129,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDateUsageTopGET"></a>
 # **extractDateUsageTopGET**
-> List&lt;Object&gt; extractDateUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDateUsageTopGET()
 
 
 
@@ -1180,9 +1157,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDateUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDateUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractDateUsageTopGET");
@@ -1196,14 +1172,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -1290,7 +1263,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDefinitionUsageTopGET"></a>
 # **extractDefinitionUsageTopGET**
-> List&lt;Object&gt; extractDefinitionUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDefinitionUsageTopGET()
 
 
 
@@ -1318,9 +1291,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDefinitionUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDefinitionUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractDefinitionUsageTopGET");
@@ -1334,14 +1306,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -1428,7 +1397,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDistanceUsageTopGET"></a>
 # **extractDistanceUsageTopGET**
-> List&lt;Object&gt; extractDistanceUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDistanceUsageTopGET()
 
 
 
@@ -1456,9 +1425,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDistanceUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDistanceUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractDistanceUsageTopGET");
@@ -1472,14 +1440,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -1566,7 +1531,7 @@ Name | Type | Description  | Notes
 
 <a name="extractGeoAliasUsageTopGET"></a>
 # **extractGeoAliasUsageTopGET**
-> List&lt;Object&gt; extractGeoAliasUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractGeoAliasUsageTopGET()
 
 
 
@@ -1594,9 +1559,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractGeoAliasUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractGeoAliasUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractGeoAliasUsageTopGET");
@@ -1610,14 +1574,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -1915,7 +1876,7 @@ Name | Type | Description  | Notes
 
 <a name="extractGeoEntityUsageTopGET"></a>
 # **extractGeoEntityUsageTopGET**
-> List&lt;Object&gt; extractGeoEntityUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractGeoEntityUsageTopGET()
 
 
 
@@ -1943,9 +1904,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractGeoEntityUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractGeoEntityUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractGeoEntityUsageTopGET");
@@ -1959,14 +1919,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -2262,7 +2219,7 @@ Name | Type | Description  | Notes
 
 <a name="extractPartyUsageTopGET"></a>
 # **extractPartyUsageTopGET**
-> List&lt;Object&gt; extractPartyUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractPartyUsageTopGET()
 
 
 
@@ -2290,9 +2247,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractPartyUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractPartyUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractPartyUsageTopGET");
@@ -2306,14 +2262,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -2400,7 +2353,7 @@ Name | Type | Description  | Notes
 
 <a name="extractPercentUsageTopGET"></a>
 # **extractPercentUsageTopGET**
-> List&lt;Object&gt; extractPercentUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractPercentUsageTopGET()
 
 
 
@@ -2428,9 +2381,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractPercentUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractPercentUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractPercentUsageTopGET");
@@ -2444,14 +2396,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -2538,7 +2487,7 @@ Name | Type | Description  | Notes
 
 <a name="extractRatioUsageTopGET"></a>
 # **extractRatioUsageTopGET**
-> List&lt;Object&gt; extractRatioUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractRatioUsageTopGET()
 
 
 
@@ -2566,9 +2515,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractRatioUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractRatioUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractRatioUsageTopGET");
@@ -2582,14 +2530,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -2676,7 +2621,7 @@ Name | Type | Description  | Notes
 
 <a name="extractRegulationUsageTopGET"></a>
 # **extractRegulationUsageTopGET**
-> List&lt;Object&gt; extractRegulationUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractRegulationUsageTopGET()
 
 
 
@@ -2704,12 +2649,75 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractRegulationUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractRegulationUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractRegulationUsageTopGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="extractTermTagsGET"></a>
+# **extractTermTagsGET**
+> List&lt;TermTag&gt; extractTermTagsGET(jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ExtractApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ExtractApi apiInstance = new ExtractApi(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<TermTag> result = apiInstance.extractTermTagsGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ExtractApi#extractTermTagsGET");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -2727,7 +2735,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;TermTag&gt;**](TermTag.md)
 
 ### Authorization
 
@@ -2814,7 +2822,7 @@ Name | Type | Description  | Notes
 
 <a name="extractTermUsageTopGET"></a>
 # **extractTermUsageTopGET**
-> List&lt;Object&gt; extractTermUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractTermUsageTopGET()
 
 
 
@@ -2842,9 +2850,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractTermUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractTermUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractTermUsageTopGET");
@@ -2858,14 +2865,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -2952,7 +2956,7 @@ Name | Type | Description  | Notes
 
 <a name="extractTrademarkUsageTopGET"></a>
 # **extractTrademarkUsageTopGET**
-> List&lt;Object&gt; extractTrademarkUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractTrademarkUsageTopGET()
 
 
 
@@ -2980,9 +2984,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractTrademarkUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractTrademarkUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractTrademarkUsageTopGET");
@@ -2996,14 +2999,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -3297,7 +3297,7 @@ Name | Type | Description  | Notes
 
 <a name="extractUrlUsageTopGET"></a>
 # **extractUrlUsageTopGET**
-> List&lt;Object&gt; extractUrlUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractUrlUsageTopGET()
 
 
 
@@ -3325,9 +3325,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     ExtractApi apiInstance = new ExtractApi(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractUrlUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractUrlUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ExtractApi#extractUrlUsageTopGET");
@@ -3341,14 +3340,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 

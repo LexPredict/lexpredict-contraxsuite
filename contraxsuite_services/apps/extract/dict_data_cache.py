@@ -25,31 +25,31 @@
 # -*- coding: utf-8 -*-
 
 import logging
-
-from django.db.models import F, Value
-from django.db.models.functions import Concat
+from typing import Dict, List, Optional
 
 from lexnlp.extract.en import dict_entities
-from lexnlp.nlp.en.tokens import get_stems
+from lexnlp.extract.en.dict_entities import DictionaryEntry
 
 from apps.common import redis
-from apps.common.db_cache.db_cache import DbCache
-from apps.extract.models import GeoEntity, GeoAlias, Court, Term, Party
-from apps.project.models import ProjectTermConfiguration
+from apps.extract.models import GeoEntity, GeoAlias, Court
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 CACHE_KEY_GEO_CONFIG = 'geo_config'
 CACHE_KEY_COURT_CONFIG = 'court_config'
-CACHE_KEY_TERM_STEMS = 'term_stems'
-CACHE_KEY_TERM_STEMS_PROJECT_PTN = '%s_project_{}' % CACHE_KEY_TERM_STEMS
 CACHE_KEY_PARTY_CONFIG = 'party_config'
+
+
+# local cache for geo-entity configuration
+# key: "cache context" id
+# value: the same data we store in redis[CACHE_KEY_GEO_CONFIG]
+LOCAL_GEO_CONFIG: Dict[str, List[DictionaryEntry]] = {}
 
 
 def cache_geo_config():
@@ -73,14 +73,30 @@ def cache_geo_config():
     return res
 
 
-def get_geo_config():
-    # return DbCache.get(CACHE_KEY_GEO_CONFIG)
+def clean_geo_config_cache(cache_context_id: Optional[str] = None, clean_all: bool = False):
+    global LOCAL_GEO_CONFIG
+    if clean_all:
+        LOCAL_GEO_CONFIG = {}
+        return
+    if cache_context_id in LOCAL_GEO_CONFIG:
+        del LOCAL_GEO_CONFIG[cache_context_id]
+
+
+def get_geo_config(cache_context_id: Optional[str] = None):
+    if cache_context_id:
+        if cache_context_id in LOCAL_GEO_CONFIG:
+            return LOCAL_GEO_CONFIG[cache_context_id]
 
     config = redis.pop(CACHE_KEY_GEO_CONFIG)
     if config:
+        if cache_context_id:
+            LOCAL_GEO_CONFIG[cache_context_id] = config
         return config
     # either it doesn't exist OR it's empty
-    return cache_geo_config()
+    config = cache_geo_config()
+    if cache_context_id:
+        LOCAL_GEO_CONFIG[cache_context_id] = config
+    return config
 
 
 def cache_court_config():
@@ -104,55 +120,6 @@ def get_court_config():
         return config
     # either it doesn't exist OR it's empty
     return cache_court_config()
-
-
-def cache_term_stems(project_id=None):
-    term_stems = {}
-
-    terms_qs = Term.objects
-    key = CACHE_KEY_TERM_STEMS
-
-    if project_id is not None:
-        qs = ProjectTermConfiguration.objects.filter(project_id=project_id)
-        if qs.exists():
-            terms_qs = qs.last().terms
-            key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
-
-    for t, pk in terms_qs.values_list('term', 'pk'):
-        stemmed_term = ' %s ' % ' '.join(get_stems(t))
-        stemmed_item = term_stems.get(stemmed_term, [])
-        stemmed_item.append([t, pk])
-        term_stems[stemmed_term] = stemmed_item
-    for item in term_stems:
-        term_stems[item] = dict(values=term_stems[item],
-                                length=len(term_stems[item]))
-
-    # DbCache.put_to_db(key, term_stems)
-    redis.push(key, term_stems)
-    return term_stems
-
-
-def get_term_config(project_id=None):
-    # res = None
-    # if project_id is not None:
-    #     key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
-    #     res = DbCache.get(key)
-    # if res is None:
-    #     res = DbCache.get(CACHE_KEY_TERM_STEMS)
-    # return res
-
-    # 1. if project config needed
-    if project_id is not None:
-        key = CACHE_KEY_TERM_STEMS_PROJECT_PTN.format(project_id)
-        config = redis.pop(key)
-        # 1.1. if project config exists
-        if config:
-            return config
-    # 2. either for global config or if project config requested, but it doesn't exist or empty
-    config = redis.pop(CACHE_KEY_TERM_STEMS)
-    if config:
-        return config
-    return cache_term_stems()
 
 
 # def cache_party_config():
@@ -183,14 +150,6 @@ def init_config_cache():
 
     cache_court_config()
     print('Cached Courts config')
-
-    cache_term_stems()
-    print('Cached Terms config')
-
-    from apps.project.models import ProjectTermConfiguration
-    for project_id in ProjectTermConfiguration.objects.values_list('project_id', flat=True):
-        get_term_config(project_id)
-        print(f'Cached Terms config for project_id={project_id}')
 
     # cache_party_config()
     # print('Cached Parties config')

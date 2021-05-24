@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -38,12 +38,12 @@ from typing import List, Dict
 import pandas as pd
 from django.utils.timezone import now
 
+from apps.common.logger import CsLogger
 from apps.common.models import ObjectStorage
 from apps.common.singleton import Singleton
-from apps.task.utils.logger import get_django_logger
 
 
-logger = get_django_logger()
+logger = CsLogger.get_django_logger()
 
 
 class LocatingPerformanceRecord:
@@ -91,8 +91,7 @@ class LocatingPerformanceMeter:
             records = pickle.loads(collections.data)
             return records
         except Exception as e:
-            logger.error(f'Error in LocatingPerformanceMeter.init_collections() ' +
-                         f'(unpickle data): {e}')
+            logger.error(f'Error in LocatingPerformanceMeter.init_collections() (unpickle data): {e}')
         return None
 
     def clear_collections(self):
@@ -103,8 +102,8 @@ class LocatingPerformanceMeter:
                           new_col: Dict[str, List[LocatingPerformanceRecord]]) -> \
             Dict[str, List[LocatingPerformanceRecord]]:
         merged_col = {}  # type: Dict[str, List[LocatingPerformanceRecord]]
-        keys = {k for k in stor_col}
-        keys.update({k for k in new_col})
+        keys = set(stor_col)
+        keys.update(set(new_col))
         for key in keys:
             if key not in new_col:
                 merged_col[key] = stor_col[key]
@@ -162,7 +161,7 @@ class LocatingPerformanceMeter:
 
         top_records = []  # type: List[LocatingPerformanceRecord]
         for locator in self.records_by_locator:
-            top_records += [r for r in self.records_by_locator[locator]]
+            top_records += self.records_by_locator[locator]
         if top_type == self.TOP_ABSOLUTE:
             top_records.sort(key=lambda r: -r.duration)
         else:
@@ -201,14 +200,12 @@ class LocatingPerformanceMeter:
                 LocatingPerformanceRecord.get_text_hash(text))
         # add to the list or replace existing record
         same_worse_text_record, same_better_text_record = -1, -1
-        for i in range(len(records)):
-            r = records[i]
+        for i, r in enumerate(records):
             if r.text_hash == new_record.text_hash:
                 if r.duration < new_record.duration:
                     same_better_text_record = i
                     break
-                else:
-                    same_worse_text_record = i
+                same_worse_text_record = i
         if same_better_text_record >= 0:
             records[same_better_text_record] = new_record
         elif same_worse_text_record >= 0:

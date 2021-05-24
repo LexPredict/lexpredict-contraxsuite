@@ -1,5 +1,6 @@
 # RawdbDocumentsPOSTRequest
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
@@ -16,7 +17,7 @@ Name | Type | Description | Notes
 **return_total** | **bool** |  | [optional] 
 **return_data** | **bool** |  | [optional] 
 **ignore_errors** | **bool** |  | [optional] 
-**filters** | **dict(str, str)** |  | [optional] 
+**filters** | **{str: (str,)}** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

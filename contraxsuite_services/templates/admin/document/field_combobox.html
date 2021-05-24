@@ -1,0 +1,106 @@
+<script type="text/javascript">
+    function FieldFilter(settings) {
+      this.listItemsCount = 0;
+      this.itemsUpdated = false;
+
+      this.fieldsByDoctype = settings.fieldsByDoctype;
+      this.mainSelect = settings.mainSelect;
+      this.sourceSelectList = settings.sourceSelectList;
+      this.destSelectList = settings.destSelectList;
+      this.shouldMonitorItemsChanged = settings.shouldMonitorItemsChanged;
+      this.shouldCheckSelectedValue = settings.shouldCheckSelectedValue;
+      this.lastSelectedValue = null;
+      this.onValueChanged = settings.onValueChanged;
+
+      this.filterOnLoad();
+      var that = this;
+      $(this.mainSelect).on('change', function () {
+        that.onDocTypeChange();
+      });
+
+      var selectedDocType = $(this.mainSelect).val();
+      if (selectedDocType != this.lastSelectedValue)
+          if (this.onValueChanged)
+              this.onValueChanged(selectedDocType, true);
+    }
+
+    FieldFilter.prototype.filterOnLoad = function () {
+      var that = this;
+      if (that.itemsUpdated) return;
+      that.onDocTypeChange();
+      if (that.itemsUpdated) {
+        if (that.shouldMonitorItemsChanged)
+          that.monitorItemsChanges();
+        return;
+      }
+      window.setTimeout(function() {
+        that.filterOnLoad();
+      }, 500);
+    }
+
+    FieldFilter.prototype.monitorItemsChanges = function () {
+      var that = this;
+      window.setInterval(function() {
+        that.onDocTypeChange();
+      }, 600);
+    }
+
+    FieldFilter.prototype.onDocTypeChange = function() {
+      var selectedDocType = $(this.mainSelect).val();
+      if (selectedDocType != this.lastSelectedValue) {
+          if (this.onValueChanged)
+              this.onValueChanged(selectedDocType, false);
+          this.lastSelectedValue = selectedDocType;
+      }
+      var enabledOptions = selectedDocType ? this.fieldsByDoctype[selectedDocType] : null;
+      enabledOptions = typeof(enabledOptions) === 'undefined' ? [] : enabledOptions;
+      var enabledFields = null;
+      if (enabledOptions) {
+        enabledFields = {};
+        for (var i = 0; i < enabledOptions.length; i++)
+          enabledFields[enabledOptions[i]] = 1;
+      }
+
+      // filter dep field selectors
+      if (this.sourceSelectList)
+          this.adjustListItems(this.sourceSelectList, enabledFields,
+            function (itm) { itm.show(); },
+            function (itm) { itm.hide(); });
+      if (this.destSelectList)
+          this.adjustListItems(this.destSelectList, enabledFields,
+            function (itm) { itm.css('color', 'black'); },
+            function (itm) { itm.css('color', 'red'); });
+    }
+
+    FieldFilter.prototype.adjustListItems = function (
+        listId, enabledFields, actionOk, actionProhibited) {
+
+      var that = this;
+      var enabledOption = null;
+      var selectionWasCancelled = false;
+      $('select#' + listId + ' > option').each(function() {
+          // list contains at least one item - it's been populated
+          that.itemsUpdated = true;
+          var isSelected = $(this)[0].hasAttribute('selected');
+          var isEnabled = 1;
+          if (enabledFields)
+            isEnabled = !this.value || enabledFields[this.value];
+          if (isSelected)
+             var optText = $(this).text();
+          if (isEnabled) {
+            enabledOption = $(this);
+            actionOk($(this));
+          }
+          else {
+            actionProhibited($(this));
+            if (isSelected) {
+                $(this).removeAttr('selected');
+                selectionWasCancelled = true;
+            }
+          }
+      });
+      if (this.shouldCheckSelectedValue) {
+        $('select#' + listId).val(enabledOption.text());
+      }
+    }
+</script>

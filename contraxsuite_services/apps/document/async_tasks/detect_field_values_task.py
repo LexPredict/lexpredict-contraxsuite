@@ -24,20 +24,23 @@
 """
 # -*- coding: utf-8 -*-
 
+from typing import Dict, Any
+
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
 from psycopg2._psycopg import InterfaceError, OperationalError
 
-import settings
+from django.conf import settings
+
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.detect_field_values_params import DocDetectFieldValuesParams
 from apps.document.models import DocumentType, Document
 from apps.task.tasks import ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,7 +82,7 @@ class DetectFieldValues(ExtendedTask):
                                                 skip_modified_values=do_not_run_for_modified_documents)
             self.run_sub_tasks('Detect Field Values For Single Document',
                                DetectFieldValues.detect_field_values_for_document,
-                               [(dcptrs,)])
+                               [(dcptrs.to_dict(),)])
             self.push()
             return
 
@@ -113,7 +116,7 @@ class DetectFieldValues(ExtendedTask):
                                                 do_not_write,
                                                 kwargs.get('clear_old_values') or True,
                                                 skip_modified_values=do_not_run_for_modified_documents)
-            detect_field_values_for_document_args.append((dcptrs,))
+            detect_field_values_for_document_args.append((dcptrs.to_dict(),))
             if source:
                 source_data.append('{0}/{1}'.format(source, name))
             else:
@@ -137,7 +140,8 @@ class DetectFieldValues(ExtendedTask):
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3)
     def detect_field_values_for_document(task: ExtendedTask,
-                                         detect_ptrs: DocDetectFieldValuesParams):
+                                         detect_ptrs: Dict[str, Any]):
+        detect_ptrs = DocDetectFieldValuesParams.wrap(detect_ptrs)
         doc = Document.all_objects.get(pk=detect_ptrs.document_id)
         log = CeleryTaskLogger(task)
 

@@ -2,6 +2,7 @@
 
 # DocumentFieldCategoryList
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -13,7 +14,7 @@ Name | Type | Description | Notes
 **order** | **Integer** |  |  [optional]
 **fields** | [**List&lt;DocumentFieldCategoryListFields&gt;**](DocumentFieldCategoryListFields.md) |  | 
 **fieldsNumber** | **Integer** |  | 
-**exportKey** | [**UUID**](UUID.md) |  |  [optional]
+**exportKey** | **UUID** |  |  [optional]
 
 
 

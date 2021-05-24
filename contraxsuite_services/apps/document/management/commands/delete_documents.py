@@ -28,9 +28,9 @@ import datetime
 from django.core.management import BaseCommand
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,11 +52,16 @@ class Command(BaseCommand):
         parser.add_argument('-s', '--safe', nargs='?', type=bool, required=False, default=False)
 
     def handle(self, *args, **options):
+        def log_error(message, exc_info: Exception = None, **kwargs):
+            if exc_info:
+                print(message + '. Exception:\n' + str(exc_info))
+            else:
+                print(message)
         ids = options.get('ids') or []
         safe_mode = options.get('safe') or False
         from apps.document.tasks import DeleteDocuments
         start = datetime.datetime.now()
         delete_task = DeleteDocuments()
-        delete_task.process(_document_ids=ids, _safe_mode=safe_mode)
+        delete_task.process(_document_ids=ids, _safe_mode=safe_mode, log_error=log_error)
         time_elapsed = (datetime.datetime.now() - start).total_seconds()
         self.stdout.write(f'Deleting {len(ids)} document(s) took {time_elapsed} s.')

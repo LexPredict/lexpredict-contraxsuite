@@ -24,14 +24,13 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Optional, List, Dict, Tuple, Iterable, Any
+from typing import Optional, List, Dict, Tuple, Any
 
 import pandas as pd
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F, Value, IntegerField, Q, Subquery
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
@@ -42,22 +41,19 @@ from apps.common.log_utils import ProcessLogger
 from apps.document.field_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.field_detection.field_detection_repository import FieldDetectionRepository
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
-from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy
-from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.field_detection.text_based_ml import SkLearnClassifierModel, encode_category, \
     parse_category, word_position_tokenizer
 from apps.document.field_types import TypedField, MultiValueField
-from apps.document.models import ClassifierModel, ExternalFieldValue, TextUnit, \
-    DocumentField, DocumentType
-from apps.document.models import Document, FieldAnnotation
+from apps.document.models import ClassifierModel, ExternalFieldValue, TextUnit, DocumentField, DocumentType, \
+    Document, FieldAnnotation
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
 from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -132,7 +128,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
 
         res_df = pd.DataFrame()
 
-        for group_index, group_df in df.groupby('target_index'):
+        for _, group_df in df.groupby('target_index'):
             if group_df.shape[0] > settings.ML_TRAIN_DATA_SET_GROUP_LEN:
                 group_df = shuffle(
                     group_df.sort_values('user_input', ascending=False)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
@@ -147,6 +143,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
             except Exception as e:
                 log.error(f'Unable to initialize classifier for field {field.code}. '
                           f'Classifier init script: {field.classifier_init_script}', exc_info=e)
+            # TODO clf is not defined !!!
         else:
             clf = SGDClassifier(loss='hinge', penalty='l2',
                                 alpha=1e-3, max_iter=5, tol=None, n_jobs=-1,
@@ -268,13 +265,10 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                                      location_in_doc_start=location_start,
                                      location_in_doc_end=location_end,
                                      extraction_hint_name=hint_name)
-            else:
-                return AnnotationDTO(annotation_value=None,
-                                     location_in_doc_start=location_start,
-                                     location_in_doc_end=location_end,
-                                     extraction_hint_name=None)
-
-        return None
+            return AnnotationDTO(annotation_value=None,
+                                 location_in_doc_start=location_start,
+                                 location_in_doc_end=location_end,
+                                 extraction_hint_name=None)
 
     @classmethod
     @transaction.atomic
@@ -289,16 +283,8 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
 
         ants: List[AnnotationDTO] = []
         text_unit_repo = cls.text_unit_repo
-        depends_on_full_text: str = doc.full_text
         typed_field: TypedField = TypedField.by(field)
-
-        detected_with_stop_words, detected_value = \
-            detect_with_stop_words_by_field_and_full_text(field, doc, depends_on_full_text)
-        if detected_with_stop_words:
-            return FieldValueDTO(field_value=detected_value)
-
         qs_text_units = text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
-        qs_text_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(qs_text_units, field)
 
         try:
             classifier_model = ClassifierModel.objects.get(document_field=field)
@@ -326,34 +312,3 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         except ClassifierModel.DoesNotExist as e:
             log.info(f'Classifier model does not exist for field: {field.code}')
             raise e
-
-
-class RegexpsAndTextBasedMLFieldDetectionStrategy(TextBasedMLFieldDetectionStrategy):
-    code = DocumentField.VD_REGEXPS_AND_TEXT_BASED_ML
-
-    @classmethod
-    def train_document_field_detector_model(cls,
-                                            log: ProcessLogger,
-                                            field: DocumentField,
-                                            train_data_project_ids: Optional[List],
-                                            use_only_confirmed_field_values: bool = False,
-                                            train_documents: Iterable[Document] = None) -> Optional[ClassifierModel]:
-        try:
-            return super().train_document_field_detector_model(log,
-                                                               field,
-                                                               train_data_project_ids,
-                                                               use_only_confirmed_field_values)
-        except RuntimeError:
-            return None
-
-    @classmethod
-    def detect_field_value(cls,
-                           log: ProcessLogger,
-                           doc: Document,
-                           field: DocumentField,
-                           field_code_to_value: Dict[str, Any]) -> Optional[FieldValueDTO]:
-        try:
-            return super().detect_field_value(log, doc, field, field_code_to_value)
-        except ClassifierModel.DoesNotExist:
-            return RegexpsOnlyFieldDetectionStrategy.detect_field_value(
-                log, doc, field, field_code_to_value)

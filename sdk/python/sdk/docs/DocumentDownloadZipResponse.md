@@ -1,5 +1,6 @@
 # DocumentDownloadZipResponse
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

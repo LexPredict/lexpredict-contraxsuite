@@ -27,8 +27,6 @@
 import datetime
 import decimal
 import json
-from typing import Optional, Tuple, Callable, Any
-
 import pytz
 import uuid
 from collections import Collection, Mapping
@@ -37,21 +35,14 @@ from django.utils.duration import duration_iso_string
 from django.utils.functional import Promise
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ImprovedDjangoJSONEncoder(json.JSONEncoder):
-
-    def __init__(self, *, skipkeys=False, ensure_ascii=True,
-                 check_circular=True, allow_nan=True, sort_keys=False,
-                 indent=None, separators=None, default=None):
-        super().__init__(skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular,
-                         allow_nan=allow_nan, sort_keys=sort_keys, indent=indent, separators=separators,
-                         default=default)
 
     def default(self, o):
         if isinstance(o, datetime.datetime):
@@ -61,30 +52,26 @@ class ImprovedDjangoJSONEncoder(json.JSONEncoder):
             if r.endswith('+00:00'):
                 r = r[:-6] + 'Z'
             return r
-        elif isinstance(o, datetime.date):
+        if isinstance(o, datetime.date):
             return o.isoformat()
-        elif isinstance(o, datetime.time):
+        if isinstance(o, datetime.time):
             r = o.isoformat()
             if o.microsecond:
                 r = r[:12]
             return r
-        elif isinstance(o, datetime.timedelta):
+        if isinstance(o, datetime.timedelta):
             return duration_iso_string(o)
-        elif isinstance(o, pytz.tzinfo.tzinfo):
+        if isinstance(o, (pytz.tzinfo.tzinfo, uuid.UUID, Promise, decimal.Decimal)):
             return str(o)
-        elif isinstance(o, (uuid.UUID, Promise)):
-            return str(o)
-        elif isinstance(o, decimal.Decimal):
-            return str(o)
-        elif isinstance(o, dict):
+        if isinstance(o, dict):
             return o
-        elif isinstance(o, Mapping):
+        if isinstance(o, Mapping):
             return dict(o)
-        elif isinstance(o, Collection) and not isinstance(o, str):
+        if isinstance(o, Collection) and not isinstance(o, str):
             return list(o)
-        elif type(o) is str or type(o) is int or type(o) is float or type(o) is bool:
+        # note that isinstance(True, int) == isinstance(False, int) == True as True and False are treated as 1 and 0
+        if isinstance(o, (str, float, bool)) or type(o) is int:
             return o
-        elif hasattr(o, '__dict__'):
+        if hasattr(o, '__dict__'):
             return {k: self.default(v) for k, v in o.__dict__.items()}
-        else:
-            return super().default(o)
+        return super().default(o)

@@ -26,59 +26,27 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 import requests
-from allauth.socialaccount.providers.oauth2.client import OAuth2Error
 
-from allauth.socialaccount.providers.oauth2.views import OAuth2Adapter
-
-from .provider import ProprietaryProvider
-from ..custom_uris import AppAwareLoginView, AppAwareCallbackView, get_callback_url, get_uri_by_app
-from ...adapters import email_follows_pattern
-from ...models import SocialAppUri, User
+from apps.users.providers.proprietary.provider import ProprietaryProvider
+from apps.users.providers.custom_uris import AppAwareLoginView, AppAwareCallbackView
+from apps.users.providers.okta.views import OktaOAuth2Adapter
 
 
-class ElevateOAuth2Adapter(OAuth2Adapter):
+class ElevateOAuth2Adapter(OktaOAuth2Adapter):
     provider_id = ProprietaryProvider.id
 
-    def complete_login(self, request, app, token, **kwargs):
-        resp = requests.get(self.profile_url,
+    def get_response(self, token):
+        return requests.get(self.profile_url,
                             params={'access_token': token.token,
                                     'alt': 'json'})
-        resp.raise_for_status()
-        extra_data = resp.json()
-        login = self.get_provider() \
-            .sociallogin_from_response(request,
-                                       extra_data)
-        login.user.origin = User.USER_ORIGIN_SOCIAL
-        if 'name' in extra_data:
-            login.user.name = extra_data['name'] or login.user.name
-        if not email_follows_pattern(login.user.email):
-            raise OAuth2Error(f'Email domain is not allowed')
-        return login
-
-    @property
-    def access_token_url(self) -> str:
-        return get_uri_by_app(self.app_id, SocialAppUri.URI_TYPE_TOKEN)
-
-    @property
-    def authorize_url(self) -> str:
-        return get_uri_by_app(self.app_id, SocialAppUri.URI_TYPE_AUTH)
-
-    @property
-    def profile_url(self) -> str:
-        return get_uri_by_app(self.app_id, SocialAppUri.URI_TYPE_PROFILE)
-
-    def get_callback_url(self, request, app):
-        if request.GET and 'next' in request.GET:
-            request.session['next'] = request.GET['next']
-        return get_callback_url(self, request, app)
 
 
 oauth2_login = AppAwareLoginView.adapter_view(ElevateOAuth2Adapter)

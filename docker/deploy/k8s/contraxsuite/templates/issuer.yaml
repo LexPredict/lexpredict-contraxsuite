@@ -1,9 +1,8 @@
-#contrax-ingress
-
-apiVersion: cert-manager.io/v1
-kind: Issuer
+apiVersion: cert-manager.io/v1alpha2
+kind: ClusterIssuer
 metadata:
   name: {{ .Values.domain_name }}-issuer
+  namespace: {{ .Values.namespace }}
 spec:
   acme:
     {{ if and .Values.letsencryptenv (eq .Values.letsencryptenv "prod") }}
@@ -13,9 +12,8 @@ spec:
     {{ end }}
     email: support@lexpredict.com
     privateKeySecretRef:
-      {{ if and .Values.letsencryptenv (eq .Values.letsencryptenv "prod") }}
-      name: letsencrypt-prod
-      {{ else }}
-      name: letsencrypt-staging
-      {{ end }}
-    # http01: {}
+      name: {{ .Values.domain_name }}-key
+    solvers:
+    - http01:
+        ingress:
+          class:  nginx

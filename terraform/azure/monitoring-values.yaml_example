@@ -1,0 +1,17 @@
+grafana:
+  grafana.ini:
+    server:
+      domain: dev-k8s.lexpredict.net
+      root_url: "%(protocol)s://%(domain)s/grafana"
+      serve_from_sub_path: true
+    paths:
+        data: /var/lib/grafana/data
+        logs: /var/log/grafana
+        plugins: /var/lib/grafana/plugins
+        provisioning: /etc/grafana/provisioning
+    analytics:
+      check_for_updates: true
+    log:
+      mode: console
+    grafana_net:
+      url: https://grafana.net

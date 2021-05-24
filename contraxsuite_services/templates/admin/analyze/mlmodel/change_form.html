@@ -1,0 +1,257 @@
+{% extends "admin/change_form.html" %}
+{% load static project_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.0.3/jquery-confirm.min.css" type="text/css" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  <style>
+    input#id_model_path {
+        width: 400px;
+    }
+    .width-50 {
+      width: 50%;
+      margin: auto;
+    }
+    .link-btn {
+      cursor: pointer;
+    }
+    a.disabled {
+      text-decoration: line-through;
+    }
+  </style>
+{% endblock %}
+
+{% block extrajs %}
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js" style="text/javascrypt"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js" style="text/javascrypt"></script>
+  <script type="text/javascript">
+      var csrftoken = $.cookie('csrftoken');
+
+      function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+      }
+
+      $.ajaxSetup({
+          beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+              xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+          }
+        });
+
+      $(document).ready(function () {
+        window.manager = new ModelManager();
+        window.manager.setup();
+      });
+
+  </script>
+  <script type="text/javascript">
+    function ModelManager() {
+      this.pathIsValid = false;
+      this.suggestedPath = '';
+      this.refs = {
+        linkFileBrowser: 'file-browser'
+      };
+    }
+
+    ModelManager.prototype.setup = function() {
+      this.renderSuggestPathLink();
+      this.setupOnValuesChanged();
+      var that = this;
+      $('#id_model_path').on('change', function() {
+          that.checkFolderContent();
+       });
+      window.setTimeout(function() {
+        that.checkFolderContent();
+      }, 1000);
+    }
+
+    ModelManager.prototype.setupOnValuesChanged = function() {
+      var that = this;
+      $('fieldset.module.aligned.first').on('change',
+        function() { that.updatePathSuggestion(); });
+      window.setInterval(function() {
+          that.updatePathSuggestion();
+        }, 1000 * 2);
+    }
+
+    ModelManager.prototype.updatePathSuggestion = function() {
+      var targetEnt = $('#id_target_entity').val() || '<not specified>';
+      var applyTo = $('#id_apply_to').val() || '<not specified>';
+      var lang = $('#id_language').val() || 'en';
+      var proj = $('#id_project').val();
+      var path = 'models/' + lang + '/' + targetEnt + '/' + applyTo + '/';
+      if (proj)
+        path += proj;
+      this.suggestedPath = path;
+      $('#path-suggestion').text(path);
+    }
+
+    ModelManager.prototype.renderSuggestPathLink = function() {
+      var that = this;
+      var pathInput = $('[name="model_path"]');
+      var markup = '<br/><span id="path-suggestion"></span> &nbsp; &nbsp; &nbsp;' +
+        '<i id="suggest-path-btn" class="fa fa-copy link-btn" title="copy path"></i><br/>';
+      $(markup).attr('data-field', 'model_path').insertBefore(pathInput);
+
+      markup = '<br/><span id="check-file-status" class="link-btn"></span><br/>';
+      markup += '<a id="' + this.refs.linkFileBrowser + '" style="display: none" class="link-btn" href="#">' +
+        'go to file browser</a> &nbsp; &nbsp; &nbsp;';
+      markup += '<a id="create-folder" class="link-btn">create folder</a><br/>';
+      markup += '<a id="upload-file-btn" class="link-btn" style="display: none">upload file</a><br/>';
+
+      $(markup).attr('data-field', 'model_path').insertAfter(pathInput);
+
+      $('#suggest-path-btn').on('click', function() {
+          if (that.suggestedPath)
+            pathInput.val(that.suggestedPath);
+        }
+       ); // .on('click', ...
+      $('#create-folder').on('click', function() {
+          that.createFolder();
+        });
+      $('#upload-file-btn').on('click', function() {
+          that.showUploadDialog();
+        });
+    } // renderSuggestPathLink
+
+    ModelManager.prototype.checkFolderContent = function(schedule) {
+      var path = $('[name="model_path"]').val();
+      if (!path) return;
+      var that = this;
+      var data = { webdav_path: path };
+      data['csrfmiddlewaretoken'] = jQuery("[name=csrfmiddlewaretoken]").val();
+      var url = '{{check_path_exists_url}}';
+
+      $.post(url, data).done(function(data){
+          // console.log(data);
+          var statusStr = "File (folder) doesn't exist";
+          if (data.exists) {
+             if (!data.is_folder)
+                statusStr = "File exists";
+             else {
+                statusStr = data.not_empty ? 'Folder exists and is not empty' :
+                  'Folder exists, empty';
+             }
+             // make WebDAV hyperlink like
+             // https://dev.contraxsuite.com/explorer/admin/filebrowser/browse/?&dir=models/en/contract_class
+             if (!data.is_folder) {
+                 // get parent folder path from file path
+                 var lastIndex = path.lastIndexOf('/');
+                 path = path.substring(0, lastIndex);
+             }
+             var browserLink = window.location.pathname;
+             var refPartStart = browserLink.indexOf('admin/') + 'admin/'.length;
+             browserLink = browserLink.substring(0, refPartStart);
+             browserLink += 'filebrowser/browse/?&dir=' + path;
+             $('#' + that.refs.linkFileBrowser).attr('href', browserLink);
+             $('#' + that.refs.linkFileBrowser).show();
+             $('#create-folder').hide();
+             $('#upload-file-btn').show();
+          } else {
+            $('#' + that.refs.linkFileBrowser).hide();
+            $('#create-folder').show();
+            $('#upload-file-btn').hide();
+          }
+
+          $('#check-file-status').text(statusStr);
+      }); // $.post(
+    } // prototype.checkFolderContent
+
+    ModelManager.prototype.createFolder = function(schedule) {
+      var path = $('[name="model_path"]').val();
+      if (!path) return;
+      var that = this;
+      var data = { webdav_path: path };
+      data['csrfmiddlewaretoken'] = jQuery("[name=csrfmiddlewaretoken]").val();
+      var url = '{{create_folder_url}}';
+
+      $.post(url, data).done(function(data){
+          console.log(data);
+          if (!data.success) {
+            var errMsgList = [];
+            $.each(data.errors, function(i, er) {
+              errMsgList.push(er.replace(/</g,"&lt;"));
+            });
+            var errorsStr = errMsgList.join('<br/>');
+            $.alert({
+              icon: 'fa fa-envelope text-warning',
+              title: "Folder wasn't created",
+              type: 'orange',
+              content: errorsStr,
+              columnClass: 'col-md-6'
+            });
+            return;
+          } // if (!data.success)
+          $.alert({
+              icon: 'fa fa-envelope',
+              title: "Folder was created",
+              content: '',
+              columnClass: 'col-md-6'
+            });
+          that.checkFolderContent();
+      }); // $.post(
+    } // prototype.createFolder
+
+    ModelManager.prototype.showUploadDialog = function() {
+      var that = this;
+      var modelName = $('input[name="name"]').val();
+      var modelPath = $('input[name="model_path"]').val();
+      var markup = '<form enctype="multipart/form-data" id="file-upload-form"> ' +
+        '<input name="model-file" type="file"/> ' +
+        '<input type="hidden" name="model-name" value="#modelName" /> ' +
+        '<input type="hidden" name="model-path" value="#modelPath" /> ' +
+        '</form>';
+      markup = markup.replace('#modelName', modelName).replace('#modelPath', modelPath);
+
+      $.confirm({
+              title: 'Upload File',
+              backgroundDismiss: true,
+              content: markup,
+              buttons: {
+                  close: function () {},
+                  save: {
+                    text: 'Upload',
+                    btnClass: 'btn-u btn-sm btn-success',
+                    action: function() {
+                        that.uploadFile();
+                    } // action:
+                  } // save: {
+              } // buttons: {
+          }); // $.confirm({
+    }
+
+    ModelManager.prototype.uploadFile = function() {
+      var url = '{{file_upload_url}}';
+      var form = $('#file-upload-form');
+      if (window.FormData)
+        var formdata = new FormData(form[0]);
+      var postData = formdata ? formdata : form.serialize();
+      console.log(postData);
+      $.ajax({
+               url: url,
+               type: 'POST',
+               data: postData,
+               contentType: false,
+               processData: false,
+               success: function(data) {
+                  if (data.success) return;
+                  $.alert({
+                    icon: 'fa fa-warning text-danger',
+                    title: 'Uploading Error',
+                    type: 'red',
+                    content: data.errors,
+                    columnClass: 'width-50'
+                  });
+               },
+               error: function(status) {
+                  console.log('Error: ' + status);
+               }
+         }); // $.ajax({
+    }
+
+  </script>
+{% endblock %}

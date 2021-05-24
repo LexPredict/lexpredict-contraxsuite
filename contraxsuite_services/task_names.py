@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,13 +65,9 @@ TASK_NAME_TASK_HEALTH_CHECK = 'advanced_celery.task_health_check'
 
 TASK_NAME_CLEAN_ALL_TASKS = 'apps.task.tasks.clean_tasks'
 
-TASK_NAME_RETRAIN_DIRTY_TASKS = 'advanced_celery.retrain_dirty_fields'
-
-TASK_NAME_CACHE_UPDATED_DOCS = 'advanced_celery.cache_updated_docs'
-
 TASK_NAME_TRACK_SESSION_COMPLETED = 'advanced_celery.track_session_completed'
 
-TASK_NAME_TRACK_PDEF2PDFA_STATUS = 'advanced_celery.track_pdf2pdfa_status'
+TASK_NAME_TRACK_FAILED_DOCUMENT_LOADS = 'advanced_celery.track_failed_document_loads'
 
 TASK_NAME_USAGE_STATS = 'deployment.usage_stats'
 
@@ -90,6 +86,14 @@ TASK_NAME_MONITOR_DISK_USAGE = 'advanced_celery.monitor_disk_usage'
 TASK_NAME_PLAN_REFRESHING_MATERIALIZED_VIEWS = 'apps.materialized_views.tasks.plan_refreshing_materialized_views'
 
 TASK_NAME_REFRESH_MATERIALIZED_VIEW = 'apps.materialized_views.tasks.refresh_materialized_view'
+
+TASK_NAME_REINDEX_DB_ENTITIES = 'apps.tasks.tasks.reindex_db_entities'
+
+TASK_NAME_REINDEX_DB_ENTITY = 'apps.tasks.tasks.reindex_db_entity'
+
+TASK_NAME_CHECK_REINDEX_SCHEDULES = 'apps.tasks.tasks.check_reindex_schedules'
+
+TASK_NAME_CALCULATE_BLOCK_SIMILARITY = 'apps.similarity.tasks.calc_block_similarity'
 
 TASK_NAME_DOCUMENT_CHANGED = 'Document Changed'
 
@@ -113,13 +117,16 @@ TASK_NAME_IMPORT_DOCUMENTS = 'Import Documents'
 
 TASK_NAME_BUILD_OCR_RATING_MODEL = 'Build OCR Rating Language Model'
 
+TASK_NAME_PROCESS_TEXT_EXTRACTION_RESULTS = 'document.process_text_extraction_results'
+
+TASK_NAME_DELETE_EXPIRED_SIMILARITY = 'apps.analyze.tasks.delete_expired_similarity_objects'
+
 TASK_FRIENDLY_NAME = {
     TASK_NAME_CLEAN_TASKS_PERIODIC: 'Clean Tasks Periodically',
     TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC: 'Clean Export Files Periodically',
-    TASK_NAME_RETRAIN_DIRTY_TASKS: 'Retrain Dirty Fields',
-    TASK_NAME_CACHE_UPDATED_DOCS: 'Cache Updated Documents',
     TASK_NAME_TRACK_FAILED_TASKS: 'Track Failed Tasks',
     TASK_NAME_TRACK_SESSION_COMPLETED: 'Track Session Completed',
+    TASK_NAME_TRACK_FAILED_DOCUMENT_LOADS: 'Track Failed Undeleted Document Loads',
     TASK_NAME_TRACK_TASKS: 'Track Tasks',
     TASK_NAME_DELETE_METHOD_STATS: 'Delete Method Stats',
     TASK_NAME_INIT_METHOD_STATS_COLLECTORS: 'Init Method Stats Collectors',

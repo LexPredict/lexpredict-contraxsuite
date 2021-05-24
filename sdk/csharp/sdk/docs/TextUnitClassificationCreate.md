@@ -9,7 +9,7 @@ Name | Type | Description | Notes
 **ClassName** | **string** |  | 
 **ClassValue** | **string** |  | 
 **TextUnitId** | **int** |  | 
-**UserId** | **string** |  | [optional] [readonly] 
+**UserId** | **int** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

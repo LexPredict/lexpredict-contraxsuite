@@ -2,11 +2,12 @@
 
 # DistanceUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**amount** | **BigDecimal** |  |  [optional]
 **distanceType** | **String** |  | 
 **count** | **Integer** |  |  [optional]
 **pk** | **Integer** |  |  [optional] [readonly]

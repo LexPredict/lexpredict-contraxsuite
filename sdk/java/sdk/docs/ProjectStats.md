@@ -2,6 +2,7 @@
 
 # ProjectStats
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -12,24 +13,22 @@ Name | Type | Description | Notes
 **documentsTotal** | **Integer** |  | 
 **clausesTotal** | **Integer** |  | 
 **avgOcrGrade** | **Integer** |  | 
-**documentStatusLoaded** | **Integer** |  | 
-**documentStatusLoadedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
 **documentStatusNotStarted** | **Integer** |  | 
-**documentStatusNotStartedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**documentStatusNotStartedPcnt** | **BigDecimal** |  | 
 **documentStatusInReview** | **Integer** |  | 
-**documentStatusInReviewPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**documentStatusInReviewPcnt** | **BigDecimal** |  | 
 **documentStatusAwaitingQa** | **Integer** |  | 
-**documentStatusAwaitingQaPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**documentStatusAwaitingQaPcnt** | **BigDecimal** |  | 
 **documentStatusCompleted** | **Integer** |  | 
-**documentStatusCompletedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**documentStatusCompletedPcnt** | **BigDecimal** |  | 
 **documentStatusExcluded** | **Integer** |  | 
-**documentStatusExcludedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**documentStatusExcludedPcnt** | **BigDecimal** |  | 
 **clauseStatusUnreviewed** | **Integer** |  | 
-**clauseStatusUnreviewedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**clauseStatusUnreviewedPcnt** | **BigDecimal** |  | 
 **clauseStatusAccepted** | **Integer** |  | 
-**clauseStatusAcceptedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**clauseStatusAcceptedPcnt** | **BigDecimal** |  | 
 **clauseStatusRejected** | **Integer** |  | 
-**clauseStatusRejectedPcnt** | [**BigDecimal**](BigDecimal.md) |  | 
+**clauseStatusRejectedPcnt** | **BigDecimal** |  | 
 
 
 

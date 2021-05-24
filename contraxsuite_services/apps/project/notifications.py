@@ -27,6 +27,7 @@
 from typing import List
 
 from django.db.models import QuerySet
+from guardian.shortcuts import get_objects_for_user
 
 from apps.users.models import User
 from apps.project.models import UploadSession, Project
@@ -35,9 +36,9 @@ from apps.websocket.channel_message import ChannelMessage
 from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,7 +53,6 @@ def notify_active_upload_sessions(sessions: List[UploadSession]):
         session_data = get_session_data_by_document_query(session)
         data.append(session_data)
 
-    from guardian.shortcuts import get_objects_for_user
     for user in User.objects.filter(is_active=True):
         user_project_ids = list(get_objects_for_user(user, 'project.add_project_document', Project)
                                 .values_list('pk', flat=True))
@@ -79,7 +79,7 @@ def get_session_data_by_document_query(session: UploadSession):
     return session_data
 
 
-def notify_cancelled_upload_session(session, user_id):
+def notify_cancelled_upload_session(session, user_id, document_ids: List):
     """
     Notify users about cancelled upload session
     """
@@ -87,6 +87,7 @@ def notify_cancelled_upload_session(session, user_id):
 
     data = {'session_id': session.pk,
             'project_id': session.project_id,
+            'document_ids': document_ids,
             'cancelled_by_user_id': cancelled_by_user.pk if cancelled_by_user else None,
             'cancelled_by_user_name': cancelled_by_user.name if cancelled_by_user else None}
 
@@ -122,20 +123,30 @@ def notify_failed_load_document(file_name, session_id, directory_path):
     Websockets().send_to_users(qs_users=users, message_obj=message)
 
 
-def notify_active_pdf2pdfa_tasks(data):
-    """
-    Notify users about active upload sessions to show/track progress
-    """
-    user_ids = set([i['user_id'] for i in data])
-    for user_id in user_ids:
-        user_data = [i for i in data if i['user_id'] == user_id]
-        message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_ACTIVE_PDF2PDFA_TASKS, user_data)
-        Websockets().send_to_user(user_id=user_id, message_obj=message)
-
-
 def combine_querysets_and_send_message(q_sets: List[QuerySet], message: ChannelMessage):
     result_set = set()
     for q_set in q_sets:
-        user_ids = set([id for id in q_set.values_list('pk', flat=True)])
+        user_ids = set(q_set.values_list('pk', flat=True))
         result_set.union(user_ids)
     Websockets().send_to_users_by_ids(user_ids=list(result_set), message_obj=message)
+
+
+def notify_update_project_document_fields_completed(task_id, project_id, document_ids, fields):
+    """
+    Notify users about updated documents in a Project
+    """
+    data = dict(
+        task_id=task_id,
+        project_id=project_id,
+        document_ids=document_ids,
+        updated_fields=fields
+    )
+    message = ChannelMessage(
+        message_types.CHANNEL_MSG_TYPE_PROJECT_DOCUMENT_FIELDS_UPDATED, data)
+
+    users = User.get_users_for_object(
+        object_pk=project_id,
+        object_model=Project,
+        perm_name='view_project').values_list('pk', flat=True)
+
+    Websockets().send_to_users(qs_users=users, message_obj=message)

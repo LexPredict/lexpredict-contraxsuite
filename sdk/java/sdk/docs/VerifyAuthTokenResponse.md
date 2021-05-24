@@ -2,6 +2,7 @@
 
 # VerifyAuthTokenResponse
 
+
 ## Properties
 
 Name | Type | Description | Notes

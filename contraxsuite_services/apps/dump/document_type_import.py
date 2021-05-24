@@ -51,16 +51,15 @@ from apps.task.tasks import ExtendedTask, CeleryTaskLogger
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class ValidationError(Exception):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    pass
 
 
 class ObjectHeap:
@@ -81,7 +80,7 @@ class ObjectHeap:
 
 
 class DeserializedObjectController:
-    exept_m2m = None
+    exept_m2m = []
 
     @classmethod
     def init_static(cls):
@@ -200,7 +199,7 @@ class DeserializedObjectController:
     def _save_m2m(self, _context: dict) -> None:
         if self._deserialized_object.m2m_data:
             for accessor_name, object_list in self._deserialized_object.m2m_data.items():
-                if self.exept_m2m is not None and accessor_name in self.exept_m2m:
+                if accessor_name in self.exept_m2m:
                     continue
                 getattr(self.object, accessor_name).set(object_list)
         self._deserialized_object.m2m_data = None
@@ -298,9 +297,9 @@ class DeserializedDocumentField(DeserializedObjectController):
                  logger: ProcessLogger = None):
         super().__init__(deserialized_object, auto_fix_validation_errors, logger=logger)
         self._remove_missed_in_dump_objects = remove_missed_in_dump_objects
-        self._add_object_validator(lambda context: self._validate_critical_properties_changed(context))
-        self._add_object_validator(lambda context: self._validate_choice_values_removed(context))
-        self._add_missed_object_validator(lambda context: self._clear_missed_field_detectors(save=False))
+        self._add_object_validator(self._validate_critical_properties_changed)
+        self._add_object_validator(self._validate_choice_values_removed)
+        self._add_missed_object_validator(lambda _: self._clear_missed_field_detectors(save=False))
 
     def do_basic_cleanup(self):
         document_field = self._deserialized_object.object  # type: DocumentField
@@ -374,7 +373,7 @@ class DeserializedDocumentField(DeserializedObjectController):
             err_msg += f'Document type has changed, old document type id is #{old_document_type_pk}' + \
                        f', new document type id is #{self.document_type_pk}. '
         if old_field_type != new_field_type:
-            err_msg += f'Field type has changed, old field type is ' + \
+            err_msg += 'Field type has changed, old field type is ' + \
                        f'"{self._get_field_type_title(old_field_type)}", ' + \
                        f'new field type is "{self._get_field_type_title(new_field_type)}". '
         if err_msg:
@@ -550,16 +549,13 @@ class DeserializedDocumentType(DeserializedObjectController):
         super().clear_missed_objects()
         self._clear_missed_fields(save=True)
 
-    def _save_deserialized_object(self, context: dict) -> None:
-        super()._save_deserialized_object(context)
-
 
 class DeserializedDocumentFieldCategory(DeserializedObjectController):
     saved_doc_types = set()
 
     @classmethod
     def init_static(cls):
-        cls.saved_doc_types = set(DocumentType.objects.all().values_list('pk', flat=True))
+        cls.saved_doc_types = set(DocumentType.objects.values_list('pk', flat=True))
 
     def __init__(self, deserialized_object, auto_fix_validation_errors: bool, logger: ProcessLogger = None):
         super().__init__(deserialized_object, auto_fix_validation_errors, logger=logger)
@@ -589,7 +585,7 @@ class DeserializedDocumentFieldCategory(DeserializedObjectController):
                 DocumentType, self.document_type_id)
             if not importing_doc_type:
                 # referenced doc type may not be stored on the server
-                if not self.document_type_id in self.saved_doc_types:
+                if self.document_type_id not in self.saved_doc_types:
                     self.document_type_id = None
 
         super()._save_deserialized_object(context)
@@ -761,7 +757,7 @@ def import_document_type(json_bytes: bytes,
 
 
 def reconcile_doc_type(other_objects: List[Any], document_type: DocumentType):
-    obj_by_class = group_by(other_objects, lambda o: type(o))
+    obj_by_class = group_by(other_objects, type)
     categories = obj_by_class.get(DeserializedDocumentFieldCategory, [])
     for cat in categories:  # type: DeserializedDocumentFieldCategory
         cat.document_type_id = document_type.pk

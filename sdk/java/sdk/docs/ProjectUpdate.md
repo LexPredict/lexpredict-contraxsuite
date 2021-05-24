@@ -2,6 +2,7 @@
 
 # ProjectUpdate
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -17,6 +18,10 @@ Name | Type | Description | Notes
 **juniorReviewers** | **List&lt;Integer&gt;** |  |  [optional]
 **type** | **String** |  |  [optional]
 **hideClauseReview** | **Boolean** |  |  [optional]
+**termTags** | **List&lt;Integer&gt;** |  |  [optional]
+**companytypeTags** | **List&lt;Integer&gt;** |  |  [optional]
+**documentTransformer** | **Integer** |  |  [optional]
+**textUnitTransformer** | **Integer** |  |  [optional]
 
 
 

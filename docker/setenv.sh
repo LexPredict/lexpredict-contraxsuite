@@ -20,7 +20,7 @@ export DOCKER_KIBANA_IMAGE=lexpredict/lexpredict-kibana:7.5.0
 export DOCKER_FILEBEAT_IMAGE=docker.elastic.co/beats/filebeat-oss:7.5.2
 export DOCKER_METRICBEAT_IMAGE=docker.elastic.co/beats/metricbeat-oss:7.5.2
 export DOCKER_RABBITMQ_IMAGE=rabbitmq:3-management
-export DOCKER_PGBOUNCER_IMAGE=edoburu/pgbouncer:1.11.0
+export DOCKER_PGBOUNCER_IMAGE=edoburu/pgbouncer:1.15.0
 
 export MOCK_IMANAGE_REPLICAS=0
 
@@ -32,6 +32,7 @@ export RAM_MB=$(( $(awk '/MemTotal/ {print $2}' /proc/meminfo) / 1024 ))
 export RAM_HALF_MB=$(( ${RAM_MB} / 2 ))
 export RAM_QUARTER_MB=$(( ${RAM_MB} / 4 ))
 
+export POSTGRES_ENABLE_DAILY_REINDEX=true
 export POSTGRES_CPUS=$(( 4*${CPU_CORES}/5  ))
 export POSTGRES_RAM=$(( 3*${RAM_MB}/4  ))
 export POSTGRES_MAX_CONNECTIONS=180
@@ -77,14 +78,23 @@ export POSTGRES_WORK_MEM=$(echo ${POSTGRES_WORK_MEM%%.*})kB
 export CONTRAXSUITE_ROOT=../contraxsuite_services
 
 export DOCKER_HOST_NAME_PG=contrax-db
+export DOCKER_HOST_NAME_PG_ACCESS=tasks.contrax-db
 export DOCKER_HOST_NAME_REDIS=contrax-redis
+export DOCKER_HOST_NAME_REDIS_ACCESS=tasks.${DOCKER_HOST_NAME_REDIS}
 export DOCKER_HOST_NAME_RABBITMQ=contrax-rabbitmq
+export DOCKER_HOST_NAME_RABBITMQ_ACCESS=tasks.${DOCKER_HOST_NAME_RABBITMQ}
 # Host name for Elastic should not contain underscores. Logstash crashes if seeing them in ES URL.
 export DOCKER_HOST_NAME_ELASTICSEARCH=contrax-elasticsearch
+export DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS=tasks.${DOCKER_HOST_NAME_ELASTICSEARCH}
 export DOCKER_HOST_NAME_UWSGI=contrax-uwsgi
 export DOCKER_HOST_NAME_KIBANA=contrax-kibana
 export DOCKER_HOST_NAME_DAPHNE=contrax-daphne
+export DOCKER_HOST_NAME_DAPHNE_ACCESS=tasks.${DOCKER_HOST_NAME_DAPHNE}
 export DOCKER_HOST_NAME_ELASTALERT_SERVER=contrax-elastalert
+export DOCKER_HOST_NAME_TEXT_EXTRACTION_SYSTEM_API=tes-web-api
+export DOCKER_TEXT_EXTRACTION_SYSTEM_API_PORT=8000
+export DOCKER_TEXT_EXTRACTION_SYSTEM_URL=http://tasks.${DOCKER_HOST_NAME_TEXT_EXTRACTION_SYSTEM_API}:${DOCKER_TEXT_EXTRACTION_SYSTEM_API_PORT}
+
 export DOCKER_ELASTALERT_SERVER_PORT=3030
 export DOCKER_ELASTALERT_EMAIL_SSL=False
 
@@ -175,6 +185,7 @@ export DOCKER_NGINX_MEMORY_RESERVATIONS=512M
 
 
 export DOCKER_WEBDAV_SERVER_NAME=contrax-webdav
+export DOCKER_WEBDAV_SERVER_NAME_ACCESS=tasks.${DOCKER_WEBDAV_SERVER_NAME}
 export DOCKER_WEBDAV_AUTH_USER=user
 export DOCKER_WEBDAV_AUTH_PASSWORD=password
 
@@ -263,6 +274,8 @@ export PROXY_NO_PROXY=localhost,127.0.0.1,contrax-webdav,contrax-minio,contrax-m
 # set to non-empty string to enable aioredis debug logging
 export AIOREDIS_DEBUG=
 
+export DEPLOY_BACKEND_DEV=false
+
 if [ -f setenv_local.sh ]
 then
     echo "Loading setenv_local.sh"
@@ -275,7 +288,7 @@ export DOCKER_POSTGRES_LOG_MIN_DUR_STMT=-1
 export DOCKER_DJANGO_BASE_PATH_STRIPPED=${DOCKER_DJANGO_BASE_PATH%/}
 
 if [ -z "${DJANGO_WEBSRV_DB_HOST}" ]; then
-    export DJANGO_WEBSRV_DB_HOST=${DOCKER_PGBOUNCER_SESS_HOST}
+    export DJANGO_WEBSRV_DB_HOST=tasks.${DOCKER_PGBOUNCER_SESS_HOST}
     export DJANGO_WEBSRV_DB_PORT=${DOCKER_PGBOUNCER_PORT}
     export DJANGO_WEBSRV_DB_NAME=${DOCKER_PG_DB_NAME}
     export DJANGO_WEBSRV_DB_USER=${DOCKER_PG_USER}
@@ -283,7 +296,7 @@ if [ -z "${DJANGO_WEBSRV_DB_HOST}" ]; then
 fi
 
 if [ -z "${DJANGO_CELERY_DB_HOST}" ]; then
-    export DJANGO_CELERY_DB_HOST=${DOCKER_PGBOUNCER_TRANS_HOST}
+    export DJANGO_CELERY_DB_HOST=tasks.${DOCKER_PGBOUNCER_TRANS_HOST}
     export DJANGO_CELERY_DB_PORT=${DOCKER_PGBOUNCER_PORT}
     export DJANGO_CELERY_DB_NAME=${DOCKER_PG_DB_NAME}
     export DJANGO_CELERY_DB_USER=${DOCKER_PG_USER}

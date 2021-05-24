@@ -30,9 +30,9 @@ from django.template.loader import get_template
 from django.template.exceptions import TemplateDoesNotExist
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,7 +42,7 @@ def common(request):
         return {}
 
     from apps.extract.app_vars import STANDARD_LOCATORS, OPTIONAL_LOCATORS
-    available_locators = set(STANDARD_LOCATORS.val) | set(OPTIONAL_LOCATORS.val)
+    available_locators = set(STANDARD_LOCATORS.val()) | set(OPTIONAL_LOCATORS.val())
 
     custom_main_menu_item_templates = []
     custom_task_menu_item_templates = []
@@ -63,7 +63,7 @@ def common(request):
     has_admin_permissions = request.user.has_perm('task.add_task')
 
     return {'settings': settings,
-            'custom_main_menu_item_templates': custom_main_menu_item_templates,
-            'custom_task_menu_item_templates': custom_task_menu_item_templates,
+            'custom_main_menu_item_templates': sorted(custom_main_menu_item_templates),
+            'custom_task_menu_item_templates': sorted(custom_task_menu_item_templates),
             'available_locators': available_locators,
             'has_admin_permissions': has_admin_permissions}

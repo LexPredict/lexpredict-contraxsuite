@@ -1,57 +1,65 @@
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:detect-field-values" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Detect Field Values
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:train-document-field-detector-model" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Train Field Detector Model
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:train-and-test" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Train And Test Field Value Detection
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:find-broken-document-field-values" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Find Broken Document Field Values
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:fix-document-field-codes" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Fix Document Field Codes
-  </a>
-</li>
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:import-simple-field-detection-config" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Import CSV Field Detection Config
-  </a>
-</li>
+<li class="dropdown-submenu">
+  <a class="dropdown-item" href="#" tabindex="-1">
+    <i class="fa fa-object-group"></i> Document</a>
+  <ul class="dropdown-menu">
 
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "document:indentify-contracts" %}"
-     data-btn-text="Process">
-    <i class="fa fa-object-group"></i>
-    Documents: Identify Contracts
-  </a>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:detect-field-values" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Detect Field Values
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:train-document-field-detector-model" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Train Field Detector Model
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:train-and-test" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Train And Test Field Value Detection
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:find-broken-document-field-values" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Find Broken Document Field Values
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:fix-document-field-codes" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Fix Document Field Codes
+      </a>
+    </li>
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:import-simple-field-detection-config" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Import CSV Field Detection Config
+      </a>
+    </li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "document:indentify-contracts" %}"
+         data-btn-text="Process">
+        <i class="fa fa-object-group"></i>
+        Identify Contracts
+      </a>
+    </li>
+
+  </ul>
 </li>

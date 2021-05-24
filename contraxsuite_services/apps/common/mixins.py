@@ -52,7 +52,7 @@ from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
 from django.db import connection
-from django.db.models import Q, fields as django_fields, NOT_PROVIDED, QuerySet
+from django.db.models import Q, fields as django_fields, NOT_PROVIDED, QuerySet, F
 from django.http import JsonResponse
 from django.http.response import StreamingHttpResponse, HttpResponseForbidden
 from django.shortcuts import render
@@ -69,6 +69,7 @@ from rest_framework.response import Response
 from rest_framework_tracking.mixins import LoggingMixin
 
 # Project imports
+from apps.common.logger import CsLogger
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.models import Action, CustomAPIRequestLog
 from apps.common.querysets import QuerySetWoCache
@@ -77,9 +78,9 @@ from apps.common.streaming_utils import csv_gen_from_dicts
 from apps.common.utils import cap_words, export_qs_to_file, download, full_reverse
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -237,6 +238,30 @@ class DocumentQsAccessMixin(MultipleObjectMixin):
         return qs.distinct()
 
 
+def string_filter(search_str, qs: QuerySet, _or_lookup, _and_lookup=None, _not_lookup=None):
+    search_list = re.split(r'\s*,\s*', search_str.strip().strip(","))
+    _not_search_list = [i[1:].strip() for i in search_list if i.startswith('-')]
+    _and_search_list = [i[1:].strip() for i in search_list if i.startswith('&')]
+    _or_search_list = [i for i in search_list if i[0] not in ['-', '&']]
+
+    if _or_search_list:
+        query = reduce(
+            operator.or_,
+            (Q(**{_or_lookup: i}) for i in _or_search_list))
+        qs = qs.filter(query)
+    if _and_search_list:
+        query = reduce(
+            operator.and_,
+            (Q(**{_and_lookup or _or_lookup: i}) for i in _and_search_list))
+        qs = qs.filter(query)
+    if _not_search_list:
+        query = reduce(
+            operator.or_,
+            (Q(**{_not_lookup or _or_lookup: i}) for i in _not_search_list))
+        qs = qs.exclude(query)
+    return qs
+
+
 class BaseCustomListView(AddModelNameMixin, TemplateNamesMixin, ListView):
     paginate_by = 10
     export_params = dict(
@@ -251,31 +276,6 @@ class BaseCustomListView(AddModelNameMixin, TemplateNamesMixin, ListView):
             return export_qs_to_file(
                 request, qs=self.get_queryset(), **self.export_params)
         return super().get(request, *args, **kwargs)
-
-    @staticmethod
-    def filter(search_str, qs: QuerySet, _or_lookup,
-               _and_lookup=None, _not_lookup=None):
-        search_list = re.split(r'\s*,\s*', search_str.strip().strip(","))
-        _not_search_list = [i[1:].strip() for i in search_list if i.startswith('-')]
-        _and_search_list = [i[1:].strip() for i in search_list if i.startswith('&')]
-        _or_search_list = [i for i in search_list if i[0] not in ['-', '&']]
-
-        if _or_search_list:
-            query = reduce(
-                operator.or_,
-                (Q(**{_or_lookup: i}) for i in _or_search_list))
-            qs = qs.filter(query)
-        if _and_search_list:
-            query = reduce(
-                operator.and_,
-                (Q(**{_and_lookup or _or_lookup: i}) for i in _and_search_list))
-            qs = qs.filter(query)
-        if _not_search_list:
-            query = reduce(
-                operator.or_,
-                (Q(**{_not_lookup or _or_lookup: i}) for i in _not_search_list))
-            qs = qs.exclude(query)
-        return qs
 
 
 class CustomListView(DocumentQsAccessMixin, BaseCustomListView):
@@ -390,6 +390,7 @@ class SubmitView(JSONResponseView):
 class AjaxListView(DocumentQsAccessMixin, AjaxResponseMixin, BaseCustomListView):
     json_fields = []
     extra_json_fields = []
+    export_json_fields = []
     annotate = {}
 
     # TODO: remove duplication with BaseCustomListView
@@ -429,6 +430,8 @@ class AjaxListView(DocumentQsAccessMixin, AjaxResponseMixin, BaseCustomListView)
 
         if 'columns' in self.request.GET:
             columns = self.request.GET['columns'].split(',')
+        elif self.request.GET.get('export_to') is not None and self.export_json_fields:
+            columns = self.export_json_fields
         else:
             columns = self.json_fields + extra_json_fields
         data = list(qs.annotate(**self.annotate).values(*columns))
@@ -480,8 +483,9 @@ class JqPaginatedListMixin:
     conditions_neg = dict(DOES_NOT_CONTAIN='icontains',
                           DOES_NOT_CONTAIN_CASE_SENSITIVE='contains',
                           NOT_EQUAL='exact')
-    field_types = dict()
+    field_types = {}
     field_name_transform_map = {}
+    complex_value_for_fields = []
     unique_field = 'pk'
 
     def get_field_types(self):
@@ -500,7 +504,7 @@ class JqPaginatedListMixin:
     def read_request_filters(self) -> Dict[str, Any]:
         filterscount = int(self.request.GET.get('filterscount', 0))
         # server-side filtering
-        filters = dict()
+        filters = {}
         if filterscount:
             for filter_num in range(filterscount):
                 num = str(filter_num)
@@ -511,7 +515,7 @@ class JqPaginatedListMixin:
                 condition = self.request.GET.get('filtercondition' + num)
                 op = int(self.request.GET.get('filteroperator' + num, 0))
                 if not filters.get(field):
-                    filters[field] = list()
+                    filters[field] = []
                 filters[field].append(dict(value=value, condition=condition, operator=op))
         return filters
 
@@ -533,6 +537,23 @@ class JqPaginatedListMixin:
 
                 q_curr = Q()
 
+                if field in self.complex_value_for_fields and cond == 'CONTAINS':
+                    if val.startswith("="):
+                        cond = "EQUAL"
+                        val = val[1:]
+                    elif val.startswith("<"):
+                        cond = "LESS_THAN"
+                        val = val[1:]
+                    elif val.startswith(">"):
+                        cond = "GREATER_THAN"
+                        val = val[1:]
+                    elif val.startswith("<="):
+                        cond = "LESS_THAN_OR_EQUAL"
+                        val = val[2:]
+                    elif val.startswith(">="):
+                        cond = "GREATER_THAN_OR_EQUAL"
+                        val = val[2:]
+
                 # TODO: check if bool/null filter improved in new jqWidgets grid
                 # if vale is False filter None and False
                 field_type = field_types.get(field, str)
@@ -543,6 +564,11 @@ class JqPaginatedListMixin:
                         q_curr = Q(**{field: False}) | Q(**{'%s__isnull' % field: True})
                     else:
                         q_curr = Q(**{field: True})
+                elif cond == 'IN':
+                    # works for strings for now, otherwise consider field type (f.e. for numeric values)
+                    cond_str = '%s__in' % field
+                    val = val.split(',')
+                    q_curr = Q(**{cond_str: val})
                 elif cond in self.conditions:
                     # prevent transform EQUAL into _iexact for int/float columns
                     if cond == 'EQUAL' and self.get_db_column_type(qs, field) in self.equal_as_exact_db_types:
@@ -591,7 +617,7 @@ class JqPaginatedListMixin:
         if sortfield:
             sortfield = sortfield.replace('-', '_')
             if sortorder == 'desc':
-                qs = qs.order_by('-%s' % sortfield)
+                qs = qs.order_by(F(sortfield).desc(nulls_last=True))
             elif sortorder == 'asc':
                 qs = qs.order_by(sortfield)
         return qs
@@ -885,6 +911,10 @@ class JqListAPIMixin(JqPaginatedListMixin):
     extra_data = None
     schema = JqFiltersListViewSchema()
 
+    def __init__(self, *args, **kwargs):
+        self.skip_jq_filters = kwargs.pop('skip_jq_filters', False)
+        super().__init__(*args, **kwargs)
+
     def initialize_request(self, request, *args, **kwargs):
         request = super().initialize_request(request, *args, **kwargs)
         param = JqFiltersListViewSchema.filters_param_name
@@ -901,7 +931,7 @@ class JqListAPIMixin(JqPaginatedListMixin):
         return request
 
     def filter_queryset(self, queryset):
-        if 'sortdatafield' in self.request.GET or 'filterscount' in self.request.GET:
+        if self.skip_jq_filters is False and ('sortdatafield' in self.request.GET or 'filterscount' in self.request.GET):
             queryset = self.filter_and_sort(queryset)
         return queryset
 
@@ -913,9 +943,9 @@ class JqListAPIMixin(JqPaginatedListMixin):
 
     def list(self, request, *args, **kwargs):
         # 1. get full queryset
-        queryset = self.get_queryset()
+        initial_queryset = self.get_queryset()
         # 2. filter and sort
-        queryset = self.filter_queryset(queryset)
+        queryset = self.filter_queryset(initial_queryset)
         # 2.1 export in xlsx if needed
         if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
             serializer = self.get_serializer(queryset, many=True)
@@ -934,7 +964,7 @@ class JqListAPIMixin(JqPaginatedListMixin):
         # except:
         #     total_records = len(queryset)
         # 4. get extra data !before queryset paginated
-        extra_data = self.get_extra_data(queryset)
+        extra_data = self.get_extra_data(queryset, initial_queryset)
         # 5. paginate
         queryset = self.paginate_queryset(queryset)
         # 6. serialize
@@ -945,8 +975,7 @@ class JqListAPIMixin(JqPaginatedListMixin):
             try:
                 data = list(data)
             except Exception as e:
-                import logging
-                logger = logging.getLogger('django')
+                logger = CsLogger.get_django_logger()
                 logger.warning(f'Query: "{str(queryset.query)}"')
                 raise e
 
@@ -961,14 +990,19 @@ class JqListAPIMixin(JqPaginatedListMixin):
             total_records = getattr(queryset, 'total_records', None)
             if total_records is None:
                 total_records = len(data)
-            ret = {'data': data,
-                   'total_records': total_records}
+            data = {'data': data,
+                    'total_records': total_records}
             if extra_data:
-                ret.update(extra_data)
-            return rest_framework.response.Response(ret)
+                data.update(extra_data)
+            return rest_framework.response.Response(data)
+
+        if extra_data:
+            data = {'data': data}
+            data.update(extra_data)
+
         return rest_framework.response.Response(data)
 
-    def get_extra_data(self, queryset):
+    def get_extra_data(self, queryset, initial_queryset):
         return self.extra_data or {}
 
     def export(self, data, source_name, fmt='xlsx'):
@@ -994,7 +1028,6 @@ class JqListAPIView(JqListAPIMixin, rest_framework.generics.ListAPIView):
     """
     Filter, sort and paginate queryset using jqWidgets' grid GET params
     """
-    pass
 
 
 class TypeaheadSerializer(rest_framework.serializers.Serializer):
@@ -1060,67 +1093,170 @@ class APIActionMixin:
     """
     Mixin class to track user activity in Action model
     """
-    user_action_methods = dict(
-        POST='create',
-        PUT='update',
-        PATCH='update',
-        GET='detail',
-        DELETE='delete',
-    )
-    user_action = None
+    track_view_actions = None    # None - track all, otherwise list view actions like ['list', 'update']
+    action_name_map = {
+        'create': 'created',
+        'update': 'changed',
+        'partial_update': 'changed',
+        'destroy': 'deleted',
+        'retrieve': 'retrieved',
+        'list': 'list'
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.object = None
+        self.user_action = None
+        self.action_message = None
+        self.model_name = self.get_model_name()
 
     def dispatch(self, request, *args, **kwargs):
-        request.needs_action_logging = getattr(request, 'needs_action_logging', (request.method != 'GET'))
+        """
+        Save Action after a view did its work
+        """
+        # self.request is initialized, request - not
         response = super().dispatch(request, *args, **kwargs)
-        if not request.needs_action_logging:
+
+        if self.should_track_view_action() is False:
             return response
 
-        if not request.user or not request.user.is_authenticated:
-            return response
+        content_type = self.get_content_type()
+        user_action = Action.objects.create(
+            user=request.user,
+            name=self.get_action_name(),
+            message=self.get_action_message(),
+            view_action=self.action,
+            object_pk=self.get_object_pk(),
+            content_type=content_type,
+            model_name=self.model_name,
+            app_label=content_type.app_label,
+            request_data=self.get_request_data()
+        )
+        self.user_action = user_action
+        try:
+            self.save_action_parent()
+        except Exception as e:
+            if not str(response.status_code).startswith('2'):
+                return response
+            raise e
+        return response
 
-        user_action_name = self.get_action_name() or self.user_action_methods.get(request.method)\
-                           or 'unknown'
+    def save_action_parent(self):
+        pass
 
-        user_action_object_pk = user_action_object = None
+    def get_model(self):
+        """
+        Get view model, redefine this method if a view has no "queryset" attribute
+        """
+        return self.queryset.model
+
+    def get_model_name(self):
+        return cap_words(self.get_model()._meta.verbose_name)
+
+    def get_content_type(self):
+        model = self.get_model()
+        return ContentType.objects.get_for_model(model)
+
+    def should_track_view_action(self):
+        if not self.request.user or not self.request.user.is_authenticated:
+            return False
+        if self.track_view_actions is not None and self.action not in self.track_view_actions:
+            return False
+        return True
+
+    def get_request_data(self):
+        # self.request is initialized, request - not
+        if self.request.method == 'GET':
+            return self.request.GET
+        if hasattr(self.request, 'data'):
+            return self.request.data
+
+    def get_object_pk(self):
+        if self.object:
+            return self.object.pk
+        user_action_object_pk = None
         if 'pk' in self.kwargs:
             # need this to get rid of extra sql in elif
             user_action_object_pk = self.kwargs['pk']
-            user_action_object_pk = None \
-                if str(user_action_object_pk).lower() == 'null' else user_action_object_pk
-        elif (self.lookup_url_kwarg or self.lookup_field) in self.kwargs:
-            user_action_object = self.get_object()
-        else:
-            if request.method == 'GET':
-                user_action_name = 'list'
-        model = self.queryset.model
-        content_type = ContentType.objects.get_for_model(model)
-        user_action = Action(
-            user=request.user,
-            name=user_action_name,
-            # content_type=content_type
-        )
-        if user_action_object_pk:
-            user_action.object_pk = user_action_object_pk
-        else:
-            user_action.object = user_action_object
-        # this should be added after all otherwise it throws error object has no content type
-        user_action.content_type = content_type
-        user_action.save()
-        self.user_action = user_action
-        return response
+            # TODO: check the case
+            if str(user_action_object_pk).lower() == 'null':
+                user_action_object_pk = None
+        elif self.lookup_url_kwarg in self.kwargs or self.lookup_field in self.kwargs:
+            user_action_object_pk = self.get_object().pk
+        return user_action_object_pk
 
     def perform_create(self, serializer):
+        """
+        Should have an object after create action
+        """
         obj = serializer.save()
-        if self.user_action is not None:
-            self.user_action.object = obj
-            self.user_action.save()
+        self.object = obj
         return obj
+
+    def perform_destroy(self, instance):
+        """
+        Should have an object after destroy action
+        """
+        self.object = instance
+        instance.delete()
 
     def get_action_name(self):
         """
-        Helper to define custom action name
+        Simply get view.action which is by default in ["list", "retrieve", "update", "partial_update", "delete"]
+        and modify into more verbose but short string
+        other custom user actions implemented via "@action" decorator in ViewSets
         """
-        pass
+        if self.action in self.action_name_map:
+            return f'{self.model_name} {self.action_name_map[self.action].capitalize()}'
+        return f'{self.model_name} {self.action.replace("_", "").capitalize()}'
+
+    def get_action_message(self):
+        """
+        Something more informative than just action name "update"
+        """
+        return self.action_message
+
+    def get_updated_fields_message(self, old_instance_state, new_instance_state):
+        """
+        Create description for updated fields
+        :param old_instance_state: dict
+        :param new_instance_state: dict
+        """
+        changes = []
+        for field in old_instance_state:
+            if old_instance_state[field] != new_instance_state[field]:
+                changes.append(
+                    f'"{field}" field changed '
+                    f'from "{old_instance_state[field]}" '
+                    f'to "{new_instance_state[field]}"')
+        if changes:
+            return f'{self.model_name} {", ".join(changes)}'
+
+    @staticmethod
+    def get_object_state(obj):
+        """
+        Get object info for all fields including m2m fields,
+        otherwise it's impossible to get previous state of m2m fields after update
+        """
+        obj_state = dict()
+        for field in obj._meta.fields:
+            obj_state[field.name] = getattr(obj, field.name)
+        for field in obj._meta.many_to_many:
+            obj_state[field.name] = list(getattr(obj, field.name).order_by('pk'))
+        return obj_state
+
+    def update(self, request, *args, **kwargs):
+        """
+        Fill in "self.action_message" attribute to use later to save Action.message (see dispatch method)
+        """
+        instance = self.get_object()
+        old_instance_state = self.get_object_state(instance)
+        response = super().update(request, *args, **kwargs)
+        instance.refresh_from_db()
+        new_instance_state = self.get_object_state(instance)
+        self.object = instance
+        self.action_message = self.get_updated_fields_message(old_instance_state, new_instance_state)
+        return response
 
 
 class APILoggingMixin(LoggingMixin):
@@ -1132,17 +1268,17 @@ class APILoggingMixin(LoggingMixin):
         if isinstance(response, StreamingHttpResponse):
             return False
         from apps.common.app_vars import TRACK_API
-        return TRACK_API.val
+        return TRACK_API.val()
 
     def handle_log(self):
         """
         Try to check if response time limit is enabled
         """
         from apps.common.app_vars import TRACK_API_GREATER_THAN
-        if self.log['response_ms'] <= TRACK_API_GREATER_THAN.val:
+        if self.log['response_ms'] <= TRACK_API_GREATER_THAN.val():
             return
         from apps.common.app_vars import TRACK_API_SAVE_SQL_LOG
-        if TRACK_API_SAVE_SQL_LOG.val:
+        if TRACK_API_SAVE_SQL_LOG.val():
             self.log['sql_log'] = '\n'.join(['({}) {}'.format(
                 q.get('time') or q.get('duration', 0) / 1000, q.get('sql') or '')
                 for q in connection.queries])

@@ -24,25 +24,29 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
+import regex as re
 import os
+import shutil
 import tempfile
 from contextlib import contextmanager
-from typing import List, Tuple, Generator
-from typing import Optional
+from typing import List, Tuple, Generator, Any, Dict, Optional, BinaryIO, Union
 from urllib.parse import quote, unquote
 from xml.etree import ElementTree
 
 import requests
 from django.conf import settings
+from requests import Response
 from requests.auth import HTTPBasicAuth
+from django.core.files.storage import get_valid_filename
 
 from apps.common.file_storage.file_storage import ContraxsuiteFileStorage, UnableToReadFile
 from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -57,6 +61,8 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
     WebDAV-based file storage client.
     Reads/writes files from/to a WebDAV server running at the configured host/port.
     """
+    RE_FILE_MODIFY_DATE = re.compile(r'(?<=<lp1:getlastmodified>)[^<]+(?=</lp1:getlastmodified>)', re.IGNORECASE)
+    RE_FILE_SIZE = re.compile(r'(?<=<lp1:getcontentlength>)\d+', re.IGNORECASE)
 
     def __init__(self,
                  root_url: str = '',
@@ -88,8 +94,19 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
                 f'{resp.text}'
             raise Exception(msg)
 
-    def write_file(self, path: str, contents_file_like_object, content_length: int = None):
+    def write_file(self,
+                   path: str,
+                   contents_file_like_object: Union[BinaryIO, bytes],
+                   content_length: int = None,
+                   skip_existing: bool = False):
         url = self.sub_path_join(self.root_url, quote(path))
+        if skip_existing:
+            file_status = self.check_path(quote(path))
+            if file_status['exists']:
+                if file_status['is_folder']:
+                    raise Exception(f'''WebDAV.write_file({path}): there is already a directory
+                                        with the name of the file passed.''')
+                return
         resp = requests.put(url, data=contents_file_like_object, auth=self.auth,
                             headers={'Content-Length': str(content_length)})
         if resp.status_code not in {200, 201}:
@@ -118,6 +135,35 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
         r = requests.head(url, auth=self.auth)
         return r.status_code == 200
 
+    def check_path(self, rel_path: str) -> Dict[str, bool]:
+        # returns: { 'exists': True, 'is_folder': True, 'not_empty': False }
+        url = os.path.join(self.root_url, rel_path.lstrip('/'))
+        r = requests.head(url, auth=self.auth, allow_redirects=True)
+        if r.status_code != 200:
+            return {
+                'exists': False,
+                'is_folder': False,
+                'not_empty': False
+            }
+
+        r = requests.request('PROPFIND', url, auth=self.auth, headers={'Depth': '1'})
+
+        is_folder, has_files = False, False
+        rel_path = unquote(rel_path)
+        for fn, is_dir in self.parse_propfind_response(None, r.text):
+            if fn == rel_path:
+                is_folder = is_dir
+            else:
+                has_files = True
+                is_folder = True
+                break
+
+        return {
+            'exists': True,
+            'is_folder': is_folder,
+            'not_empty': has_files
+        }
+
     def document_exists(self, rel_path: str):
         url = os.path.join(self.root_url, self.documents_path, rel_path.lstrip('/'))
         r = requests.head(url, auth=self.auth, allow_redirects=True)
@@ -130,9 +176,9 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
             if path and not path.endswith('/'):
                 self._list_impl(file_list, path + '/')
             return
-        elif r.status_code == 404:
+        if r.status_code == 404:
             return
-        elif r.status_code != 207:
+        if r.status_code != 207:
             raise WebDAVError('Unable to read file: {0}. Http status code: {1}. Http message: {2}'
                               .format(url, r.status_code, r.text))
 
@@ -161,17 +207,51 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
                 f'{resp.text}'
             if resp.status_code == 404:
                 raise FileNotFoundError(msg)
-            else:
-                raise Exception(msg)
+            raise Exception(msg)
 
-    def rename_file(self, old_rel_path: str, new_rel_path: str):
+    def file_info(self, rel_file_path: str):
+        url = self.sub_path_join(self.root_url, quote(rel_file_path))
+        resp = requests.request('PROPFIND', url, auth=self.auth)
+        if not resp.ok:
+            msg = f'Unable to get file info at WebDAV storage: {url}\n' \
+                  f'Http status: {resp.status_code}\n' \
+                  f'Response:\n' \
+                  f'{resp.text}'
+            if resp.status_code == 404:
+                raise FileNotFoundError(msg)
+            raise Exception(msg)
+
+        date_matches = [i.group(0) for i in self.RE_FILE_MODIFY_DATE.finditer(resp.text)]
+        if len(date_matches) != 1:
+            raise Exception(f'No one / too many modify date entries found in response ({resp.text})')
+        try:
+            modify_date = datetime.datetime.strptime(date_matches[0], '%a, %d %b %Y %H:%M:%S %Z')
+        except:
+            raise Exception(f'Cannot convert "{date_matches[0]}" string to datetime')
+
+        size_matches = [i.group(0) for i in self.RE_FILE_SIZE.finditer(resp.text)]
+        if len(size_matches) != 1:
+            raise Exception(f'No one / too many modify size entries found in response ({resp.text})')
+        try:
+            file_size = int(size_matches[0])
+        except:
+            raise Exception(f'Cannot convert "{size_matches[0]}" string to int')
+        return {'date': modify_date, 'size': file_size}
+
+    def rename_file(self,
+                    old_rel_path: str,
+                    new_rel_path: str,
+                    move_file: bool = False):
         url = self.sub_path_join(self.root_url, quote(old_rel_path))
         dest_url = self.sub_path_join(self.root_url, quote(new_rel_path))
         resp = requests.request('MOVE',
                                 url,
                                 auth=self.auth,
                                 headers={'Destination': dest_url})
-        if resp.status_code not in {200, 201, 204}:
+        allowed_codes = {200, 201, 204}
+        if move_file:
+            allowed_codes.add(301)
+        if resp.status_code not in allowed_codes:
             msg = f'Unable to MOVE file at WebDAV storage: {old_rel_path} -> {new_rel_path}\n' \
                 f'Http status: {resp.status_code}\n' \
                 f'Response:\n' \
@@ -186,9 +266,9 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
             raise UnableToReadFile('Unable to read file: {0}. Http status code: {1}. Http message: {2}'
                                    .format(url, r.status_code, r.text))
 
-        _, ext = os.path.splitext(rel_file_path)
-        _fd, fn = tempfile.mkstemp(suffix=ext)
+        temp_dir = tempfile.mkdtemp()
         try:
+            fn = os.path.join(temp_dir, get_valid_filename(os.path.basename(rel_file_path)))
             with open(fn, 'bw') as f:
                 for chunk in r.iter_content(chunk_size=4096):
                     if chunk:
@@ -197,20 +277,34 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
             yield fn, rel_file_path
         finally:
             r.close()
-            os.remove(fn)
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def read(self, rel_file_path: str) -> Optional[bytes]:
         url = self.sub_path_join(self.root_url, quote(rel_file_path))
         r = requests.get(url, stream=True, auth=self.auth)
         if r.status_code == 404:
             return None
-        elif r.status_code != 200:
+        if r.status_code != 200:
             raise WebDAVError('Unable to read file: {0}. Http status code: {1}. Http message: {2}'
                               .format(url, r.status_code, r.text))
         try:
             return r.content
         finally:
             r.close()
+
+    def get_request(self, rel_file_path: str,
+                    extra_headers: Optional[Dict[str, Any]] = None) -> Optional[Response]:
+        rel_file_path = self.sub_path_join(self.documents_path, rel_file_path)
+
+        url = self.sub_path_join(self.root_url, quote(rel_file_path))
+        r = requests.get(url, stream=True, auth=self.auth,
+                         headers=extra_headers)
+        if r.status_code == 404:
+            return None
+        if r.status_code < 200 or r.status_code > 299:
+            raise WebDAVError('Unable to read file: {0}. Http status code: {1}. Http message: {2}'
+                              .format(url, r.status_code, r.text))
+        return r
 
     def __str__(self):
         return f'{self.__class__.__name__}: {self.root_url}'

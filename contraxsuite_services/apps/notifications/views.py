@@ -51,9 +51,9 @@ from apps.notifications.notifications import render_digest, get_notification_tem
 from apps.notifications.tasks import SendDigest
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -150,7 +150,7 @@ class RenderNotificationView(View):
                                               include_annotation_fields=False)
         field_values = get_document_field_values(document_type, document_id, handlers=field_handlers)
 
-        example_changes = dict()
+        example_changes = {}
         if subscription.event in {DocumentAssignedEvent.code, DocumentChangedEvent.code} and field_values:
             for h in field_handlers:
                 if random.random() > 0.3:

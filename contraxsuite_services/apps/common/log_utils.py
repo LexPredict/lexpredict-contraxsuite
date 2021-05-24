@@ -24,21 +24,21 @@
 """
 # -*- coding: utf-8 -*-
 
-import logging
 import sys
 from typing import List
 
+from apps.common.logger import CsLogger
 from contraxsuite_logging import HumanReadableTraceBackException
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger(__name__)
+logger = CsLogger.get_logger(__name__)
 
 
 def render_error(message: str, caused_by: Exception = None) -> str:
@@ -47,7 +47,7 @@ def render_error(message: str, caused_by: Exception = None) -> str:
         if not caused_by_tuple:
             caused_by = caused_by_tuple[1]
 
-    msg_lines = list()
+    msg_lines = []
     if message:
         msg_lines.append(message + ('\n' if caused_by else ''))
 
@@ -110,7 +110,7 @@ class ErrorCollectingLogger(ProcessLogger):
     def __init__(self) -> None:
         super().__init__()
         self.field_problems = {}
-        self.common_problems = list()
+        self.common_problems = []
 
     def set_progress_steps_number(self, steps):
         pass
@@ -127,13 +127,13 @@ class ErrorCollectingLogger(ProcessLogger):
             logger.error(message, exc_info=exc_info)
             self.common_problems.append(message)
             return
-        else:
-            logger.error(f'{field_code}: {message}', exc_info=exc_info)
+
+        logger.error(f'{field_code}: {message}', exc_info=exc_info)
 
         problems = self.field_problems.get(field_code)
 
         if problems is None:
-            problems = list()
+            problems = []
             self.field_problems[field_code] = problems
         problems.append(message)
 
@@ -143,12 +143,10 @@ class ErrorCollectingLogger(ProcessLogger):
                 'common_problems': self.common_problems,
                 'field_problems': self.field_problems
             }}
-        else:
-            return None
 
     def raise_if_error(self):
         if self.common_problems or self.field_problems:
-            messages = list()  # type: List[str]
+            messages = []  # type: List[str]
             if self.common_problems:
                 messages.extend(self.common_problems)
             if self.field_problems:

@@ -50,11 +50,14 @@ from apps.extract import dict_data_cache
 from apps.extract.models import Court, Term, GeoEntity
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+from apps.extract.term_stems import TermStemsCache
 
 
 class DataLoader:
@@ -65,7 +68,7 @@ class DataLoader:
         raise RuntimeError('Not implemented')
 
     def load_once(self) -> None:
-        if not self.initialization_flag or not self.initialization_flag.val:
+        if not self.initialization_flag or not self.initialization_flag.val():
             try:
                 self.load()
             except Exception:
@@ -117,7 +120,7 @@ class TermsLoader(ZipFileLoader):
         print('Detected %d terms' % terms_count)
         print('Caching terms config for Locate tasks...')
 
-        dict_data_cache.cache_term_stems()
+        TermStemsCache.invalidate()
 
 
 class CourtsLoader(ZipFileLoader):
@@ -180,7 +183,7 @@ class DictionaryLoader(DataLoader):
             return None
 
         zip_file = ZipFile(self.zip_or_dir_path)
-        files_by_loader = dict()
+        files_by_loader = {}
         for file_info in zip_file.infolist():
             if file_info.filename.endswith('/'):
                 continue
@@ -188,7 +191,7 @@ class DictionaryLoader(DataLoader):
                 if file_info.filename.startswith(prefix):
                     files = files_by_loader.get(LoaderClass)
                     if not files:
-                        files = list()
+                        files = []
                         files_by_loader[LoaderClass] = files
                     files.append(file_info)
                     break

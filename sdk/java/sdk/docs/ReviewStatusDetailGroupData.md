@@ -2,6 +2,7 @@
 
 # ReviewStatusDetailGroupData
 
+
 ## Properties
 
 Name | Type | Description | Notes

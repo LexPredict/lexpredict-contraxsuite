@@ -1,13 +1,13 @@
 # DocumentDetailUser
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**username** | **str** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | 
 **pk** | **int** |  | [optional] [readonly] 
 **first_name** | **str** |  | [optional] 
 **last_name** | **str** |  | [optional] 
-**username** | **str** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | 
-**role** | **int** |  | [optional] 
 **photo** | **str** |  | [optional] [readonly] 
 **name** | **str** |  | [optional] 
 

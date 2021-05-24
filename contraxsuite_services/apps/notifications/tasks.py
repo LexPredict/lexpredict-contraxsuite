@@ -25,9 +25,9 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import numbers
 import pickle
 import uuid
-from collections import defaultdict
 from typing import Optional, Any, Set, Dict, Tuple, List, Callable
 
 import tzlocal
@@ -46,8 +46,7 @@ from apps.common.sql_commons import fetch_bool, SQLClause
 from apps.document.models import Document, DocumentField, DocumentType
 from apps.notifications.document_notification import DocumentNotification
 from apps.notifications.models import DocumentDeletedEvent, DocumentLoadedEvent, \
-    DocumentChangedEvent, DocumentAssignedEvent, DocumentNotificationSubscription
-from apps.notifications.models import DocumentDigestConfig
+    DocumentChangedEvent, DocumentAssignedEvent, DocumentNotificationSubscription, DocumentDigestConfig
 from apps.notifications.notifications import render_digest, RenderedDigest, \
     RenderedNotification, DocumentNotificationSource
 from apps.notifications.notification_renderer import NotificationRenderer
@@ -55,15 +54,14 @@ from apps.rawdb.field_value_tables import build_field_handlers
 from apps.rawdb.constants import FIELD_CODE_ASSIGNEE_ID
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.rawdb.signals import DocumentEvent
-from apps.task.tasks import ExtendedTask, call_task
-from apps.task.tasks import CeleryTaskLogger
+from apps.task.tasks import ExtendedTask, call_task, CeleryTaskLogger
 from apps.users.models import User
 import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -116,7 +114,7 @@ class SendDigest(ExtendedTask):
         run_even_if_not_enabled = bool(kwargs.get(self.PARAM_RUN_EVEN_IF_NOT_ENABLED))
 
         config = DocumentDigestConfig.objects \
-            .filter(pk=config_id).select_related('for_role', 'for_user').first()  # type: DocumentDigestConfig
+            .filter(pk=config_id).select_related('for_user').first()  # type: DocumentDigestConfig
         if not config:
             self.log_error('{1} not found: #{0}'.format(config_id, DocumentDigestConfig.__name__))
             return
@@ -133,18 +131,16 @@ class SendDigest(ExtendedTask):
 
         if user_ids:
             users_qr = User.objects.filter(pk__in=user_ids)
-        elif config.for_role_id is not None:
-            users_qr = User.objects.filter(role_id=config.for_role_id)
         elif config.for_user_id is not None:
             users_qr = User.objects.get(pk=config.for_user_id)
         else:
-            self.log_error('{what} #{config_id} specifies neither for_user nor for_role.'
+            self.log_error('{what} #{config_id} should specify for_user.'
                            .format(what=DocumentDigestConfig.__name__, config_id=config.pk))
             return
 
         log = CeleryTaskLogger(self)
         for user in users_qr:  # type: User
-            if config.for_user_id != user.id and (config.for_role_id is None or config.for_role_id != user.role_id):
+            if config.for_user_id != user.id:
                 self.log_error('{what} #{what_id} is not applicable for user {user_name} (#{user_id})'
                                .format(what=DocumentDigestConfig.__name__,
                                        what_id=config.pk,
@@ -161,7 +157,7 @@ class SendDigest(ExtendedTask):
                                f'Config: #{config.pk}\n'
                                f'Dst user: {user.name} #{user.pk}\n'
                                f'Run date: {run_date}', exc_info=e)
-                raise Exception(f'Error while rendering digest') from e
+                raise Exception('Error while rendering digest') from e
 
 
 def _as_ints(csv: str):
@@ -185,24 +181,20 @@ def _send_digest_scheduled(run_date: datetime) -> bool:
              max_retries=0)
 def trigger_digests(_task):
     now_local = datetime.datetime.now(tz=tzlocal.get_localzone())
-    role_ids_to_user_ids = defaultdict(set)  # type: Dict[int, Set[int]]
-    user_ids_to_timezones = dict()  # type: Dict[int, datetime.tzinfo]
+    user_ids_to_timezones = {}  # type: Dict[int, datetime.tzinfo]
     all_user_ids = set()  # type: Set[int]
 
-    for user_id, role_id, timezone in \
-            User.objects.all().values_list('pk', 'role_id', 'timezone'):  # type: int, int, datetime.tzinfo
-        role_ids_to_user_ids[role_id].add(user_id)
+    for user_id, timezone in User.objects.values_list('pk', 'timezone'):
         timezone = timezone or tzlocal.get_localzone()
         user_ids_to_timezones[user_id] = timezone
         all_user_ids.add(user_id)
 
-    for config_id, for_user_id, for_role_id, \
+    for config_id, for_user_id, \
         run_at_month, run_at_day_of_month, run_at_day_of_week, run_at_hour, run_at_minute \
-            in DocumentDigestConfig \
-            .objects \
+            in DocumentDigestConfig.objects \
             .filter(enabled=True) \
-            .values_list('pk', 'for_user_id', 'for_role_id',
-                         'run_at_month', 'run_at_day_of_month', 'run_at_day_of_week', 'run_at_hour', 'run_at_minute'):
+            .values_list('pk', 'for_user_id', 'run_at_month', 'run_at_day_of_month',
+                         'run_at_day_of_week', 'run_at_hour', 'run_at_minute'):
 
         run_at_month = _as_ints(run_at_month)
         run_at_day_of_month = _as_ints(run_at_day_of_month)
@@ -213,10 +205,8 @@ def trigger_digests(_task):
         for_user_ids = set()
         if for_user_id:
             for_user_ids.add(for_user_id)
-        if for_role_id:
-            for_user_ids.update(role_ids_to_user_ids[for_role_id])
 
-        tz_to_user_ids_delta_date = dict()  # type: Dict[str, Tuple[Set[int], int, datetime.datetime]]
+        tz_to_user_ids_delta_date = {}  # type: Dict[str, Tuple[Set[int], int, datetime.datetime]]
 
         for user_id in for_user_ids:
             timezone = user_ids_to_timezones[user_id]  # type: datetime.tzinfo
@@ -308,7 +298,7 @@ def process_notifications_on_document_change(
                           field_values=fields_before,
                           changed_by_user=changed_by_user)
     else:
-        changes = dict()
+        changes = {}
         for field_code, old_value in fields_before.items():
             if field_code not in field_handlers_by_field_code:
                 continue
@@ -386,7 +376,6 @@ class EmailNotificationPool:
                         er_msg = 'send_notifications_packet() - error unpickling raw_msg.data'
                         log.error(er_msg)
                         errors.append((er_msg, e,))
-                        pass
 
                 if not ntfs:
                     continue
@@ -398,13 +387,13 @@ class EmailNotificationPool:
                 EmailNotificationPool.send_notifications_packet(ntfs, event, _task)
             except Exception as e:
                 log.error(f'Error in check_email_pool(), sending package: {e}')
-                errors.append(('Error in check_email_pool(), sending package', e,))
+                errors.append(('Error in check_email_pool(), sending package', e))
 
             try:
                 ObjectStorage.objects.filter(pk__startswith=cache_key).delete()
             except Exception as e:
                 log.error(f'Error in check_email_pool(), deleting pool objects: {e}')
-                errors.append(('Error in check_email_pool(), deleting pool objects', e,))
+                errors.append(('Error in check_email_pool(), deleting pool objects', e))
                 continue
         if errors:
             er_msg = '\n'.join([m for m, _ in errors])
@@ -457,9 +446,9 @@ class EmailNotificationPool:
                             document_type=document.document_type,
                             event=event,
                             recipients__isnull=False) \
-                    .select_related('specified_user', 'specified_role') \
+                    .select_related('specified_user') \
                     .prefetch_related(Prefetch('user_fields',
-                                               queryset=DocumentField.objects.all().order_by('order')))
+                                               queryset=DocumentField.objects.order_by('order')))
                 subscr_by_key[key] = subscriptions
                 messages_by_subscr_key[key] = [ntf]
 
@@ -492,7 +481,7 @@ class EmailNotificationPool:
                                     field_values=msg_pack[0].field_values,
                                     changes=msg_pack[0].changes,
                                     changed_by_user=user),
-                                    log_routine=lambda m: log.error(m))
+                                log_routine=log.error)
                             if notification:
                                 notifications_to_send.append(notification)
                         except Exception as e:
@@ -558,7 +547,6 @@ def values_look_equal(a, b) -> bool:
     if (isinstance(a, str) and not a and not b) or (isinstance(b, str) and not b and not a):
         return True
 
-    import numbers
     if isinstance(a, numbers.Number) and isinstance(b, numbers.Number):
         a = float(a)
         b = float(b)

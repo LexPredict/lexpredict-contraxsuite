@@ -2,19 +2,20 @@
 
 # Action
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**pk** | **Integer** |  |  [optional] [readonly]
+**id** | **Integer** |  |  [optional] [readonly]
 **name** | **String** |  |  [optional]
-**user** | [**ProjectDetailOwnersData**](ProjectDetailOwnersData.md) |  | 
-**contentType** | **Integer** |  | 
+**message** | **String** |  |  [optional]
+**viewAction** | **String** |  |  [optional]
 **objectPk** | **String** |  |  [optional]
-**date** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional] [readonly]
-**appLabel** | **String** |  |  [optional]
 **modelName** | **String** |  |  [optional]
-**objectStr** | **String** |  |  [optional]
+**date** | **OffsetDateTime** |  |  [optional] [readonly]
+**userName** | **String** |  |  [optional] [readonly]
+**requestData** | **Object** |  |  [optional]
 
 
 

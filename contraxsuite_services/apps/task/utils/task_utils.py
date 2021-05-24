@@ -41,9 +41,9 @@ from django.db.models.query import QuerySet
 from apps.common.db_cache.db_cache import DbCache
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -102,11 +102,11 @@ def normalize(task_id, key, value):
     except TypeError:
         if isinstance(value, models.Model):
             return SimpleObjectSerializer().serialize([value]).pop()
-        elif isinstance(value, QuerySet):
+        if isinstance(value, QuerySet):
             return SimpleObjectSerializer().serialize(value)
-        elif isinstance(value, (dict, list, tuple, set)):
+        if isinstance(value, (dict, list, tuple, set)):
             return pre_serialize(task_id, key, value)
-        elif isinstance(value, UploadedFile):
+        if isinstance(value, UploadedFile):
             uploaded_file = value  # type: UploadedFile
             file_ref = ExportFile()
             file_ref.created_time = datetime.datetime.utcnow()
@@ -182,12 +182,12 @@ def check_blocks(raise_error=True, error_message=None):
     from apps.task.app_vars import DISK_USAGE_BLOCK_TASKS, MIN_FREE_DISK_BLOCK_TASKS, DISK_USAGE, FREE_DISK_SPACE
 
     # blocks exist
-    if DISK_USAGE.val > DISK_USAGE_BLOCK_TASKS.val and FREE_DISK_SPACE.val < MIN_FREE_DISK_BLOCK_TASKS.val:
+    if DISK_USAGE.val() > DISK_USAGE_BLOCK_TASKS.val() and FREE_DISK_SPACE.val() < MIN_FREE_DISK_BLOCK_TASKS.val():
 
         base_error_message = 'Current Disk Usage {}% is greater than limit {}% AND ' \
                              'current Free Disk space {} Gb is less than limit {} Gb.'.format(
-                                 DISK_USAGE.val, DISK_USAGE_BLOCK_TASKS.val,
-                                 FREE_DISK_SPACE.val, MIN_FREE_DISK_BLOCK_TASKS.val)
+                                 DISK_USAGE.val(), DISK_USAGE_BLOCK_TASKS.val(),
+                                 FREE_DISK_SPACE.val(), MIN_FREE_DISK_BLOCK_TASKS.val())
         if error_message:
             base_error_message += ' {}'.format(error_message)
         if raise_error:

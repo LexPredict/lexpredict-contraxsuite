@@ -2,14 +2,15 @@
 
 # DateDurationUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**amount** | **BigDecimal** |  |  [optional]
 **amountStr** | **String** |  |  [optional]
 **durationType** | **String** |  |  [optional]
-**durationDays** | [**BigDecimal**](BigDecimal.md) |  |  [optional]
+**durationDays** | **BigDecimal** |  |  [optional]
 **count** | **Integer** |  |  [optional]
 **pk** | **Integer** |  |  [optional] [readonly]
 **textUnitPk** | **String** |  |  [optional] [readonly]

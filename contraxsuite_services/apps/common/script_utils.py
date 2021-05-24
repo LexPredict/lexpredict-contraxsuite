@@ -33,9 +33,9 @@ from typing import Any, Dict
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -79,7 +79,7 @@ def eval_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]
     if '__' in script_code:
         raise SyntaxError(f'Script "{script_title}"" contains "__" string. This may be unsafe for python eval.')
     try:
-        eval_locals_full = dict()
+        eval_locals_full = {}
         eval_locals_full.update(settings.SCRIPTS_BASE_EVAL_LOCALS)
         if eval_locals:
             eval_locals_full.update(eval_locals)
@@ -92,7 +92,7 @@ def exec_script(script_title: str, script_code: str, eval_locals: Dict[str, Any]
     if '__' in script_code:
         raise SyntaxError('Script contains "__" string. This may be unsafe for python eval.')
     try:
-        eval_locals_full = dict()
+        eval_locals_full = {}
         eval_locals_full.update(settings.SCRIPTS_BASE_EVAL_LOCALS)
         if eval_locals:
             eval_locals_full.update(eval_locals)

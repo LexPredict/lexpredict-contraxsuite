@@ -13,7 +13,6 @@
       var datafields = [
         { name: 'pk', type: 'int' },
         { name: 'username', type: 'string' },
-        { name: 'role__name', type: 'string' },
         { name: 'photo', type: 'string' },
         { name: 'first_name', type: 'string' },
         { name: 'last_name', type: 'string' },
@@ -30,9 +29,6 @@
           align: 'center', cellsalign: 'left',
           cellsrenderer: defaultLinkFormatter,
           cellclassname: inactive_cellsclassrenderer },
-        { text: 'Role', datafield: 'role__name', width: 150,
-          cellclassname: inactive_cellsclassrenderer,
-          align: 'center', cellsalign: 'center' },
         { text: 'First Name', datafield: 'first_name', width: 100,
           cellclassname: inactive_cellsclassrenderer,
           align: 'center', cellsalign: 'center' },

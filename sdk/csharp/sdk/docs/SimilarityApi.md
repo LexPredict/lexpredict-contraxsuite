@@ -4,13 +4,175 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**SimilarityDocumentSimilarityByFeaturesGET**](SimilarityApi.md#similaritydocumentsimilaritybyfeaturesget) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
+[**SimilarityDocumentSimilarityByFeaturesPOST**](SimilarityApi.md#similaritydocumentsimilaritybyfeaturespost) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 [**SimilarityPartySimilarityGET**](SimilarityApi.md#similaritypartysimilarityget) | **GET** /api/v1/similarity/party-similarity/ | 
 [**SimilarityPartySimilarityPOST**](SimilarityApi.md#similaritypartysimilaritypost) | **POST** /api/v1/similarity/party-similarity/ | 
-[**SimilaritySimilarityByFeaturesGET**](SimilarityApi.md#similaritysimilaritybyfeaturesget) | **GET** /api/v1/similarity/similarity-by-features/ | 
-[**SimilaritySimilarityByFeaturesPOST**](SimilarityApi.md#similaritysimilaritybyfeaturespost) | **POST** /api/v1/similarity/similarity-by-features/ | 
+[**SimilarityProjectDocumentsSimilarityByVectorsGET**](SimilarityApi.md#similarityprojectdocumentssimilaritybyvectorsget) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
+[**SimilarityProjectDocumentsSimilarityByVectorsPOST**](SimilarityApi.md#similarityprojectdocumentssimilaritybyvectorspost) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
+[**SimilarityProjectTextUnitsSimilarityByVectorsGET**](SimilarityApi.md#similarityprojecttextunitssimilaritybyvectorsget) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
+[**SimilarityProjectTextUnitsSimilarityByVectorsPOST**](SimilarityApi.md#similarityprojecttextunitssimilaritybyvectorspost) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
 [**SimilaritySimilarityGET**](SimilarityApi.md#similaritysimilarityget) | **GET** /api/v1/similarity/similarity/ | 
 [**SimilaritySimilarityPOST**](SimilarityApi.md#similaritysimilaritypost) | **POST** /api/v1/similarity/similarity/ | 
+[**SimilarityTextUnitSimilarityByFeaturesGET**](SimilarityApi.md#similaritytextunitsimilaritybyfeaturesget) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ | 
+[**SimilarityTextUnitSimilarityByFeaturesPOST**](SimilarityApi.md#similaritytextunitsimilaritybyfeaturespost) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ | 
 
+
+
+## SimilarityDocumentSimilarityByFeaturesGET
+
+> Dictionary&lt;string, Object&gt; SimilarityDocumentSimilarityByFeaturesGET ()
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityDocumentSimilarityByFeaturesGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new SimilarityApi(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.SimilarityDocumentSimilarityByFeaturesGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling SimilarityApi.SimilarityDocumentSimilarityByFeaturesGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityDocumentSimilarityByFeaturesPOST
+
+> SimilarityPOSTObjectResponse SimilarityDocumentSimilarityByFeaturesPOST (DocumentSimilarityByFeaturesForm documentSimilarityByFeaturesForm = null)
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityDocumentSimilarityByFeaturesPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new SimilarityApi(Configuration.Default);
+            var documentSimilarityByFeaturesForm = new DocumentSimilarityByFeaturesForm(); // DocumentSimilarityByFeaturesForm |  (optional) 
+
+            try
+            {
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityDocumentSimilarityByFeaturesPOST(documentSimilarityByFeaturesForm);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling SimilarityApi.SimilarityDocumentSimilarityByFeaturesPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional] 
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
 
 
 ## SimilarityPartySimilarityGET
@@ -77,6 +239,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -90,7 +253,7 @@ This endpoint does not need any parameter.
 
 ## SimilarityPartySimilarityPOST
 
-> SimilarityPOSTObjectResponse SimilarityPartySimilarityPOST (Dictionary<string, Object> requestBody = null)
+> SimilarityPOSTObjectResponse SimilarityPartySimilarityPOST (PartySimilarityForm partySimilarityForm = null)
 
 
 
@@ -118,11 +281,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new SimilarityApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var partySimilarityForm = new PartySimilarityForm(); // PartySimilarityForm |  (optional) 
 
             try
             {
-                SimilarityPOSTObjectResponse result = apiInstance.SimilarityPartySimilarityPOST(requestBody);
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityPartySimilarityPOST(partySimilarityForm);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -141,7 +304,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional] 
 
 ### Return type
 
@@ -156,6 +319,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -167,13 +331,13 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
-## SimilaritySimilarityByFeaturesGET
+## SimilarityProjectDocumentsSimilarityByVectorsGET
 
-> Dictionary&lt;string, Object&gt; SimilaritySimilarityByFeaturesGET ()
+> Dictionary&lt;string, Object&gt; SimilarityProjectDocumentsSimilarityByVectorsGET ()
 
 
 
-\"Similarity\" admin task  POST params:     - search_similar_documents: bool     - search_similar_text_units: bool     - similarity_threshold: int     - use_idf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - item_id: int     - use_tfidf: bool     - delete: bool
 
 ### Example
 
@@ -186,7 +350,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class SimilaritySimilarityByFeaturesGETExample
+    public class SimilarityProjectDocumentsSimilarityByVectorsGETExample
     {
         public static void Main()
         {
@@ -200,12 +364,12 @@ namespace Example
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.SimilaritySimilarityByFeaturesGET();
+                Dictionary<string, Object> result = apiInstance.SimilarityProjectDocumentsSimilarityByVectorsGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling SimilarityApi.SimilaritySimilarityByFeaturesGET: " + e.Message );
+                Debug.Print("Exception when calling SimilarityApi.SimilarityProjectDocumentsSimilarityByVectorsGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -231,6 +395,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -242,13 +407,13 @@ This endpoint does not need any parameter.
 [[Back to README]](../README.md)
 
 
-## SimilaritySimilarityByFeaturesPOST
+## SimilarityProjectDocumentsSimilarityByVectorsPOST
 
-> SimilarityPOSTObjectResponse SimilaritySimilarityByFeaturesPOST (Dictionary<string, Object> requestBody = null)
+> SimilarityPOSTObjectResponse SimilarityProjectDocumentsSimilarityByVectorsPOST (ProjectDocumentsSimilarityByVectorsForm projectDocumentsSimilarityByVectorsForm = null)
 
 
 
-\"Similarity\" admin task  POST params:     - search_similar_documents: bool     - search_similar_text_units: bool     - similarity_threshold: int     - use_idf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - item_id: int     - use_tfidf: bool     - delete: bool
 
 ### Example
 
@@ -261,7 +426,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class SimilaritySimilarityByFeaturesPOSTExample
+    public class SimilarityProjectDocumentsSimilarityByVectorsPOSTExample
     {
         public static void Main()
         {
@@ -272,16 +437,16 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new SimilarityApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var projectDocumentsSimilarityByVectorsForm = new ProjectDocumentsSimilarityByVectorsForm(); // ProjectDocumentsSimilarityByVectorsForm |  (optional) 
 
             try
             {
-                SimilarityPOSTObjectResponse result = apiInstance.SimilaritySimilarityByFeaturesPOST(requestBody);
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityProjectDocumentsSimilarityByVectorsPOST(projectDocumentsSimilarityByVectorsForm);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling SimilarityApi.SimilaritySimilarityByFeaturesPOST: " + e.Message );
+                Debug.Print("Exception when calling SimilarityApi.SimilarityProjectDocumentsSimilarityByVectorsPOST: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -295,7 +460,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional] 
 
 ### Return type
 
@@ -309,6 +474,163 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityProjectTextUnitsSimilarityByVectorsGET
+
+> Dictionary&lt;string, Object&gt; SimilarityProjectTextUnitsSimilarityByVectorsGET ()
+
+
+
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - unit_type: str sentence|paragraph     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - use_tfidf: bool     - delete: bool
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityProjectTextUnitsSimilarityByVectorsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new SimilarityApi(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.SimilarityProjectTextUnitsSimilarityByVectorsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling SimilarityApi.SimilarityProjectTextUnitsSimilarityByVectorsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityProjectTextUnitsSimilarityByVectorsPOST
+
+> SimilarityPOSTObjectResponse SimilarityProjectTextUnitsSimilarityByVectorsPOST (ProjectTextUnitsSimilarityByVectorsForm projectTextUnitsSimilarityByVectorsForm = null)
+
+
+
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - unit_type: str sentence|paragraph     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - use_tfidf: bool     - delete: bool
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityProjectTextUnitsSimilarityByVectorsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new SimilarityApi(Configuration.Default);
+            var projectTextUnitsSimilarityByVectorsForm = new ProjectTextUnitsSimilarityByVectorsForm(); // ProjectTextUnitsSimilarityByVectorsForm |  (optional) 
+
+            try
+            {
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityProjectTextUnitsSimilarityByVectorsPOST(projectTextUnitsSimilarityByVectorsForm);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling SimilarityApi.SimilarityProjectTextUnitsSimilarityByVectorsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional] 
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -385,6 +707,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -398,7 +721,7 @@ This endpoint does not need any parameter.
 
 ## SimilaritySimilarityPOST
 
-> SimilarityPOSTObjectResponse SimilaritySimilarityPOST (Dictionary<string, Object> requestBody = null)
+> SimilarityPOSTObjectResponse SimilaritySimilarityPOST (SimilarityForm similarityForm = null)
 
 
 
@@ -426,11 +749,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new SimilarityApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var similarityForm = new SimilarityForm(); // SimilarityForm |  (optional) 
 
             try
             {
-                SimilarityPOSTObjectResponse result = apiInstance.SimilaritySimilarityPOST(requestBody);
+                SimilarityPOSTObjectResponse result = apiInstance.SimilaritySimilarityPOST(similarityForm);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -449,7 +772,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional] 
 
 ### Return type
 
@@ -463,6 +786,163 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityTextUnitSimilarityByFeaturesGET
+
+> Dictionary&lt;string, Object&gt; SimilarityTextUnitSimilarityByFeaturesGET ()
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityTextUnitSimilarityByFeaturesGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new SimilarityApi(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.SimilarityTextUnitSimilarityByFeaturesGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling SimilarityApi.SimilarityTextUnitSimilarityByFeaturesGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityTextUnitSimilarityByFeaturesPOST
+
+> SimilarityPOSTObjectResponse SimilarityTextUnitSimilarityByFeaturesPOST (TextUnitSimilarityByFeaturesForm textUnitSimilarityByFeaturesForm = null)
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityTextUnitSimilarityByFeaturesPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new SimilarityApi(Configuration.Default);
+            var textUnitSimilarityByFeaturesForm = new TextUnitSimilarityByFeaturesForm(); // TextUnitSimilarityByFeaturesForm |  (optional) 
+
+            try
+            {
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityTextUnitSimilarityByFeaturesPOST(textUnitSimilarityByFeaturesForm);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling SimilarityApi.SimilarityTextUnitSimilarityByFeaturesPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional] 
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

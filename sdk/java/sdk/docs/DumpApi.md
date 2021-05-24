@@ -16,7 +16,7 @@ Method | HTTP request | Description
 
 <a name="dumpDocumentConfigGET"></a>
 # **dumpDocumentConfigGET**
-> Map&lt;String, Object&gt; dumpDocumentConfigGET()
+> OneOfarrayfile dumpDocumentConfigGET(download, documentTypeCodes)
 
 
 
@@ -44,8 +44,10 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
+    Boolean download = true; // Boolean | Download as file
+    String documentTypeCodes = "documentTypeCodes_example"; // String | Document Type codes separated by comma
     try {
-      Map<String, Object> result = apiInstance.dumpDocumentConfigGET();
+      OneOfarrayfile result = apiInstance.dumpDocumentConfigGET(download, documentTypeCodes);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpDocumentConfigGET");
@@ -59,11 +61,15 @@ public class Example {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **Boolean**| Download as file | [optional]
+ **documentTypeCodes** | **String**| Document Type codes separated by comma | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -82,11 +88,11 @@ This endpoint does not need any parameter.
 
 <a name="dumpDocumentConfigPUT"></a>
 # **dumpDocumentConfigPUT**
-> File dumpDocumentConfigPUT(requestBody)
+> String dumpDocumentConfigPUT(requestBody)
 
 
 
-Upload field values
+Dump document types, fields, field detectors and  document filters to json.
 
 ### Example
 ```java
@@ -110,9 +116,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
     try {
-      File result = apiInstance.dumpDocumentConfigPUT(requestBody);
+      String result = apiInstance.dumpDocumentConfigPUT(requestBody);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpDocumentConfigPUT");
@@ -129,11 +135,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
 
 ### Return type
 
-[**File**](File.md)
+**String**
 
 ### Authorization
 
@@ -141,13 +147,14 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 <a name="dumpDumpFixturePOST"></a>
 # **dumpDumpFixturePOST**
@@ -220,11 +227,11 @@ Name | Type | Description  | Notes
 
 <a name="dumpDumpGET"></a>
 # **dumpDumpGET**
-> Map&lt;String, Object&gt; dumpDumpGET()
+> OneOfarrayfile dumpDumpGET(download)
 
 
 
-Dump all users, roles, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 ```java
@@ -248,8 +255,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
+    Boolean download = true; // Boolean | Download as file
     try {
-      Map<String, Object> result = apiInstance.dumpDumpGET();
+      OneOfarrayfile result = apiInstance.dumpDumpGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpDumpGET");
@@ -263,11 +271,14 @@ public class Example {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **Boolean**| Download as file | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -286,11 +297,11 @@ This endpoint does not need any parameter.
 
 <a name="dumpDumpPUT"></a>
 # **dumpDumpPUT**
-> File dumpDumpPUT(requestBody)
+> String dumpDumpPUT(requestBody)
 
 
 
-Upload field values
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 ```java
@@ -314,9 +325,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
     try {
-      File result = apiInstance.dumpDumpPUT(requestBody);
+      String result = apiInstance.dumpDumpPUT(requestBody);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpDumpPUT");
@@ -333,11 +344,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
 
 ### Return type
 
-[**File**](File.md)
+**String**
 
 ### Authorization
 
@@ -345,21 +356,22 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 <a name="dumpFieldValuesGET"></a>
 # **dumpFieldValuesGET**
-> Map&lt;String, Object&gt; dumpFieldValuesGET()
+> OneOfarrayfile dumpFieldValuesGET(download)
 
 
 
-Download field values
+Dump field values to json.
 
 ### Example
 ```java
@@ -383,8 +395,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
+    Boolean download = true; // Boolean | Download as file
     try {
-      Map<String, Object> result = apiInstance.dumpFieldValuesGET();
+      OneOfarrayfile result = apiInstance.dumpFieldValuesGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpFieldValuesGET");
@@ -398,11 +411,14 @@ public class Example {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **Boolean**| Download as file | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -421,7 +437,7 @@ This endpoint does not need any parameter.
 
 <a name="dumpFieldValuesPUT"></a>
 # **dumpFieldValuesPUT**
-> File dumpFieldValuesPUT(requestBody)
+> String dumpFieldValuesPUT(requestBody)
 
 
 
@@ -449,9 +465,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
     try {
-      File result = apiInstance.dumpFieldValuesPUT(requestBody);
+      String result = apiInstance.dumpFieldValuesPUT(requestBody);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpFieldValuesPUT");
@@ -468,11 +484,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
 
 ### Return type
 
-[**File**](File.md)
+**String**
 
 ### Authorization
 
@@ -480,17 +496,18 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 <a name="dumpLoadFixturePOST"></a>
 # **dumpLoadFixturePOST**
-> Map&lt;String, Object&gt; dumpLoadFixturePOST(loadFixture)
+> List&lt;Map&lt;String, Object&gt;&gt; dumpLoadFixturePOST(loadFixture)
 
 
 
@@ -520,7 +537,7 @@ public class Example {
     DumpApi apiInstance = new DumpApi(defaultClient);
     LoadFixture loadFixture = new LoadFixture(); // LoadFixture | 
     try {
-      Map<String, Object> result = apiInstance.dumpLoadFixturePOST(loadFixture);
+      List<Map<String, Object>> result = apiInstance.dumpLoadFixturePOST(loadFixture);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpLoadFixturePOST");
@@ -541,7 +558,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 

@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,9 +58,9 @@ def restore_textunitsim_constraints(_apps, _schema_editor):
     started = datetime.datetime.now()
     queries = CONSTRAINT_LIST + INDEX_LIST
     with connection.cursor() as cursor:
-        for i in range(len(queries)):
+        for i, query in enumerate(queries):
             print(f'Restoring constraints, step [{i + 1} / {len(queries)}]')
-            cursor.execute(queries[i])
+            cursor.execute(query)
     elapsed = (datetime.datetime.now() - started).total_seconds()
     print(f'Restoring constraints took {elapsed}s')
 

@@ -24,17 +24,16 @@
 """
 # -*- coding: utf-8 -*-
 
-import coreapi
-import coreschema
 import os
 
 # Third-party imports
-from rest_framework import serializers, routers, viewsets, schemas
-from rest_framework.exceptions import APIException, ValidationError
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
-import rest_framework.views
+from typing import Any, List, Dict
 import magic
+from rest_framework import serializers, routers, viewsets, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions, AllowAny
+from rest_framework.views import APIView
 
 # Django imports
 from django.conf.urls import url
@@ -42,17 +41,19 @@ from django.db.models import Q
 from django.http import HttpResponse, HttpResponseNotFound
 
 # Project imports
-import apps.common.mixins
-from apps.common.permissions import SuperuserRequiredPermission
 from apps.common.file_storage import get_filebrowser_site
-from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem
-from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema
-from apps.users.api.v1 import UserSerializer
+from apps.common.mixins import JqListAPIMixin, JqListAPIView, APIFormFieldsMixin, SimpleRelationSerializer
+from apps.common.models import Action, AppVar, ReviewStatusGroup, ReviewStatus, MenuGroup, MenuItem, \
+    AppVarStorage, ProjectAppVar
+
+from apps.common.permissions import SuperuserRequiredPermission
+from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, JqFiltersListViewSchema, \
+    ObjectToItemResponseMixin, string_content, binary_string_schema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +65,7 @@ python_magic = magic.Magic(mime=True)
 
 
 # --------------------------------------------------------
-# AppVar Views
+# AppVar View - get system app var mapping (dict)
 # --------------------------------------------------------
 
 
@@ -75,7 +76,7 @@ class ReadOnlyNonAdminPermission(IsAuthenticated, DjangoModelPermissions):
         return super().has_permission(request, view)    # should work for superusers only
 
 
-class AppVarAPIViewSchema(ObjectResponseSchema):
+class SystemAppVarAPIViewSchema(ObjectResponseSchema):
     get_parameters = [
         {'name': 'name',
          'in': 'query',
@@ -85,43 +86,16 @@ class AppVarAPIViewSchema(ObjectResponseSchema):
              'type': 'string'}
          },
     ]
-    delete_schema_name = 'AppVarDelete'
 
     def get_operation(self, path, method):
         op = super().get_operation(path, method)
         if method == 'GET':
             op['parameters'].extend(self.get_parameters)
-        elif method == 'DELETE':
-            op['requestBody'] = self.get_request_body(path, method)
         return op
-
-    def get_delete_request_schema(self):
-        return {
-            'type': 'object',
-            'properties': {
-                'name': {'type': 'string'},
-                'category': {'type': 'string'}
-            },
-            'required': ['name', 'category']
-        }
-
-    def get_request_body(self, path, method):
-        if method == 'DELETE':
-            return {
-                'content': {
-                    'application/json': {
-                        'schema': {
-                            '$ref': f'#/components/schemas/{self.delete_schema_name}'}}}}
-        return super().get_request_body(path, method)
-
-    def get_components(self, path, method):
-        if method == 'DELETE':
-            return {self.delete_schema_name: self.get_delete_request_schema()}
-        return super().get_components(path, method)
 
     def get_responses(self, path, method):
         resp = super().get_responses(path, method)
-        if method in ['POST', 'DELETE']:
+        if method in ['POST']:
             resp = {
                 '200': {
                     'content': {
@@ -130,46 +104,13 @@ class AppVarAPIViewSchema(ObjectResponseSchema):
         return resp
 
 
-class AppVarAPIView(rest_framework.views.APIView):
+class SystemAppVarDictAPIView(APIView):
     """
-    Based on custom AppVar model storage
+    Project-wide app vars as dict
     """
-    permission_classes = [ReadOnlyNonAdminPermission]
-    schema = AppVarAPIViewSchema()
-
-    @property
-    def coreapi_schema(self):
-        if self.request.method == 'GET':
-            fields = [
-                coreapi.Field(
-                    "name",
-                    required=False,
-                    location="query",
-                    schema=coreschema.String(max_length=30)
-                ),
-                coreapi.Field(
-                    "name_contains",
-                    required=False,
-                    location="query",
-                    schema=coreschema.String(max_length=30)
-                )]
-        elif self.request.method == 'POST':
-            fields = [
-                coreapi.Field(
-                    "params",
-                    required=True,
-                    location="body",
-                    schema=coreschema.Object()
-                )]
-        else:
-            fields = [
-                coreapi.Field(
-                    "name",
-                    required=True,
-                    location="body",
-                    schema=coreschema.String(max_length=30)
-                )]
-        return schemas.ManualSchema(fields=fields)
+    schema = SystemAppVarAPIViewSchema()
+    permission_classes = [AllowAny]
+    http_method_names = ['get']
 
     def get(self, request, *args, **kwargs):
         """
@@ -179,49 +120,155 @@ class AppVarAPIView(rest_framework.views.APIView):
         """
         var_name = request.GET.get('name')
         name_contains = request.GET.get('name_contains')
-        result = AppVar.objects.all()
+        qs = AppVar.objects.filter(project_id=None)
 
         # deliver "Common" app-vars to unauth users, f.e. into login page, see users.authentication
         if not bool(request.user and request.user.is_authenticated):
-            result = result.filter(category='Common')
+            qs = qs.filter(access_type='all')
+        elif not request.user.is_superuser:
+            qs = qs.exclude(access_type='admin')
+
         if var_name:
-            result = result.filter(name=var_name)
-            if not result.exists():
+            qs = qs.filter(name=var_name)
+            if not qs.exists():
                 return Response(status=404)
         if name_contains:
-            result = result.filter(name__contains=name_contains)
-            if not result.exists():
+            qs = qs.filter(name__contains=name_contains)
+            if not qs.exists():
                 return Response(status=404)
-        result = {i['name']: i['value'] for i in result.values('name', 'value')}
+        result = {i['name']: i['value'] for i in qs.values('name', 'value')}
         return Response(result)
 
-    def post(self, request, *args, **kwargs):
-        """
-        Create or update App Variables\n
-            Params:
-                key1: val1,
-                key2: val2, etc
-        """
-        data = request.data
-        for var_name, value in data.items():
-            AppVar.set('Common', var_name, value)
-        return Response('Application settings updated successfully.')
 
-    def delete(self, request, *args, **kwargs):
-        """
-        Delete specific App Variable by name
-            Param:
-                - name: str
-                - category: str
-        """
-        var_name = request.data.get('name')
-        category = request.data.get('category')
+# --------------------------------------------------------
+# AppVar View - get system app var list
+# --------------------------------------------------------
 
-        if not var_name or not category:
-            raise APIException('Provide variable name and category to delete')
+class AppVarSerializer(serializers.ModelSerializer):
 
-        AppVar.clear(var_name, category)
-        return Response('OK')
+    class Meta:
+        model = AppVar
+        fields = ['category', 'name', 'value']
+
+
+class SystemAppVarListAPIView(JqListAPIView):
+    queryset = AppVar.objects.filter(project_id=None).order_by('category', 'name')
+    serializer_class = AppVarSerializer
+    http_method_names = ['get']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not bool(self.request.user and self.request.user.is_authenticated):
+            qs = qs.filter(access_type='all')
+        elif not self.request.user.is_superuser:
+            qs = qs.exclude(access_type='admin')
+        return qs
+
+
+# --------------------------------------------------------
+# Project AppVar Views
+# --------------------------------------------------------
+
+
+class ProjectAppVarSerializer(serializers.Serializer):
+    category = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField()
+    value = serializers.JSONField()
+    access_type = serializers.CharField()
+    use_system = serializers.BooleanField()
+    system_value = serializers.JSONField()
+
+    @classmethod
+    def deserialize(cls, data: List[Dict[str, Any]]) -> List[ProjectAppVar]:
+        """
+        data is something like this:
+        [{'category': 'Extract', 'name': 'simple_locator_tokenization', 'description': '...',
+         'value': False, 'use_system': False, 'system_value': True}, ]
+        """
+        p_vars = []
+        for raw in data:
+            p_var = ProjectAppVar(category=raw.get('category'),
+                                  name=raw.get('name'),
+                                  access_type=raw.get('access_type', 'auth'),
+                                  description=raw.get('description'),
+                                  value=raw.get('value'),
+                                  use_system=raw.get('use_system'),
+                                  system_value=raw.get('system_value'))
+            p_vars.append(p_var)
+        return p_vars
+
+
+class ProjectAppVarViewSchema(CustomAutoSchema):
+
+    response_serializer = ProjectAppVarSerializer()
+    request_serializer = ProjectAppVarSerializer()
+
+    def get_operation(self, path, method):
+        op = super().get_operation(path, method)
+        if method == 'PUT':
+            op['requestBody'] = self.get_request_body(path, method)
+        return op
+
+    def get_request_body(self, path, method):
+        req = super().get_request_body(path, method)
+        if method == 'PUT':
+            return {
+                'content': {
+                    ct: {
+                        'schema': {
+                            'type': 'array',
+                            'items': req['content'][ct]['schema']}
+                    } for ct in self.request_media_types
+                },
+                'description': ''
+            }
+        return req
+
+    def get_responses(self, path, method):
+        if method == 'PUT':
+            return {'200': string_content}
+        return super().get_responses(path, method)
+
+
+class ProjectAppVarPermission(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
+        project_id = view.kwargs.get('project_id')
+        if project_id:
+            from apps.project.models import Project
+            project = Project.objects.get(pk=project_id)
+            return request.user.has_perm('project.change_project', project)
+
+
+class ProjectAppVarAPIView(APIView):
+    """
+    Based on custom AppVar model storage
+    """
+    permission_classes = [ProjectAppVarPermission]
+    schema = ProjectAppVarViewSchema()
+    http_method_names = ['get', 'put']
+    serializer_class = ProjectAppVarSerializer
+    action = 'list'    # need to make right schema - see rest_framework.schemas.utils.is_list_view
+
+    def get(self, request, *args, **kwargs):
+        project_id = kwargs['project_id']
+        app_vars = AppVarStorage.get_project_app_vars(project_id, request.user)
+        return Response(ProjectAppVarSerializer(app_vars, many=True).data)
+
+    def put(self, request, *args, **kwargs):
+        """
+        Granular Create or Update Project App Variables
+        Creates or Updates only passed project app vars
+        Request data: [{'name': ..., 'category': ..., 'value': ...}, ... ]
+        """
+        project_id = kwargs['project_id']
+        user_id = request.user.pk if request.user else None
+        app_var_list = ProjectAppVarSerializer.deserialize(request.data)
+        AppVarStorage.apply_project_app_vars(project_id, app_var_list, user_id)
+        return Response('OK', status=status.HTTP_200_OK)
 
 
 # --------------------------------------------------------
@@ -234,7 +281,7 @@ class ReviewStatusGroupSerializer(serializers.ModelSerializer):
         fields = ['pk', 'name', 'code', 'order', 'is_active']
 
 
-class ReviewStatusGroupViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
+class ReviewStatusGroupViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: ReviewStatusGroup List
     retrieve: Retrieve ReviewStatusGroup
@@ -267,7 +314,7 @@ class ReviewStatusDetailSerializer(serializers.ModelSerializer):
         fields = ['pk', 'name', 'code', 'order', 'group', 'group_data', 'is_active']
 
 
-class ReviewStatusViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
+class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
     """
     list: ReviewStatus List
     retrieve: Retrieve ReviewStatus
@@ -290,24 +337,76 @@ class ReviewStatusViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewS
 # Action Views
 # --------------------------------------------------------
 
-class ActionSerializer(serializers.ModelSerializer):
-    user = UserSerializer(many=False)
+class ActionSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = Action
-        fields = ['pk', 'name', 'user', 'content_type', 'object_pk', 'date',
-                  'app_label', 'model_name', 'object_str']
+        fields = ['id', 'name', 'message', 'view_action',
+                  'object_pk', 'model_name',
+                  # 'content_type', 'object_str', 'app_label',
+                  'date', 'user__name', 'request_data']
 
 
-class ActionViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ModelViewSet):
+class ActionViewSchema(ObjectToItemResponseMixin, JqFiltersListViewSchema):
+    response_serializer = ActionSerializer()
+
+    parameters = [
+        {'name': 'project_id',
+         'in': 'query',
+         'required': False,
+         'description': 'Project ID',
+         'schema': {
+             'type': 'integer'}
+         },
+        {'name': 'document_id',
+         'in': 'query',
+         'required': False,
+         'description': 'Document ID',
+         'schema': {
+             'type': 'integer'}
+         },
+        {'name': 'view_actions',
+         'in': 'query',
+         'required': False,
+         'description': 'Action names',
+         'schema': {
+             'type': 'array',
+             'items': {'type': 'string'}}
+         },
+    ]
+
+
+class ActionViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     """
     list: Action List
     retrieve: Retrieve Action
     """
-    http_method_names = ['get']
-    queryset = Action.objects.all().select_related('user', 'user__role', 'content_type')
+    queryset = Action.objects.select_related('user', 'content_type')
     serializer_class = ActionSerializer
+    schema = ActionViewSchema()
     permission_classes = [IsAuthenticated, DjangoModelPermissions]    # should work for superusers only
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        self.kwargs.update(self.request.GET.dict())
+        if 'project_id' in self.kwargs:
+            qs = qs.filter(object_pk=self.kwargs['project_id'], model_name='Project')
+        elif 'document_id' in self.kwargs:
+            qs = qs.filter(object_pk=self.kwargs['document_id'], model_name='Document')
+        if 'view_actions' in self.kwargs:
+            qs = qs.filter(view_action__in=self.kwargs['view_actions'])
+        return qs.order_by('-date')
+
+    # def get_extra_data(self, queryset, initial_queryset):
+    #     init_action_name = self.kwargs.get('init_action')
+    #     if init_action_name is not None:
+    #         init_action = initial_queryset.filter(view_action=init_action_name).last()
+    #     else:
+    #         init_action = initial_queryset.last()
+    #     init_action = ActionSerializer(init_action).data if init_action else None
+    #     last_action = initial_queryset.first()
+    #     last_action = ActionSerializer(last_action).data if last_action else None
+    #     return {'init_action': init_action, 'last_action': last_action}
 
 
 # --------------------------------------------------------
@@ -340,7 +439,7 @@ class MenuGroupSerializer(serializers.ModelSerializer):
         return value
 
 
-class MenuGroupViewSet(apps.common.mixins.APIFormFieldsMixin, viewsets.ModelViewSet):
+class MenuGroupViewSet(APIFormFieldsMixin, viewsets.ModelViewSet):
     """
     list: MenuGroup List
     retrieve: Retrieve MenuGroup
@@ -402,9 +501,9 @@ class MediaFilesAPIViewSchema(ObjectResponseSchema):
          'schema': {
              'type': 'string',
              "enum": [
-                "info",
-                "download"
-              ],
+                 "info",
+                 "download"
+             ],
              'default': 'download'},
          }
     ]
@@ -426,13 +525,11 @@ class MediaFilesAPIViewSchema(ObjectResponseSchema):
         #         }
         #     }
         # }
-        res['200']['content']['*/*'] = {
-            'schema': {'type': 'string', 'format': 'binary'},
-        }
+        res['200']['content']['*/*'] = binary_string_schema
         return res
 
 
-class MediaFilesAPIView(rest_framework.views.APIView):
+class MediaFilesAPIView(APIView):
     permission_classes = [SuperuserRequiredPermission]
     http_method_names = ['get']
     schema = MediaFilesAPIViewSchema()
@@ -503,8 +600,18 @@ router.register(r'menu-items', MenuItemViewSet, 'menu-item')
 urlpatterns = [
     url(
         r'^app-variables/$',
-        AppVarAPIView.as_view(),
+        SystemAppVarDictAPIView.as_view(),
         name='app-variables'
+    ),
+    url(
+        r'^app-variables/list/$',
+        SystemAppVarListAPIView.as_view(),
+        name='app-variables-list'
+    ),
+    url(
+        r'^app-variables/project/(?P<project_id>\d+)/$',
+        ProjectAppVarAPIView.as_view(),
+        name='project-app-variables'
     ),
     url(
         r'^media/(?P<path>.+)/$',

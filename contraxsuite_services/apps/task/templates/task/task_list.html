@@ -160,6 +160,25 @@
       Run Task<span class="caret"></span>
     </a>
     <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu" style="transform:none !important">
+
+
+      {% if custom_task_menu_item_templates|length > 0 %}
+        <li class="dropdown-submenu">
+          <a class="dropdown-item" href="#" tabindex="-1">
+            <i class="fa fa-file-text-o"></i> Applications Tasks</a>
+          <ul class="dropdown-menu">
+
+            {% for template in custom_task_menu_item_templates %}
+              {% include template %}
+              {% if not forloop.last %}
+                <li class="divider"></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </li>
+        <li class="divider"></li>
+      {% endif %}
+
       <li class="dropdown-submenu">
         <a class="dropdown-item" href="#" tabindex="-1">
           <i class="fa fa-file-text-o"></i> Load Data</a>
@@ -185,91 +204,20 @@
               <i class="fa fa-bars"></i>
               Load Dictionary Data</a>
           </li>
-        </ul>
-      </li>
 
-      {% if custom_task_menu_item_templates|length > 0 %}
-        <li class="dropdown-submenu">
-          <a class="dropdown-item" href="#" tabindex="-1">
-            <i class="fa fa-file-text-o"></i> Applications Tasks</a>
-          <ul class="dropdown-menu">
-
-              {% for template in custom_task_menu_item_templates %}
-                <li class="divider"></li>
-                {% include template %}
-              {% endfor %}
-          </ul>
-        </li>
-      {% endif %}
-
-      <li class="divider"></li>
-      <li class="dropdown-item">
-        <a class="task" href="#"
-           data-href="{% url "task:locate" %}"
-           data-btn-text="Locate">
-          <i class="fa fa-search"></i>
-          Locate</a>
-      </li>
-      <li class="divider"></li>
-
-      <li class="dropdown-submenu">
-        <a class="dropdown-item" href="#" tabindex="-1">
-          <i class="fa fa-object-group"></i> Analyze</a>
-        <ul class="dropdown-menu">
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "analyze:cluster" %}"
-               data-btn-text="Cluster">
-              <i class="fa fa-object-group"></i>
-              Cluster Documents/Text Units</a>
-          </li>
           <li class="divider"></li>
-          {% if active_text_unit_classifiers %}
-            <li class="dropdown-item">
-              <a class="task" href="#"
-                 data-href="{% url "analyze:run-text-unit-classifier" %}"
-                 data-btn-text="Classify">
-                <i class="fa fa-object-group"></i>
-                Classify Text Units (Use Existing Classifier)</a>
-            </li>
-          {% endif %}
-          {% if active_document_classifiers %}
-            <li class="dropdown-item">
-              <a class="task" href="#"
-                 data-href="{% url "analyze:run-document-classifier" %}"
-                 data-btn-text="Classify">
-                <i class="fa fa-object-group"></i>
-                Classify Documents (Use Existing Classifier)</a>
-            </li>
-          {% endif %}
-          {% if active_document_classifiers or active_text_unit_classifiers %}
-            <li class="divider"></li>
-          {% endif %}
           <li class="dropdown-item">
             <a class="task" href="#"
-               data-href="{% url "analyze:train-text-unit-classifier" %}"
-               data-btn-text="Train">
-              <i class="fa fa-object-group"></i>
-              Train Text Units Classifier</a>
+               data-href="{% url "task:locate" %}"
+               data-btn-text="Locate">
+              <i class="fa fa-search"></i>
+              Locate</a>
           </li>
-          <li class="dropdown-item">
-            <a class="task" href="#"
-               data-href="{% url "analyze:train-document-classifier" %}"
-               data-btn-text="Train">
-              <i class="fa fa-object-group"></i>
-              Train Documents Classifier</a>
-          </li>
+
         </ul>
       </li>
       <li class="divider"></li>
-      <li class="dropdown-item">
-        <a class="task" href="#"
-           data-href="{% url "task:update-elasticsearch-index" %}"
-           data-btn-text="Update Index">
-          <i class="fa fa-refresh"></i>
-          Update Elasticsearch Index</a>
-      </li>
-      <li class="divider"></li>
+
       <li class="dropdown-submenu">
         <a class="dropdown-item" href="#" tabindex="-1">
           <i class="fa fa-database"></i>Export and Import</a>
@@ -335,7 +283,7 @@
 {% endblock %}
 
 {% block js_extra %}
-  
+
   <form class="popup-form ltr load-form-template">
 
     <div class="fancy-title title-bottom-border">
@@ -465,8 +413,18 @@
     </div>
 
     <div class="level-1">
-      <input class="checkbox-style" id="_id_terms_delete" name="terms_delete" type="checkbox">
-      <label for="_id_terms_delete" class="checkbox-style-3-label">Delete existing Terms</label>
+      <select id="_id_terms_existing_action" name="terms_extra_existing_action">
+        <option value="update" selected>Update</option>
+        <option value="skip">Don't modify existing</option>
+        <option value="delete">Delete all existing</option>
+      </select>
+      <label for="_id_terms_existing_action">Action for existing Terms</label>
+    </div>
+
+    <div class="level-1">
+      <label for="_id_terms_tags">Tags</label>
+      <input id="_id_terms_tags" name="terms_extra_tags" maxlength="1000" type="text" value="default"><br />
+      <small>Term tags, separated by comma.</small>
     </div>
 
     {% if 'court' in available_locators %}
@@ -480,7 +438,7 @@
         <p class="level-2">
           <input class="checkbox-style" id="_id_courts_1" name="courts_1" type="checkbox" checked="checked">
           <label for="_id_courts_1" class="checkbox-style-3-label checkbox-small">Canadian Courts</label>
-        <span class="level-3">
+          <span class="level-3">
           <input class="as-btn" id="_id_courts_1_locale_en" name="courts_1_locale_en" type="checkbox" checked="checked">
           <label for="_id_courts_1_locale_en">en</label>
         </span>
@@ -488,7 +446,7 @@
         <p class="level-2">
           <input class="checkbox-style" id="_id_courts_2" name="courts_2" type="checkbox" checked="checked">
           <label for="_id_courts_2" class="checkbox-style-3-label checkbox-small">US Courts</label>
-        <span class="level-3">
+          <span class="level-3">
           <input class="as-btn" id="_id_courts_2_locale_en" name="courts_2_locale_en" type="checkbox" checked="checked">
           <label for="_id_courts_2_locale_en">en</label>
         </span>
@@ -603,549 +561,536 @@
         {#    $form.find('[name="do_cluster_text_units"]').parent('p').hide()#}
         {#  }#}
         {#}#}
-      }
-      {# classify form #}
+        }
+        {# classify form #}
       else if ($('.classify-form').length){
-        var algorithm = $('select[name="algorithm"]').val();
-        var is_simple = $('.bootstrap-switch-id-id_options.bootstrap-switch-on').length;
-        // is_simple = $('input[name="options"]').is(':checked');
-        if (algorithm == 'SVC') {
-          hidden_advanced = is_simple ? ', [name^="svc_"]' : '';
-          if (!is_simple) {
-            $form.find('[name^="svc_"]').parent('p').show();
+          var algorithm = $('select[name="algorithm"]').val();
+          var is_simple = $('.bootstrap-switch-id-id_options.bootstrap-switch-on').length;
+          // is_simple = $('input[name="options"]').is(':checked');
+          if (algorithm == 'SVC') {
+            hidden_advanced = is_simple ? ', [name^="svc_"]' : '';
+            if (!is_simple) {
+              $form.find('[name^="svc_"]').parent('p').show();
+            }
+            $form.find('[name^="mnb_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
           }
-          $form.find('[name^="mnb_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
-        }
-        else if (algorithm == 'MultinomialNB') {
-          hidden_advanced = is_simple ? ', [name^="mnb_"]' : '';
-          if (!is_simple) {
-            $form.find('[name^="mnb_"]').parent('p').show();
+          else if (algorithm == 'MultinomialNB') {
+            hidden_advanced = is_simple ? ', [name^="mnb_"]' : '';
+            if (!is_simple) {
+              $form.find('[name^="mnb_"]').parent('p').show();
+            }
+            $form.find('[name^="svc_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
           }
-          $form.find('[name^="svc_"], [name^="rfc_etc_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
-        }
-        else if (algorithm == 'ExtraTreesClassifier' || algorithm == 'RandomForestClassifier') {
-          hidden_advanced = is_simple ? ', [name^="rfc_etc_"]' : '';
-          if (!is_simple) {
-            $form.find('[name^="rfc_etc_"]').parent('p').show();
+          else if (algorithm == 'ExtraTreesClassifier' || algorithm == 'RandomForestClassifier') {
+            hidden_advanced = is_simple ? ', [name^="rfc_etc_"]' : '';
+            if (!is_simple) {
+              $form.find('[name^="rfc_etc_"]').parent('p').show();
+            }
+            $form.find('[name^="svc_"], [name^="mnb_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
           }
-          $form.find('[name^="svc_"], [name^="mnb_"], [name^="lrcv_"]' + hidden_advanced).parent('p').hide()
-        }
-        else if (algorithm == 'LogisticRegressionCV') {
-          hidden_advanced = is_simple ? ', [name^="lrcv_"]' : '';
-          if (!is_simple) {
-            $form.find('[name^="lrcv_"]').parent('p').show();
+          else if (algorithm == 'LogisticRegressionCV') {
+            hidden_advanced = is_simple ? ', [name^="lrcv_"]' : '';
+            if (!is_simple) {
+              $form.find('[name^="lrcv_"]').parent('p').show();
+            }
+            $form.find('[name^="svc_"], [name^="mnb_"], [name^="rfc_etc_"]' + hidden_advanced).parent('p').hide()
           }
-          $form.find('[name^="svc_"], [name^="mnb_"], [name^="rfc_etc_"]' + hidden_advanced).parent('p').hide()
         }
-      }
 
-      {# build doc2vec vectors form #}
-      else if ($('.build-features-form').length) {
-        let sel_src = $('.bootstrap-switch-id-id_source_select.bootstrap-switch-on').length;
-        sel_src = sel_src ? 'text-unit' : 'document';
-        show_preffix = 'txt_';
-        hide_preffix = 'doc_';
-        if (sel_src == 'text-unit') {
-          show_preffix = 'doc_';
-          hide_preffix = 'txt_';
-        }
-        $form.find('[name^="' + show_preffix + '"]').parent('p').show();
-        $form.find('[name^="' + hide_preffix + '"]').parent('p').hide();
-      }
-
-      {# mark export documents form for special Ajax request type #}
-      else if ($('.export-document-form').length) {
-        $('<input>').attr({
+          {# mark export documents form for special Ajax request type #}
+        else if ($('.export-document-form').length) {
+          $('<input>').attr({
             type: 'hidden',
             id: 'task_result'
-        }).appendTo($('form.export-document-form'));
-        $('<div></div>').attr({
+          }).appendTo($('form.export-document-form'));
+          $('<div></div>').attr({
             id: 'task_result_block'
-        }).appendTo($('form.export-document-form'));
-        $('button.btn.btn-u.btn-sm.btn-l').text('close');
-      }
-    };
-
-    function renderTaskResult(action, url, headers, filename, data, onCompleted) {
-      function handleTaskData(data) {
-        if (!data || !data.target || !data.target.response) {
-          console.log("Server didn't return meaningful response: ");
-          console.log(data);
-          return;
+          }).appendTo($('form.export-document-form'));
+          $('button.btn.btn-u.btn-sm.btn-l').text('close');
         }
-        // {"file_path": "export/documents/doc_export_11_2020-08-13_08_49_33_451957.zip",
-        //  "check_file_data_ref": "/advanced/admin/common/exportfile/file_download_ref/12/"}
-        data = JSON.parse(data.target.response);
+      };
 
-        // create link to the file
-        var markup = '<br/><a class="inactive-link" href="#">' + data.file_path +
-          '</a>&nbsp;&nbsp;&nbsp;<div class="preloader" id="doc_file_link_preloader"></div><br/>';
+      function renderTaskResult(action, url, headers, filename, data, onCompleted) {
+        function handleTaskData(data) {
+          if (!data || !data.target || !data.target.response) {
+            console.log("Server didn't return meaningful response: ");
+            console.log(data);
+            return;
+          }
+          // {"file_path": "export/documents/doc_export_11_2020-08-13_08_49_33_451957.zip",
+          //  "check_file_data_ref": "/advanced/admin/common/exportfile/file_download_ref/12/"}
+          data = JSON.parse(data.target.response);
 
-        if (data.alert) {
-          $.alert({
-            icon: 'fa fa-envelope text-warning',
-            title: data.alert,
-            type: 'orange',
-            content: '',
-            columnClass: 'col-md-6'
-          });
-        }
+          // create link to the file
+          var markup = '<br/><a class="inactive-link" href="#">' + data.file_path +
+            '</a>&nbsp;&nbsp;&nbsp;<div class="preloader" id="doc_file_link_preloader"></div><br/>';
 
-        $('#task_result_block').html(markup);
+          if (data.alert) {
+            $.alert({
+              icon: 'fa fa-envelope text-warning',
+              title: data.alert,
+              type: 'orange',
+              content: '',
+              columnClass: 'col-md-6'
+            });
+          }
 
-        // start routine of checking resulting download link
-        window.taskResultFileRef = data.check_file_data_ref;
-        setTimeout(function () {
-          getFileReference();
+          $('#task_result_block').html(markup);
+
+          // start routine of checking resulting download link
+          window.taskResultFileRef = data.check_file_data_ref;
+          setTimeout(function () {
+            getFileReference();
           }, 1000 * 2);
-      }
+        }
 
-      var request = new XMLHttpRequest();
-      request.timeout = 5 * 60 * 1000;
-      request.onload = handleTaskData;
-      request.open(action, url);
-      for (var prop in headers)
-        request.setRequestHeader(prop, headers[prop]);
-      if (data) request.send(data);
-      else request.send();
-    };
+        var request = new XMLHttpRequest();
+        request.timeout = 5 * 60 * 1000;
+        request.onload = handleTaskData;
+        request.open(action, url);
+        for (var prop in headers)
+          request.setRequestHeader(prop, headers[prop]);
+        if (data) request.send(data);
+        else request.send();
+      };
 
-    function getFileReference() {
-      $.ajax({
+      function getFileReference() {
+        $.ajax({
           url: window.taskResultFileRef,
           type: 'GET',
           success: function(data, textStatus, jqXHR ) {
-              var fileRef = data.file_reference;
-              if (fileRef && fileRef.length) {
-                $('#task_result_block a').attr('href', fileRef);
-                $('#task_result_block a').removeClass('inactive-link');
-                $('#doc_file_link_preloader').remove();
-                return;
-              }
-              setTimeout(function () {
-                getFileReference();
-              }, 1000 * 2);
-          }
-      });
-    }
-
-    function downloadFile(action,
-      url, headers, filename, data, onCompleted) {
-
-      function handleFile(data) {
-        if (data.target) {
-          if (data.target.status >= 400 || data.target.status == 204)
-            try {
-              var reader = new FileReader();
-              reader.onload = function() {
-                  console.log(reader.result);
-              };
-            } catch {
-              // might not be supported
+            var fileRef = data.file_reference;
+            if (fileRef && fileRef.length) {
+              $('#task_result_block a').attr('href', fileRef);
+              $('#task_result_block a').removeClass('inactive-link');
+              $('#doc_file_link_preloader').remove();
+              return;
             }
-          if (data.target.status >= 400)  {
-            reader.readAsText(data.target.response);
-            console.log('Error code: ' + data.target.status);
-            $.alert({
-              icon: 'fa fa-warning text-danger',
-              title: 'Error ' + data.target.status,
-              type: 'red',
-              content: 'There was an error while downloading data: ' + data.target.status,
-              columnClass: 'width-50'
-            });
-            return;
+            setTimeout(function () {
+              getFileReference();
+            }, 1000 * 2);
           }
-          if (data.target.status == 204) {
-            $.alert({
-              icon: 'fa fa-warning',
-              title: 'Warning',
-              content: 'No data to download',
-              columnClass: 'width-50'
-            });
-            return;
-          }
-        }
-        var file = URL.createObjectURL(this.response || data);
-        filename = filename || url.split("/").pop();
-        resp_fname = request.getResponseHeader('filename');
-        filename = resp_fname && resp_fname.length ? resp_fname : filename;
-
-        var a = document.createElement("a");
-        // if `a` element has `download` property
-        if ("download" in a) {
-          a.href = file;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        } else {
-          // use `window.open()` if `download` not defined at `a` element
-          window.open(file);
-        }
-        if (onCompleted) onCompleted();
-      }
-
-      var request = new XMLHttpRequest();
-      request.timeout = 5 * 60 * 1000;
-      request.responseType = "blob";
-      request.onload = handleFile;
-      request.open(action, url);
-      for (var prop in headers) {
-        request.setRequestHeader(prop, headers[prop]);
-      }
-
-      if (data) request.send(data);
-      else request.send();
-    }
-
-    var onLoadJC = function(jc){
-      var $form = jc.$content;
-      $form.find('.task-form-loader').remove();
-      {# activate chosen plugin #}
-      $form.find('select.chosen:enabled').chosen({search_contains: true});
-      $form.find('form > p:visible:last:has(select)').css('height', '80px');
-      $form.find('.chosen-single').css({'height': '34px', 'padding-top': '3px'});
-      {# activate bt-switch plugin #}
-      $form.find(".bt-switch").bootstrapSwitch();
-      {# activate max-one-of class #}
-      $form.find('input[class*="max-one-of"]').change(function () {
-        var cls = $(this).attr('class').split(' ');
-        if (this.checked) {
-          $('.' + cls.join('.')).not(this).prop("checked", false)
-        }
-      });
-      {# activate min-one-of class #}
-      $form.find('input[class*="min-one-of"]').change(function () {
-        var cls = $(this).attr('class').split(' ');
-        if (!$('input[class*="min-one-of"]:checked').length) {
-          $('.' + cls.join('.')).not(this).first().prop("checked", true)
-        }
-      });
-      {# activate switcher class #}
-      $form.find('.switcher-off').parent('p').toggle();
-      $form.find('.switcher').change(function () {
-        $form.find('[class*="switcher-"]').parent('p').toggle()
-      });
-      {# activate locate-all checkbox #}
-      $form.find('[name="locate_all"]').click(function () {
-        var checkBoxes = $form.find('[id$="_locate"]');
-        checkBoxes.trigger("click");
-      });
-      {# locate form #}
-      if ($form.find('form.locate-form').length){
-        {# remove if locate #}
-        $form.find('[name$="_locate"]').change(function(){
-          $form.find('[name$="' + $(this).prop('name').replace('locate', 'delete') + '"]')
-              .prop("checked", $(this).is(':checked'))
         });
-        {# uncheck locate if not remove #}
-        $form.find('[name$="_delete"]').change(function(){
-          if (!$(this).is(':checked')){
-            $form.find('[name$="' + $(this).prop('name').replace('delete', 'locate') + '"]')
+      }
+
+      function downloadFile(action,
+                            url, headers, filename, data, onCompleted) {
+
+        function handleFile(data) {
+          if (data.target) {
+            if (data.target.status >= 400 || data.target.status == 204)
+              try {
+                var reader = new FileReader();
+                reader.onload = function() {
+                  console.log(reader.result);
+                };
+              } catch {
+                // might not be supported
+              }
+            if (data.target.status >= 400)  {
+              reader.readAsText(data.target.response);
+              console.log('Error code: ' + data.target.status);
+              $.alert({
+                icon: 'fa fa-warning text-danger',
+                title: 'Error ' + data.target.status,
+                type: 'red',
+                content: 'There was an error while downloading data: ' + data.target.status,
+                columnClass: 'width-50'
+              });
+              return;
+            }
+            if (data.target.status == 204) {
+              $.alert({
+                icon: 'fa fa-warning',
+                title: 'Warning',
+                content: 'No data to download',
+                columnClass: 'width-50'
+              });
+              return;
+            }
+          }
+          var file = URL.createObjectURL(this.response || data);
+          filename = filename || url.split("/").pop();
+          resp_fname = request.getResponseHeader('filename');
+          filename = resp_fname && resp_fname.length ? resp_fname : filename;
+
+          var a = document.createElement("a");
+          // if `a` element has `download` property
+          if ("download" in a) {
+            a.href = file;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            // use `window.open()` if `download` not defined at `a` element
+            window.open(file);
+          }
+          if (onCompleted) onCompleted();
+        }
+
+        var request = new XMLHttpRequest();
+        request.timeout = 5 * 60 * 1000;
+        request.responseType = "blob";
+        request.onload = handleFile;
+        request.open(action, url);
+        for (var prop in headers) {
+          request.setRequestHeader(prop, headers[prop]);
+        }
+
+        if (data) request.send(data);
+        else request.send();
+      }
+
+      var onLoadJC = function(jc){
+        var $form = jc.$content;
+        $form.find('.task-form-loader').remove();
+        //{# activate chosen plugin #}
+        $form.find('select.chosen:enabled').chosen({search_contains: true});
+        $form.find('form > p:visible:last:has(select)').css('height', '80px');
+        $form.find('.chosen-single').css({'height': '34px', 'padding-top': '3px'});
+        //{# activate bt-switch plugin #}
+        $form.find(".bt-switch").bootstrapSwitch();
+        //{# activate max-one-of class #}
+        $form.find('input[class*="max-one-of"]').change(function () {
+          var cls = $(this).attr('class').split(' ');
+          if (this.checked) {
+            $('.' + cls.join('.')).not(this).prop("checked", false)
+          }
+        });
+        //{# activate min-one-of class #}
+        $form.find('input[class*="min-one-of"]').change(function () {
+          var cls = $(this).attr('class').split(' ');
+          if (!$('input[class*="min-one-of"]:checked').length) {
+            $('.' + cls.join('.')).not(this).first().prop("checked", true)
+          }
+        });
+        //{# activate switcher class #}
+        $form.find('.switcher-off').parent('p').toggle();
+        $form.find('.switcher').change(function () {
+          $form.find('[class*="switcher-"]').parent('p').toggle()
+        });
+        //{# activate locate-all checkbox #}
+        $form.find('[name="locate_all"]').click(function () {
+          var checkBoxes = $form.find('[id$="_locate"]');
+          checkBoxes.trigger("click");
+        });
+        //{# locate form #}
+        if ($form.find('form.locate-form').length){
+          //{# remove if locate #}
+          $form.find('[name$="_locate"]').change(function(){
+            $form.find('[name$="' + $(this).prop('name').replace('locate', 'delete') + '"]')
+              .prop("checked", $(this).is(':checked'))
+          });
+          //{# uncheck locate if not remove #}
+          $form.find('[name$="_delete"]').change(function(){
+            if (!$(this).is(':checked')){
+              $form.find('[name$="' + $(this).prop('name').replace('delete', 'locate') + '"]')
                 .prop("checked", false)
-          }
-        });
-        {# LocateGeoEntities: locate if priority checked #}
-        $form.find('[name="LocateGeoEntities_priority"]').change(function(){
-          if ($(this).is(':checked')){
-            $form.find('[name="LocateGeoEntities_locate"]').prop("checked", true)
-          }
-        });
-        {# LocateGeoEntities: uncheck priority if locate unchecked #}
-        $form.find('[name="LocateGeoEntities_locate"]').change(function(){
-          if (!$(this).is(':checked')){
-            $form.find('[name="LocateGeoEntities_priority"]').prop("checked", false)
-          }
-        });
-        {# LocateCurrencies: check all "use .." if locate checked #}
-        $form.find('[name="LocateCurrencies_locate"]').change(function(){
-          $form.find('[name^="LocateCurrencies_use_"]')
-              .prop("checked", $(this).is(':checked'))
-        });
-        {# LocateCurrencies: check locate if one of "use .." checked #}
-        $form.find('[name^="LocateCurrencies_use_"]').change(function(){
-          $form.find('[name^="LocateCurrencies_locate"]')
-              .prop("checked", true)
-        });
-        {# LocateCurrencies: uncheck all if delete unchecked #}
-        $form.find('[name="LocateCurrencies_delete"]').change(function(){
-          if (!$(this).is(':checked')){
+            }
+          });
+          //{# LocateGeoEntities: locate if priority checked #}
+          $form.find('[name="LocateGeoEntities_priority"]').change(function(){
+            if ($(this).is(':checked')){
+              $form.find('[name="LocateGeoEntities_locate"]').prop("checked", true)
+            }
+          });
+          //{# LocateGeoEntities: uncheck priority if locate unchecked #}
+          $form.find('[name="LocateGeoEntities_locate"]').change(function(){
+            if (!$(this).is(':checked')){
+              $form.find('[name="LocateGeoEntities_priority"]').prop("checked", false)
+            }
+          });
+          //{# LocateCurrencies: check all "use .." if locate checked #}
+          $form.find('[name="LocateCurrencies_locate"]').change(function(){
             $form.find('[name^="LocateCurrencies_use_"]')
+              .prop("checked", $(this).is(':checked'))
+          });
+          //{# LocateCurrencies: check locate if one of "use .." checked #}
+          $form.find('[name^="LocateCurrencies_use_"]').change(function(){
+            $form.find('[name^="LocateCurrencies_locate"]')
+              .prop("checked", true)
+          });
+          //{# LocateCurrencies: uncheck all if delete unchecked #}
+          $form.find('[name="LocateCurrencies_delete"]').change(function(){
+            if (!$(this).is(':checked')){
+              $form.find('[name^="LocateCurrencies_use_"]')
                 .prop("checked", false)
-          }
-        });
-      }
-      {# clustering / classify #}
-      $form.find('[name="do_cluster_documents"], ' +
+            }
+          });
+        }
+        //{# clustering / classify #}
+        $form.find('[name="do_cluster_documents"], ' +
           '[name="do_cluster_text_units"], ' +
           'select[name="using"], select[name="algorithm"], ' +
           'input[name="options"], ' +
           'input[name="source_select"]').on('change switchChange.bootstrapSwitch', function () {
-        show_options($form)
-      });
+          show_options($form)
+        });
 
-      show_options($form);
-      // activate form using small delay to enable all plugins !!!
-      $form.find('input[type="checkbox"]').prop("disabled", false);
-      $form.find('form').animate({opacity: 1}, 400);
-    };
+        show_options($form);
+        // activate form using small delay to enable all plugins !!!
+        $form.find('input[type="checkbox"]').prop("disabled", false);
+        $form.find('form').animate({opacity: 1}, 400);
+      };
 
-    $('.task').click(function(){
-      var $that = $(this);
-      window.contentReady = false;
-      window.dataLoaded = false;
-      var jc = $.confirm({
-        title: 'Admin Task',
-        backgroundDismiss: true,
-        content: $that.data('content') || function(){
-          var self = this;
-          var loader_el = '<h2 class="task-form-loader"><i class="fa fa-spinner fa-spin"></i> FORM IS LOADING</h2>';
-          $.get($that.data('href')).done(function(data){
-            var content = loader_el + '<form class="' + data.form_class + '" enctype="multipart/form-data">' +
-                '<p class="header">' + data.header + '</p>' +
-                data.form_data + '</form>';
-            var $content = $(content);
-            $content.find('input.checkbox-style').each(function(){
-              $(this).parent().addClass('checkbox-ltr-full-width');
-            });
-            $content.find('input.checkbox-parent').each(function(){
-              $(this).parent().addClass('checkbox-parent');
-            });
-            $content.find('input.checkbox-child').each(function(){
-              $(this).parent().addClass('checkbox-child');
-            });
-            self.setContent($content);
-            // disable form checkboxes for 1 s to allow to activate all handlers firstly
-            $content.find('input[type="checkbox"]:not(.bt-switch)').prop("disabled", true);
-            $content.addClass('disabled');
-            window.contentReady = true;
-            if (window.dataLoaded)
-              setTimeout(function() {
-                onLoadJC(jc);
-              }, {{task_dialog_freeze_ms}});
-          }).fail(function(xhr) {
-            jc.close();
-            $.alert({
-              icon: 'fa fa-warning text-danger',
-              title: xhr.responseText,
-              type: 'red',
-              content: '',
-              columnClass: 'col-md-6',
-              onClose: function () {
-                $('.jqxgrid').jqxGrid('updatebounddata')
-              }
-            })
-          }) // - end of "$.get($that.data('href'))"
-        }, // - end of "content: $that.data('content') || function(){"
-        onContentReady: function(){
-          window.dataLoaded = true;
-            if (window.contentReady)
-              setTimeout(function() {
-                onLoadJC(jc);
-              }, {{task_dialog_freeze_ms}});
-        },
-        columnClass: 'col-md-8',
-        type: $that.data('type') || 'blue',
-        icon: 'fa fa-warning text-warning',
-        buttons: {
-          confirm: {
-            text: $that.data('btn-text'),
-            btnClass: $that.data('btn-class') || 'btn-u btn-sm',
-            action: function(){
-              var jc = this;
-              var form = jc.$content.find('form');
-              form.find('.error').remove();
-              var formdata = false;
-              if (window.FormData)
-                formdata = new FormData(form[0]);
+      var runTask = function(jc, actionURL) {
+          var form = jc.$content.find('form');
+          form.find('.error').remove();
+          var formdata = false;
+          if (window.FormData)
+            formdata = new FormData(form[0]);
 
-              onSuccess = function(data, status, xhr){
-                if (data.confirm) {
-                  {# TODO: check that all api switched to "detail" attr #}
-                  if (confirm(data.message || data.detail)) {
-                     console.log('Start over from here');
-                     // start over skipping confirmation
-                     post_data = formdata ? formdata : form.serialize();
-                     post_data.append('skip_confirmation', true);
-                     // UWSGI - Daphne migration
-                     post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val());
+          onSuccess = function(data, status, xhr){
+            if (data.confirm) {
+              // {# TODO: check that all api switched to "detail" attr #}
+              if (confirm(data.message || data.detail)) {
+                console.log('Start over from here');
+                // start over skipping confirmation
+                post_data = formdata ? formdata : form.serialize();
+                post_data.append('skip_confirmation', true);
+                // UWSGI - Daphne migration
+                post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val());
 
-                     $.ajax({
-                        url: $that.data('href'),
-                        type: 'POST',
-                        data: post_data,
-                        contentType: false,
-                        processData: false,
-                        success: onSuccess,
-                        error: onError});
-                     return;
-                  }
-                  data = data.message || data.detail;
-                  return;
-                }
-
-                //window.xxhr = xhr;
-                jc.close();
-
-                if (xhr.getResponseHeader('content-disposition') && xhr.getResponseHeader('content-disposition').startsWith('attachment')){
-                  data = JSON.stringify(data);
-                  var blob = new Blob([data], {type: xhr.getResponseHeader('content-type')});
-                  var url  = URL.createObjectURL(blob);
-                  var a = document.createElement('a');
-                  a.download = xhr.getResponseHeader('filename');
-                  a.href = url;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                  data = 'Downloaded ' + xhr.getResponseHeader('filename') + ' file'
-                }
-
-                if ($.isPlainObject(data) && 'result' in data){
-                  data = data.result
-                }
-
-                $.alert({
-                  icon: 'fa fa-spinner fa-spin text-warning',
-                  title: 'Admin Task Started',
-                  type: 'orange',
-                  content: $.type(data) === 'object' && 'detail' in data ? data.detail : data,
-                  columnClass: 'col-md-4',
-                  onClose: function(){
-                    $('.jqxgrid').jqxGrid('updatebounddata')
-                  }
-
-                });
-              };
-
-              onError = function(data) {
-                if ( typeof data.responseJSON === 'string' || data.responseJSON instanceof String){
-                  var error_p = '<p class="popup-error">' + data.responseJSON + '</p>';
-                  jc.$content.before(error_p);
-                }
-
-                else if (data.responseJSON && typeof data.responseJSON === 'object' && data.responseJSON.constructor === Object && 'status' in data.responseJSON) {
-                  $.alert({
-                    icon: 'fa fa-warning text-danger',
-                    title: 'Something went wrong',
-                    type: 'red',
-                    content: data.statusText,
-                    columnClass: 'col-md-4',
-                    onClose: function(){
-                      $('.jqxgrid').jqxGrid('updatebounddata')
-                    } // onClose
-                  }); // $.alert
-                  return false;
-                } // if ('status'
-
-                else {
-                  $.each(data.responseJSON, function (field, error) {
-                    var error_p = '<p class="error">' + error[0] + '</p>';
-                    form.find('#id_' + field).before(error_p);
-                  }); // $.each
-                }
-              };
-
-              post_data = formdata ? formdata : form.serialize();
-              // UWSGI - Daphne migration
-              post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val());
-
-              if ($('input#file_download').length) {
-                downloadFile('POST',
-                             $that.data('href'),
-                             {"x-content": "abc"},
-                             "filename.zip",
-                             post_data,
-                             function() {
-                                 jc.close();
-                             });
-              }
-              else if ($('input#task_result').length) {
-                renderTaskResult('POST',
-                             $that.data('href'),
-                             {"x-content": "abc"},
-                             "filename.zip",
-                             post_data,
-                             function() {
-                                 jc.close();
-                             });
-              }
-              else  {
-                console.log('Ajax POST request');
                 $.ajax({
-                  url: $that.data('href'),
+                  url: this.url,
                   type: 'POST',
                   data: post_data,
                   contentType: false,
                   processData: false,
                   success: onSuccess,
                   error: onError});
+                return;
               }
-              return false;
+              data = data.message || data.detail;
+              return;
             }
-          },
-          cancel: {
-            btnClass: 'btn-u btn-sm btn-l'
-          }
-        }
-      });
-    });
 
-    $('.task-load').click(function(){
-      var $that = $(this);
-      $.confirm({
-        title: 'Load Data from a GitHub Repository or from Filesystem.',
-        backgroundDismiss: true,
-        content: function(){
-          var $form = $('.load-form-template').clone().toggleClass('load-form-template load-form');
-          $form.find('input').each(function(n, el){
-            $(el).attr('id', $(el).attr('id').replace('_id', 'id'))
-          });
-          $form.find('label').each(function(n, el){
-            $(el).attr('for', $(el).attr('for').replace('_id', 'id'))
-          });
-          return $form[0].outerHTML;
-        },
-        onContentReady: function(){
-          $('.level-1>input').change(function() {
-            $(this).parent().find('.level-2>input').prop('checked', $(this).is(':checked'));
-          });
-          $('.level-1>input, .level-2>input').change(function() {
-            if ($(this).is(':checked')){
-              $(this).parent().find('label+.level-3>input').prop('checked', true);
+            //window.xxhr = xhr;
+            jc.close();
+
+            if (xhr.getResponseHeader('content-disposition') && xhr.getResponseHeader('content-disposition').startsWith('attachment')){
+              data = JSON.stringify(data);
+              var blob = new Blob([data], {type: xhr.getResponseHeader('content-type')});
+              var url  = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.download = xhr.getResponseHeader('filename');
+              a.href = url;
+              a.click();
+              URL.revokeObjectURL(url);
+              data = 'Downloaded ' + xhr.getResponseHeader('filename') + ' file'
             }
-            else {
-              $(this).parent().find('label+.level-3>input').prop('checked', false);
+
+            if ($.isPlainObject(data) && 'result' in data){
+              data = data.result
             }
-          });
-          $('.level-2>input').change(function(){
-            var level_id = $(this).prop('id').replace(/_\d+$/,'');
-            $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + level_id + '_"]:checked').length > 0);
-          });
-          $('.level-3>input').change(function(){
-            var level_id = $(this).prop('id').replace(/_[^_]+$/,'');
-            var $parent = $(this).parents('.level-2').find('input').first();
-            $parent.prop('checked', $('[id^="' + level_id + '_"]:checked').length > 0);
-            var parent_id = $parent.prop('id').replace(/_\d+$/,'');
-            $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + parent_id + '_"]:checked').length > 0);
-          });
-        },
-        columnClass: 'col-md-8',
-        type: 'blue',
-        icon: 'fa fa-download text-info',
-        buttons: {
-          confirm: {
-            text: $that.data('btn-text'),
-            btnClass: $that.data('btn-class') || 'btn-u btn-sm',
-            action: function(){
-              var jc = this;
-              var form = jc.$content.find('form');
-              var any_input = $(".load-form input[type='text']").filter(function() {
-                return this.value.length !== 0;
-              }).length;
-              var any_checkbox = $('.load-form input:checked').length;
-              if (any_input == 0 && any_checkbox == 0){
-                return false
+
+            $.alert({
+              icon: 'fa fa-spinner fa-spin text-warning',
+              title: 'Admin Task Started',
+              type: 'orange',
+              content: $.type(data) === 'object' && 'detail' in data ? data.detail : data,
+              columnClass: 'col-md-4',
+              onClose: function(){
+                $('.jqxgrid').jqxGrid('updatebounddata')
               }
-              $.post($that.data('href'), form.serialize())
+            });
+          };
+
+          onError = function(data) {
+            if (typeof data.responseJSON === 'string' || data.responseJSON instanceof String){
+              var error_p = '<p class="popup-error">' + data.responseJSON + '</p>';
+              jc.$content.before(error_p);
+            }
+
+            else if (data.responseJSON && typeof data.responseJSON === 'object' && data.responseJSON.constructor === Object && 'status' in data.responseJSON) {
+              $.alert({
+                icon: 'fa fa-warning text-danger',
+                title: 'Something went wrong',
+                type: 'red',
+                content: data.statusText,
+                columnClass: 'col-md-4',
+                backgroundDismiss: true,
+                onClose: function(){
+                  $('.jqxgrid').jqxGrid('updatebounddata')
+                } // onClose
+              }); // $.alert
+              return false;
+            } // if ('status'
+
+            else {
+              $.each(data.responseJSON, function (field, error) {
+                var error_p = '<p class="error">' + error[0] + '</p>';
+                form.find('#id_' + field).before(error_p);
+              }); // $.each
+            }
+          };
+
+          post_data = formdata ? formdata : form.serialize();
+          // UWSGI - Daphne migration
+          post_data.append('csrfmiddlewaretoken', jQuery("[name=csrfmiddlewaretoken]").val());
+
+          if ($('input#file_download').length) {
+            downloadFile('POST',
+              actionURL,
+              {"x-content": "abc"},
+              "filename.zip",
+              post_data,
+              function() {
+                jc.close();
+              });
+          }
+          else if ($('input#task_result').length) {
+            renderTaskResult('POST',
+            actionURL,
+              {"x-content": "abc"},
+              "filename.zip",
+              post_data,
+              function() {
+                jc.close();
+              });
+          }
+          else  {
+            $.ajax({
+              url: actionURL,
+              type: 'POST',
+              data: post_data,
+              contentType: false,
+              processData: false,
+              success: onSuccess,
+              error: onError});
+          }
+          return false;
+      }
+
+      $('.task').click(function(){
+        var $that = $(this);
+        window.contentReady = false;
+        window.dataLoaded = false;
+        var jc = $.confirm({
+          title: 'Admin Task',
+          backgroundDismiss: true,
+          content: $that.data('content') || function(){
+            var self = this;
+            var loader_el = '<h2 class="task-form-loader"><i class="fa fa-spinner fa-spin"></i> FORM IS LOADING</h2>';
+            $.get($that.data('href')).done(function(data){
+              var content = loader_el + '<form class="' + data.form_class + '" enctype="multipart/form-data">' +
+                '<p class="header">' + data.header + '</p>' +
+                data.form_data + '</form>';
+              var $content = $(content);
+              $content.find('input.checkbox-style').each(function(){
+                $(this).parent().addClass('checkbox-ltr-full-width');
+              });
+              $content.find('input.checkbox-parent').each(function(){
+                $(this).parent().addClass('checkbox-parent');
+              });
+              $content.find('input.checkbox-child').each(function(){
+                $(this).parent().addClass('checkbox-child');
+              });
+              self.setContent($content);
+              // disable form checkboxes for 1 s to allow to activate all handlers firstly
+              $content.find('input[type="checkbox"]:not(.bt-switch)').prop("disabled", true);
+              $content.addClass('disabled');
+              window.contentReady = true;
+              if (window.dataLoaded)
+                setTimeout(function() {
+                  onLoadJC(jc);
+                }, {{task_dialog_freeze_ms}});
+            }).fail(function(xhr) {
+              jc.close();
+              $.alert({
+                icon: 'fa fa-warning text-danger',
+                title: xhr.responseText,
+                type: 'red',
+                content: '',
+                columnClass: 'col-md-6',
+                onClose: function () {
+                  $('.jqxgrid').jqxGrid('updatebounddata')
+                }
+              })
+            }) // - end of "$.get($that.data('href'))"
+          }, // - end of "content: $that.data('content') || function(){"
+          onContentReady: function(){
+            window.dataLoaded = true;
+            if (window.contentReady)
+              setTimeout(function() {
+                onLoadJC(jc);
+              }, {{task_dialog_freeze_ms}});
+          },
+          columnClass: 'col-md-8',
+          type: $that.data('type') || 'blue',
+          icon: 'fa fa-warning text-warning',
+          buttons: {
+            confirm: {
+              text: $that.data('btn-text'),
+              btnClass: $that.data('btn-class') || 'btn-u btn-sm',
+              action: function () { runTask(jc, $that.data('href')); return false }
+            },
+            cancel: {
+              btnClass: 'btn-u btn-sm btn-l'
+            }
+          }
+        });
+      });
+
+      $('.task-load').click(function(){
+        var $that = $(this);
+        $.confirm({
+          title: 'Load Data from a GitHub Repository or from Filesystem.',
+          backgroundDismiss: true,
+          content: function(){
+            var $form = $('.load-form-template').clone().toggleClass('load-form-template load-form');
+            $form.find('select.chosen:enabled').chosen({search_contains: true, width: '300px'});
+            $form.find('input[id]').each(function(n, el) {
+              $(el).attr('id', $(el).attr('id').replace('_id', 'id'))
+            });
+            $form.find('label').each(function(n, el){
+              $(el).attr('for', $(el).attr('for').replace('_id', 'id'))
+            });
+            return $form[0].outerHTML;
+          },
+          onContentReady: function(){
+            $('.level-1>input').change(function() {
+              $(this).parent().find('.level-2>input').prop('checked', $(this).is(':checked'));
+            });
+            $('.level-1>input, .level-2>input').change(function() {
+              if ($(this).is(':checked')){
+                $(this).parent().find('label+.level-3>input').prop('checked', true);
+              }
+              else {
+                $(this).parent().find('label+.level-3>input').prop('checked', false);
+              }
+            });
+            $('.level-2>input').change(function(){
+              var level_id = $(this).prop('id').replace(/_\d+$/,'');
+              $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + level_id + '_"]:checked').length > 0);
+            });
+            $('.level-3>input').change(function(){
+              var level_id = $(this).prop('id').replace(/_[^_]+$/,'');
+              var $parent = $(this).parents('.level-2').find('input').first();
+              $parent.prop('checked', $('[id^="' + level_id + '_"]:checked').length > 0);
+              var parent_id = $parent.prop('id').replace(/_\d+$/,'');
+              $(this).parents('.level-1').find('input').first().prop('checked', $('[id^="' + parent_id + '_"]:checked').length > 0);
+            });
+          },
+          columnClass: 'col-md-8',
+          type: 'blue',
+          icon: 'fa fa-download text-info',
+          buttons: {
+            confirm: {
+              text: $that.data('btn-text'),
+              btnClass: $that.data('btn-class') || 'btn-u btn-sm',
+              action: function(){
+                var jc = this;
+                var form = jc.$content.find('form');
+                var any_input = $(".load-form input[type='text']").filter(function() {
+                  return this.value.length !== 0;
+                }).length;
+                var any_checkbox = $('.load-form input:checked').length;
+                if (any_input == 0 && any_checkbox == 0){
+                  return false
+                }
+                $.post($that.data('href'), form.serialize())
                   .done(function(data){
                     jc.close();
                     $.alert({
@@ -1162,168 +1107,168 @@
                   .fail(function(data){
                     console.log(data)
                   });
-              return false
+                return false
+              }
+            },
+            cancel: {
+              btnClass: 'btn-u btn-sm btn-l'
             }
-          },
-          cancel: {
-            btnClass: 'btn-u btn-sm btn-l'
           }
-        }
+        });
       });
-    });
 
-    $(document).ready(function () {
-      var datafields = [
-        { name: 'pk', type: 'string' },
-        { name: 'display_name', type: 'string' },
-        { name: 'description', type: 'string' },
-        { name: 'user_name', type: 'string' },
-        { name: 'date_start', type: 'date' },
-        { name: 'date_work_start', type: 'date' },
-        { name: 'date_done', type: 'date' },
-        { name: 'time', type: 'string' },
-        { name: 'work_time', type: 'string' },
-        { name: 'worker', type: 'string' },
-        { name: 'progress', type: 'float' },
-        { name: 'status', type: 'string' },
-        { name: 'url', type: 'string' },
-        { name: 'purge_url', type: 'string' },
-        { name: 'recall_url', type: 'string' },
-        { name: 'result_links' },
-        { name: 'upload_session_id', type: 'string' },
-        { name: 'recallable', type: 'bool' }
-      ];
-      var menu_renderer = function(row, event) {
-        var grid = $(event.currentTarget).parents('.jqxgrid');
-        row = grid.jqxGrid('getrowdata', row);
-        var taskStatus = row['status'];
-        var taskTitle = row['display_name'];
-        var recallTitle = 'Recall Task';
-        var recallPrompt = 'Recall this task?';
-        if (taskStatus == 'PENDING') {
+      $(document).ready(function () {
+        var datafields = [
+          { name: 'pk', type: 'string' },
+          { name: 'display_name', type: 'string' },
+          { name: 'description', type: 'string' },
+          { name: 'user_name', type: 'string' },
+          { name: 'date_start', type: 'date' },
+          { name: 'date_work_start', type: 'date' },
+          { name: 'date_done', type: 'date' },
+          { name: 'time', type: 'string' },
+          { name: 'work_time', type: 'string' },
+          { name: 'worker', type: 'string' },
+          { name: 'progress', type: 'float' },
+          { name: 'status', type: 'string' },
+          { name: 'url', type: 'string' },
+          { name: 'purge_url', type: 'string' },
+          { name: 'recall_url', type: 'string' },
+          { name: 'result_links' },
+          { name: 'upload_session_id', type: 'string' },
+          { name: 'recallable', type: 'bool' }
+        ];
+        var menu_renderer = function(row, event) {
+          var grid = $(event.currentTarget).parents('.jqxgrid');
+          row = grid.jqxGrid('getrowdata', row);
+          var taskStatus = row['status'];
+          var taskTitle = row['display_name'];
+          var recallTitle = 'Restart Task';
+          var recallPrompt = 'Restart this task?';
+          if (taskStatus == 'PENDING') {
             recallTitle = 'Restart Task';
             recallPrompt = 'Restart this task?';
-        }
-        var menu_data = [
-          { url: row.url,
-            icon: 'fa fa-info-circle',
-            text: 'View Details'},
-          { url: row.purge_url,
-            cls: 'purge-task',
-            icon: 'fa fa-eraser',
-            text: 'Purge Task'}
-        ];
-        if (row.recallable)
-          menu_data.push({ url: row.recall_url,
-            cls: 'recall-task',
-            icon: 'fa fa-refresh',
-            text: recallTitle,
-            data: {title: recallPrompt}});
+          }
+          var menu_data = [
+            { url: row.url,
+              icon: 'fa fa-info-circle',
+              text: 'View Details'},
+            { url: row.purge_url,
+              cls: 'purge-task',
+              icon: 'fa fa-eraser',
+              text: 'Purge Task'}
+          ];
+          if (row.recallable)
+            menu_data.push({ url: row.recall_url,
+              cls: 'recall-task',
+              icon: 'fa fa-refresh',
+              text: recallTitle,
+              data: {title: recallPrompt}});
 
-        if (row.recallable && row['upload_session_id'] &&
-          taskTitle == 'Load Documents' &&
-          (taskStatus == 'PENDING' || taskStatus == 'FAILURE')) {
-            var recallSessionTitle = 'Restart Failed Upload Tasks';
-            var recallSessionPrompt = 'Restart failed upload task?';
+          if (row.recallable && row['upload_session_id'] &&
+            taskTitle == 'Load Documents' &&
+            (taskStatus == 'PENDING' || taskStatus == 'FAILURE')) {
+            var recallSessionTitle = 'Restart Failed Upload Session Subtasks';
+            var recallSessionPrompt = 'Restart failed tasks from this failed upload session?';
             if (taskStatus == 'PENDING') {
-                recallSessionTitle = 'Restart Upload Tasks';
-                recallSessionPrompt = 'Restart upload task?';
+              recallSessionTitle = 'Restart Upload Tasks';
+              recallSessionPrompt = 'Restart upload task?';
             }
             menu_data.push({ url: row.recall_url,
-                cls: 'recall-session',
-                icon: 'fa fa-refresh',
-                text: recallSessionTitle,
-                data: {title: recallSessionPrompt, session: row['upload_session_id']}});
-        }
-        $.each(row.result_links, function(n, i){
-          menu_data.push(
+              cls: 'recall-session',
+              icon: 'fa fa-refresh',
+              text: recallSessionTitle,
+              data: {title: recallSessionPrompt, session: row['upload_session_id']}});
+          }
+          $.each(row.result_links, function(n, i){
+            menu_data.push(
               { url: i.link,
                 icon: 'fa fa-bars',
                 text: i.name}
-          )
-        });
-        show_menu(menu_data, grid, row.pk, 300);
-      };
-      var status_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
-        var cls = row.status === 'SUCCESS' ? 'success'
-                : row.status === 'PENDING' ? 'warning'
-                : row.status === 'FAILURE' ? 'danger'
+            )
+          });
+          show_menu(menu_data, grid, row.pk, 300);
+        };
+        var status_renderer = function(index, columnfield, value, defaulthtml, columnproperties, row){
+          var cls = row.status === 'SUCCESS' ? 'success'
+            : row.status === 'PENDING' ? 'warning'
+              : row.status === 'FAILURE' ? 'danger'
                 : 'warning';
-        value = row.status || 'PENDING';
-        var new_value = '<span class="badge badge-' + cls + '">' + value + '</span>';
-        return renderCell(defaulthtml, new_value);
-      };
-      var columns = [
-        { text: 'Task Name', datafield: 'display_name', width: 'auto',
-          align: 'center', cellsalign: 'left',
-          cellsrenderer: defaultLinkFormatter },
-        { text: 'Arguments / Description', datafield: 'description', width: 'auto',
-          align: 'center', cellsalign: 'left',
-           cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
-            v = v ? v : '';
-            if (typeof v === 'string')
-              v = v.split('\n');
-            {#if (v.length > 2)#}
-            {#  v = v.slice(0, 2);#}
-            v = v.join('\n');
-            v = '<pre>' + v + '</pre>';
-            defaulthtml = $(defaulthtml).css('margin-top', '5px');
-            return renderCell(defaulthtml, v);
-          }},
-        { text: 'User', datafield: 'user_name', width: 100,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Scheduled', datafield: 'date_start', width: 90,
-          filtertype: 'date', cellsformat: 'MM/dd HH:mm',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Done', datafield: 'date_done', width: 90,
-          filtertype: 'date', cellsformat: 'MM/dd HH:mm',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Total Time', datafield: 'time', width: 90, filterable: false, sortable: true,
-          align: 'center', cellsalign: 'center',
-          cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
-            var d = moment.duration(v);
-            if (d._milliseconds < 1000){
-              var valueStr = Math.round(d._milliseconds) + " ms";
+          value = row.status || 'PENDING';
+          var new_value = '<span class="badge badge-' + cls + '">' + value + '</span>';
+          return renderCell(defaulthtml, new_value);
+        };
+        var columns = [
+          { text: 'Task Name', datafield: 'display_name', width: 'auto',
+            align: 'center', cellsalign: 'left',
+            cellsrenderer: defaultLinkFormatter },
+          { text: 'Arguments / Description', datafield: 'description', width: 'auto',
+            align: 'center', cellsalign: 'left',
+            cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
+              v = v ? v : '';
+              if (typeof v === 'string')
+                v = v.split('\n');
+              {#if (v.length > 2)#}
+              {#  v = v.slice(0, 2);#}
+              v = v.join('\n');
+              v = '<pre>' + v + '</pre>';
+              defaulthtml = $(defaulthtml).css('margin-top', '5px');
+              return renderCell(defaulthtml, v);
+            }},
+          { text: 'User', datafield: 'user_name', width: 100,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Scheduled', datafield: 'date_start', width: 90,
+            filtertype: 'date', cellsformat: 'MM/dd HH:mm',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Done', datafield: 'date_done', width: 90,
+            filtertype: 'date', cellsformat: 'MM/dd HH:mm',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Total Time', datafield: 'time', width: 90, filterable: false, sortable: true,
+            align: 'center', cellsalign: 'center',
+            cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
+              var d = moment.duration(v);
+              if (d._milliseconds < 1000){
+                var valueStr = Math.round(d._milliseconds) + " ms";
+              }
+              else {
+                valueStr = d.format();
+              }
+              return renderCell(defaulthtml, valueStr)
             }
-            else {
-              valueStr = d.format();
+          },
+          { text: 'Worker', datafield: 'worker', width: 100,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Started', datafield: 'date_work_start', width: 90,
+            filtertype: 'date', cellsformat: 'MM/dd HH:mm',
+            align: 'center', cellsalign: 'center' },
+          { text: 'Work Time', datafield: 'work_time', width: 90, filterable: false, sortable: true,
+            align: 'center', cellsalign: 'center',
+            cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
+              var d = moment.duration(v);
+              if (d._milliseconds < 1000){
+                var valueStr = Math.round(d._milliseconds) + " ms";
+              }
+              else {
+                valueStr = d.format();
+              }
+              return renderCell(defaulthtml, valueStr)
             }
-            return renderCell(defaulthtml, valueStr)
-          }
-        },
-        { text: 'Worker', datafield: 'worker', width: 100,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Started', datafield: 'date_work_start', width: 90,
-          filtertype: 'date', cellsformat: 'MM/dd HH:mm',
-          align: 'center', cellsalign: 'center' },
-        { text: 'Work Time', datafield: 'work_time', width: 90, filterable: false, sortable: true,
-          align: 'center', cellsalign: 'center',
-          cellsrenderer: function(row_num, row_type, v, defaulthtml, columnproperties, row) {
-            var d = moment.duration(v);
-            if (d._milliseconds < 1000){
-              var valueStr = Math.round(d._milliseconds) + " ms";
-            }
-            else {
-              valueStr = d.format();
-            }
-            return renderCell(defaulthtml, valueStr)
-          }
-        },
-        { text: 'Progress', datafield: 'progress', width: 90,
-          cellsrenderer: knob_cellsrenderer,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Status', datafield: 'status', width: 80,
-          cellsrenderer: status_renderer,
-          align: 'center', cellsalign: 'center' },
-        { text: 'Action', datafield: 'url', width: 60,
-          align: 'center', exportable: false,
-          columntype: 'button',
-          sortable: false, filterable: false, menu: false,
-          cellsrenderer: function(){return 'Menu'},
-          buttonclick: menu_renderer }
-      ];
-      var custom_grid_options = { rowsheight: 60 };
-      draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
-    });
+          },
+          { text: 'Progress', datafield: 'progress', width: 90,
+            cellsrenderer: knob_cellsrenderer,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Status', datafield: 'status', width: 80,
+            cellsrenderer: status_renderer,
+            align: 'center', cellsalign: 'center' },
+          { text: 'Action', datafield: 'url', width: 60,
+            align: 'center', exportable: false,
+            columntype: 'button',
+            sortable: false, filterable: false, menu: false,
+            cellsrenderer: function(){return 'Menu'},
+            buttonclick: menu_renderer }
+        ];
+        var custom_grid_options = { rowsheight: 60 };
+        draw_grid(".jqxgrid", datafields, columns, true, null, custom_grid_options);
+      });
   </script>
 {% endblock %}

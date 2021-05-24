@@ -42,9 +42,9 @@ from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJ
 from apps.users.authentication import CookieAuthentication
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -169,6 +169,11 @@ class CustomJSONOpenAPIRenderer(JSONOpenAPIRenderer):
 
 class CustomOpenAPISchemaGenerator(OpenAPISchemaGenerator):
     methods = ['get', 'post', 'put', 'patch', 'delete', 'options']
+
+    def has_view_permissions(self, path, method, view):
+        if view.request.user.is_superuser:
+            return True
+        return super().has_view_permissions(path, method, view)
 
     def get_schema(self, request=None, public=False):
         schema = super().get_schema(request=request, public=public)

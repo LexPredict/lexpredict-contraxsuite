@@ -33,22 +33,25 @@ import re
 import tempfile
 import zipfile
 from shutil import rmtree
-from typing import Any, List, Dict, Iterable, Tuple, Union, Optional
+from typing import Any, List, Dict, Iterable, Tuple, Union, Optional, Callable
 
 import jiphy
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.states import FAILURE
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import DurationField, ExpressionWrapper, F, Q
+from django.db.models.functions import Now
 from django.urls import reverse
 from django.utils.timezone import now
 from lexnlp.extract.en.contracts.detector import is_contract
 from psycopg2 import InterfaceError, OperationalError
 
 import task_names
+from apps.analyze.ml.contract_type_classifier import ContractTypeClassifier
 from apps.celery import app
 from apps.common.collection_utils import chunks
 from apps.common.db_cache.db_cache import DbCache
@@ -59,7 +62,7 @@ from apps.document import signals
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
 from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, \
     DOC_NUMBER_PER_SUB_TASK, DOC_NUMBER_PER_MAIN_TASK, \
-    FieldSpec, DocumentSystemField, DOC_METADATA_DOCUMENT_CLASS_PROB
+    FieldSpec, DocumentSystemField, DOC_METADATA_DOCUMENT_CLASS_PROB, DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR
 from apps.document.document_class import DocumentClass
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
@@ -69,7 +72,7 @@ from apps.document.field_types import TypedField
 from apps.document.migration.document_export import DocumentExporter
 from apps.document.migration.document_import import DocumentImporter
 from apps.document.models import DocumentType, \
-    Document, DocumentMetadata, ClassifierModel, TextUnit, DocumentField
+    Document, DocumentMetadata, ClassifierModel, TextUnit, DocumentField, DocumentPDFRepresentation, DocumentTable
 from apps.document.models import FieldValue, FieldAnnotation
 from apps.document.repository.document_bulk_delete import get_document_bulk_delete
 from apps.document.repository.dto import FieldValueDTO
@@ -88,9 +91,9 @@ from apps.task.utils.task_utils import TaskUtils, download_task_attached_file
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,88 +148,6 @@ class TrainDocumentFieldDetectorModel(ExtendedTask):
         if new_model:
             ClassifierModel.objects.filter(document_field=field).delete()
             new_model.save()
-
-
-class TrainDirtyDocumentFieldDetectorModel(ExtendedTask):
-    name = 'Train Dirty Document Field Detector Model'
-
-    def process(self, **kwargs):
-        self.log_info(
-            'Going to train dirty field detector model based on the datasets stored in DB...')
-
-        dirty_fields = DocumentField.objects.get_dirty_fields()
-
-        if dirty_fields:
-            train_model_for_dirty_field_args = []
-
-            for dirty_field in DocumentField.objects.get_dirty_fields():
-                train_model_for_dirty_field_args.append((dirty_field.pk,))
-
-            self.run_sub_tasks('Train Model For Dirty Fields',
-                               TrainDirtyDocumentFieldDetectorModel.train_model_for_dirty_field,
-                               train_model_for_dirty_field_args)
-
-    @staticmethod
-    @shared_task(base=ExtendedTask,
-                 bind=True,
-                 soft_time_limit=6000,
-                 default_retry_delay=10,
-                 retry_backoff=True,
-                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
-                 max_retries=3)
-    def train_model_for_dirty_field(task: ExtendedTask, dirty_field_id: Any) -> None:
-        dirty_field = DocumentField.objects.get(pk=dirty_field_id)
-        if dirty_field.can_retrain():
-            dirty_field.dirty = False
-            dirty_field.save()
-            fd_repo = FieldDetectionRepository()
-            train_docs_count = fd_repo.get_approved_documents_number(dirty_field, None)
-            if train_docs_count >= dirty_field.trained_after_documents_number:
-                new_model = field_detection.train_document_field_detector_model(CeleryTaskLogger(task),
-                                                                                dirty_field,
-                                                                                None)
-                if new_model:
-                    ClassifierModel.objects.filter(document_field=dirty_field).delete()
-                    new_model.save()
-
-
-@app.task(name=task_names.TASK_NAME_RETRAIN_DIRTY_TASKS, bind=True)
-def retrain_dirty_fields(_celery_task):
-    TaskUtils.prepare_task_execution()
-    if DocumentField.objects.has_dirty_fields():
-        task_name = TrainDirtyDocumentFieldDetectorModel.name
-        execution_delay = now() - datetime.timedelta(
-            seconds=settings.RETRAINING_TASK_EXECUTION_DELAY_IN_SEC)
-        if not Task.objects.active_tasks_exist(task_name, execution_delay):
-            call_task(task_name, module_name='apps.document.tasks')
-
-
-@app.task(name=task_names.TASK_NAME_CACHE_UPDATED_DOCS, bind=True)
-def cache_updated_documents(_celery_task):
-    # TODO: read these settings from AppVar
-    task_limit_seconds = 10
-    task_query_minutes = 1
-
-    TaskUtils.prepare_task_execution()
-
-    time_threshold = datetime.datetime.now() - datetime.timedelta(minutes=task_query_minutes)
-    dirty_documents = Document.objects.filter(
-        fields_dirty__lt=time_threshold, project_id__isnull=False).order_by('-fields_dirty')
-    dirty_count = dirty_documents.count()
-    if not dirty_count:
-        return
-    logger.debug(f'{dirty_count} documents are to be synchronized')
-
-    started = datetime.datetime.now()
-    processed = 0
-    for doc in dirty_documents:
-        cache_document_fields(
-            logger, doc, cache_generic_fields=True, cache_user_fields=True)
-        processed += 1
-        elapsed = (datetime.datetime.now() - started).total_seconds()
-        if elapsed > task_limit_seconds:
-            logger.debug(f'Cached {processed} documents only of {dirty_count}')
-            break
 
 
 class TrainAndTest(ExtendedTask):
@@ -292,30 +213,30 @@ class TrainAndTest(ExtendedTask):
         if not test_data_projects_ids:
             self.log_info('No test projects specified. Skiping the testing step.')
             return
+
+        if not use_only_confirmed_field_values_for_testing:
+            test_document_ids = Document.objects \
+                .filter(project_id__in=test_data_projects_ids, document_type_id=field.document_type.pk) \
+                .values_list('pk', flat=True)
         else:
-            if not use_only_confirmed_field_values_for_testing:
-                test_document_ids = Document.objects \
-                    .filter(project_id__in=test_data_projects_ids, document_type_id=field.document_type.pk) \
-                    .values_list('pk', flat=True)
-            else:
-                fd_repo = FieldDetectionRepository()
-                test_document_ids = set(fd_repo.get_qs_active_modified_document_ids(field,
-                                                                                    test_data_projects_ids))
-                test_document_ids.update(set(fd_repo.get_qs_finished_document_ids(field.document_type,
-                                                                                  test_data_projects_ids)))
+            fd_repo = FieldDetectionRepository()
+            test_document_ids = set(fd_repo.get_qs_active_modified_document_ids(field,
+                                                                                test_data_projects_ids))
+            test_document_ids.update(set(fd_repo.get_qs_finished_document_ids(field.document_type,
+                                                                              test_data_projects_ids)))
 
-            self.log_info('Testing field detection document-by-document...')
-            test_tasks_args = []
-            for test_document_id in test_document_ids:
-                test_tasks_args.append((field.uid, test_document_id))
+        self.log_info('Testing field detection document-by-document...')
+        test_tasks_args = []
+        for test_document_id in test_document_ids:
+            test_tasks_args.append((field.uid, test_document_id))
 
-            if test_tasks_args:
-                self.run_sub_tasks('Test Field Detector Model', TrainAndTest.test_field_detector_model,
-                                   test_tasks_args)
-                args_list = [(field.uid, new_model.pk if new_model else None)]
-                self.run_after_sub_tasks_finished('Join Field Detector Model Tests',
-                                                  TrainAndTest.join_field_detector_model_tests,
-                                                  args_list)
+        if test_tasks_args:
+            self.run_sub_tasks('Test Field Detector Model', TrainAndTest.test_field_detector_model,
+                               test_tasks_args)
+            args_list = [(field.uid, new_model.pk if new_model else None)]
+            self.run_after_sub_tasks_finished('Join Field Detector Model Tests',
+                                              TrainAndTest.join_field_detector_model_tests,
+                                              args_list)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -352,7 +273,7 @@ class TrainAndTest(ExtendedTask):
                           f'Detected: {expected_field_value_dto}. Real: {actual_field_value}.')
         else:
             expected_set = set()
-            expected_set_text: List[str] = list()
+            expected_set_text: List[str] = []
             # related-info e.t.c. - comparing by annotations - exact comparing
             if expected_field_value_dto and expected_field_value_dto.annotations:
                 for ant_dto in expected_field_value_dto.annotations:
@@ -371,7 +292,7 @@ class TrainAndTest(ExtendedTask):
                 field_id=field.pk)
 
             actual_set = set()
-            actual_text: List[str] = list()
+            actual_text: List[str] = []
             for dfv in actual_dfvs:
                 if not dfv.text_unit:
                     continue
@@ -416,8 +337,8 @@ class TrainAndTest(ExtendedTask):
         match_number = 0
         test_doc_number = 0
 
-        matches_per_value = dict()
-        total_per_value = dict()
+        matches_per_value = {}
+        total_per_value = {}
 
         for res in results:
             actual_field_value = res.get('actual_field_value')
@@ -481,7 +402,7 @@ class LoadDocumentWithFields(ExtendedTask):
                           ignore_parsing_errors: bool = False) \
             -> Dict[DocumentField, FieldValueDTO]:
         document_type = document.document_type
-        fields_to_values = dict()  # type: Dict[DocumentField, FieldValueDTO]
+        fields_to_values = {}  # type: Dict[DocumentField, FieldValueDTO]
 
         if not document_type:
             return fields_to_values
@@ -506,8 +427,8 @@ class LoadDocumentWithFields(ExtendedTask):
             typed_field = TypedField.by(field)  # type: TypedField
 
             try:
-                if type(field_value_text) is list:
-                    for possible_value_text in list(field_value_text):
+                if isinstance(field_value_text, list):
+                    for possible_value_text in field_value_text:
                         maybe_value = typed_field.extract_from_possible_value_text(possible_value_text, doc=document)
                         if maybe_value:
                             maybe_value = typed_field.field_value_python_to_json(maybe_value)
@@ -682,7 +603,9 @@ class ImportCSVFieldDetectionConfig(ExtendedTask):
             csv_contains_regexps=csv_contains_regexps,
             selected_columns=selected_columns,
             wrap_in_wordbreaks=wrap_in_wordbreaks,
-            save_in_csv_format=save_in_csv_format)
+            save_in_csv_format=save_in_csv_format,
+            modified_by=self.task.user
+        )
         importer.process_csv(csv_bytes)
 
 
@@ -808,7 +731,10 @@ class ImportDocumentType(ExtendedTask):
         else:
             raise RuntimeError('Unknown action')
 
-        source_version = int(source_version) if source_version else CURRENT_VERSION
+        try:
+            source_version = int(source_version) if source_version else CURRENT_VERSION
+        except ValueError:
+            source_version = CURRENT_VERSION
 
         with download_task_attached_file(document_type_config_json_file) as fn:
             with open(fn, 'rb') as fr:
@@ -824,7 +750,7 @@ class ImportDocumentType(ExtendedTask):
             return
 
         from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-        if not APP_VAR_DISABLE_RAW_DB_CACHING.val:
+        if not APP_VAR_DISABLE_RAW_DB_CACHING.val():
             self.log_info('Adapting RawDB table structure after import ...')
             adapt_table_structure(CeleryTaskLogger(self), document_type, force=False)
         ids = Document.all_objects.filter(document_type=document_type).values_list('pk', flat=True)
@@ -890,7 +816,7 @@ class ExportDocuments(ExtendedTask):
                     fw.write(buffer)
                 self.log_info(f'Chunk {first_id}:{last_id} is on disk')
 
-            self.log_info(f'Saving all chunks in one file')
+            self.log_info('Saving all chunks in one file')
             with zipfile.ZipFile(mem_stream, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 for name_only in os.listdir(temp_dir):
                     fn = os.path.join(temp_dir, name_only)
@@ -994,7 +920,7 @@ class ImportDocuments(ExtendedTask):
         for doc_id, init_loaded in doc_id_status:
             from apps.extract.app_vars import STANDARD_LOCATORS
             self.run_sub_tasks_class_based('Locate', Locate, [{
-                'locate': list(set(STANDARD_LOCATORS.val + ['term'])),
+                'locate': list(set(STANDARD_LOCATORS.val(project_id=project_obj.id) + ['term'])),
                 'parse': ['sentence'],
                 'do_delete': False,
                 'user_id': task_user,
@@ -1035,10 +961,10 @@ class FixDocumentFieldCodes(ExtendedTask):
 
         with transaction.atomic():
 
-            csv_log = list()  # type: List[Tuple[str, str, str]]
+            csv_log = []  # type: List[Tuple[str, str, str]]
             for document_type in DocumentType.objects.all():  # type: DocumentType
-                changed_field_codes = dict()  # type: Dict[str, str]
-                field_code_use_counts = dict()  # type: Dict[str, int]
+                changed_field_codes = {}  # type: Dict[str, str]
+                field_code_use_counts = {}  # type: Dict[str, int]
 
                 for code in DocumentField.objects \
                         .filter(document_type=document_type) \
@@ -1114,24 +1040,42 @@ class FixDocumentFieldCodes(ExtendedTask):
                       'Changed fields csv:\n' + output.getvalue() + '\n------------------')
 
 
+class DocumentCleaner:
+    def __init__(self):
+        from apps.document.repository.document_repository import default_document_repository
+        self.document_repository = default_document_repository
+
+    def clean(self,
+              document_ids: List[int],
+              safe_mode: bool = True,
+              delete_files: bool = True,
+              user: Optional[User] = None,
+              log_error: Optional[Callable[[str, Any, Any], None]] = None):
+        log_error_routine = log_error or self.log_error
+        file_paths = self.document_repository.get_all_document_source_paths(document_ids)
+        get_document_bulk_delete(safe_mode, user=user).delete_documents(document_ids)
+        if delete_files:
+            DocumentFilesCleaner.delete_document_files(file_paths, log_error_routine)
+
+    def log_error(self, message, exc_info: Exception = None, **kwargs):
+        print(message)
+
+
 class DeleteDocuments(ExtendedTask):
     name = 'Delete Documents'
     priority = 3
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from apps.document.repository.document_repository import default_document_repository
-        self.document_repository = default_document_repository
+        self.cleaner = DocumentCleaner()
 
     def process(self, **kwargs):
-        doc_ids = kwargs.get('_document_ids')
-        safe_mode = kwargs.get('_safe_mode')
-        safe_mode = safe_mode if safe_mode is not None else True
-        delete_files = kwargs.get('_delete_files', True)
-        file_paths = self.document_repository.get_all_document_source_paths(doc_ids)
-        get_document_bulk_delete(safe_mode).delete_documents(doc_ids)
-        if delete_files:
-            DocumentFilesCleaner.delete_document_files(file_paths, self.log_error)
+        log_error_routine = kwargs.get('log_error') or self.log_error
+        self.cleaner.clean(kwargs.get('_document_ids'),
+                           kwargs.get('_safe_mode', True),
+                           kwargs.get('_delete_files', True),
+                           user=self.task.user,
+                           log_error=log_error_routine)
 
 
 @shared_task(base=ExtendedTask,
@@ -1233,9 +1177,9 @@ def process_document_changed(task: ExtendedTask,
     log = CeleryTaskLogger(task)
     if cache_values:
         cache_document_fields(log, doc,
-                              cache_generic_fields=False if not generic_fields_changed else True,
-                              cache_user_fields=False if not user_fields_changed else True,
-                              cache_system_fields=False if not system_fields_changed else True,
+                              cache_generic_fields=bool(generic_fields_changed),
+                              cache_user_fields=bool(user_fields_changed),
+                              cache_system_fields=bool(system_fields_changed),
                               disable_notifications=True)
     fire_document_changed(sender=task,
                           log=log,
@@ -1304,6 +1248,8 @@ def plan_process_documents_assignee_changed(doc_ids: Iterable,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3)
 def identify_contracts(task: ExtendedTask,
+                       check_is_contract: bool,
+                       set_contract_type: bool,
                        document_type_code: Optional[str] = None,
                        force: Optional[bool] = False,
                        project_id: Optional[int] = None):
@@ -1315,19 +1261,27 @@ def identify_contracts(task: ExtendedTask,
     ptrs_str = ', '.join([f'{p}={run_parameters[p]}' for p in run_parameters])
 
     msg = f'identify_contracts called for {ptrs_str}. ' \
-        f'Task: {task.task_name}, main id: {task.main_task_id}'
+          f'Task: {task.task_name}, main id: {task.main_task_id}'
     log = CeleryTaskLogger(task)
     log.info(msg)
-    identify_document_classes(task, document_type_code, force, project_id)
+    identify_document_classes(task, check_is_contract, set_contract_type,
+                              document_type_code, force, project_id)
 
 
 def identify_document_classes(task: ExtendedTask,
+                              check_is_contract: bool,
+                              set_contract_type: bool,
                               document_type_code: str = None,
                               force_recheck: bool = False,
-                              project_id: Optional[int] = None):
+                              project_id: Optional[int] = None,
+                              ):
     docs = Document.objects.all()
     if not force_recheck:
-        docs = docs.filter(Q(document_class='') | Q(document_class__isnull=True))
+        if check_is_contract:
+            docs = docs.filter(Q(document_class='') | Q(document_class__isnull=True))
+        if set_contract_type:
+            docs = docs.filter(Q(document_contract_class='') |
+                               Q(document_contract_class__isnull=True))
     if document_type_code:
         docs = docs.filter(document_type__code=document_type_code)
     if project_id:
@@ -1338,6 +1292,7 @@ def identify_document_classes(task: ExtendedTask,
     log.info(f'identify_document_classes: {total}')
     counter = 0
     total_contracts, total_generics = (0, 0)
+    doc_by_type: Dict[str, int] = {}
 
     for doc in docs:  # type: Document
         # doc_pk, doc_text in docs.values_list('pk', 'documenttext__full_text'):
@@ -1347,31 +1302,55 @@ def identify_document_classes(task: ExtendedTask,
         counter += 1
 
         doc_text = doc.full_text or ''
-        try:
-            res = is_contract(doc_text, return_probability=True)
-        except Exception as e:
-            log.error(f'Error in is_contract() call for document #{doc.pk}, {len(doc_text)} characters',
-                      exc_info=e)
-            continue
-        if not res:
-            log.info(f'Contract flag was not obtained for doc #{doc.pk} ({doc.name})')
-            continue
 
-        if res[0]:
-            total_contracts += 1
-        else:
-            total_generics += 1
-        meta = DocumentMetadata.objects.get(document_id=doc.pk)
-        if not meta:
-            meta = DocumentMetadata(document=doc, metadata={})
-        doc.document_class = DocumentClass.CONTRACT if res[0] else DocumentClass.GENERIC
-        meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] = res[1]
-        meta.save()
+        document_is_updated = False
+        if check_is_contract:
+            try:
+                res = is_contract(doc_text, return_probability=True)
+            except Exception as e:
+                log.error(f'Error in is_contract() call for document #{doc.pk}, {len(doc_text)} characters',
+                          exc_info=e)
+                continue
+            if not res:
+                log.info(f'Contract flag was not obtained for doc #{doc.pk} ({doc.name})')
+                continue
 
-        # caching ...
-        cache_document_fields(log, doc, cache_generic_fields=False, cache_user_fields=False)
+            if res[0]:
+                total_contracts += 1
+            else:
+                total_generics += 1
+            meta = DocumentMetadata.objects.get(document_id=doc.pk)
+            if not meta:
+                meta = DocumentMetadata(document=doc, metadata={})
 
-    log.info(f'{total} documents are processed ({total_contracts} contracts, {total_generics} general docs)')
+            new_doc_class = DocumentClass.CONTRACT if res[0] else DocumentClass.GENERIC
+            if new_doc_class != doc.document_class or \
+                    meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] != res[1]:
+                document_is_updated = True
+                doc.document_class = new_doc_class
+                meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] = res[1]
+                meta.save()
+
+        if set_contract_type:
+            contract_type, type_vector = ContractTypeClassifier.get_document_contract_type(
+                doc_text, True, document_language=doc.language, project_id=project_id)
+            doc_by_type[contract_type] = doc_by_type.get(contract_type, 0) + 1
+            meta: DocumentMetadata = DocumentMetadata.objects.get(document_id=doc.pk)
+            meta.metadata[DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR] = type_vector
+            meta.save()
+            document_is_updated = True
+            doc.document_contract_class = contract_type
+
+        if document_is_updated:
+            doc.save()
+            # cache in RawDB
+            cache_document_fields(log, doc, cache_generic_fields=False, cache_user_fields=False)
+
+    if check_is_contract:
+        log.info(f'{total} documents are processed: {total_contracts} contracts, {total_generics} generic docs)')
+    if set_contract_type:
+        doc_by_type_str = ', '.join([f'[{c}]: {doc_by_type[c]}' for c in doc_by_type])
+        log.info(f'Detected following contract types: {doc_by_type_str}')
 
 
 class DeleteDocumentTypes(ExtendedTask):
@@ -1441,7 +1420,10 @@ class ExportDocumentFiles(ExtendedTask):
 
         with zipfile.ZipFile(mem_stream, 'w', zipfile.ZIP_DEFLATED) as zip_archive:
             for doc in documents:
-                with file_storage.get_document_as_local_fn(doc.source_path) as (full_name, _):
+                doc_file_path = doc.get_source_path(mode='alt_for_pdf')
+                if not file_storage.document_exists(doc_file_path):
+                    continue
+                with file_storage.get_document_as_local_fn(doc_file_path) as (full_name, _):
                     try:
                         if doc.document_type.is_generic():
                             if doc.documentcluster_set.exists():
@@ -1471,9 +1453,129 @@ class ExportDocumentFiles(ExtendedTask):
         self.log_info(f'Email sent to user {user.name}')
 
 
+@app.task(name=task_names.TASK_NAME_TRACK_FAILED_DOCUMENT_LOADS, bind=True)
+def track_failed_document_loads(_celery_task):
+    """
+    Track Documents which failed to load and then failed to delete - try to delete again
+    """
+    TaskUtils.prepare_task_execution()
+
+    document_ids_to_delete = []
+    unprocessed_documents = Document.objects.filter(processed=False).values_list('id', 'name', 'upload_session_id')
+
+    delta = datetime.timedelta(minutes=5)
+    expression = Now() - F('date_done')
+    wrapped_expression = ExpressionWrapper(expression, DurationField())
+
+    for doc_id, name, upload_session_id in unprocessed_documents:
+        task_qs = Task.objects \
+            .filter(upload_session_id=upload_session_id, metadata__file_name=name, status=FAILURE) \
+            .annotate(delta=wrapped_expression) \
+            .filter(delta__gte=delta)
+        if task_qs.exists():
+            document_ids_to_delete.append(doc_id)
+
+    if not document_ids_to_delete:
+        return
+
+    logger.error(f'Delete Documents with processed=True, which Load Document Tasks failed, '
+                 f'doc_ids={document_ids_to_delete}')
+
+    try:
+        cleaner = DocumentCleaner()
+        cleaner.clean(document_ids=document_ids_to_delete,
+                      delete_files=True,
+                      log_error=logger.error)
+    except Exception as e:
+        logger.error(f'Unable to delete documents, doc_ids={document_ids_to_delete}, Exception is: {str(e)}')
+
+
+def filter_sections_inside_tables(metadata: Dict[str, Any],
+                                  document_pdf_repr: DocumentPDFRepresentation,
+                                  tables: List[DocumentTable]):
+    # Sometimes the section's title is inside a table
+    # this "section" is most probably a false positive of section detecting logic.
+    # We should check the section titles' character coordinates and filter such sections out
+    sections = metadata['sections']
+    filtered_sections = []
+    boxes = document_pdf_repr.char_bboxes_list
+    pages_list = document_pdf_repr.pages_list
+    pages = [(p['start'], p['end']) for p in pages_list]
+
+    table_bounds = [(t.page,
+                     (t.bounding_rect[0], t.bounding_rect[1],
+                      t.bounding_rect[0] + t.bounding_rect[2],
+                      t.bounding_rect[1] + t.bounding_rect[3])) for t in tables]
+
+    for s in sections:
+        # {'start': 190, 'end': 2158, 'title': '1998 1997 1996 1995 1994',
+        #  'title_start': 191, 'title_end': 215, 'level': 2, 'abs_level': 7}
+        title_in_table = False
+        char_page = -1
+        for i in range(s['title_start'], s['title_end']):
+            if i >= len(boxes):
+                break
+            if not boxes[i] or not boxes[i][2] or not boxes[i][3]:
+                continue
+            # determine page
+            if char_page >= 0 and pages[char_page][0] <= i < pages[char_page][1]:
+                pass
+            else:
+                char_page = DocumentPDFRepresentation.find_page_by_smb_index(pages, i)
+            if char_page < 0:
+                break
+
+            x1, y1, x2, y2 = boxes[i][0], boxes[i][1], boxes[i][0] + boxes[i][2], boxes[i][1] + boxes[i][3]
+            for table_page, bounds in table_bounds:
+                if table_page != char_page:
+                    continue
+                tx1, ty1, tx2, ty2 = bounds
+                # are box / table intersect or is the box consumed by the table?
+                if ((tx1 <= x1 <= tx2) and (ty1 <= y1 <= ty2)) or \
+                   ((tx1 <= x2 <= tx2) and (ty1 <= y2 <= ty2)) or \
+                   ((tx1 <= x2 <= tx2) and (ty1 <= y1 <= ty2)) or \
+                   ((tx1 <= x1 <= tx2) and (ty1 <= y2 <= ty2)):
+                    title_in_table = True
+                    break
+            if title_in_table:
+                break
+        if not title_in_table:
+            filtered_sections.append(s)
+    metadata['sections'] = filtered_sections
+
+
+def filter_multiple_sections_inside_paragraph(metadata: Dict[str, Any],
+                                              paragraph_list: List[TextUnit]):
+    # some sections (section titles) may occupy the same paragraph
+    # we leave only first section in each paragraph
+    sections = metadata['sections']
+    filtered_sections = []
+    section_paragraph = set()
+    paragraph_index = 0
+    for section in sections:
+        sect_p_index = -1
+        if paragraph_index >= 0:
+            for i in range(paragraph_index, len(paragraph_list)):
+                ps, pe = paragraph_list[i].location_start, paragraph_list[i].location_end
+                sect_s, sect_e = section['title_start'], section['title_end']
+                if (ps <= sect_s < pe) or (ps <= sect_e < pe):
+                    sect_p_index = i
+                    break
+                if ps > sect_e:
+                    break
+        paragraph_index = sect_p_index
+        if sect_p_index < 0:
+            filtered_sections.append(section)
+            continue
+        if sect_p_index in section_paragraph:
+            continue
+        section_paragraph.add(sect_p_index)
+        filtered_sections.append(section)
+    metadata['sections'] = filtered_sections
+
+
 app.register_task(DetectFieldValues())
 app.register_task(TrainDocumentFieldDetectorModel())
-app.register_task(TrainDirtyDocumentFieldDetectorModel())
 app.register_task(TrainAndTest())
 app.register_task(LoadDocumentWithFields())
 app.register_task(ImportCSVFieldDetectionConfig())

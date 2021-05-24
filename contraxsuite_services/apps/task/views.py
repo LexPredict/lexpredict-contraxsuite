@@ -27,8 +27,8 @@
 # Future imports
 from __future__ import absolute_import, unicode_literals
 
-import logging
 import traceback
+from collections import OrderedDict
 
 # Django imports
 from django.conf import settings
@@ -42,6 +42,7 @@ from django.views.generic.edit import FormView
 
 # Project imports
 from apps.analyze.models import TextUnitClassifier, DocumentClassifier
+from apps.common.logger import CsLogger
 from apps.common.mixins import JSONResponseView, JqPaginatedListView, CustomDetailView
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.utils import get_api_module
@@ -55,22 +56,22 @@ from apps.task.models import Task
 from apps.task.tasks import call_task, clean_tasks, purge_task, _call_task_func, LoadDocuments, \
     recall_task, find_tasks_by_session_ids, BuildOCRRatingLanguageModel
 from apps.task.utils.task_utils import check_blocks
+from task_names import RECALL_DISABLED_TASKS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
-from task_names import RECALL_DISABLED_TASKS
 
 project_api_module = get_api_module('project')
 
 TASK_STARTED_MESSAGE = 'The task has been started. Click OK to close this window. ' \
                        'Click the refresh icon ⟳ in the top right of the grid to view task progress.'
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
 class TaskAccessMixin(PermissionRequiredMixin):
@@ -119,11 +120,16 @@ class BaseAjaxTaskView(TaskAccessMixin, JSONResponseView):
         if self.disallow_start():
             return HttpResponseForbidden(
                 'Forbidden. Task "%s" is already started.' % self.task_name)
-        else:
-            form = self.form_class()
-            data = dict(header=form.header,
-                        form_class=self.html_form_class,
-                        form_data=form.as_p())
+        form = self.form_class()
+        # try to reorder form fields according with form.Meta.fields
+        try:
+            form.fields = OrderedDict((field_name, form.fields[field_name])
+                                      for field_name in form.Meta.fields)
+        except AttributeError:
+            pass
+        data = dict(header=form.header,
+                    form_class=self.html_form_class,
+                    form_data=form.as_p())
         self.provide_extra_task_data(request, data, *args, **kwargs)
         return self.json_response(data)
 
@@ -134,7 +140,7 @@ class BaseAjaxTaskView(TaskAccessMixin, JSONResponseView):
         return getattr(self, 'metadata', None)
 
     def start_task(self, data):
-        call_task(self.task_class or self.task_name, **data)
+        return call_task(self.task_class or self.task_name, **data)
 
     def disallow_start(self):
         return Task.disallow_start(self.task_name)
@@ -162,10 +168,10 @@ class BaseAjaxTaskView(TaskAccessMixin, JSONResponseView):
 
     def start_task_and_return(self, data):
         try:
-            self.start_task(data)
+            task_id = self.start_task(data)
         except Exception as e:
             return self.json_response(str(e), status=400)
-        return self.json_response({'detail': self.task_started_message})
+        return self.json_response({'detail': self.task_started_message, 'task_id': task_id})
 
 
 class LoadTaskView(TaskAccessMixin, JSONResponseView):
@@ -201,14 +207,17 @@ class LoadTaskView(TaskAccessMixin, JSONResponseView):
                           for i in data if i.startswith(task_alias) and i in DICTIONARY_DATA_URL_MAP
                           for j in data if j.startswith('{}_locale_'.format(i))]
             file_path = data.get('{}_file_path'.format(task_alias)) or None
-            delete = '{}_delete'.format(task_alias) in data
+            delete = f'{task_alias}_delete' in data
+            extra_prefix = f'{task_alias}_extra_'
+            extra_args = {v[len(extra_prefix):]: data[v] for v in data if v.startswith(extra_prefix)}
             if any([repo_paths, file_path, delete]):
                 try:
                     call_task(task_name,
                               repo_paths=repo_paths,
                               file_path=file_path,
                               delete=delete,
-                              metadata=metadata)
+                              metadata=metadata,
+                              extra_args=extra_args)
                 except Exception as e:
                     return self.json_response(str(e), status=400)
                 started_tasks.append(task_name)
@@ -266,7 +275,7 @@ class LocateTaskView(BaseAjaxTaskView):
             del data['project']
             project_id = project_ref.pk
 
-        task_names = set([i.split('_')[0] for i in data if i != 'parse'])
+        task_names = {i.split('_')[0] for i in data if i != 'parse'}
         custom_task_names = task_names & self.custom_tasks
         lexnlp_task_names = task_names - self.custom_tasks
 
@@ -291,7 +300,7 @@ class LocateTaskView(BaseAjaxTaskView):
                         return self.json_response({'detail': str(e)}, status=400)
 
         # lexnlp tasks
-        lexnlp_task_data = dict()
+        lexnlp_task_data = {}
         for task_name in lexnlp_task_names:
             kwargs = {k.replace('%s_' % task_name, ''): v for k, v in data.items()
                       if k.startswith(task_name)}
@@ -350,8 +359,8 @@ class CleanTasksView(BaseAjaxTaskView):
 class PurgeTaskView(BaseAjaxTaskView):
     def post(self, request, *args, **kwargs):
         request_data = request.POST or request.data
-        res = purge_task(task_pk=request_data.get('task_pk'))
-        return JsonResponse(res)
+        res = purge_task(task_pk=request_data.get('task_pk'), user_id=request.user.id if request.user else None)
+        return JsonResponse(res, safe=False)
 
 
 class RecallTaskView(BaseAjaxTaskView):
@@ -360,8 +369,8 @@ class RecallTaskView(BaseAjaxTaskView):
         res = recall_task(task_pk=request_data.get('task_pk'),
                           session_id=request_data.get('session_id'),
                           user_id=request.user.pk,
-                          log_func=lambda m: logger.error(m))
-        return JsonResponse(res)
+                          log_func=logger.error)
+        return JsonResponse(res, safe=False)
 
     def get(self, request, *args, **kwargs):
         task_pk = request.GET.get('task_pk')
@@ -370,9 +379,9 @@ class RecallTaskView(BaseAjaxTaskView):
         task_status = Task.objects.get(pk=task_pk).status
 
         if session_id:
-            task_ids = find_tasks_by_session_ids(session_id, task_status)
+            task_ids = find_tasks_by_session_ids(session_id, task_status, 'Load Documents')
 
-        return JsonResponse({'tasks': len(task_ids), 'status': task_status})
+        return JsonResponse({'tasks': len(task_ids), 'status': task_status}, safe=False)
 
 
 class TaskListView(TaskAccessMixin, JqPaginatedListView):
@@ -423,7 +432,7 @@ class TaskListView(TaskAccessMixin, JqPaginatedListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         from apps.task.app_vars import TASK_DIALOG_FREEZE_MS
-        ctx['task_dialog_freeze_ms'] = TASK_DIALOG_FREEZE_MS.val
+        ctx['task_dialog_freeze_ms'] = TASK_DIALOG_FREEZE_MS.val()
         ctx['projects'] = \
             [(p.pk, p.name) for p in Project.objects.filter(type__code=DocumentType.GENERIC_TYPE_CODE)]
         ctx['active_text_unit_classifiers'] = TextUnitClassifier.objects.filter(is_active=True).exists()

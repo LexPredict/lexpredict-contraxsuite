@@ -25,26 +25,24 @@
 # -*- coding: utf-8 -*-
 
 import datetime
-import logging
 from typing import List, Dict
 
 from celery.states import FAILURE, PENDING
-from django.db import transaction
 
 from apps.common.contraxsuite_urls import kibana_root_url
-from apps.common.sql_commons import ModelLock
+from apps.common.logger import CsLogger
 from apps.task.celery_backend.utils import now
 from apps.task.models import TaskConfig, Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-server_logger = logging.getLogger("django.server")
+server_logger = CsLogger.get_django_server_logger()
 
 
 class TaskRecord:
@@ -128,7 +126,7 @@ class TaskMonitor:
             notify_failed_load_document(**msg)
 
         from apps.task.app_vars import ENABLE_ALERTS
-        if not ENABLE_ALERTS.val:
+        if not ENABLE_ALERTS.val():
             return
         configs = list(TaskConfig.objects.filter(notify_on_fail=True))
         if not configs:
@@ -145,7 +143,7 @@ class TaskMonitor:
                                                 date_done__lt=failed_before))  # type: List[Task]
 
         from apps.task.app_vars import ALERT_DEFAULT_INTERVAL
-        default_watch_mins = ALERT_DEFAULT_INTERVAL.val
+        default_watch_mins = ALERT_DEFAULT_INTERVAL.val()
         name_by_interval = {c.watchdog_minutes or default_watch_mins: c.name for c in configs}
         for interval in name_by_interval:
             task_name = name_by_interval[interval]

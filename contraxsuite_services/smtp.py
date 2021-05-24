@@ -24,17 +24,21 @@
 """
 # -*- coding: utf-8 -*-
 
+import logging
+
 # Django imports
 from django.core.mail.backends.smtp import EmailBackend
 from django.conf import settings
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+logger = logging.getLogger('django')
 
 
 class CustomEmailBackend(EmailBackend):
@@ -43,5 +47,12 @@ class CustomEmailBackend(EmailBackend):
         for message in email_messages:
             if 'Reply-To' not in message.extra_headers:
                 from apps.common.app_vars import SUPPORT_EMAIL
-                message.extra_headers['Reply-To'] = SUPPORT_EMAIL.val or settings.DEFAULT_REPLY_TO
-        return super(CustomEmailBackend, self).send_messages(email_messages)
+                message.extra_headers['Reply-To'] = SUPPORT_EMAIL.val() or settings.DEFAULT_REPLY_TO
+        try:
+            return super().send_messages(email_messages)
+        except Exception as e:
+            from apps.notifications.app_vars import APP_VAR_SKIP_MAIL_ERRORS
+            if APP_VAR_SKIP_MAIL_ERRORS.val():
+                logger.error(f'Error in CustomEmailBackend.send_messages(): {e}')
+            else:
+                raise

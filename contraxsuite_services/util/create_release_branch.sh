@@ -6,8 +6,12 @@
 
 
 # local paths
-PRIVATE_REPO_PATH="/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite-services"
-PUBLIC_REPO_PATH="/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite"
+#PRIVATE_REPO_PATH="/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite-services"
+#PUBLIC_REPO_PATH="/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite"
+
+CURR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PRIVATE_REPO_PATH="$(readlink -f "$CURR_DIR/../../")"
+PUBLIC_REPO_PATH="$(readlink -f "$CURR_DIR/../../../lexpredict-contraxsuite")"
 
 DEV_BRANCH="develop"
 PREV_RELEASE_NUM=$1
@@ -61,20 +65,20 @@ git pull origin ${NEW_RELEASE_NUM}
 echo ${LINE}
 echo "Update version number in private@${NEW_RELEASE_NUM} from ${PREV_RELEASE_NUM} to ${NEW_RELEASE_NUM}"
 
-PREV_RELEASE_NUM_esc=$(echo ${PREV_RELEASE_NUM} | sed 's,\.,\\.,g')
-NEW_RELEASE_NUM_esc=$(echo ${NEW_RELEASE_NUM} | sed 's,\.,\\.,g')
-LATEST_COMMIT_HASH=$(git log --pretty=format:'%h' -n 1)
-find ./ -type f -readable -writable -exec sed -i "s/__version__ = \"$PREV_RELEASE_NUM_esc\"/__version__ = \"$NEW_RELEASE_NUM_esc\"/g" {} \;
-find ./ -type f -readable -writable -exec sed -i "s/blob\/$PREV_RELEASE_NUM_esc\/LICENSE/blob\/$NEW_RELEASE_NUM_esc\/LICENSE/g" {} \;
-sed -i "s/VERSION_NUMBER = '$PREV_RELEASE_NUM_esc'/VERSION_NUMBER = '$NEW_RELEASE_NUM_esc'/g" contraxsuite_services/settings.py
-sed -i "s/VERSION_COMMIT = '.\{7\}'/VERSION_COMMIT = '$LATEST_COMMIT_HASH'/g" contraxsuite_services/settings.py
-echo "${NEW_RELEASE_NUM}" > version.txt
+#PREV_RELEASE_NUM_esc=$(echo ${PREV_RELEASE_NUM} | sed 's,\.,\\.,g')
+#NEW_RELEASE_NUM_esc=$(echo ${NEW_RELEASE_NUM} | sed 's,\.,\\.,g')
+#LATEST_COMMIT_HASH=$(git log --pretty=format:'%h' -n 1)
+#find ./ -type f -readable -writable -exec sed -i "s/__version__ = \"$PREV_RELEASE_NUM_esc\"/__version__ = \"$NEW_RELEASE_NUM_esc\"/g" {} \;
+#find ./ -type f -readable -writable -exec sed -i "s/blob\/$PREV_RELEASE_NUM_esc\/LICENSE/blob\/$NEW_RELEASE_NUM_esc\/LICENSE/g" {} \;
+#sed -i "s/VERSION_NUMBER = '$PREV_RELEASE_NUM_esc'/VERSION_NUMBER = '$NEW_RELEASE_NUM_esc'/g" contraxsuite_services/settings.py
+#sed -i "s/VERSION_COMMIT = '.\{7\}'/VERSION_COMMIT = '$LATEST_COMMIT_HASH'/g" contraxsuite_services/settings.py
+#echo "${NEW_RELEASE_NUM}" > version.txt
 
 
 # substitute name of release notes & changelog file
-RELEASE_NOTES_PATH="${PRIVATE_REPO_PATH}/documentation/Release Notes and Changelog - Release "
-[ -f "${RELEASE_NOTES_PATH}${PREV_RELEASE_NUM}.pdf" ] && \
-   mv "${RELEASE_NOTES_PATH}${PREV_RELEASE_NUM}.pdf" "${RELEASE_NOTES_PATH}${NEW_RELEASE_NUM}.pdf"
+#RELEASE_NOTES_PATH="${PRIVATE_REPO_PATH}/documentation/Release Notes and Changelog - Release "
+#[ -f "${RELEASE_NOTES_PATH}${PREV_RELEASE_NUM}.pdf" ] && \
+#   mv "${RELEASE_NOTES_PATH}${PREV_RELEASE_NUM}.pdf" "${RELEASE_NOTES_PATH}${NEW_RELEASE_NUM}.pdf"
 
 
 # push changes to a NEW_RELEASE_NUM branch

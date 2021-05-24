@@ -43,9 +43,9 @@ from tqdm import tqdm
 # configuration
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -106,7 +106,7 @@ class _Router(ABC):
         Returns:
             requests.models.Response: The request response.
         """
-        logging.warn('PATCH methods have not been fully tested.')
+        logging.warning('PATCH methods have not been fully tested.')
         request_url = urljoin(self.fqdn, endpoint)
         logging.debug('PATCH to %s with data=%s', request_url, data)
         return self.session.patch(request_url, data=data)
@@ -124,7 +124,7 @@ class _Router(ABC):
         Returns:
             requests.models.Response: The request response.
         """
-        logging.warn('PUT methods have not been fully tested.')
+        logging.warning('PUT methods have not been fully tested.')
         request_url = urljoin(self.fqdn, endpoint)
         logging.debug('PUT to %s with data=%s', request_url, data)
         return self.session.put(request_url, data=data)
@@ -140,9 +140,9 @@ class _Router(ABC):
         Returns:
             requests.models.Response: The request response.
         """
-        logging.warn('DELETE methods have not been fully tested.')
+        logging.warning('DELETE methods have not been fully tested.')
         request_url = urljoin(self.fqdn, endpoint)
-        logging.debug('DELETE from %s with data=%s', request_url)
+        logging.debug(f'DELETE from {request_url}')
         return self.session.delete(request_url)    
 
 
@@ -291,15 +291,14 @@ class ContraxSuiteAPIWrapper(_Router):
                     logging.info('%i %% complete.', int(percent_complete))
                     logging.error('HTTP Status Error: code %i', r_progress.status_code)
                     return r_progress
-                elif not data['document_tasks_progress']:
+                if not data['document_tasks_progress']:
                     logging.info('%i %% complete.', int(percent_complete))
                     logging.info('No document tasks')
                     return r_progress
-                elif data['document_tasks_progress_total'] >= 100:
+                if data['document_tasks_progress_total'] >= 100:
                     logging.info('%i %% complete.', int(percent_complete))
                     return r_progress
-                else:
-                    time.sleep(check_freq)
+                time.sleep(check_freq)
 
     def _subclass_container(self) -> Dict[str, Callable]:
         """
@@ -567,19 +566,6 @@ class ContraxSuiteAPIWrapper(_Router):
                 """
                 return self.get(f'api/v1/users/users/{user_id or ""}/')
 
-            @staticmethod
-            def get_roles(role_id: int = None) -> requests.models.Response:
-                """
-                Get a specific role or all roles.
-                
-                Args:
-                    role_id (int) (optional): The ID number of a specific role.
-
-                Returns:
-                    requests.models.Response: The request response.
-                """
-                return self.get(f'api/v1/users/roles/{role_id or ""}')
-                
         class _Project(_Subclass):
             """
             For API endpoints available under `api/v1/project/`.
@@ -684,7 +670,7 @@ class ContraxSuiteAPIWrapper(_Router):
                     }
                     ```
                 """
-                logging.warn('Rename this method...')
+                logging.warning('Rename this method...')
                 return self.get(f'api/v1/rawdb/documents/{document_type_code}/', parameters=parameters)
 
             @staticmethod
@@ -756,23 +742,23 @@ class ContraxSuiteAPIWrapper(_Router):
                     """
                     try:
                         dt = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%X.%fZ')
-                    except ValueError as valueerror_1:
+                    except ValueError:
                         try:
                             dt = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%X')
-                        except ValueError as valueerror_2:
+                        except ValueError:
                             dt = datetime.datetime.strptime(timestamp, '%Y-%m-%d')
                     return dt
 
                 def _normalize_dates(dictionary: dict) -> Dict[str, Any]:
                     """
                     """
-                    normalized = dict()
+                    normalized = {}
                     for k, v in dictionary.items():
                         if 'date_' in k:
                             if isinstance(v, str):
                                 normalized[k] = _timestamp_to_datetime(v)
                             elif isinstance(v, dict):
-                                normalized[k] = dict()
+                                normalized[k] = {}
                                 for op, ts in v.items():
                                     normalized[k][op] = _timestamp_to_datetime(ts)
                             elif isinstance(v, datetime.datetime):

@@ -5,15 +5,15 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Pk** | **int** |  | [optional] [readonly] 
+**Id** | **int** |  | [optional] [readonly] 
 **Name** | **string** |  | [optional] 
-**User** | [**ProjectDetailOwnersData**](ProjectDetailOwnersData.md) |  | 
-**ContentType** | **int** |  | 
+**Message** | **string** |  | [optional] 
+**ViewAction** | **string** |  | [optional] 
 **ObjectPk** | **string** |  | [optional] 
-**Date** | **DateTime** |  | [optional] [readonly] 
-**AppLabel** | **string** |  | [optional] 
 **ModelName** | **string** |  | [optional] 
-**ObjectStr** | **string** |  | [optional] 
+**Date** | **DateTime** |  | [optional] [readonly] 
+**UserName** | **string** |  | [optional] [readonly] 
+**RequestData** | **Object** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

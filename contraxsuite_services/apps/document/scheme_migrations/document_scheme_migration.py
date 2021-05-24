@@ -26,11 +26,12 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.5.0/LICENSE"
-__version__ = "1.5.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 from typing import Dict, List, Any
 
@@ -119,3 +120,104 @@ class AddConvertDecimalsToFloatsToDocumentField(BaseSchemeMigration):
 
         self.forward_conversions['document.documentfield'] = add_field
         self.backward_conversions['document.documentfield'] = remove_field
+
+
+class RemoveFieldStopWordsMigration(BaseSchemeMigration):
+    """
+    Adds convert_decimals_to_floats_in_formula_args to DocumentField model.
+    Input: doc type json of version 77 (1.8.0 with stop words).
+    Output: doc type json of version 78 (1.8.0)
+    """
+
+    def __init__(self):
+        super().__init__(78, migration_project='document', migration_number=226)
+
+    def upgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]) -> \
+            Dict[str, List[Dict[str, Any]]]:
+        fields = rows_by_model.get('document.documentfield')
+        for f in fields:
+            if 'stop_words' in f['fields']:
+                del f['fields']['stop_words']
+        return rows_by_model
+
+    def downgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]) -> \
+            Dict[str, List[Dict[str, Any]]]:
+        return rows_by_model
+
+
+class MoveLimitsToFieldDetectorMigration(BaseSchemeMigration):
+    """
+    Adds convert_decimals_to_floats_in_formula_args to DocumentField model.
+    Input: doc type json of version 78 (1.8.0).
+    Output: doc type json of version 79 (1.9.0) - detect_limit_unit / detect_limit_count are moved to field detectors.
+    """
+
+    def __init__(self):
+        super().__init__(79, migration_project='document', migration_number=231)
+
+    def upgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]) -> \
+            Dict[str, List[Dict[str, Any]]]:
+        fields = rows_by_model.get('document.documentfield')
+        limit_by_field = {f['pk']: (f['fields']['detect_limit_unit'], f['fields']['detect_limit_count'])
+                          for f in fields}
+        for f in fields:
+            del f['fields']['detect_limit_unit']
+            del f['fields']['detect_limit_count']
+
+        detectors = rows_by_model.get('document.documentfielddetector') or []
+
+        for detector in detectors:
+            field_id = detector['fields']['field']
+            if field_id in limit_by_field:
+                detector['fields']['detect_limit_unit'] = limit_by_field[field_id][0]
+                detector['fields']['detect_limit_count'] = limit_by_field[field_id][1]
+        return rows_by_model
+
+    def downgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]) -> \
+            Dict[str, List[Dict[str, Any]]]:
+        detectors = rows_by_model.get('document.documentfielddetector')
+        limit_by_field = {f['fields']['field']: (f['fields']['detect_limit_unit'], f['fields']['detect_limit_count'])
+                          for f in detectors}
+
+        for f in detectors:
+            del f['fields']['detect_limit_unit']
+            del f['fields']['detect_limit_count']
+
+        fields = rows_by_model.get('document.documentfield') or []
+
+        for field in fields:
+            field_id = field['pk']
+            if field_id in limit_by_field:
+                field['fields']['detect_limit_unit'] = limit_by_field[field_id][0]
+                field['fields']['detect_limit_count'] = limit_by_field[field_id][1]
+            else:
+                field['fields']['detect_limit_unit'] = 'NONE'
+                field['fields']['detect_limit_count'] = 0
+        return rows_by_model
+
+
+class UpdateDocumentFieldsAndOptions(BaseSchemeMigration):
+    """
+    Adds convert_decimals_to_floats_in_formula_args to DocumentField model.
+    Input: doc type json of version 79 (1.9.0).
+    Output: doc type json of version 80 (2.0.0)
+    """
+
+    def __init__(self):
+        super().__init__(80, migration_project='document', migration_number=239)
+
+    def upgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]) -> \
+            Dict[str, List[Dict[str, Any]]]:
+        # make "amount" fields "float", "boolean" -> "related_info"
+        fields = rows_by_model.get('document.documentfield')
+        for f in fields:
+            if f['fields']['type'] == 'amount':
+                f['fields']['type'] = 'float'
+            if f['fields']['type'] == 'boolean':
+                f['fields']['type'] = 'related_info'
+
+        return rows_by_model
+
+    def downgrade_doctype_json(self, rows_by_model: Dict[str, List[Dict[str, Any]]]) -> \
+            Dict[str, List[Dict[str, Any]]]:
+        return rows_by_model

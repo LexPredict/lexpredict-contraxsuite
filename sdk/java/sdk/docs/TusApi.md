@@ -92,7 +92,7 @@ Name | Type | Description  | Notes
 
 <a name="tusUploadSessionUploadSessionIdUploadPOST"></a>
 # **tusUploadSessionUploadSessionIdUploadPOST**
-> tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, body)
+> tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, requestBody)
 
 
 
@@ -125,9 +125,9 @@ public class Example {
     String uploadMetadata = "uploadMetadata_example"; // String | Upload metadata include file name, relative path, etc.
     String tusResumable = "tusResumable_example"; // String | 1.0.0
     Boolean force = true; // Boolean | Upload a file even if it exists.
-    Object body = null; // Object | 
+    Map<String, Object> requestBody = null; // Map<String, Object> | 
     try {
-      apiInstance.tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, body);
+      apiInstance.tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, requestBody);
     } catch (ApiException e) {
       System.err.println("Exception when calling TusApi#tusUploadSessionUploadSessionIdUploadPOST");
       System.err.println("Status code: " + e.getCode());
@@ -148,7 +148,7 @@ Name | Type | Description  | Notes
  **uploadMetadata** | **String**| Upload metadata include file name, relative path, etc. |
  **tusResumable** | **String**| 1.0.0 |
  **force** | **Boolean**| Upload a file even if it exists. | [optional]
- **body** | **Object**|  | [optional]
+ **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
 
 ### Return type
 

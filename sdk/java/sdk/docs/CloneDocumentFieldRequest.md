@@ -2,12 +2,13 @@
 
 # CloneDocumentFieldRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **code** | **String** |  | 
-**documentType** | [**UUID**](UUID.md) |  | 
+**documentType** | **UUID** |  | 
 
 
 

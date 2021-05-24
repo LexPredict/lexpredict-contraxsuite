@@ -1,0 +1,127 @@
+{% extends "admin/change_form.html" %}
+{% load static project_tags %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.0.3/jquery-confirm.min.css" type="text/css" />
+  <style>
+    select#id_index_name {
+        width: 400px;
+    }
+    select#id_target_entity {
+        width: 400px;
+    }
+    input#id_schedule {
+        width: 385px;
+    }
+    .width-50 {
+      width: 50%;
+      margin: auto;
+    }
+  </style>
+{% endblock %}
+
+{% block extrajs %}
+  {{ block.super }}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js" style="text/javascrypt"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js" style="text/javascrypt"></script>
+  <script type="text/javascript">
+    function ScheduleManager() {
+      this.indexLst = {{ indexes | js }}
+      this.tableLst = {{ tables | js }}
+
+      this.selectedIndex = {};
+      this.selectedEntity = '';
+    }
+
+    ScheduleManager.prototype.setup = function() {
+      this.renderCheckRoutineLink();
+      this.setupChoices();
+      this.onTargetEntityChanged();
+    }
+
+    ScheduleManager.prototype.setupChoices = function() {
+      var that = this;
+      this.selectedIndex = {INDEX: '', TABLE: ''};
+      this.selectedEntity = $('#id_target_entity').val();
+      if (this.selectedEntity)
+        this.selectedIndex[this.selectedEntity] = $('#id_index_name').val();
+
+      $('#id_target_entity').on('change', function() { that.onTargetEntityChanged(); });
+    }
+
+    ScheduleManager.prototype.onTargetEntityChanged = function() {
+      this.selectedIndex[this.selectedEntity] = $('#id_index_name').val();
+      var targetEnt = $('#id_target_entity').val();  // 'INDEX' or 'TABLE'
+      this.selectedEntity = targetEnt;
+
+      var lst = targetEnt == 'INDEX' ? this.indexLst : this.tableLst;
+      var that = this;
+      // clear options
+      $('#id_index_name').find('option').remove();
+      // add options
+      $.each(lst, function(i, key) {
+          var optionTag = '<option>';
+          if (key == that.selectedIndex[that.selectedEntity])
+            { optionTag = '<option selected>'; console.log('11'); }
+          $('#id_index_name').append($(optionTag).text(key).val(key));
+      });
+    }
+
+    ScheduleManager.prototype.checkSchedule = function(schedule) {
+      if (!schedule) {
+          $.alert({
+            icon: 'fa fa-warning text-danger',
+            title: 'Schedule error',
+            type: 'red',
+            content: 'Empty schedule field.',
+            columnClass: 'width-50'
+          });
+          return;
+      }
+      var data = { schedule: schedule };
+      var url = '{% url "v1:task-check-schedule" %}';
+
+      $.post(url, data).done(function(data){
+          console.log(data);
+          if (data.errors && data.errors.length) {
+            $.alert({
+              icon: 'fa fa-warning text-danger',
+              title: 'Schedule error',
+              type: 'red',
+              content: data.errors.join('<br/>'),
+              columnClass: 'width-50'
+            });
+            return;
+          }
+          $.alert({
+            icon: 'fa fa-info-circle',
+            title: 'Schedule is valid',
+            type: 'green',
+            content: 'Previous time: ' + data.prev + '<br/>Next time: ' + data.next,
+            columnClass: 'width-50'
+          });
+
+      }); // $.post(
+    } // prototype.checkSchedule
+
+    ScheduleManager.prototype.renderCheckRoutineLink = function() {
+      var that = this;
+      var scheduleInput = $('[name="schedule"]');
+      var markup = '<br/><a class="check-formula" href="#">Check schedule</a>';
+      $(markup).attr('data-field', 'schedule').insertAfter(scheduleInput);
+
+      $('.check-formula').on('click', function(ev) {
+          var schedule = $('[name="schedule"]').val();
+          that.checkSchedule(schedule);
+        }
+       ); // .on('click', ...
+    } // renderCheckRoutineLink
+
+    $(document).ready(function () {
+      window.manager = new ScheduleManager();
+      window.manager.setup();
+    });
+
+  </script>
+{% endblock %}

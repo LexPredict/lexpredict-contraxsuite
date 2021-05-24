@@ -29,9 +29,9 @@ from apps.document.async_tasks.detect_field_values_task import DocDetectFieldVal
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,8 +50,7 @@ def run_detect_field_values_as_sub_tasks(parent: 'ExtendedTask',
                                          document_ids: List[int],
                                          do_not_write: bool = False):
     from apps.document.tasks import DetectFieldValues
-    from apps.document.field_detection.detect_field_values_params import DocDetectFieldValuesParams
-    args = [(DocDetectFieldValuesParams(document_id, do_not_write, False),)
+    args = [(DocDetectFieldValuesParams(document_id, do_not_write, False).to_dict(),)
             for document_id in document_ids]
     parent.run_sub_tasks('Detect Field Values',
                          DetectFieldValues.detect_field_values_for_document,

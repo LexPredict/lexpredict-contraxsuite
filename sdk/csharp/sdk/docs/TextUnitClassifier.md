@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 **Version** | **string** |  | 
 **ClassName** | **string** |  | 
 **IsActive** | **bool** |  | [optional] 
-**Suggestions** | **string** |  | [optional] [readonly] 
+**Suggestions** | **int** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

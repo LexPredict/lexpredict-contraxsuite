@@ -1,0 +1,84 @@
+---
+apiVersion: ceph.rook.io/v1
+kind: CephCluster
+metadata:
+  name: rook-ceph
+  namespace: rook-ceph # namespace:cluster
+spec:
+  cephVersion:
+    allowUnsupported: false
+    image: ceph/ceph:v15.2.9
+  dataDirHostPath: /var/lib/rook
+  skipUpgradeChecks: false
+  continueUpgradeAfterChecksEvenIfNotHealthy: false
+  waitTimeoutForHealthyOSDInMinutes: 10   
+  mon: 
+    count: 3
+    allowMultiplePerNode: true  #NOTE change to false on prod
+    volumeClaimTemplate:
+      spec:
+        resources:
+          requests:
+            storage: 5Gi
+          storageClassName: managed-premium
+  network:
+    hostNetwork: false
+  dashboard:
+    enabled: true
+    ssl: true
+  disruptionManagement:
+    machineDisruptionBudgetNamespace: openshift-machine-api
+    manageMachineDisruptionBudgets: false
+    managePodBudgets: false 
+    osdMaintenanceTimeout: 30
+  storage:
+    storageClassDeviceSets: 
+    - name: set1
+      count: 3
+      portable: true
+      tuneFastDeviceClass: true
+      resources:
+        limits:
+          cpu: "500m"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+      placement:
+        tolerations:
+          - key: storage-node
+            operator: Exists
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - rookceph
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rook-ceph-osd
+                - key: app
+                  operator: In
+                  values:
+                  - rook-ceph-osd-prepare
+              topologyKey: kubernetes.io/hostname 
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            resources:
+              requests:
+                storage: 240Gi
+            storageClassName: managed-premium
+            volumeMode: Block
+            accessModes:
+              - ReadWriteOnce 

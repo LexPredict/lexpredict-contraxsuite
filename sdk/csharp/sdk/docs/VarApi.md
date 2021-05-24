@@ -10,7 +10,7 @@ Method | HTTP request | Description
 
 ## VarGET
 
-> AnyType VarGET (string var)
+> Object VarGET (string var)
 
 
 
@@ -40,7 +40,7 @@ namespace Example
 
             try
             {
-                AnyType result = apiInstance.VarGET(var);
+                Object result = apiInstance.VarGET(var);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -63,7 +63,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**AnyType**](AnyType.md)
+**Object**
 
 ### Authorization
 
@@ -73,6 +73,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/coreapi+json, application/openapi+json, text/html
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

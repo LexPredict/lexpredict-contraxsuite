@@ -30,9 +30,9 @@ from django.core.exceptions import ValidationError
 from django.utils.encoding import force_text
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -52,9 +52,16 @@ class Command(Command):
                  'one - skip record if it exists\n'
                  'any - do not process if any record exists'
         )
+        parser.add_argument(
+            '-p', '--process_if_exists', dest='process_if_exists', action='store', default='replace',
+            help='Action - one of:\n'
+                 'replace - replace existing record (default for load_data behavior)\n'
+                 'add_new - add object with new id if the same id exists, skip if non-unique'
+        )
 
     def handle(self, *fixture_labels, **options):
         self.skip_if_exists = options['skip_if_exists']
+        self.process_if_exists = options['process_if_exists']
         super().handle(*fixture_labels, **options)
 
     @functools.lru_cache(maxsize=None)
@@ -93,7 +100,7 @@ class Command(Command):
                     ser_fmt, fixture, using=self.using, ignorenonexistent=self.ignore,
                 )
 
-                _initial = dict()
+                _initial = {}
 
                 for obj in objects:
 
@@ -102,7 +109,15 @@ class Command(Command):
                     if _initial.get(_model) is None:
                         _initial[_model] = _model.objects.exists()
 
-                    if self.skip_if_exists == 'any':
+                    if self.process_if_exists == 'add_new':
+                        if _model.objects.filter(pk=obj.object.pk).exists():
+                            obj.object.pk = None
+                        try:
+                            _ = obj.object.validate_unique()
+                        except ValidationError:
+                            continue
+
+                    elif self.skip_if_exists == 'any':
                         if _initial.get(_model):
                             continue
 

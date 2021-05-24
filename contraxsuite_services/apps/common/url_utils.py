@@ -27,9 +27,9 @@
 from typing import List, Dict, Any, Optional
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,7 +47,7 @@ def as_bool(url_params: Dict[str, Any], name: str, default_value: Optional[bool]
     url_param = url_param.strip().lower()
     if url_param == 'true':
         return True
-    elif default_value is False or url_param == 'false':
+    if default_value is False or url_param == 'false':
         return False
     raise URLParamFormatException('Unable to parse URL parameter {0}'
                                   '\nExpected: true or false'

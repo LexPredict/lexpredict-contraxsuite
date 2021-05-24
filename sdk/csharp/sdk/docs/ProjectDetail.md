@@ -8,6 +8,10 @@ Name | Type | Description | Notes
 **Pk** | **int** |  | [optional] [readonly] 
 **Name** | **string** |  | 
 **Description** | **string** |  | [optional] 
+**CreatedDate** | **DateTime?** |  | [optional] 
+**CreatedByName** | **string** |  | 
+**ModifiedDate** | **DateTime?** |  | [optional] 
+**ModifiedByName** | **string** |  | 
 **SendEmailNotification** | **bool** |  | [optional] 
 **HideClauseReview** | **bool** |  | [optional] 
 **Status** | **int** |  | [optional] 
@@ -24,6 +28,15 @@ Name | Type | Description | Notes
 **TypeData** | [**ProjectListTypeData**](ProjectListTypeData.md) |  | 
 **Progress** | **string** |  | [optional] [readonly] 
 **UserPermissions** | **string** |  | [optional] [readonly] 
+**TermTags** | **List&lt;int&gt;** |  | [optional] 
+**DocumentTransformer** | **int?** |  | [optional] 
+**TextUnitTransformer** | **int?** |  | [optional] 
+**CompanytypeTags** | **List&lt;int&gt;** |  | [optional] 
+**AppVars** | **string** |  | [optional] [readonly] 
+**DocumentSimilarityRunParams** | **string** |  | [optional] [readonly] 
+**TextUnitSimilarityRunParams** | **string** |  | [optional] [readonly] 
+**DocumentSimilarityProcessAllowed** | **string** |  | [optional] [readonly] 
+**TextUnitSimilarityProcessAllowed** | **string** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

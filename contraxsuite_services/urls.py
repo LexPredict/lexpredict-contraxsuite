@@ -28,6 +28,7 @@
 from __future__ import unicode_literals
 
 # Standard imports
+from sys import exc_info
 import importlib
 import re
 
@@ -50,20 +51,22 @@ from apps.common.debug_utils import listen
 from apps.common.decorators import init_decorators
 from apps.common.file_storage import get_filebrowser_site
 from apps.common.utils import migrating, get_api_module
-from apps.document.python_coded_fields_registry import init_field_registry
+from apps.common.log_utils import ProcessLogger
 from apps.document.field_type_registry import init_field_type_registry
 from apps.users.views import MixedLoginView
 from swagger_view import get_swagger_view, get_openapi_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 listen()
+
+process_logger = ProcessLogger()
 
 
 def static(prefix, view=serve, **kwargs):
@@ -115,15 +118,15 @@ urlpatterns = [
 
 # autodiscover urls from custom apps
 namespaces = {getattr(i, 'namespace', None) for i in urlpatterns}
-custom_apps = [i.replace('apps.', '') for i in settings.INSTALLED_APPS if i.startswith('apps.')]
+custom_apps = [(i, i.replace(f'{settings.APPS_DIR_NAME}.', '')) for i in settings.PROJECT_APPS]
 
 api_urlpatterns = {api_version: [] for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']}
 
-for app_name in custom_apps:
+for app_loc, app_name in custom_apps:
     if app_name in namespaces:
         continue
 
-    module_str = 'apps.%s.urls' % app_name
+    module_str = f'{app_loc}.urls'
     spec = importlib.util.find_spec(module_str)
     if spec:
         include_urls = include((module_str, app_name))  # namespace=app_name)
@@ -132,36 +135,32 @@ for app_name in custom_apps:
     # add api urlpatterns
     for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']:
         try:
-            api_module_str = 'apps.{}.api.{}.api'.format(app_name, api_version)
+            api_module_str = f'{app_loc}.api.{api_version}.api'
             api_module = importlib.import_module(api_module_str)
         except ImportError:
             try:
-                api_module_str = 'apps.{}.api.{}'.format(app_name, api_version)
+                api_module_str = f'{app_loc}.api.{api_version}'
                 api_module = importlib.import_module(api_module_str)
-            except ImportError:
+            except ImportError as import_error:
+                exc_type, _, _ = exc_info()
+                if exc_type == ModuleNotFoundError:
+                    if '.api' in api_module_str:
+                        continue
+                process_logger.error(str(import_error))
                 continue
 
         if hasattr(api_module, 'router'):
             api_urlpatterns[api_version] += [
-                url(r'{version}/{app_name}/'.format(
-                    version=api_version,
-                    app_name=app_name),
-                    include(api_module.router.urls)),
+                url(rf'{api_version}/{app_name}/', include(api_module.router.urls)),
             ]
         if hasattr(api_module, 'api_routers'):
             for router in api_module.api_routers:
                 api_urlpatterns[api_version] += [
-                    url(r'{version}/{app_name}/'.format(
-                        version=api_version,
-                        app_name=app_name),
-                        include(router.urls)),
+                    url(rf'{api_version}/{app_name}/', include(router.urls)),
                 ]
         if hasattr(api_module, 'urlpatterns'):
             api_urlpatterns[api_version] += [
-                url(r'{version}/{app_name}/'.format(
-                    version=api_version,
-                    app_name=app_name),
-                    include(api_module.urlpatterns)),
+                url(rf'{api_version}/{app_name}/', include(api_module.urlpatterns)),
             ]
 for api_version, this_api_urlpatterns in api_urlpatterns.items():
     urlpatterns += [
@@ -218,4 +217,3 @@ if settings.DEBUG:
 if not migrating() and not settings.TEST_RUN_MODE:
     init_decorators()
     init_field_type_registry()
-    init_field_registry()

@@ -24,39 +24,51 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
 import pickle
 from celery.exceptions import SoftTimeLimitExceeded
+from celery.utils.log import get_task_logger
 from psycopg2 import InterfaceError, OperationalError
 from typing import Tuple, List, Optional
 
+from django.utils import timezone
+
+import task_names
 from apps.analyze.ml.utils import ProjectsNameFilter
-from apps.analyze.models import BaseClassifier, BaseTransformer, DocumentVector, BaseVector, TextUnitVector, \
-    TextUnitTransformer, DocumentTransformer
+from apps.analyze.models import BaseClassifier, DocumentVector, BaseVector, TextUnitVector, MLModel
 from apps.celery import app
 from apps.analyze.ml.cluster import ClusterDocuments, ClusterTextUnits
 from apps.analyze.ml.transform import Doc2VecTransformer
 from apps.analyze.ml.classify import ClassifyTextUnits, ClassifyDocuments
+from apps.analyze.models import SimilarityRun
+from apps.analyze.notifications import notify_build_vectors_completed
+from apps.common.utils import get_free_mem
 from apps.document.models import Document, TextUnit, DocumentText, TextUnitText
 from apps.project.models import Project
 from apps.task.tasks import ExtendedTask
+from apps.task.utils.task_utils import TaskUtils
+
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
+logger = get_task_logger(__name__)
 
 MODULE_NAME = __name__
 
 
 class FeatureStoringTask(ExtendedTask):
     def save_feature_vectors(self):
-        model_class = DocumentTransformer if self.source == 'document' else TextUnitTransformer
+        self.log_info('Saving feature vectors...')
+        model_class = MLModel
         vector_class = DocumentVector if self.source == 'document' else TextUnitVector
         transformer = (self.transformer if hasattr(self, 'transformer') else None) or \
-            model_class.objects.get(pk=self.model_id)
+            model_class.objects.get(pk=self.transformer_id)
         id_field = 'document_id' if self.source == 'document' else 'text_unit_id'
 
         if self.source == 'document':
@@ -71,17 +83,19 @@ class FeatureStoringTask(ExtendedTask):
             data = data_query.values_list(id_field, 'text')
 
         if self.delete_existing:
+            lookup = 'document_id__in' if self.source == 'document' else 'text_unit_id__in'
             data_ids = data_query.values_list(id_field, flat=True)
-            delete_query = vector_class.objects.all()
-            if self.source == 'document':
-                delete_query = delete_query.filter(document_id__in=data_ids)
-            else:
-                delete_query = delete_query.filter(text_unit_id__in=data_ids)
             try:
-                delete_query.delete()
+                vector_class.objects.filter(**{lookup: data_ids}).delete()
             except Exception as e:
                 self.log_error('Error deleting existing records', exc_info=e)
                 raise
+        else:
+            # try to avoid creating duplicated vectors of chosen transformer
+            lookup = 'document__documentvector__transformer' if self.source == 'document'\
+                else 'text_unit__textunitvector__transformer'
+            self.log_info(f'{data.filter(**{lookup: transformer}).count()} vectors exist')
+            data = data.exclude(**{lookup: transformer})
 
         vectors = Doc2VecTransformer.create_vectors(
             transformer,
@@ -89,7 +103,7 @@ class FeatureStoringTask(ExtendedTask):
             vector_class,
             id_field)  # type: List[BaseVector]
         # save vectors
-        self.log_info(f'Saving {len(vectors)} vectors')
+        self.log_info(f'Save {len(vectors)} vectors')
         if not vectors:
             return
         try:
@@ -102,19 +116,21 @@ class FeatureStoringTask(ExtendedTask):
 class TrainDoc2VecModel(FeatureStoringTask):
     name = 'Train doc2vec Model'
     priority = 7
+    soft_time_limit = 3 * 3600
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.project_ids = []  # type: Optional[List[int]]
-        self.transformer = None  # type: Optional[BaseTransformer]
+        self.transformer = None  # type: Optional[MLModel]
         self.source = 'document'
         self.text_unit_type = 'sentence'
         self.delete_existing = True
 
     def process(self, **kwargs):
         self.source = kwargs.get('source')
-        transformer_class = DocumentTransformer if self.source == 'document' else TextUnitTransformer
+        transformer_class = MLModel
         self.log_info(f'Training doc2vec model from {self.source.upper()} objects...')
+        self.log_info(f'Free memory initially: {get_free_mem()}')
         transformer_name = kwargs.get('transformer_name')
         if transformer_class.objects.filter(name=transformer_name).count() > 0:
             raise RuntimeError(f"There's already {transformer_class.__name__} with name '{transformer_name}'")
@@ -130,7 +146,8 @@ class TrainDoc2VecModel(FeatureStoringTask):
         transformer = Doc2VecTransformer(vector_size=vector_size,
                                          window=window,
                                          min_count=min_count,
-                                         dm=dm)
+                                         dm=dm,
+                                         log_message=lambda m: self.log_info(m))
 
         model_builder_args = dict(project_ids=self.project_ids,
                                   transformer_name=transformer_name)
@@ -139,31 +156,55 @@ class TrainDoc2VecModel(FeatureStoringTask):
         else:
             model_builder = transformer.build_doc2vec_text_unit_model
             model_builder_args['text_unit_type'] = self.text_unit_type
+        self.log_info(f'Doc2vec model is built')
 
-        _, transformer = model_builder(**model_builder_args)  # gensim.models.doc2vec.Doc2Vec, BaseTransformer
+        _, transformer = model_builder(**model_builder_args)  # gensim.models.doc2vec.Doc2Vec, MLModel
+        self.log_info(f'Doc2vec transformer is built')
         self.transformer = transformer
         if build_vectors:
             self.save_feature_vectors()
 
 
-class BuildFeatureVectorsTask(FeatureStoringTask):
-    name = 'Build doc2vec feature vectors'
+class BuildDocumentVectorsTask(FeatureStoringTask):
+    name = 'Build Document Vectors'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.source = 'document'
-        self.text_unit_type = 'sentence'
         self.project_ids = []  # type: Optional[List[int]]
         self.delete_existing = True
-        self.model_id = 0
+        self.transformer_id = 0
 
     def process(self, **kwargs):
-        self.project_ids = [p['pk'] for p in kwargs.get('project') or []]
-        self.text_unit_type = kwargs['txt_unit_type']
-        self.delete_existing = kwargs.get('delete_existing')
-        self.source = 'document' if kwargs['source_select'] else 'text-unit'
-        self.model_id = kwargs.get('doc_transformer') if self.source == 'document' \
-            else kwargs.get('txt_transformer')
+        project = kwargs.get('project') or []
+        self.project_ids = [project] if isinstance(project, (int, str)) else project
+        self.delete_existing = kwargs.get('delete_existing', False)
+        self.transformer_id = kwargs.get('transformer_id')
+        self.save_feature_vectors()
+
+    def on_success(self, *args, **kwargs):
+        super().on_success(*args, **kwargs)
+        notify_build_vectors_completed(self.project_ids, self.task, 'success')
+
+    def on_failure(self, *args, **kwargs):
+        super().on_failure(*args, **kwargs)
+        notify_build_vectors_completed(self.project_ids, self.task, 'failure')
+
+
+class BuildTextUnitVectorsTask(BuildDocumentVectorsTask):
+    name = 'Build Text Unit Vectors'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.source = 'text_unit'
+        self.text_unit_type = 'sentence'
+
+    def process(self, **kwargs):
+        project = kwargs.get('project') or []
+        self.project_ids = [project] if isinstance(project, (int, str)) else project
+        self.text_unit_type = kwargs.get('txt_unit_type', 'sentence')
+        self.delete_existing = kwargs.get('delete_existing', False)
+        self.transformer_id = kwargs.get('transformer_id')
         self.save_feature_vectors()
 
 
@@ -302,7 +343,7 @@ class Cluster(ExtendedTask):
         unit_type = kwargs.pop('unit_type', 'sentence')
 
         # get cluster-algorithm-specific cluster options from form data
-        cluster_options = dict()
+        cluster_options = {}
         for option_name, option_value in kwargs.items():
             if option_name.startswith(cluster_algorithm + '_'):
                 option_name = option_name.replace(cluster_algorithm + '_', '')
@@ -342,18 +383,40 @@ class Cluster(ExtendedTask):
             if proj_id:
                 query = query.filter(project_id=proj_id)
             count = query.count()
-            count_limit = NOTIFY_TOO_MANY_DOCUMENTS.val  # 1669 might be (not necessarily) too much
+            count_limit = NOTIFY_TOO_MANY_DOCUMENTS.val()  # 1669 might be (not necessarily) too much
         else:
             query = TextUnit.objects.all()
             if proj_id:
                 query = query.filter(document__project_id=proj_id)
             count = query.count()
-            count_limit = NOTIFY_TOO_MANY_UNITS.val  # 2 753 672 is definitely too much
+            count_limit = NOTIFY_TOO_MANY_UNITS.val()  # 2 753 672 is definitely too much
 
         return count, count_limit
 
 
-app.register_task(BuildFeatureVectorsTask())
+@app.task(name=task_names.TASK_NAME_DELETE_EXPIRED_SIMILARITY, bind=True)
+def delete_expired_similarity_objects(_celery_task):
+    """
+    Delete expired DocumentSimilarity/TextUnitSimilarity objects
+    """
+    TaskUtils.prepare_task_execution()
+
+    from apps.analyze.app_vars import DOCUMENT_SIMILARITY_OBJECTS_EXPIRE_IN, TEXT_UNIT_SIMILARITY_OBJECTS_EXPIRE_IN
+    arguments = [(DOCUMENT_SIMILARITY_OBJECTS_EXPIRE_IN, 'document', 'Document'),
+                 (TEXT_UNIT_SIMILARITY_OBJECTS_EXPIRE_IN, 'text_unit', 'Text Unit')]
+    for var, unit_source, unit_title in arguments:
+        exp_date = timezone.now() - datetime.timedelta(seconds=var.val())
+        qs = SimilarityRun.objects.filter(unit_source=unit_source,
+                                          created_date__isnull=False,
+                                          created_date__lte=exp_date)
+        print(f'Track expired {unit_title} Similarity Runs: {qs.count()} runs expired')
+        deleted = qs.delete()
+        if deleted[0]:
+            print(f'Deleted {deleted[1]}')
+
+
+app.register_task(BuildDocumentVectorsTask())
+app.register_task(BuildTextUnitVectorsTask())
 app.register_task(TrainDoc2VecModel())
 app.register_task(TrainClassifier())
 app.register_task(RunClassifier())

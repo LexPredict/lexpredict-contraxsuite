@@ -7,7 +7,6 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Id** | **int** |  | 
 **UserName** | **string** |  | 
-**RoleName** | **string** |  | 
 **GroupName** | **string** |  | 
 **TotalProjects** | **int** |  | 
 **DocumentsAssigned** | **int** |  | 

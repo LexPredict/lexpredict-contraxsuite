@@ -32,16 +32,22 @@ from rest_framework import serializers
 from rest_framework.schemas.openapi import AutoSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 json_ct = 'application/json'
-string_schema = {'content': {json_ct: {'schema': {'type': 'string'}}}}
-object_schema = {'content': {json_ct: {'schema': {'type': 'object'}}}}
+string_content = {'content': {json_ct: {'schema': {'type': 'string'}}}, 'description': ''}
+binary_string_schema = {'schema': {'type': 'string', 'format': 'binary'}}
+binary_string_content = {'content': {json_ct: binary_string_schema}, 'description': ''}
+object_content = {'content': {json_ct: {'schema': {'type': 'object', 'additionalProperties': True}}},
+                 'description': ''}
+object_list_content = {
+    'content': {json_ct: {'schema': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': True}}}},
+    'description': ''}
 
 
 class CustomAutoSchema(AutoSchema):
@@ -126,8 +132,7 @@ class CustomAutoSchema(AutoSchema):
             caller_name = sys._getframe().f_back.f_code.co_name
             if caller_name == 'get_request_body':
                 return self.get_request_serializer(path, method)
-            else:
-                return self.get_response_serializer(path, method)
+            return self.get_response_serializer(path, method)
         except:
             return super().get_serializer(path, method)
 
@@ -153,6 +158,9 @@ class CustomAutoSchema(AutoSchema):
                 field = field.output_field
             except:
                 pass
+        # for cases when field is child of serializers.BooleanField - see FormSerializer
+        elif isinstance(field, serializers.BooleanField):
+            return {'type': 'boolean'}
         return super().map_field(field)
 
 
@@ -172,6 +180,7 @@ class ObjectResponseSchema(CustomAutoSchema):
         if method in self.object_response_for_methods:
             resp = {
                 self.response_status: {
+                    'description': '',
                     'content': {
                         json_ct: {
                             'schema': self.object_schema}}}}

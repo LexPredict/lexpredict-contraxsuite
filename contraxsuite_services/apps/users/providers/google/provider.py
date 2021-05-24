@@ -23,28 +23,28 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-import logging
 
+from allauth.socialaccount import app_settings
 from allauth.account.models import EmailAddress
-from allauth.socialaccount.app_settings import QUERY_EMAIL
 from allauth.socialaccount.providers.base import AuthAction, ProviderAccount
 from allauth.socialaccount.providers.oauth2.provider import OAuth2Provider
 
+from apps.common.logger import CsLogger
 from apps.users.providers.custom_auxilary import route_next_param_to_query, derive_user_name, log_info, \
     format_data_message
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
-class Scope(object):
+class Scope:
     EMAIL = 'email'
     PROFILE = 'profile'
 
@@ -68,20 +68,19 @@ class GoogleProvider(OAuth2Provider):
 
     def get_default_scope(self):
         scope = [Scope.PROFILE]
-        if QUERY_EMAIL:
+        if app_settings.QUERY_EMAIL:
             scope.append(Scope.EMAIL)
         return scope
 
     def get_auth_params(self, request, action):
-        ret = super(GoogleProvider, self).get_auth_params(request,
-                                                          action)
+        ret = super().get_auth_params(request, action)
         if action == AuthAction.REAUTHENTICATE:
             ret['prompt'] = 'select_account consent'
         return ret
 
     def extract_uid(self, data):
         if not data or 'id' not in data:
-            raise RuntimeError(f'Google provider: there is no "id" field in extract_uid() arg or arg is empty')
+            raise RuntimeError('Google provider: there is no "id" field in extract_uid() arg or arg is empty')
         return str(data['id'])
 
     def extract_common_fields(self, data):

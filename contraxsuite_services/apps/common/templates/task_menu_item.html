@@ -1,8 +1,26 @@
-<li class="dropdown-item">
-  <a class="task" href="#"
-     data-href="{% url "common:reindex-db" %}"
-     data-btn-text="Run">
-    <i class="fa fa-object-group"></i>
-    Common: Reindex Database and Run VACUUM ANALYZE
-  </a>
+<li class="dropdown-submenu">
+  <a class="dropdown-item" href="#" tabindex="-1">
+    <i class="fa fa-object-group"></i> Common</a>
+
+  <ul class="dropdown-menu">
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "common:reindex-db" %}"
+         data-btn-text="Run">
+        <i class="fa fa-object-group"></i>
+        Reindex Database and Run VACUUM ANALYZE
+      </a>
+    </li>
+
+    <li class="divider"></li>
+
+    <li class="dropdown-item">
+      <a class="task" href="#"
+         data-href="{% url "task:update-elasticsearch-index" %}"
+         data-btn-text="Update Index">
+        <i class="fa fa-refresh"></i>
+        Update Elasticsearch Index</a>
+    </li>
+
+  </ul>
 </li>

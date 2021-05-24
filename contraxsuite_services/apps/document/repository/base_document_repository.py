@@ -25,11 +25,12 @@
 # -*- coding: utf-8 -*-
 
 from typing import List, Tuple
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,7 +44,7 @@ class BaseDocumentRepository:
                                         ids: List[int]) -> List[Tuple[int, str]]:
         raise NotImplementedError()
 
-    def delete_all_documents_by_ids(self, ids: List[int]) -> None:
+    def delete_all_documents_by_ids(self, ids: List[int], user: User = None) -> None:
         raise NotImplementedError()
 
     def delete_document_history_by_ids(self, ids: List[int]) -> None:

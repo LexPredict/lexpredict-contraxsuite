@@ -41,9 +41,9 @@ from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_ASSIGNEE_ID, \
 from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -83,7 +83,6 @@ class RawDbRepository(BaseRawDbRepository):
         if not doc_ids:
             return 0
         # documents are supposed to be of the same type
-        from apps.document.models import Document
         doc_type = Document.all_objects.filter(pk__in=doc_ids).values_list(
             'document_type__code', flat=True)[:1].get()  # type: str
         table_name = doc_fields_table_name(doc_type)
@@ -106,7 +105,7 @@ class RawDbRepository(BaseRawDbRepository):
 
         document_qs = Document.all_objects.filter(pk=doc.pk)
 
-        annotations = dict()
+        annotations = {}
 
         if DocumentGenericField.cluster_id.specified_in(generic_values_to_fill):
             annotations['cluster_id'] = Max('documentcluster')

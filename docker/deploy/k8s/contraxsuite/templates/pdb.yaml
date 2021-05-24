@@ -1,0 +1,88 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: contrax-daphne-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contrax-daphne
+
+---
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: contrax-elasticsearch-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contrax-elasticsearch
+
+---
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: contrax-celery-high-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contrax-celery-high
+
+---
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: contrax-text-extraction-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contrax-text-extraction-system
+
+---
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: tes-web-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: tes-web-api
+
+---
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: contrax-webdav
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contrax-webdav
+
+---
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: contrax-tes-webdav
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contrax-tes-webdav

@@ -25,6 +25,11 @@
 # -*- coding: utf-8 -*-
 
 # Third-party imports
+from typing import List
+
+import croniter
+from django import forms
+from django.db import connection
 from django_celery_results.models import TaskResult
 from simple_history.admin import SimpleHistoryAdmin
 
@@ -32,12 +37,12 @@ from simple_history.admin import SimpleHistoryAdmin
 from django.contrib import admin
 
 # Project imports
-from apps.task.models import Task, TaskConfig
+from apps.task.models import Task, TaskConfig, ReindexRoutine
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,8 +63,95 @@ class CeleryResultAdmin(admin.ModelAdmin):
     search_fields = ('task_id',)
 
 
+class ReindexRoutineChangeForm(forms.ModelForm):
+    class Meta:
+        model = ReindexRoutine
+        fields = ('target_entity', 'index_name', 'schedule',)
+
+    INDEX_CHOICES = ()
+
+    index_name = forms.ChoiceField(choices=INDEX_CHOICES)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['index_name'].choices = \
+            [(c, c) for c in ReindexRoutineAdmin.get_db_index_names()] + \
+            [(c, c) for c in ReindexRoutineAdmin.get_db_table_names()]
+
+    def clean(self):
+        schedule = self.cleaned_data.get('schedule')
+        if not croniter.croniter.is_valid(schedule):
+            raise forms.ValidationError('Schedule is not a valid crontab string')
+
+
+class ReindexRoutineAdmin(admin.ModelAdmin):
+    INDEX_NAMES: List[str] = []
+    TABLE_NAMES: List[str] = []
+
+    list_display = ('target_entity', 'index_name', 'schedule')
+    search_fields = ['target_entity', 'index_name', 'schedule']
+
+    form = ReindexRoutineChangeForm
+    change_form_template = 'admin/task/reindexroutine/change_form.html'
+
+    def add_view(self, request, form_url='', extra_context=None):
+        extra_context = extra_context or dict()
+        extra_context['indexes'] = self.get_db_index_names()
+        extra_context['tables'] = self.get_db_table_names()[:5]
+        return super().add_view(request, form_url, extra_context=extra_context)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or dict()
+        extra_context['indexes'] = self.get_db_index_names()
+        extra_context['tables'] = self.get_db_table_names()
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
+
+    @classmethod
+    def get_db_index_names(cls) -> List[str]:
+        if cls.INDEX_NAMES:
+            return cls.INDEX_NAMES
+        choices = []
+        with connection.cursor() as cursor:
+            cursor.execute('''
+            select i.relname as index_name,
+                   t.relname as table_name,
+                   a.attname as column_name
+            from
+                   pg_class t, pg_class i, pg_index ix, pg_attribute a
+            where
+                   t.oid = ix.indrelid
+                   and i.oid = ix.indexrelid
+                   and a.attrelid = t.oid
+                   and a.attnum = ANY(ix.indkey)
+                   and t.relkind = 'r'
+                   order by i.relname;
+            ''')
+            for index_name, _t, _c in cursor.fetchall():
+                choices.append(index_name)
+        cls.INDEX_NAMES = choices
+        return choices
+
+    @classmethod
+    def get_db_table_names(cls) -> List[str]:
+        if cls.TABLE_NAMES:
+            return cls.TABLE_NAMES
+        choices = []
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                SELECT table_name
+                FROM   information_schema.tables
+                WHERE  table_schema = 'public'
+                ORDER  BY table_name;
+                ''')
+            for row in cursor.fetchall():
+                choices.append(row[0])
+        cls.TABLE_NAMES = choices
+        return choices
+
+
 admin.site.register(Task, TaskAdmin)
 admin.site.register(TaskConfig, TaskConfigAdmin)
+admin.site.register(ReindexRoutine, ReindexRoutineAdmin)
 
 admin.site.unregister(TaskResult)
 admin.site.register(TaskResult, CeleryResultAdmin)

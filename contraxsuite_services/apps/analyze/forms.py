@@ -31,14 +31,14 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 # Project imports
 from apps.analyze.ml.features import DocumentFeatures
 from apps.analyze.models import DocumentClassifier, TextUnitClassifier, \
-    DocumentClassification, TextUnitClassification, TextUnitTransformer, DocumentTransformer
+    DocumentClassification, TextUnitClassification, MLModel
 from apps.common.forms import checkbox_field
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,7 +48,7 @@ class TrainDocumentDoc2VecTaskForm(forms.Form):
 
     source = forms.CharField(initial='document', widget=forms.HiddenInput())
     project = forms.ModelMultipleChoiceField(
-        queryset=Project.objects.all().order_by('-pk'),
+        queryset=Project.objects.order_by('-pk'),
         widget=forms.SelectMultiple(
             attrs={'class': 'chosen compact'}),
         required=False)
@@ -92,16 +92,39 @@ build_features_kwargs = dict(
     help_text='Show advanced options.')
 
 
-class BuildFeatureVectorsTaskForm(forms.Form):
-    header = 'Build doc2vec feature vectors.'
+class BuildDocumentVectorsTaskForm(forms.Form):
+    header = 'Build Document Vectors'
 
-    source_select = forms.BooleanField(**build_features_kwargs)
+    # project field needed here to populate schema without hardcoded choices, redefined in _init_
+    project = forms.IntegerField(required=True)
 
-    project = forms.ModelMultipleChoiceField(
-        queryset=Project.objects.all().order_by('-pk'),
-        widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
-        required=False,
-        label='Restrict to projects')
+    delete_existing = forms.BooleanField(
+        required=True,
+        initial=True,
+        help_text='Delete existing vectors')
+
+    field_order = ['project', 'transformer_id', 'delete_existing']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        projects = Project.objects.order_by('-pk').values_list('pk', 'name')
+        self.fields['project'] = forms.ChoiceField(
+            choices=[(pk, f'#{pk} {name}') for pk, name in projects],
+            widget=forms.widgets.Select(attrs={'class': 'chosen compact'}),
+            required=True,
+            help_text='Restrict to projects')
+
+        doc_transformers = MLModel.document_transformers.order_by('-pk').values_list('pk', 'name')
+        self.fields['transformer_id'] = forms.ChoiceField(
+            choices=[(pk, f'#{pk} {name}') for pk, name in doc_transformers],
+            widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+            required=True,
+            help_text='Document Transformer trained model')
+
+
+class BuildTextUnitVectorsTaskForm(BuildDocumentVectorsTaskForm):
+    header = 'Build Text Unit Vectors'
 
     txt_unit_type = forms.ChoiceField(
         choices=[('sentence', 'sentence'), ('paragraph', 'paragraph')],
@@ -109,38 +132,17 @@ class BuildFeatureVectorsTaskForm(forms.Form):
         initial='sentence',
         help_text='Text Unit type.')
 
-    delete_existing = forms.BooleanField(
-        required=True,
-        initial=True,
-        help_text='Delete existing vectors')
-
-    field_order = ['project', 'source_select', 'doc_transformer',
-                   'txt_unit_type', 'txt_transformer', 'delete_existing']
+    field_order = ['project', 'txt_unit_type', 'transformer_id', 'delete_existing']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        doc_transformers = DocumentTransformer.objects.order_by('-pk').values_list('pk', 'name')
-        self.fields['doc_transformer'] = forms.ChoiceField(
-            choices=[(pk, f'#{pk} {name}') for pk, name in list(doc_transformers)],
-            required=False,
-            help_text='Document Transformer trained model')
-
-        txt_transformers = TextUnitTransformer.objects.order_by('-pk').values_list('pk', 'name')
-        self.fields['txt_transformer'] = forms.ChoiceField(
+        txt_transformers = MLModel.textunit_transformers.order_by('-pk').values_list('pk', 'name')
+        self.fields['transformer_id'] = forms.ChoiceField(
             choices=[(pk, f'#{pk} {name}') for pk, name in list(txt_transformers)],
-            required=False,
+            widget=forms.widgets.Select(attrs={'class': 'chosen'}),
+            required=True,
             help_text='Text Unit Transformer trained model')
-
-    def clean(self):
-        cleaned_data = super().clean()
-        source_select = cleaned_data.get('source_select')
-        doc_transformer = cleaned_data.get('doc_transformer')
-        txt_transformer = cleaned_data.get('txt_transformer')
-        if source_select and not doc_transformer:
-            self.add_error('doc_transformer', 'A transformer is required to run this task.')
-        if not source_select and not txt_transformer:
-            self.add_error('txt_transformer', 'A transformer is required to run this task.')
 
 
 class BaseRunClassifierForm(forms.Form):
@@ -153,7 +155,7 @@ class BaseRunClassifierForm(forms.Form):
     delete_suggestions = checkbox_field(
         "Delete ClassifierSuggestions of Classifier specified above.")
     project = forms.ModelMultipleChoiceField(
-        queryset=Project.objects.all().order_by('-pk'),
+        queryset=Project.objects.order_by('-pk'),
         widget=forms.SelectMultiple(
             attrs={'class': 'chosen compact'}),
         required=False,
@@ -325,7 +327,7 @@ class BaseTrainClassifierForm(forms.Form):
     delete_classifier = checkbox_field(
         "Delete existing Classifiers of class name specified above.")
     project = forms.ModelMultipleChoiceField(
-        queryset=Project.objects.all().order_by('-pk'),
+        queryset=Project.objects.order_by('-pk'),
         widget=forms.SelectMultiple(attrs={'class': 'chosen compact'}),
         required=False,
         label='Restrict to project')

@@ -31,9 +31,9 @@ from apps.document.sync_tasks.rename_old_documents_task import RenameOldDocument
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -80,15 +80,14 @@ class EnsureNewPathsUnique:
                           f'found "{existing_docs}"')
             ren_task.rename_project_old_documents(existing_docs)
         else:
-            self.log_func(f'ForceUnique: ensure "{doc_name}" is unique in project {project.name} (#{project.pk}): '
-                          f'no dups found')
+            self.log_func(
+                f'ForceUnique: ensure "{doc_name}" is unique in project {project.name} (#{project.pk}): no dups found')
 
         # now check that there are no files with the same name
         try:
             DocumentFilesCleaner.delete_document_files([source_path])
         except FileNotFoundError:
             self.log_func(f'ForceUnique: not found "{source_path}" while deleting file')
-            pass
         except Exception as ex:
             self.log_func(f'ForceUnique: error while deleting "{source_path}":\n{ex}')
             raise ex

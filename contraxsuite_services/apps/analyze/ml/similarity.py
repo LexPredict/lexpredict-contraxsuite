@@ -30,20 +30,19 @@ import numpy
 import pandas as pd
 import scipy.spatial.distance
 import sklearn
+from scipy.spatial.distance import _METRICS
 
 # Project imports
-from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity
-from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures
+from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity, TextUnit
+from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, \
+    Document2VecFeatures, TextUnit2VecFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-from apps.similarity.similarity_model_reference import SimilarityObjectReference
 
 
 class DocumentSimilarityEngine:
@@ -57,7 +56,6 @@ class DocumentSimilarityEngine:
         ...:        threshold=0.8)
         >>> engine.get_similarity()
     """
-    feature_extractor = DocumentFeatures
     similarity_model = DocumentSimilarity
     similarity_model_field_a = 'document_a_id'
     similarity_model_field_b = 'document_b_id'
@@ -71,7 +69,10 @@ class DocumentSimilarityEngine:
                  use_tfidf=False,
                  distance_type='cosine',
                  threshold=0.5,
-                 log_routine=None):
+                 create_reverse_relations=False,
+                 run_id=None,
+                 log_routine=None,
+                 **extra_kwargs):
         """
         :param queryset: Document/TextUnit queryset
         :param project_id: int (optional)
@@ -80,38 +81,32 @@ class DocumentSimilarityEngine:
         :param use_tfidf: bool
         :param distance_type: str
         :param threshold: float
+        :param create_reverse_relations: bool - create B-A relations
+        :param run_id: str
         :param log_routine: logger fn
         """
         self.queryset = queryset
         self.project_id = project_id
-        self.unit_type = unit_type
+        self.unit_type = unit_type or 'sentence'
         self.feature_source = feature_source
         self.use_tfidf = use_tfidf
-        self.distance_type = distance_type
+        self.distance_type = distance_type or 'cosine'
         self.threshold = threshold
+        self.create_reverse_relations = create_reverse_relations
+        self.run_id = run_id
         self.log_routine = log_routine
+        self.feature_extractor = self.get_feature_extractor(feature_source)
+        self.extra_kwargs = extra_kwargs
 
-    def get_similarity_matrix(self, observation_matrix: numpy.array):
-        """
-        Calculate the pairwise similarity of a set of records in an MxN `observation_matrix` with M records and N features.
-        :param observation_matrix: numpy.array - feature matrix
-        :return: numpy.array - distance_matrix
-        # TODO: Implement boolean conversion for relevant distance metrics, e.g., Jaccard.
-        """
-        # Toggle TF-IDF
-        if self.use_tfidf:
-            observation_matrix = sklearn.feature_extraction.text.TfidfTransformer().fit_transform(
-                observation_matrix).toarray()
-            distance_matrix = scipy.spatial.distance.squareform(
-                scipy.spatial.distance.pdist(observation_matrix, metric=self.distance_type))
-        else:
-            distance_matrix = scipy.spatial.distance.squareform(
-                scipy.spatial.distance.pdist(observation_matrix, self.distance_type))
+    def check_arguments(self):
+        if self.distance_type not in _METRICS:
+            raise RuntimeError(f'Wrong distance type "{self.distance_type}", it should be in {list(_METRICS.keys())}')
 
-        return distance_matrix
+    def get_feature_extractor(self, feature_source):
+        return Document2VecFeatures if feature_source == 'vector' else DocumentFeatures
 
     def get_features(self):
-        skip_unqualified_values = self.threshold > 0
+        skip_unqualified_values = self.threshold > 0.0
 
         # get Feature object, see real signature in features.py module
         feature_engine = self.feature_extractor(
@@ -120,10 +115,22 @@ class DocumentSimilarityEngine:
             feature_source=self.feature_source,
             unit_type=self.unit_type,
             drop_empty_rows=skip_unqualified_values,
-            log_message=self.log_routine
+            log_message=self.log_routine,
+            **self.extra_kwargs
         )
-
         return feature_engine.get_features()
+
+    def create_sim_obj(self, obj_a_id, obj_b_id, similarity):
+        """
+        Prepare similarity object to save in db
+        """
+        sim_obj = self.similarity_model()
+        setattr(sim_obj, self.similarity_model_field_a, obj_a_id)
+        setattr(sim_obj, self.similarity_model_field_b, obj_b_id)
+        sim_obj.similarity = similarity
+        sim_obj.similarity_type = self.distance_type  # is not used, no model field
+        sim_obj.run_id = self.run_id
+        return sim_obj
 
     def _get_similarity(self):
         """
@@ -133,28 +140,41 @@ class DocumentSimilarityEngine:
         # get Feature object, see real signature in features.py module
         features = self.get_features()
 
-        # Get distance matrix
-        distance_matrix = self.get_similarity_matrix(features.term_frequency_matrix)
+        # Get distance matrix using pdist and squareform (mostly to visualize data in mind)
+        term_frequency_matrix = features.term_frequency_matrix
+        if self.use_tfidf:
+            term_frequency_matrix = sklearn.feature_extraction.text.TfidfTransformer().fit_transform(
+                features.term_frequency_matrix).toarray()
+        distance_matrix = scipy.spatial.distance.squareform(
+            scipy.spatial.distance.pdist(term_frequency_matrix, metric=self.distance_type))
 
         counter = 0
         # Create records based on threshold
         for i in range(distance_matrix.shape[0]):
             sim_obj_list = []
-            for j in range(i):
-                if distance_matrix[i, j] <= (1.0 - self.threshold):
-                    sim_obj = self.similarity_model()
-                    setattr(sim_obj, self.similarity_model_field_a, features.item_index[i])
-                    setattr(sim_obj, self.similarity_model_field_b, features.item_index[j])
-                    sim_obj.similarity = 100 * (1.0 - distance_matrix[i, j])
-                    sim_obj.similarity_type = self.distance_type
+
+            for j in range(distance_matrix.shape[1]):
+
+                # Skip B-A blocks, process A-B blocks only - i.e. skip similarity reverse relations
+                if self.create_reverse_relations is False and j < i:
+                    continue
+
+                # Skip A-A, B-B records
+                if i == j:
+                    continue
+
+                if distance_matrix[i, j] <= 1.0 - self.threshold:
+                    sim_obj = self.create_sim_obj(features.item_index[i],
+                                                  features.item_index[j],
+                                                  100 * (1.0 - distance_matrix[i, j]))
                     sim_obj_list.append(sim_obj)
 
             # Bulk create
-            self.similarity_model.objects.bulk_create(sim_obj_list)
+            self.similarity_model.objects.bulk_create(sim_obj_list, ignore_conflicts=True)
             counter += len(sim_obj_list)
         return counter
 
-    def get_similarity(self):
+    def get_similarity(self, item_id=None):
         """
         Central method to calculate and store similarity
         Optimized memory usage by iterating over feature dataframe to get
@@ -163,51 +183,72 @@ class DocumentSimilarityEngine:
         # get Feature object, see real signature in features.py module
         features = self.get_features()
 
-        feature_df = features.feature_df
+        if item_id:
+            sim_obj_list = self.calc_block_similarity(
+                features.term_frequency_matrix, features.item_index, item_id=item_id)
+            return len(sim_obj_list)
 
         counter = 0
-        for block_i_start in range(0, feature_df.shape[0], self.block_step):
-
-            for block_j_start in range(0, feature_df.shape[0], self.block_step):
-                df1 = feature_df.iloc[block_i_start:block_i_start + self.block_step, :]
-                df2 = feature_df.iloc[block_j_start:block_j_start + self.block_step, :]
-                counter += self.make_and_store_sim_records(df1, df2)
+        for block_start in range(0, features.term_frequency_matrix[0], self.block_step):
+            block_end = block_start + self.block_step
+            sim_obj_list = self.calc_block_similarity(
+                features.term_frequency_matrix, features.item_index, block_start, block_end)
+            counter += len(sim_obj_list)
 
         return counter
 
-    def make_and_store_sim_records(self,
-                                   df1: Union[pd.DataFrame, pd.Series],
-                                   df2: Union[pd.DataFrame, pd.Series]) -> int:
-        records = self.calc_block_similarity(df1, df2)
-        self.similarity_model.objects.bulk_create(records)
-        return len(records)
+    def set_refs(self, obj_list):
+        # suitable for text units only to set project_ids
+        return obj_list
 
     def calc_block_similarity(self,
-                              df1: Union[pd.DataFrame, pd.Series],
-                              df2: Union[pd.DataFrame, pd.Series]) -> List[Any]:
-        df1_index = df1.index.tolist()
-        df2_index = df2.index.tolist()
+                              feature_df_data: Union[numpy.array, list],
+                              feature_df_index: list,
+                              block_start: int = None,
+                              block_end: int = None,
+                              item_id: Union[int, str] = None) -> List[Any]:
+        result = []
 
-        block_df = df1.append(df2)
-        block_matrix = block_df.to_dense().values
+        if item_id:
+            item_index = feature_df_index.index(item_id)
+            item_data = feature_df_data[item_index:item_index + 1]
+            feature_df_index = feature_df_index[:item_index] + feature_df_index[item_index + 1:]
+            feature_df_data = numpy.concatenate((feature_df_data[:item_index], feature_df_data[item_index + 1:]))
+            dist_list = scipy.spatial.distance.cdist(
+                item_data, feature_df_data, metric=self.distance_type)[0].astype(numpy.float32)
+            result = [(item_id, b_id, (1 - score) * 100) for b_id, score in
+                      zip(feature_df_index, dist_list) if 1 - score >= self.threshold]
+            if self.create_reverse_relations:
+                result += [(b_id, a_id, score) for a_id, b_id, score in result]
 
-        sim_matrix = self.get_similarity_matrix(block_matrix)
+        else:
+            dist_list = scipy.spatial.distance.cdist(
+                feature_df_data[block_start:block_end], feature_df_data[block_start:],
+                metric=self.distance_type).astype(numpy.float32)
 
-        len_df1_index = len(df1_index)
-        sim_matrix = sim_matrix[:len_df1_index, len_df1_index:]
+            for n, data in enumerate(zip(feature_df_index[block_start:block_end], dist_list)):
+                a_id, a_scores = data
+                res = [(a_id, b_id, (1 - score) * 100) for b_id, score in
+                       zip(feature_df_index[block_start + n + 1:], a_scores[n + 1:])
+                       if 1 - score >= self.threshold and a_id != b_id]
+                if self.create_reverse_relations:
+                    res += [(b_id, a_id, score) for a_id, b_id, score in res]
 
-        # Create records based on threshold
-        sim_obj_list = []
-        for i in range(sim_matrix.shape[0]):
-            for j in range(sim_matrix.shape[1]):
-                if df1_index[i] != df2_index[j] and sim_matrix[i, j] <= (1.0 - self.threshold):
-                    sim_obj = self.similarity_model()
-                    setattr(sim_obj, self.similarity_model_field_a, df1_index[i])
-                    setattr(sim_obj, self.similarity_model_field_b, df2_index[j])
-                    sim_obj.similarity = 100 * (1.0 - sim_matrix[i, j])
-                    sim_obj.similarity_type = self.distance_type
-                    sim_obj_list.append(sim_obj)
+                result += res
 
+            # XXX: this is more safe for memory but takes more time - from 30 to 300 %
+            # for n in range(block_start, min(block_end, len(feature_df_index))):
+            #     a_id = feature_df_index[n]
+            #     dist_list = scipy.spatial.distance.cdist(
+            #         [feature_df_data[n]], feature_df_data[n + 1:], metric=self.distance_type)[0].astype(numpy.float32)
+            #     _result = [(a_id, b_id, (1 - score) * 100) for b_id, score in
+            #                zip(feature_df_index[n + 1:], dist_list) if 1 - score >= self.threshold]
+            #     if self.create_reverse_relations:
+            #         _result += [(b_id, a_id, score) for a_id, b_id, score in _result]
+            #     result += _result
+
+        sim_obj_list = [self.create_sim_obj(*i) for i in result]
+        sim_obj_list = self.set_refs(sim_obj_list)
         return sim_obj_list
 
 
@@ -227,55 +268,25 @@ class TextUnitSimilarityEngine(DocumentSimilarityEngine):
     similarity_model_field_a = 'text_unit_a_id'
     similarity_model_field_b = 'text_unit_b_id'
 
-    def make_and_store_sim_records(self,
-                                   df1: Union[pd.DataFrame, pd.Series],
-                                   df2: Union[pd.DataFrame, pd.Series]) -> int:
-        records = self.calc_block_similarity(df1, df2)
-        SimilarityObjectReference.ensure_unit_similarity_model_refs(records)
-        self.similarity_model.objects.bulk_create(records, self.project_id)
-        return len(records)
+    def get_feature_extractor(self, feature_source):
+        return TextUnit2VecFeatures if feature_source == 'vector' else TextUnitFeatures
 
-# TODO: this is uncompleted feature in 1.3.0-lexnlp-review branch, keep it as is for now
-# def find_similar_doc_text(document_query_set=None, threshold: float = 0.5, distance_type: str = "cosine",
-#                           lowercase: bool = True, stopword: bool = True, stem: bool = True):
-#     """
-#     Find similar documents using the actual text of documents, optionally lowercasing, stopwording,
-#     and stemming text.  Only records with greater than `threshold` similarity under distance type `distance_type`
-#     are populated in database.
-#     NOTE: This method is designed to "just work" by iterating efficiently from a memory perspective.  More efficient
-#     methods are possible if we assume large RAM environments, but such methods should not be default for reliability
-#     perspective.
-#     :param document_query_set:
-#     :param threshold:
-#     :param distance_type:
-#     :param lowercase:
-#     :param stopword:
-#     :param stem:
-#     :return:
-#     """
-#
-#     # We are going to first obtain only the primary keys to allow for efficient lower-triangular access.
-#     if document_query_set is None:
-#         document_id_set = Document.objects.only("id").order_by("id").values_list("id", flat=True)
-#     else:
-#         document_id_set = document_query_set.order_by("-id").values_list("id", flat=True)
-#
-#     # Processor switch
-#     processor_method = get_stem_list if stem else get_token_list
-#
-#     # N.B.: This method duplicates data requests in exchange for minimal memory usage.  It is designed to
-#     # scale to any size document set, even if its performance is lower than in-memory options.  It should be the
-#     # default approach unless we can confirm that a document set and RAM meet needs for other approaches.
-#
-#     # We are going to fix text for outer document.
-#     # TODO: Finish implementing once lexnlp.nlp.en.transforms.tokens is improved
-#     for i in enumerate(document_id_set):
-#         doc_a = DocumentText.objects.get(document__id=document_id_set[i])
-#         doc_a_tokens = processor_method(doc_a.full_text, stopword=stem, lowercase=lowercase)
-#         # TODO: get_token_distribution/get_stem_distribution
-#
-#         # The inner loop stops at i to ensure lower-triangular access pattern.
-#         for j in range(i):
-#             doc_b = DocumentText.objects.get(document__id=document_id_set[j])
-#             doc_b_tokens = processor_method(doc_b.full_text, stopword=stem, lowercase=lowercase)
-#             # TODO: get_token_distribution/get_stem_distribution
+    def set_refs(self, obj_list):
+        """
+        Set project/document FKs for TextUnitSimilarity objects depending on text_unit_a_id/text_unit_b_id
+        """
+        unit_ids = {i for o in obj_list for i in (o.text_unit_a_id, o.text_unit_b_id)}
+        values = TextUnit.objects.filter(id__in=unit_ids).values('id', 'document_id', 'project_id')
+        values = {i['id']: i for i in values}
+        ret = []
+        for obj in obj_list:
+            try:
+                obj.document_a_id = values[obj.text_unit_a_id]['document_id']
+                obj.document_b_id = values[obj.text_unit_b_id]['document_id']
+                obj.project_a_id = values[obj.text_unit_a_id]['project_id']
+                obj.project_b_id = values[obj.text_unit_b_id]['project_id']
+                ret.append(obj)
+            except KeyError:
+                # rare case, seen one time, probably text unit was deleted whilst task execution
+                pass
+        return ret

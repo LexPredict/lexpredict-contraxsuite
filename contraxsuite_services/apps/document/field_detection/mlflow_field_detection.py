@@ -31,18 +31,16 @@ import pandas as pd
 from apps.common.log_utils import ProcessLogger
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
 from apps.document.field_types import TypedField, MultiValueField
-from apps.document.models import ClassifierModel, TextUnit, \
-    DocumentField
-from apps.document.models import Document
+from apps.document.models import ClassifierModel, DocumentField, Document
 from apps.document.repository.dto import FieldValueDTO, AnnotationDTO
 from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
 from apps.mlflow.mlflow_model_manager import MLFlowModelManager
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -53,7 +51,7 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
 
     @classmethod
     def test_model(cls, model_uri: str):
-        model_input = dict()
+        model_input = {}
         model_input['text'] = 'Hello world!'
         model_input_df = pd.DataFrame([model_input])
         return MLFlowModelManager().predict(model_uri, model_input_df)
@@ -118,8 +116,6 @@ class MLFlowModelBasedFieldDetectionStrategy(FieldDetectionStrategy):
             return FieldValueDTO(field_value=value)
 
         qs_text_units = text_unit_repo.get_doc_text_units(doc, field.text_unit_type)
-        qs_text_units = FieldDetectionStrategy.reduce_textunits_by_detection_limit(qs_text_units, field)
-
         log.debug('detect_field_value: mlflow_field_detection on text unit level, ' +
                   f'field {field.code}({field.pk}), document #{doc.pk}')
 

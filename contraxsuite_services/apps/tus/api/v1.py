@@ -39,9 +39,9 @@ from apps.project.models import UploadSession
 from apps.tus.schemas import TusUploadViewSetSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -80,15 +80,16 @@ class TusUploadViewSet(UploadViewSet):
         filename = upload_metadata.get(tus_settings.TUS_FILENAME_METADATA_FIELD, '')
 
         # PATCHED - do file check for exists/empty/delete_pending/processing status
-        from apps.project.api.v1 import UploadSessionViewSet, UploadSession
+        from apps.project.api.v1 import UploadSessionViewSet
         project = UploadSession.objects.get(pk=self.kwargs['upload_session_id']).project
 
-        can_upload_status = UploadSessionViewSet.can_upload_file(project, filename, upload_length)
+        can_upload_status = UploadSessionViewSet.can_upload_file(
+            project, filename, upload_length, kwargs['upload_session_id'])
 
-        from apps.document.app_vars import FORCE_REWRITE_DOC
+        from apps.document.app_vars import ALLOW_DUPLICATE_DOCS
         force_rename = request.POST.get('force') == 'true' or \
                        request.META.get('HTTP_FORCE') == 'true' or \
-                       FORCE_REWRITE_DOC.val
+                       not ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
 
         if not force_rename and can_upload_status is not True:
             return Response(data={'status': can_upload_status}, status=status.HTTP_400_BAD_REQUEST)
@@ -148,7 +149,7 @@ class TusUploadViewSet(UploadViewSet):
             if upload_checksum[0] not in tus_api_checksum_algorithms:
                 return Response('Unsupported Checksum Algorithm: {}.'.format(
                     upload_checksum[0]), status=status.HTTP_400_BAD_REQUEST)
-            elif not checksum_matches(
+            if not checksum_matches(
                     upload_checksum[0], upload_checksum[1], chunk_bytes):
                 return Response('Checksum Mismatch.', status=460)
 

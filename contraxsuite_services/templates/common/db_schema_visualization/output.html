@@ -1,0 +1,44 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block css_extra %}
+    {{ block.super }}
+    <style>
+        a.download {
+            position: absolute;
+            float: right;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 28px;
+            width: 160px;
+            right: 5px;
+            top: 55px;
+            padding: 0.75rem 1rem;
+            z-index: 999;
+            border-radius: 0.25rem;
+            background-color: rgba(21, 137, 238, 0.1);
+            color: #1589EE;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        i.fa-angle-down {
+            margin-right: 6px;
+        }
+    </style>
+{% endblock %}
+
+{% block page_header %}
+    Database Schema Visualizer
+    <a class="download" href="data:image/svg+xml;utf8,{{ svg }}" download="db_schema.svg">
+        <i class="fa fa-angle-down" aria-hidden="true"></i> Download as SVG
+    </a>
+{% endblock %}
+
+{% block project_selection %}{% endblock %}
+
+{% block content %}
+
+    <object id="db-schema" class="fitvidsignore" type="image/svg+xml" data="data:image/svg+xml;utf8,{{ svg }}"></object>
+
+{% endblock %}

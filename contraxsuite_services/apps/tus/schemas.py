@@ -24,23 +24,17 @@
 """
 # -*- coding: utf-8 -*-
 
-from rest_framework import serializers
-from apps.common.schemas import CustomAutoSchema
+from apps.common.schemas import CustomAutoSchema, json_ct, string_content, object_content, binary_string_schema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-# class TusUploadPOSTSerializer(serializers.Serializer):
-#     force = serializers.BooleanField(required=False)
-#
-#
 class TusUploadViewSetSchema(CustomAutoSchema):
-    # request_serializer = TusUploadPOSTSerializer()
     request_post_headers = [
         {'name': 'force',
          'in': 'header',
@@ -106,60 +100,29 @@ class TusUploadViewSetSchema(CustomAutoSchema):
         if method == 'PATCH':
             return {
                 'content': {
-                    'application/offset+octet-stream': {
-                        'schema': {'type': 'string', 'format': 'binary'}}}}
-        return {
-                'content': {
-                    'application/json': {
-                        'schema': {'type': 'object'}}}}
+                    'application/offset+octet-stream': binary_string_schema},
+                'description': ''}
+        return object_content
 
     def get_responses(self, path, method):
         response = {}
+        status_schema_content = {
+            json_ct: {
+                'schema': {
+                    'type': 'object',
+                    'properties': {
+                        'status': {
+                            'type': 'string'}}}}}
 
         if method == 'POST':
-            response['201'] = {
-                'headers': self.response_post_headers}
-            response['400'] = {
-                'content': {
-                    'application/json': {
-                        'schema': {
-                            'type': 'object',
-                            'properties': {
-                                'status': {
-                                    'type': 'string',
-                                }
-                            },
-                        }}}}
+            response['201'] = {'headers': self.response_post_headers, 'description': ''}
+            response['400'] = {'content': status_schema_content, 'description': ''}
 
         elif method == 'PATCH':
-            response['204'] = {
-                'headers': self.response_patch_headers,
-                'content': {
-                    'application/json': {
-                        'schema': {
-                            'type': 'object',
-                            'properties': {
-                                'status': {
-                                    'type': 'string',
-                                }
-                            },
-                        }}}}
-            response['400'] = {
-                'content': {
-                    'application/json': {
-                        'schema': {
-                            'type': 'string',
-                        }}}}
-            response['460'] = {
-                'content': {
-                    'application/json': {
-                        'schema': {
-                            'type': 'string',
-                        }}}}
-            response['500'] = {
-                'content': {
-                    'application/json': {
-                        'schema': {
-                            'type': 'string',
-                        }}}}
+            response['204'] = {'headers': self.response_patch_headers,
+                               'content': status_schema_content,
+                               'description': ''}
+            response['400'] = string_content
+            response['460'] = string_content
+            response['500'] = string_content
         return response

@@ -9,7 +9,7 @@ Name | Type | Description | Notes
 **DocumentType** | **string** |  | 
 **Name** | **string** |  | 
 **Order** | **int** |  | 
-**Fields** | [**List&lt;AnyType&gt;**](AnyType.md) |  | [optional] [readonly] 
+**Fields** | **List&lt;string&gt;** |  | [optional] [readonly] 
 **FieldsNumber** | **int** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

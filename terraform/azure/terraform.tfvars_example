@@ -1,0 +1,39 @@
+### --- Permissions Section --- ###
+appId    = ""
+password = ""
+
+### --- Enviromnent Section --- ###
+environment         = "dev"
+resource_group_name = "dev-k8s"
+
+### --- AKS Cluser --- ###
+aks_dns_prefix = "dev-k8s"
+# AKS Master Node Pool
+master_nodepool_vm_size   = "Standard_D4s_v4"
+master_nodepool_count = 2
+# AKS Worker Node Pool
+worker_nodepool_vm_size   = "Standard_F8s_v2"
+worker_nodepool_priority  = "Spot"
+worker_nodepool_count_max = 15
+worker_nodepool_count_min = 1
+
+### --- Managed Database Section --- ###
+db_module_enable                 = false
+db_storage_mb                    = 25600 #25gb
+db_server_name                   = "dev-k8s"
+db_administrator_login           = ""
+db_administrator_login_password  = ""
+db_name                          = ""
+
+### --- Rook Ceph Section --- ### 
+rook_ceph_nodepool_priority = "Regular"
+rook_ceph_nodepool_os_disk_size_gb = 250
+rook_ceph_nodepool_vm_size = "Standard_DS2_v2"
+rook_ceph_nodepool_count = 3
+
+### --- Helm Charts --- ### 
+helm_install_cert_manager = false # should be false for first time run
+helm_install_ingress = false      # should be false for first time run
+helm_install_monitoring = false   # should be false for first time run
+helm_install_rook_ceph = false    # should be false for first time run
+helm_install_keda = false         # should be false for first time run 

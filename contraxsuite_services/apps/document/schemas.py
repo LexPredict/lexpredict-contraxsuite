@@ -25,14 +25,14 @@
 # -*- coding: utf-8 -*-
 
 from rest_framework import serializers
-from apps.common.schemas import CustomAutoSchema, JqFiltersListViewSchema, ObjectResponseSchema,\
-    ObjectItemsResponseSchema, ObjectToItemResponseMixin, json_ct
-from apps.document.models import Document, DocumentField
+from apps.common.schemas import CustomAutoSchema, JqFiltersListViewSchema, ObjectResponseSchema, \
+     ObjectToItemResponseMixin, json_ct, binary_string_content, binary_string_schema
+from apps.document.models import Document, DocumentPDFRepresentation
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -111,6 +111,16 @@ class DocumentViewSetSchema(JqFiltersListViewSchema):
     #     return res
 
 
+class DocumentPDFReprSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user DocumentPDFRepresentation model.
+    """
+
+    class Meta:
+        model = DocumentPDFRepresentation
+        fields = ['char_bboxes_list', 'pages_list']
+
+
 class DocumentsForUserSerializer(serializers.ModelSerializer):
     """
     Serializer for user documents
@@ -154,6 +164,18 @@ class DocumentFullTextSchema(CustomAutoSchema):
         return res
 
 
+class DocumentHasPDFInfoSchema(CustomAutoSchema):
+
+    def get_responses(self, path, method):
+        res = super().get_responses(path, method)
+        res['200']['content'][json_ct]['schema'] = {'type': 'boolean'}
+        return res
+
+
+class DocumentPDFReprSchema(CustomAutoSchema):
+    response_serializer = DocumentPDFReprSerializer()
+
+
 class DocumentShowSchema(CustomAutoSchema):
     parameters = [
         {'name': 'alt',
@@ -161,23 +183,14 @@ class DocumentShowSchema(CustomAutoSchema):
          'required': False,
          'description': 'Get alternative document file if exists',
          'schema': {
-             'type': 'boolean'}
+             'type': 'string',
+             'enum': ['true'] + Document.SourceMode.modes()
+            }
          }
     ]
 
     def get_responses(self, path, method):
-        return {
-          '200': {
-            'content': {
-              'application/json': {
-                'schema': {
-                  'type': 'string', 'format': 'binary'
-                }
-              }
-            },
-            'description': ''
-          }
-        }
+        return {'200': binary_string_content}
 
 
 class DocumentDownloadZipSchema(CustomAutoSchema):
@@ -206,16 +219,18 @@ class DocumentDownloadZipSchema(CustomAutoSchema):
 
     def get_responses(self, path, method):
         responses = super().get_responses(path, method)
-        responses['200']['content']['application/zip'] = {'schema': {'type': 'string', 'format': 'binary'}}
+        responses['200']['content']['application/zip'] = binary_string_schema
         responses['404'] = {
             'content': {
-                'application/json': {
+                json_ct: {
                     'schema': {
                         'type': 'object',
                         'properties': {
                             'detail': {'type': 'string'}
                         },
-                        'required': ['detail']}}}}
+                        'required': ['detail']}}},
+            'description': ''
+        }
         return responses
 
 
@@ -277,8 +292,7 @@ class DocumentTypeExportSchema(CustomAutoSchema):
     ]
 
     def get_responses(self, path, method):
-        return {'200': {'content': {
-            'application/json': {'schema': {'type': 'string', 'format': 'binary'}}}}}
+        return {'200': binary_string_content}
 
 
 class CloneDocumentTypeSchema(CustomAutoSchema):
@@ -402,3 +416,15 @@ class DocumentFieldStatsSchema(ObjectToItemResponseMixin, CustomAutoSchema):
          'schema': {'type': 'string'}},
     ]
     response_serializer = DocumentFieldStatsResponseSerializer()
+
+
+class SimilarDocumentsSchema(JqFiltersListViewSchema):
+    parameters = [
+        {'name': 'text_max_length',
+         'in': 'query',
+         'required': False,
+         'description': 'document b text max length, 0 to get all text',
+         'schema': {'type': 'integer'}}]
+
+    from apps.analyze.api.v1 import ProjectDocumentSimilaritySerializer
+    response_serializer = ProjectDocumentSimilaritySerializer()

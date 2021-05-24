@@ -24,17 +24,24 @@
 """
 # -*- coding: utf-8 -*-
 
-import logging
+import os
+import platform
+import psutil
 import signal
 import sys
+import threading
+from datetime import datetime
+from io import StringIO
 from traceback import extract_stack
+
+from apps.common.logger import CsLogger
 from contraxsuite_logging import HumanReadableTraceBackException
 from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,12 +62,7 @@ def print_stack(f=None, limit=None) -> str:
 
 def print_stack_traces(sig, frame):
     try:
-        import platform
-        from datetime import datetime
-        import os
         from apps.common.models import ThreadDumpRecord
-        import psutil
-        from io import StringIO
 
         dump = ThreadDumpRecord()
         dump.node = platform.node()
@@ -76,8 +78,6 @@ def print_stack_traces(sig, frame):
 
         dump_str = StringIO()
 
-        import threading
-        import sys
         for th in threading.enumerate():
             dump_str.write(str(th) + '\n')
 
@@ -88,11 +88,10 @@ def print_stack_traces(sig, frame):
 
         dump.save()
     except Exception as e:
-        logging.getLogger('django').error('Unable to dump threads', exc_info=e)
+        CsLogger.get_django_logger().error('Unable to dump threads', exc_info=e)
 
 
 def listen():
-    import threading
 
     if settings.DEBUG_STACK_DUMP_ENABLED and threading.current_thread() is threading.main_thread():
         signal.signal(settings.DEBUG_STACK_DUMP_SIGNAL, print_stack_traces)

@@ -47,9 +47,9 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
     DIGEST_PERIODS_BY_CODE, DOC_FILTERS_BY_CODE
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -100,7 +100,7 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
         email = EmailMultiAlternatives(subject=subject,
                                        body=txt,
                                        cc=list(cc) if cc else None,
-                                       from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
+                                       from_email=SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL,
                                        to=['"{0}" <{1}>'.format(dst_user.name, dst_user.email)],
                                        connection=backend)
         if html:
@@ -183,7 +183,7 @@ def render_digest(config: DocumentDigestConfig,
     if period:
         period_start, period_end = period.prepare_period(config, dst_user, run_date)
 
-    user_field_codes = list(config.user_fields.all().values_list('code', flat=True))
+    user_field_codes = list(config.user_fields.values_list('code', flat=True))
     generic_field_codes = config.generic_fields or []
     field_codes = [FIELD_CODE_DOC_ID, FIELD_CODE_PROJECT_ID, FIELD_CODE_DOC_NAME] \
                   + generic_field_codes + user_field_codes

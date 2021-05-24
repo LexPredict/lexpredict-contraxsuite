@@ -33,8 +33,10 @@ Method | HTTP request | Description
 [**DocumentDocumentFieldDetectorsUidPUT**](DocumentApi.md#documentdocumentfielddetectorsuidput) | **PUT** /api/v1/document/document-field-detectors/{uid}/ | 
 [**DocumentDocumentFieldValuesGET**](DocumentApi.md#documentdocumentfieldvaluesget) | **GET** /api/v1/document/document-field-values/ | 
 [**DocumentDocumentFieldValuesIdGET**](DocumentApi.md#documentdocumentfieldvaluesidget) | **GET** /api/v1/document/document-field-values/{id}/ | 
+[**DocumentDocumentFieldsCheckFieldFormulaPOST**](DocumentApi.md#documentdocumentfieldscheckfieldformulapost) | **POST** /api/v1/document/document-fields/check_field_formula/ | 
 [**DocumentDocumentFieldsFormFieldsGET**](DocumentApi.md#documentdocumentfieldsformfieldsget) | **GET** /api/v1/document/document-fields/form-fields/ | 
 [**DocumentDocumentFieldsGET**](DocumentApi.md#documentdocumentfieldsget) | **GET** /api/v1/document/document-fields/ | 
+[**DocumentDocumentFieldsPOST**](DocumentApi.md#documentdocumentfieldspost) | **POST** /api/v1/document/document-fields/ | 
 [**DocumentDocumentFieldsStatsGET**](DocumentApi.md#documentdocumentfieldsstatsget) | **GET** /api/v1/document/document-fields/stats/ | 
 [**DocumentDocumentFieldsUidCheckFormulaPOST**](DocumentApi.md#documentdocumentfieldsuidcheckformulapost) | **POST** /api/v1/document/document-fields/{uid}/check_formula/ | 
 [**DocumentDocumentFieldsUidClonePOST**](DocumentApi.md#documentdocumentfieldsuidclonepost) | **POST** /api/v1/document/document-fields/{uid}/clone/ | 
@@ -54,6 +56,7 @@ Method | HTTP request | Description
 [**DocumentDocumentTypesGET**](DocumentApi.md#documentdocumenttypesget) | **GET** /api/v1/document/document-types/ | 
 [**DocumentDocumentTypesImportDocTypePUT**](DocumentApi.md#documentdocumenttypesimportdoctypeput) | **PUT** /api/v1/document/document-types/import_doc_type/ | 
 [**DocumentDocumentTypesPOST**](DocumentApi.md#documentdocumenttypespost) | **POST** /api/v1/document/document-types/ | 
+[**DocumentDocumentTypesSchemeMigrationsGET**](DocumentApi.md#documentdocumenttypesschememigrationsget) | **GET** /api/v1/document/document-types/scheme_migrations/ | 
 [**DocumentDocumentTypesStatsGET**](DocumentApi.md#documentdocumenttypesstatsget) | **GET** /api/v1/document/document-types/stats/ | 
 [**DocumentDocumentTypesUidClonePOST**](DocumentApi.md#documentdocumenttypesuidclonepost) | **POST** /api/v1/document/document-types/{uid}/clone/ | 
 [**DocumentDocumentTypesUidDELETE**](DocumentApi.md#documentdocumenttypesuiddelete) | **DELETE** /api/v1/document/document-types/{uid}/ | 
@@ -67,6 +70,7 @@ Method | HTTP request | Description
 [**DocumentDocumentsDownloadZipGET**](DocumentApi.md#documentdocumentsdownloadzipget) | **GET** /api/v1/document/documents/download_zip/ | 
 [**DocumentDocumentsForUserGET**](DocumentApi.md#documentdocumentsforuserget) | **GET** /api/v1/document/documents/for-user/ | 
 [**DocumentDocumentsGET**](DocumentApi.md#documentdocumentsget) | **GET** /api/v1/document/documents/ | 
+[**DocumentDocumentsIdActionsGET**](DocumentApi.md#documentdocumentsidactionsget) | **GET** /api/v1/document/documents/{id}/actions/ | 
 [**DocumentDocumentsIdDELETE**](DocumentApi.md#documentdocumentsiddelete) | **DELETE** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdDataGET**](DocumentApi.md#documentdocumentsiddataget) | **GET** /api/v1/document/documents/{id}/data/ | 
 [**DocumentDocumentsIdDefinitionsGET**](DocumentApi.md#documentdocumentsiddefinitionsget) | **GET** /api/v1/document/documents/{id}/definitions/ | 
@@ -77,9 +81,12 @@ Method | HTTP request | Description
 [**DocumentDocumentsIdFieldsPUT**](DocumentApi.md#documentdocumentsidfieldsput) | **PUT** /api/v1/document/documents/{id}/fields/ | 
 [**DocumentDocumentsIdFullTextGET**](DocumentApi.md#documentdocumentsidfulltextget) | **GET** /api/v1/document/documents/{id}/full_text/ | 
 [**DocumentDocumentsIdGET**](DocumentApi.md#documentdocumentsidget) | **GET** /api/v1/document/documents/{id}/ | 
+[**DocumentDocumentsIdHasPdfInfoGET**](DocumentApi.md#documentdocumentsidhaspdfinfoget) | **GET** /api/v1/document/documents/{id}/has_pdf_info/ | 
 [**DocumentDocumentsIdPATCH**](DocumentApi.md#documentdocumentsidpatch) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdPUT**](DocumentApi.md#documentdocumentsidput) | **PUT** /api/v1/document/documents/{id}/ | 
+[**DocumentDocumentsIdPdfReprGET**](DocumentApi.md#documentdocumentsidpdfreprget) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
 [**DocumentDocumentsIdShowGET**](DocumentApi.md#documentdocumentsidshowget) | **GET** /api/v1/document/documents/{id}/show/ | 
+[**DocumentDocumentsIdSimilarGET**](DocumentApi.md#documentdocumentsidsimilarget) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**DocumentDocumentsMarkDeletePOST**](DocumentApi.md#documentdocumentsmarkdeletepost) | **POST** /api/v1/document/documents/mark_delete/ | 
 [**DocumentDocumentsPOST**](DocumentApi.md#documentdocumentspost) | **POST** /api/v1/document/documents/ | 
 [**DocumentDocumentsUnmarkDeletePOST**](DocumentApi.md#documentdocumentsunmarkdeletepost) | **POST** /api/v1/document/documents/unmark_delete/ | 
@@ -103,6 +110,7 @@ Method | HTTP request | Description
 [**DocumentProjectProjectPkDocumentsDownloadZipGET**](DocumentApi.md#documentprojectprojectpkdocumentsdownloadzipget) | **GET** /api/v1/document/project/{project_pk}/documents/download_zip/ | 
 [**DocumentProjectProjectPkDocumentsForUserGET**](DocumentApi.md#documentprojectprojectpkdocumentsforuserget) | **GET** /api/v1/document/project/{project_pk}/documents/for-user/ | 
 [**DocumentProjectProjectPkDocumentsGET**](DocumentApi.md#documentprojectprojectpkdocumentsget) | **GET** /api/v1/document/project/{project_pk}/documents/ | 
+[**DocumentProjectProjectPkDocumentsIdActionsGET**](DocumentApi.md#documentprojectprojectpkdocumentsidactionsget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/actions/ | 
 [**DocumentProjectProjectPkDocumentsIdDELETE**](DocumentApi.md#documentprojectprojectpkdocumentsiddelete) | **DELETE** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdDataGET**](DocumentApi.md#documentprojectprojectpkdocumentsiddataget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/data/ | 
 [**DocumentProjectProjectPkDocumentsIdDefinitionsGET**](DocumentApi.md#documentprojectprojectpkdocumentsiddefinitionsget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/definitions/ | 
@@ -113,9 +121,12 @@ Method | HTTP request | Description
 [**DocumentProjectProjectPkDocumentsIdFieldsPUT**](DocumentApi.md#documentprojectprojectpkdocumentsidfieldsput) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
 [**DocumentProjectProjectPkDocumentsIdFullTextGET**](DocumentApi.md#documentprojectprojectpkdocumentsidfulltextget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/full_text/ | 
 [**DocumentProjectProjectPkDocumentsIdGET**](DocumentApi.md#documentprojectprojectpkdocumentsidget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**DocumentProjectProjectPkDocumentsIdHasPdfInfoGET**](DocumentApi.md#documentprojectprojectpkdocumentsidhaspdfinfoget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/has_pdf_info/ | 
 [**DocumentProjectProjectPkDocumentsIdPATCH**](DocumentApi.md#documentprojectprojectpkdocumentsidpatch) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdPUT**](DocumentApi.md#documentprojectprojectpkdocumentsidput) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**DocumentProjectProjectPkDocumentsIdPdfReprGET**](DocumentApi.md#documentprojectprojectpkdocumentsidpdfreprget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
 [**DocumentProjectProjectPkDocumentsIdShowGET**](DocumentApi.md#documentprojectprojectpkdocumentsidshowget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
+[**DocumentProjectProjectPkDocumentsIdSimilarGET**](DocumentApi.md#documentprojectprojectpkdocumentsidsimilarget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**DocumentProjectProjectPkDocumentsMarkDeletePOST**](DocumentApi.md#documentprojectprojectpkdocumentsmarkdeletepost) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
 [**DocumentProjectProjectPkDocumentsPOST**](DocumentApi.md#documentprojectprojectpkdocumentspost) | **POST** /api/v1/document/project/{project_pk}/documents/ | 
 [**DocumentProjectProjectPkDocumentsUnmarkDeletePOST**](DocumentApi.md#documentprojectprojectpkdocumentsunmarkdeletepost) | **POST** /api/v1/document/project/{project_pk}/documents/unmark_delete/ | 
@@ -190,6 +201,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -270,6 +282,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -344,6 +357,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -423,6 +437,7 @@ void (empty response body)
 - **Content-Type**: Not defined
 - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -501,6 +516,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -583,6 +599,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -661,6 +678,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -741,6 +759,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -817,6 +836,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -896,6 +916,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -978,6 +999,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1052,6 +1074,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1132,6 +1155,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1209,6 +1233,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1288,6 +1313,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1370,6 +1396,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1450,6 +1477,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1532,6 +1560,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1611,6 +1640,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1685,6 +1715,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1765,6 +1796,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1844,6 +1876,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1921,6 +1954,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2000,6 +2034,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2082,6 +2117,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2162,6 +2198,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2244,6 +2281,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2322,6 +2360,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2404,10 +2443,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentFieldsCheckFieldFormulaPOST
+
+> DocumentFieldDetail DocumentDocumentFieldsCheckFieldFormulaPOST (CheckNewDocumentFieldFormulaRequest checkNewDocumentFieldFormulaRequest = null)
+
+
+
+Check formula for new NOT SAVED Document Field Either \"request.data.formula\" or \"request.data.hide_until_python\" should be filled. Expects request data arguments: - formula: str OR - convert_decimals_to_floats_in_formula_args: bool - hide_until_python: str - field_type: str - document_type: str - document type uid - depends_on_fields: List[str] - list of field uids
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentFieldsCheckFieldFormulaPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var checkNewDocumentFieldFormulaRequest = new CheckNewDocumentFieldFormulaRequest(); // CheckNewDocumentFieldFormulaRequest |  (optional) 
+
+            try
+            {
+                DocumentFieldDetail result = apiInstance.DocumentDocumentFieldsCheckFieldFormulaPOST(checkNewDocumentFieldFormulaRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentFieldsCheckFieldFormulaPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **checkNewDocumentFieldFormulaRequest** | [**CheckNewDocumentFieldFormulaRequest**](CheckNewDocumentFieldFormulaRequest.md)|  | [optional] 
+
+### Return type
+
+[**DocumentFieldDetail**](DocumentFieldDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -2478,6 +2598,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2558,10 +2679,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentFieldsPOST
+
+> DocumentFieldCreate DocumentDocumentFieldsPOST (DocumentFieldCreate documentFieldCreate = null)
+
+
+
+Create Document Field     Params:         - document_type: uid of Document Type         - code: str - Unique Short name for field, max 50 symbols, should contain only latin letters, digits, and underscores         - long_code: str - Unique Calculated field, max 150 symbols         - title: str - Verbose name for field, max 100 symbols         - description: str - optional         - type: str - max 30 symbols (from pre-defined choices)         - text_unit_type: str - (from pre-defined choices) default = sentences         - value_detection_strategy: str - max 50 chars (from pre-defined choices)         - unsure_choice_value: str - max 256 chars, default=null         - unsure_thresholds_by_value: json         - classifier_init_script: str         - formula: str         - convert_decimals_to_floats_in_formula_args: bool         - depends_on_fields: array of uids, optional         - confidence: str - max 100 chars (from pre-defined choices)         - requires_text_annotations: bool, default=True         - read_only: bool, default=False         - category: int - id of DocumentFieldCategory instance         - default_value: json         - choices: str - \\n-separated list of choices         - allow_values_not_specified_in_choices: bool - default=False         - metadata: json, optional         - training_finished: bool, default=False         - dirty: bool, default=False         - order: integer - default=0         - trained_after_documents_number: integer, default=null         - hidden_always: bool - default=False         - hide_until_python: str, optional         - hide_until_js: str, optional         - display_yes_no: bool - default=False
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentFieldsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate |  (optional) 
+
+            try
+            {
+                DocumentFieldCreate result = apiInstance.DocumentDocumentFieldsPOST(documentFieldCreate);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentFieldsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional] 
+
+### Return type
+
+[**DocumentFieldCreate**](DocumentFieldCreate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -2634,6 +2836,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2716,6 +2919,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2797,6 +3001,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2874,6 +3079,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2953,6 +3159,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3035,6 +3242,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3115,6 +3323,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3197,6 +3406,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3277,6 +3487,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3365,6 +3576,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3442,6 +3654,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3524,6 +3737,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3605,6 +3819,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3622,7 +3837,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Note
+Fill in \"self.action_message\" attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 
@@ -3685,6 +3900,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3765,6 +3981,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3839,6 +4056,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3919,6 +4137,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3995,6 +4214,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4075,10 +4295,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentTypesSchemeMigrationsGET
+
+> Dictionary&lt;string, Object&gt; DocumentDocumentTypesSchemeMigrationsGET ()
+
+
+
+Get Document Type model versions.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentTypesSchemeMigrationsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.DocumentDocumentTypesSchemeMigrationsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentTypesSchemeMigrationsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -4147,6 +4444,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4229,6 +4527,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4306,6 +4605,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4386,6 +4686,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4464,6 +4765,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4546,6 +4848,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4626,6 +4929,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4708,6 +5012,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4789,6 +5094,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4865,6 +5171,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4945,6 +5252,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, application/zip
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5018,6 +5326,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5102,6 +5411,93 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdActionsGET
+
+> List&lt;Action&gt; DocumentDocumentsIdActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.DocumentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentsIdActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5177,6 +5573,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5259,6 +5656,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5335,6 +5733,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5415,6 +5814,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5491,6 +5891,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5571,6 +5972,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5649,6 +6051,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5729,6 +6132,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5805,6 +6209,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5887,6 +6292,85 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdHasPdfInfoGET
+
+> bool DocumentDocumentsIdHasPdfInfoGET (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdHasPdfInfoGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                bool result = apiInstance.DocumentDocumentsIdHasPdfInfoGET(id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentsIdHasPdfInfoGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+**bool**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5965,6 +6449,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6047,6 +6532,85 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdPdfReprGET
+
+> DocumentPDFRepr DocumentDocumentsIdPdfReprGET (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdPdfReprGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                DocumentPDFRepr result = apiInstance.DocumentDocumentsIdPdfReprGET(id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentsIdPdfReprGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6060,7 +6624,7 @@ Name | Type | Description  | Notes
 
 ## DocumentDocumentsIdShowGET
 
-> System.IO.Stream DocumentDocumentsIdShowGET (string id, bool? alt = null)
+> System.IO.Stream DocumentDocumentsIdShowGET (string id, string alt = null)
 
 
 
@@ -6087,7 +6651,7 @@ namespace Example
 
             var apiInstance = new DocumentApi(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = true;  // bool? | Get alternative document file if exists (optional) 
+            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -6111,7 +6675,7 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this document. | 
- **alt** | **bool?**| Get alternative document file if exists | [optional] 
+ **alt** | **string**| Get alternative document file if exists | [optional] 
 
 ### Return type
 
@@ -6125,6 +6689,91 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdSimilarGET
+
+> ProjectDocumentSimilarity DocumentDocumentsIdSimilarGET (string id, int? textMaxLength = null, Dictionary<string, string> jqFilters = null)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdSimilarGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                ProjectDocumentSimilarity result = apiInstance.DocumentDocumentsIdSimilarGET(id, textMaxLength, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentsIdSimilarGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+ **textMaxLength** | **int?**| document b text max length, 0 to get all text | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6205,6 +6854,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6281,6 +6931,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6361,6 +7012,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6440,6 +7092,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6517,6 +7170,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6599,6 +7253,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6677,6 +7332,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6759,6 +7415,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6838,6 +7495,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6916,6 +7574,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6997,6 +7656,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7081,6 +7741,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7161,6 +7822,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7245,6 +7907,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7323,6 +7986,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7404,6 +8068,7 @@ void (empty response body)
 - **Content-Type**: Not defined
 - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7484,6 +8149,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7568,6 +8234,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7651,6 +8318,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7731,6 +8399,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7813,6 +8482,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, application/zip
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7890,6 +8560,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7976,6 +8647,95 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdActionsGET
+
+> List&lt;Action&gt; DocumentProjectProjectPkDocumentsIdActionsGET (string projectPk, string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.DocumentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentProjectProjectPkDocumentsIdActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8053,6 +8813,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8137,6 +8898,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8215,6 +8977,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8297,6 +9060,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8375,6 +9139,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8457,6 +9222,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8537,6 +9303,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8619,6 +9386,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8697,6 +9465,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8781,6 +9550,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdHasPdfInfoGET
+
+> bool DocumentProjectProjectPkDocumentsIdHasPdfInfoGET (string projectPk, string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdHasPdfInfoGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                bool result = apiInstance.DocumentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentProjectProjectPkDocumentsIdHasPdfInfoGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+**bool**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8861,6 +9711,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8945,6 +9796,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdPdfReprGET
+
+> DocumentPDFRepr DocumentProjectProjectPkDocumentsIdPdfReprGET (string projectPk, string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdPdfReprGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                DocumentPDFRepr result = apiInstance.DocumentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentProjectProjectPkDocumentsIdPdfReprGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8958,7 +9890,7 @@ Name | Type | Description  | Notes
 
 ## DocumentProjectProjectPkDocumentsIdShowGET
 
-> System.IO.Stream DocumentProjectProjectPkDocumentsIdShowGET (string projectPk, string id, bool? alt = null)
+> System.IO.Stream DocumentProjectProjectPkDocumentsIdShowGET (string projectPk, string id, string alt = null)
 
 
 
@@ -8986,7 +9918,7 @@ namespace Example
             var apiInstance = new DocumentApi(Configuration.Default);
             var projectPk = projectPk_example;  // string | 
             var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = true;  // bool? | Get alternative document file if exists (optional) 
+            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -9011,7 +9943,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **projectPk** | **string**|  | 
  **id** | **string**| A unique integer value identifying this document. | 
- **alt** | **bool?**| Get alternative document file if exists | [optional] 
+ **alt** | **string**| Get alternative document file if exists | [optional] 
 
 ### Return type
 
@@ -9025,6 +9957,93 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdSimilarGET
+
+> ProjectDocumentSimilarity DocumentProjectProjectPkDocumentsIdSimilarGET (string projectPk, string id, int? textMaxLength = null, Dictionary<string, string> jqFilters = null)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdSimilarGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                ProjectDocumentSimilarity result = apiInstance.DocumentProjectProjectPkDocumentsIdSimilarGET(projectPk, id, textMaxLength, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentProjectProjectPkDocumentsIdSimilarGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+ **textMaxLength** | **int?**| document b text max length, 0 to get all text | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9107,6 +10126,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9185,6 +10205,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9267,6 +10288,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9339,6 +10361,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9418,6 +10441,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9499,6 +10523,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

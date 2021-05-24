@@ -9,7 +9,6 @@ Name | Type | Description | Notes
 **FirstName** | **string** |  | [optional] 
 **LastName** | **string** |  | [optional] 
 **Username** | **string** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | 
-**Role** | **int?** |  | [optional] 
 **Photo** | **string** |  | [optional] [readonly] 
 **Name** | **string** |  | [optional] 
 

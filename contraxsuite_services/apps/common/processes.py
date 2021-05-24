@@ -36,9 +36,9 @@ from threading import Thread
 from typing import List, Callable, TextIO, Optional, Any
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,8 +145,7 @@ def read_output(cmd: List[str],
                                        f'Actual error code: {error_code}\n'
                                        f'Stderr:\n'
                                        f'{stderr.getvalue()}')
-    else:
-        return stdout.getvalue()
+    return stdout.getvalue()
 
 
 async def async_read_pipe(pipe, dst: Callable[[str], None]):
@@ -164,7 +163,7 @@ async def async_exec(program: str, args: List[str], stdout: Callable[[str], None
                                                 stdout=asyncio.subprocess.PIPE,
                                                 stderr=asyncio.subprocess.PIPE)
 
-    io_tasks = list()
+    io_tasks = []
     if stderr:
         io_tasks.append(async_read_pipe(proc.stderr, stderr))
     if stdout:
@@ -172,11 +171,10 @@ async def async_exec(program: str, args: List[str], stdout: Callable[[str], None
 
     if not io_tasks:
         return await proc.communicate()
-    else:
-        await asyncio.gather(*io_tasks)
+    await asyncio.gather(*io_tasks)
 
 
-async def async_wait_for_file(file_path, timeout_interval_sec: float = 30, check_interval_sec: float = 0.3):
+async def async_wait_for_file(file_path, timeout_interval_sec: float = 30.0, check_interval_sec: float = 0.3):
     start = time.time()
     while True:
         if time.time() - start > timeout_interval_sec:

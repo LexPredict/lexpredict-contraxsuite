@@ -24,21 +24,18 @@
 """
 # -*- coding: utf-8 -*-
 
-import json
 import logging
 import sys
 import traceback
-from collections import Sequence
 from io import StringIO
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, Type, Callable, Optional, List, Tuple
+from typing import Any, Dict, Type, Callable, List, Tuple
 
 from allauth.account.models import EmailAddress, EmailConfirmation
 from django.core import serializers as core_serializers
 from django.core.management import call_command
 from django.db.models import Subquery
 from django.db.models import Model, QuerySet
-from django.db.models.query import RawQuerySet
 from django.http import HttpResponse
 
 # Project imports
@@ -51,12 +48,12 @@ from apps.document.models import (
 from apps.document.scheme_migrations.scheme_migration import SchemeMigration, CURRENT_VERSION
 from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation, Party, Term
 from apps.task.models import TaskConfig
-from apps.users.models import User, Role
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,7 +67,6 @@ APP_CONFIG_MODELS = {
 }  # type: Dict[Type[Model], Callable[[QuerySet], QuerySet]]
 
 FULL_DUMP_MODELS = {User: None,
-                    Role: None,
                     EmailAddress: None,
                     EmailConfirmation: None,
                     ReviewStatus: None,
@@ -245,7 +241,9 @@ def load_fixture_from_dump(data, mode='default'):
             old_stdout = sys.stdout
             result = StringIO()
             sys.stdout = result
-            if mode == 'soft':
+            if mode == 'shift':
+                call_command('loadnewdata', f.name, process_if_exists='add_new')
+            elif mode == 'soft':
                 call_command('loadnewdata', f.name, skip_if_exists='any')
             elif mode == 'partial':
                 call_command('loadnewdata', f.name, skip_if_exists='one')

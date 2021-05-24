@@ -6,9 +6,10 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**commonActionsGET**](CommonApi.md#commonActionsGET) | **GET** /api/v1/common/actions/ | 
 [**commonActionsIdGET**](CommonApi.md#commonActionsIdGET) | **GET** /api/v1/common/actions/{id}/ | 
-[**commonAppVariablesDELETE**](CommonApi.md#commonAppVariablesDELETE) | **DELETE** /api/v1/common/app-variables/ | 
 [**commonAppVariablesGET**](CommonApi.md#commonAppVariablesGET) | **GET** /api/v1/common/app-variables/ | 
-[**commonAppVariablesPOST**](CommonApi.md#commonAppVariablesPOST) | **POST** /api/v1/common/app-variables/ | 
+[**commonAppVariablesListGET**](CommonApi.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ | 
+[**commonAppVariablesProjectProjectIdGET**](CommonApi.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
+[**commonAppVariablesProjectProjectIdPUT**](CommonApi.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
 [**commonMediaPathGET**](CommonApi.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ | 
 [**commonMenuGroupsFormFieldsGET**](CommonApi.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**commonMenuGroupsGET**](CommonApi.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ | 
@@ -42,7 +43,7 @@ Method | HTTP request | Description
 
 <a name="commonActionsGET"></a>
 # **commonActionsGET**
-> List&lt;Action&gt; commonActionsGET(jqFilters)
+> List&lt;List&lt;Action&gt;&gt; commonActionsGET(projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -70,9 +71,12 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.commonActionsGET(jqFilters);
+      List<List<Action>> result = apiInstance.commonActionsGET(projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling CommonApi#commonActionsGET");
@@ -89,11 +93,14 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**List&lt;List&lt;Action&gt;&gt;**](List.md)
 
 ### Authorization
 
@@ -111,7 +118,7 @@ Name | Type | Description  | Notes
 
 <a name="commonActionsIdGET"></a>
 # **commonActionsIdGET**
-> Action commonActionsIdGET(id, jqFilters)
+> List&lt;Action&gt; commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -140,9 +147,12 @@ public class Example {
 
     CommonApi apiInstance = new CommonApi(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this action.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      Action result = apiInstance.commonActionsIdGET(id, jqFilters);
+      List<Action> result = apiInstance.commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling CommonApi#commonActionsIdGET");
@@ -160,11 +170,14 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this action. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**Action**](Action.md)
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -173,75 +186,6 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="commonAppVariablesDELETE"></a>
-# **commonAppVariablesDELETE**
-> String commonAppVariablesDELETE(appVarDelete)
-
-
-
-Delete specific App Variable by name     Param:         - name: str         - category: str
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.CommonApi;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    CommonApi apiInstance = new CommonApi(defaultClient);
-    AppVarDelete appVarDelete = new AppVarDelete(); // AppVarDelete | 
-    try {
-      String result = apiInstance.commonAppVariablesDELETE(appVarDelete);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling CommonApi#commonAppVariablesDELETE");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **appVarDelete** | [**AppVarDelete**](AppVarDelete.md)|  | [optional]
-
-### Return type
-
-**String**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
@@ -318,13 +262,11 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
-<a name="commonAppVariablesPOST"></a>
-# **commonAppVariablesPOST**
-> String commonAppVariablesPOST(requestBody)
+<a name="commonAppVariablesListGET"></a>
+# **commonAppVariablesListGET**
+> List&lt;AppVar&gt; commonAppVariablesListGET(jqFilters)
 
 
-
-Create or update App Variables      Params:         key1: val1,         key2: val2, etc
 
 ### Example
 ```java
@@ -348,12 +290,12 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      String result = apiInstance.commonAppVariablesPOST(requestBody);
+      List<AppVar> result = apiInstance.commonAppVariablesListGET(jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling CommonApi#commonAppVariablesPOST");
+      System.err.println("Exception when calling CommonApi#commonAppVariablesListGET");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -367,7 +309,147 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;AppVar&gt;**](AppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="commonAppVariablesProjectProjectIdGET"></a>
+# **commonAppVariablesProjectProjectIdGET**
+> List&lt;ProjectAppVar&gt; commonAppVariablesProjectProjectIdGET(projectId)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.CommonApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    CommonApi apiInstance = new CommonApi(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    try {
+      List<ProjectAppVar> result = apiInstance.commonAppVariablesProjectProjectIdGET(projectId);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling CommonApi#commonAppVariablesProjectProjectIdGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+
+### Return type
+
+[**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="commonAppVariablesProjectProjectIdPUT"></a>
+# **commonAppVariablesProjectProjectIdPUT**
+> String commonAppVariablesProjectProjectIdPUT(projectId, projectAppVar)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.CommonApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    CommonApi apiInstance = new CommonApi(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    List<ProjectAppVar> projectAppVar = Arrays.asList(); // List<ProjectAppVar> | 
+    try {
+      String result = apiInstance.commonAppVariablesProjectProjectIdPUT(projectId, projectAppVar);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling CommonApi#commonAppVariablesProjectProjectIdPUT");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+ **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional]
 
 ### Return type
 
@@ -1651,7 +1733,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     try {
       apiInstance.commonReviewStatusGroupsIdDELETE(id);
     } catch (ApiException e) {
@@ -1669,7 +1751,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
 
 ### Return type
 
@@ -1719,7 +1801,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
       ReviewStatusGroup result = apiInstance.commonReviewStatusGroupsIdGET(id, jqFilters);
@@ -1739,7 +1821,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
@@ -1790,7 +1872,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     ReviewStatusGroup reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup | 
     try {
       ReviewStatusGroup result = apiInstance.commonReviewStatusGroupsIdPATCH(id, reviewStatusGroup);
@@ -1810,7 +1892,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
@@ -1861,7 +1943,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     ReviewStatusGroup reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup | 
     try {
       ReviewStatusGroup result = apiInstance.commonReviewStatusGroupsIdPUT(id, reviewStatusGroup);
@@ -1881,7 +1963,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
@@ -2070,7 +2152,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     try {
       apiInstance.commonReviewStatusesIdDELETE(id);
     } catch (ApiException e) {
@@ -2088,7 +2170,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
 
 ### Return type
 
@@ -2138,7 +2220,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
       ReviewStatusDetail result = apiInstance.commonReviewStatusesIdGET(id, jqFilters);
@@ -2158,7 +2240,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
@@ -2209,7 +2291,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     ReviewStatus reviewStatus = new ReviewStatus(); // ReviewStatus | 
     try {
       ReviewStatus result = apiInstance.commonReviewStatusesIdPATCH(id, reviewStatus);
@@ -2229,7 +2311,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type
@@ -2280,7 +2362,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     CommonApi apiInstance = new CommonApi(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     ReviewStatus reviewStatus = new ReviewStatus(); // ReviewStatus | 
     try {
       ReviewStatus result = apiInstance.commonReviewStatusesIdPUT(id, reviewStatus);
@@ -2300,7 +2382,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type

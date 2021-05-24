@@ -38,11 +38,10 @@ from django.utils import timezone
 from apps.highq_integration.models import HighQConfiguration
 from apps.highq_integration.dto import *
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,6 +72,7 @@ class _Router(ABC):
             endpoint (str): An API endpoint to query.
             data (dict): Data to POST.
             files (dict): Files to POST.
+            json (dict): JSON to POST.
 
         Returns:
             requests.models.Response: The request response.
@@ -91,6 +91,7 @@ class _Router(ABC):
         Args:
             endpoint (str): An API endpoint to query.
             data (dict): Data to PUT.
+            json (dict): JSON to PUT.
 
         Returns:
             requests.models.Response: The request response.
@@ -101,11 +102,29 @@ class _Router(ABC):
 
 
 class HighQ_API_Client(_Router):
+    """
+    Example:
+        highq_api_client = HighQ_API_Client(highq_configuration)
+
+        r: Response = highq_api_client.get_highq_file(fileid=123)
+
+        print(r.json())
+
+    Notes:
+        The HighQ API endpoint documentation lists path parameters without
+            underscores. This API client defines the parameters which are to be
+            included in endpoint queries in accordance with this convention
+            (isheetid, itemid, fileid, folderid, etc.).
+        The parameters which are not included in API queries
+            (isheet_dto, include_root, etc.) are defined using snake case.
+    """
 
     def __init__(
         self,
         highq_configuration: HighQConfiguration
     ) -> None:
+        """
+        """
         self.highq_configuration: HighQConfiguration = highq_configuration
         self.api_base_url: ParseResult = urlparse(
             highq_configuration.api_base_url
@@ -113,6 +132,7 @@ class HighQ_API_Client(_Router):
             else f'{highq_configuration.api_base_url}/'
         )
         self.session: OAuth2Session = self._start_session()
+        self._API_VERSION: int = 3
 
     def _start_session(self) -> OAuth2Session:
         """
@@ -126,13 +146,13 @@ class HighQ_API_Client(_Router):
 
     def get_highq_file(
         self,
-        file_id: int,
+        fileid: int,
         original: bool = False,
     ) -> Response:
         """
         """
         return self.get(
-            endpoint=f'3/files/{file_id}/content',
+            endpoint=f'{self._API_VERSION}/files/{fileid}/content',
             parameters={'original': original}
         )
 
@@ -142,7 +162,9 @@ class HighQ_API_Client(_Router):
     ) -> Response:
         """
         """
-        return self.get(endpoint=f'3/files/{fileid}/isheetRecordID')
+        return self.get(
+            endpoint=f'{self._API_VERSION}/files/{fileid}/isheetRecordID'
+        )
 
     def get_isheet_columns(
         self,
@@ -150,7 +172,9 @@ class HighQ_API_Client(_Router):
     ) -> Response:
         """
         """
-        return self.get(f'3/isheets/{isheetid}/columns')
+        return self.get(
+            endpoint=f'{self._API_VERSION}/isheets/{isheetid}/columns'
+        )
 
     def get_isheet_columns_admin(
         self,
@@ -158,8 +182,9 @@ class HighQ_API_Client(_Router):
     ) -> Response:
         """
         """
-        return self.get(f'3/isheets/admin/{isheetid}/columns')
-
+        return self.get(
+            endpoint=f'{self._API_VERSION}/isheets/admin/{isheetid}/columns'
+        )
 
     def get_isheet_items(
         self,
@@ -167,7 +192,9 @@ class HighQ_API_Client(_Router):
     ) -> Response:
         """
         """
-        return self.get(f'3/isheet/{isheetid}/items')
+        return self.get(
+            endpoint=f'{self._API_VERSION}/isheet/{isheetid}/items'
+        )
 
     def get_isheet_item(
         self,
@@ -176,7 +203,9 @@ class HighQ_API_Client(_Router):
     ) -> Response:
         """
         """
-        return self.get(f'3/isheet/{isheetid}/items{itemid}')
+        return self.get(
+            endpoint=f'{self._API_VERSION}/isheet/{isheetid}/items/{itemid}'
+        )
 
     def post_isheet_items(
         self,
@@ -186,7 +215,7 @@ class HighQ_API_Client(_Router):
         """
         """
         return self.post(
-            endpoint=f'3/isheet/{isheetid}/items',
+            endpoint=f'{self._API_VERSION}/isheet/{isheetid}/items',
             json=isheet_dto.sanitize_for_serialization(isheet_dto)
         )
 
@@ -199,7 +228,7 @@ class HighQ_API_Client(_Router):
         """
         """
         return self.put(
-            endpoint=f'3/isheet/{isheetid}/items/{itemid}',
+            endpoint=f'{self._API_VERSION}/isheet/{isheetid}/items/{itemid}',
             json=isheet_dto.sanitize_for_serialization(isheet_dto)
         )
 
@@ -227,13 +256,39 @@ class HighQ_API_Client(_Router):
         nextsyncposition: int,
         contenttype: str = '',
     ) -> Response:
+        """
+        """
         parameters: Dict[str, Union[int, str]] = {
             'siteid': siteid,
             'syncpositionid': nextsyncposition,
             'contenttype': contenttype
         }
 
-        return self.get(endpoint=f'3/changes', parameters=parameters)
+        return self.get(
+            endpoint=f'{self._API_VERSION}/changes',
+            parameters=parameters
+        )
+
+    def get_folder(
+        self,
+        folderid: int,
+    ) -> Response:
+        """
+        """
+        return self.get(
+            endpoint=f'{self._API_VERSION}/folders/{folderid}'
+        )
+
+    def get_folder_items(
+        self,
+        folderid: int,
+    ) -> Response:
+        """
+        Get the subfolders of a given folder.
+        """
+        return self.get(
+            endpoint=f'{self._API_VERSION}/folders/{folderid}/items'
+        )
 
     def get_files(
         self,
@@ -244,20 +299,23 @@ class HighQ_API_Client(_Router):
         ordertype: str = 'lastModified'
     ) -> Response:
         """
-        The value of limit parameter behaves as following
-        - limit = 100 is the default value
-        - if limit > 0 then (number of return data = limit)
-        - if limit = -1 then return all data
-        - if limit < -1 then default value of the limit will be returned
+        Args:
+            limit:
+                - limit = 100 is the default value
+                - if limit > 0 then (number of return data = limit)
+                - if limit = -1 then return all data
+                - if limit < -1 then default value of the limit will be returned
 
-        The value of offset parameter behaves as under
-        - default value of offset is 0
-        - if offset > 0 the starting point will be the offset value.
-        - if offset < 0 then the default value of 0 will be used by the system
+            offset:
+                - default value of offset is 0
+                - if offset > 0 the starting point will be the offset value.
+                - if offset < 0 then the default value of 0 will be used by the system
 
-        orderby: "asc" or "desc". Defaults to "desc"; the latest items are returned first.
+            orderby:
+                "asc" or "desc". Defaults to "desc"; the latest items are returned first.
 
-        ordertype: can be one of name, size, author, lastModified, filetype
+            ordertype:
+                can be one of name, size, author, lastModified, filetype
         """
         parameters: Dict[str, Union[int, str]] = {
             'q': f'"folderid={folderid}"',
@@ -267,7 +325,32 @@ class HighQ_API_Client(_Router):
             'ordertype': ordertype
         }
 
-        return self.get(endpoint=f'3/files', parameters=parameters)
+        return self.get(
+            endpoint=f'{self._API_VERSION}/files',
+            parameters=parameters
+        )
+
+    def fetch_subfolders(
+        self,
+        folderid: int,
+        include_root: bool = False,
+    ) -> Generator[Dict[str, Optional[Union[int, str, dict]]], None, None]:
+        """
+        """
+        if include_root:
+            yield self.get_folder(folderid)
+        try:
+            r_folder_items: Response = self.get_folder_items(folderid=folderid)
+            r_folder_items.raise_for_status()
+            if r_folder_items.ok:
+                try:
+                    for folder in r_folder_items.json()['folder']:
+                        yield folder
+                        yield from self.fetch_subfolders(folderid=folder['id'])
+                except KeyError:
+                    return None
+        except HTTPError:
+            return None
 
     def fetch_item_ids_in_files_column(
         self,
@@ -410,16 +493,12 @@ class HighQ_API_Client(_Router):
                         column_name: str = column['name']
                         column_id: int = column['columnid']
 
-                        choices: Optional[Dict[str, List[dict]]] = \
-                            column['columnspecificdetail']['choices']
+                        choices: Optional[Dict[str, List[dict]]] = column['columnspecificdetail']['choices']
 
                         if choices is not None:
                             column_choices: List[Tuple[str, int]] = [
                                 (
-                                    choice['label']\
-                                        .split('<![CDATA[')[1]\
-                                        .split(']]>')[0],
-
+                                    choice['label'].split('<![CDATA[')[1].split(']]>')[0],
                                     int(choice['id'])
                                 )
                                 for choice in choices['choice']

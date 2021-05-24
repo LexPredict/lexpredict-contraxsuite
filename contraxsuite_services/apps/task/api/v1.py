@@ -24,28 +24,41 @@
 """
 # -*- coding: utf-8 -*-
 
+import datetime
+from dateutil import parser as date_parser
+
 # Django imports
+from django.db.models import Case, When, Value, CharField
 from django.conf.urls import url
+from django.utils.timezone import now
 
 # Third-party imports
+import croniter
+from celery.states import PENDING
+from elasticsearch_dsl import Search
 from rest_framework import routers, serializers, viewsets, views
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # Project imports
 from apps.common.mixins import JqListAPIMixin
+from apps.common.utils import download as download_file
+from apps.extract.api.v1 import ViewSetDataMixin
+from apps.task.models import es
+from apps.task.schemas import TaskLogSerializer, TaskLogSchema, TaskStatusSchema, RunTaskBaseSchema, \
+    CheckTaskScheduleSchema, ProjectTasksSchema, ProjectActiveTasksSchema, ProjectTasksSerializer
 from apps.task.views import *
-from apps.task.schemas import TaskLogSchema, TaskStatusSchema, RunTaskBaseSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-# Serializers define the API representation.
 class TaskSerializer(serializers.HyperlinkedModelSerializer):
     user__username = serializers.CharField(
         source='user.username',
@@ -75,14 +88,100 @@ class TaskViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
     list: Task List
     retrieve: Retrieve Task
     """
-    queryset = Task.objects.main_tasks(show_failed_excluded_from_tracking=True).order_by('-date_start')
+    queryset = Task.objects.main_tasks(show_failed_excluded_from_tracking=True)
     serializer_class = TaskSerializer
     permission_classes = [DjangoModelPermissions]
 
     def get_serializer_class(self):
         if self.action == 'stats':
             return TaskStatsSerializer
+        if self.action in ['project_tasks', 'project_active_tasks']:
+            return ProjectTasksSerializer
         return TaskSerializer
+
+    def get_queryset(self):
+        if self.action in ['project_tasks', 'project_active_tasks'] and 'project_id' in self.kwargs:
+            qs = self.get_project_tasks(self.kwargs['project_id'])
+            if self.action == 'project_active_tasks':
+                qs = qs.filter(status=PENDING)
+        else:
+            qs = super().get_queryset()
+        return qs.order_by('-date_start')
+
+    @staticmethod
+    def get_project_tasks(project_id):
+        project_id = int(project_id)
+        qs = Task.objects \
+            .filter(
+                Q(project_id=project_id) |
+                Q(kwargs__project=project_id) |
+                Q(kwargs__project_id=project_id) |
+                Q(kwargs__project=[{'pk': project_id}])) \
+            .annotate(total_time=Coalesce(F('date_done') - F('date_start'), Now() - F('date_start')),
+                      work_time=Coalesce(F('date_done') - F('date_work_start'), Now() - F('date_work_start'),
+                                         F('date_start') - F('date_start'))) \
+            .annotate(verbose_name=Case(When(name='Locate', kwargs__tasks={'term': {'locate': True, 'delete': True}},
+                                             then=Value('Locate Terms')),
+                                        When(name='Locate', kwargs__tasks={'party': {'locate': True, 'delete': True}},
+                                             then=Value('Locate Companies')),
+                                        default=F('name'), output_field=CharField())) \
+            .distinct()
+        return qs
+
+    @action(detail=False, schema=ProjectTasksSchema(), url_path=r'project/(?P<project_id>\d+)/tasks')
+    def project_tasks(self, request, **kwargs):
+        return self.list(request, **kwargs)
+
+    @action(detail=False, schema=ProjectActiveTasksSchema(), url_path=r'project/(?P<project_id>\d+)/active-tasks')
+    def project_active_tasks(self, request, **kwargs):
+        res = super().list(request, **kwargs)
+        if isinstance(res.data, list):
+            res.data = {'tasks': res.data}
+        elif isinstance(res.data, dict) and 'data' in res.data:
+            # just rename response key to match schema
+            res.data['tasks'] = res.data['data']
+            del res.data['data']
+        else:
+            raise RuntimeError('Unknown response')
+
+        # get specific task markers/flags
+        qs = self.get_queryset()
+        from apps.analyze.tasks import BuildDocumentVectorsTask, BuildTextUnitVectorsTask
+        res.data.update({
+            'document_transformer_change_in_progress': qs.filter(name=BuildDocumentVectorsTask.name).exists(),
+            'text_unit_transformer_change_in_progress': qs.filter(name=BuildTextUnitVectorsTask.name).exists(),
+            'locate_terms_in_progress': qs.filter(
+                name='Locate', kwargs__tasks={'term': {'locate': True, 'delete': True}}).exists(),
+            'locate_companies_in_progress': qs.filter(
+                name='Locate', kwargs__tasks={'party': {'locate': True, 'delete': True}}).exists()
+        })
+        return res
+
+
+class ReindexRoutineViewSet(APIView, ViewSetDataMixin):
+    http_method_names = ['post']
+
+    @classmethod
+    def get_extra_actions(cls):
+        return []
+
+    @action(detail=False, methods=['post'], schema=CheckTaskScheduleSchema())
+    def post(self, request, **kwargs):
+        schedule = request.POST.get('schedule', '')
+        data = {'errors': None, 'next': None, 'prev': None}
+        if schedule:
+            now_time = now()
+            if not croniter.croniter.is_valid(schedule):
+                data['errors'] = [
+                    'Schedule string is invalid'
+                ]
+            else:
+                cr = croniter.croniter(schedule, now_time)
+                data['next'] = cr.get_next(datetime.datetime)
+                data['prev'] = cr.get_prev(datetime.datetime)
+        else:
+            data['errors'] = 'Schedule is empty'
+        return Response(data, content_type='application/json')
 
 
 class RunTaskPermission(IsAuthenticated):
@@ -286,6 +385,11 @@ class TaskLogAPIView(views.APIView):
         if task_id and isinstance(task_id, list):
             task_id = task_id[0]
 
+        # filter/sort/paginate - otherwise use default logs extractor
+        enable_filtering = self.request.GET.get('enable_filtering', 'true') == 'true'
+        if enable_filtering:
+            return self.filter_sort_and_paginate(task_id)
+
         records_limit = request.GET.get('records_limit') or 0
         try:
             task = Task.objects.get(pk=task_id)  # type: Task
@@ -300,6 +404,114 @@ class TaskLogAPIView(views.APIView):
         except Task.DoesNotExist:
             return Response({'detail': 'Task is not found'}, status=404)
         return Response(message)
+
+    def filter_sort_and_paginate(self, task_id, default_records_limit=10000):
+        request_data = self.request.GET
+        es_index = settings.LOGGING_ELASTICSEARCH_INDEX_TEMPLATE
+        fields = TaskLogSerializer().fields
+
+        source = [f.source or fn for fn, f in fields.items()]
+        s = Search(using=es, index=es_index) \
+            .filter("match", log_main_task_id=task_id) \
+            .source(source)
+        total_records_count = s.count()
+
+        # FILTERS
+        if request_data and 'filterscount' in request_data:
+
+            for filter_n in range(int(request_data['filterscount'])):
+                field_name = request_data.get(f'filterdatafield{filter_n}')
+                value = request_data.get(f'filtervalue{filter_n}')
+                if field_name is None or value is None:
+                    continue
+                if field_name not in fields:
+                    continue
+                field = fields[field_name]
+
+                if isinstance(field, serializers.DateTimeField):
+                    date = date_parser.parse(value)
+                    s = s.query("range", **{'@timestamp': {'gte': date}})
+                else:
+                    es_field_name = field.source or field_name
+                    if field_name in TaskLogSerializer.regexp_search_fields:
+                        s = s.query("regexp", **{es_field_name: f'.*{value}.*'})
+                        # TODO: for elasticsearch starting from 7.10.0 (debian requirement)
+                        # s = s.query("regexp", **{es_field_name: {'value': f'.*{value}.*', 'case_insensitive': True}})
+                        # s = s.query("wildcard", **{es_field_name: {'value': f'*{value}*', 'case_insensitive': True}})
+                    else:
+                        s = s.query("match", **{es_field_name: value})
+
+        # SORTING
+        # TODO: this doesn't work for "message" field because of indexes, need to change mapping/analyze, investigate
+        if 'sortdatafield' in request_data and request_data['sortdatafield'] in fields \
+                and request_data['sortdatafield'] in TaskLogSerializer.sortable_fields:
+            sort_field_name = request_data['sortdatafield']
+            sort_field = fields[sort_field_name]
+            es_sort_field = sort_field.source or sort_field_name
+            if request_data.get('sortorder') == 'desc':
+                es_sort_field = '-' + es_sort_field
+        else:
+            sort_field_name = TaskLogSerializer.default_sort_field
+            sort_field = fields[sort_field_name]
+            es_sort_field = sort_field.source or sort_field_name
+            if TaskLogSerializer.default_sort_order == 'desc':
+                es_sort_field = '-' + es_sort_field
+        s = s.sort(es_sort_field)
+
+        # EXPORT - without paginated data - i.e. export all filtered/sorted rows up to default_records_limit
+        if request_data.get('export_to') in ['csv', 'xlsx', 'pdf']:
+            s = s[:default_records_limit]
+            s = s.execute()
+            log_data = TaskLogSerializer(s, many=True).data
+            return download_file(log_data, request_data['export_to'], file_name='task_log')
+
+        # PAGINATION - otherwise s.execute() takes first 10 records by default
+        if 'pagenum' in request_data and 'pagesize' in request_data:
+            start = int(request_data['pagenum']) * int(request_data['pagesize'])
+            end = start + int(request_data['pagesize'])
+            s = s[start:end]
+        else:
+            s = s[:default_records_limit]
+
+        s = s.execute()
+        log_data = TaskLogSerializer(s, many=True).data
+
+        # response data signature should be equal to apps.task.schemas.TaskLogResponseSerializer
+        data = {
+            'records': log_data,
+            'total_records_count': total_records_count,
+            'filtered_records_count': s.hits.total.value,
+            'current_records_count': len(log_data)
+        }
+        return Response(data)
+
+
+class ProcessTextExtractionResultsView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request, request_id: str, *_args, **_kwargs):
+        from apps.common.errors import APIRequestError
+        from task_names import TASK_NAME_PROCESS_TEXT_EXTRACTION_RESULTS
+        try:
+            task_statuses = list(Task.objects
+                                 .filter(pk=request_id, name=TASK_NAME_PROCESS_TEXT_EXTRACTION_RESULTS)
+                                 .values_list('own_status', flat=True))
+            if not task_statuses:
+                return APIRequestError(http_status_code=404, message='No such task.').to_response()
+
+            if task_statuses[0] is not None:
+                return APIRequestError(http_status_code=400, message='This task is already processed.') \
+                    .to_response()
+
+            Task.objects.filter(pk=request_id).update(status='PENDING', own_status='PENDING')
+
+            from apps.celery import app
+            app.re_send_task(request_id)
+            return Response(status=200)
+        except Exception as e:
+            return APIRequestError(http_status_code=500, message='Exception caught', caused_by=e) \
+                .to_response()
 
 
 router = routers.DefaultRouter()
@@ -324,4 +536,8 @@ urlpatterns = [
         name='task-status'),
     url(r'^task-log/$', TaskLogAPIView.as_view(),
         name='task-log'),
+    url(r'process_text_extraction_results/(?P<request_id>[\w-]+)/$', ProcessTextExtractionResultsView.as_view(),
+        name='process_text_extraction_results'),
+    url(r'reindexroutines/check_schedule', ReindexRoutineViewSet.as_view(),
+        name='task-check-schedule'),
 ]

@@ -9,7 +9,15 @@ Method | HTTP request | Description
 [**analyzeDocumentClusterIdPATCH**](V1Api.md#analyzeDocumentClusterIdPATCH) | **PATCH** /api/v1/analyze/document-cluster/{id}/ | 
 [**analyzeDocumentClusterIdPUT**](V1Api.md#analyzeDocumentClusterIdPUT) | **PUT** /api/v1/analyze/document-cluster/{id}/ | 
 [**analyzeDocumentSimilarityListGET**](V1Api.md#analyzeDocumentSimilarityListGET) | **GET** /api/v1/analyze/document-similarity/list/ | 
+[**analyzeDocumentTransformerListGET**](V1Api.md#analyzeDocumentTransformerListGET) | **GET** /api/v1/analyze/document-transformer/list/ | 
+[**analyzeMlModelListGET**](V1Api.md#analyzeMlModelListGET) | **GET** /api/v1/analyze/ml-model/list/ | 
 [**analyzePartySimilarityListGET**](V1Api.md#analyzePartySimilarityListGET) | **GET** /api/v1/analyze/party-similarity/list/ | 
+[**analyzeProjectDocumentSimilarityListGET**](V1Api.md#analyzeProjectDocumentSimilarityListGET) | **GET** /api/v1/analyze/project-document-similarity/list/ | 
+[**analyzeProjectTextUnitSimilarityListGET**](V1Api.md#analyzeProjectTextUnitSimilarityListGET) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ | 
+[**analyzeProjectTextUnitSimilarityListPOST**](V1Api.md#analyzeProjectTextUnitSimilarityListPOST) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ | 
+[**analyzeSimilarityRunsGET**](V1Api.md#analyzeSimilarityRunsGET) | **GET** /api/v1/analyze/similarity-runs/ | 
+[**analyzeSimilarityRunsIdDELETE**](V1Api.md#analyzeSimilarityRunsIdDELETE) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ | 
+[**analyzeSimilarityRunsIdGET**](V1Api.md#analyzeSimilarityRunsIdGET) | **GET** /api/v1/analyze/similarity-runs/{id}/ | 
 [**analyzeTextUnitClassificationsGET**](V1Api.md#analyzeTextUnitClassificationsGET) | **GET** /api/v1/analyze/text-unit-classifications/ | 
 [**analyzeTextUnitClassificationsIdDELETE**](V1Api.md#analyzeTextUnitClassificationsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ | 
 [**analyzeTextUnitClassificationsIdGET**](V1Api.md#analyzeTextUnitClassificationsIdGET) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ | 
@@ -22,12 +30,14 @@ Method | HTTP request | Description
 [**analyzeTextUnitClassifiersIdGET**](V1Api.md#analyzeTextUnitClassifiersIdGET) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ | 
 [**analyzeTextUnitClusterListGET**](V1Api.md#analyzeTextUnitClusterListGET) | **GET** /api/v1/analyze/text-unit-cluster/list/ | 
 [**analyzeTextUnitSimilarityListGET**](V1Api.md#analyzeTextUnitSimilarityListGET) | **GET** /api/v1/analyze/text-unit-similarity/list/ | 
+[**analyzeTextUnitTransformerListGET**](V1Api.md#analyzeTextUnitTransformerListGET) | **GET** /api/v1/analyze/text-unit-transformer/list/ | 
 [**analyzeTypeaheadTextUnitClassificationFieldNameGET**](V1Api.md#analyzeTypeaheadTextUnitClassificationFieldNameGET) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ | 
 [**commonActionsGET**](V1Api.md#commonActionsGET) | **GET** /api/v1/common/actions/ | 
 [**commonActionsIdGET**](V1Api.md#commonActionsIdGET) | **GET** /api/v1/common/actions/{id}/ | 
-[**commonAppVariablesDELETE**](V1Api.md#commonAppVariablesDELETE) | **DELETE** /api/v1/common/app-variables/ | 
 [**commonAppVariablesGET**](V1Api.md#commonAppVariablesGET) | **GET** /api/v1/common/app-variables/ | 
-[**commonAppVariablesPOST**](V1Api.md#commonAppVariablesPOST) | **POST** /api/v1/common/app-variables/ | 
+[**commonAppVariablesListGET**](V1Api.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ | 
+[**commonAppVariablesProjectProjectIdGET**](V1Api.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
+[**commonAppVariablesProjectProjectIdPUT**](V1Api.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
 [**commonMediaPathGET**](V1Api.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ | 
 [**commonMenuGroupsFormFieldsGET**](V1Api.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**commonMenuGroupsGET**](V1Api.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ | 
@@ -86,8 +96,10 @@ Method | HTTP request | Description
 [**documentDocumentFieldDetectorsUidPUT**](V1Api.md#documentDocumentFieldDetectorsUidPUT) | **PUT** /api/v1/document/document-field-detectors/{uid}/ | 
 [**documentDocumentFieldValuesGET**](V1Api.md#documentDocumentFieldValuesGET) | **GET** /api/v1/document/document-field-values/ | 
 [**documentDocumentFieldValuesIdGET**](V1Api.md#documentDocumentFieldValuesIdGET) | **GET** /api/v1/document/document-field-values/{id}/ | 
+[**documentDocumentFieldsCheckFieldFormulaPOST**](V1Api.md#documentDocumentFieldsCheckFieldFormulaPOST) | **POST** /api/v1/document/document-fields/check_field_formula/ | 
 [**documentDocumentFieldsFormFieldsGET**](V1Api.md#documentDocumentFieldsFormFieldsGET) | **GET** /api/v1/document/document-fields/form-fields/ | 
 [**documentDocumentFieldsGET**](V1Api.md#documentDocumentFieldsGET) | **GET** /api/v1/document/document-fields/ | 
+[**documentDocumentFieldsPOST**](V1Api.md#documentDocumentFieldsPOST) | **POST** /api/v1/document/document-fields/ | 
 [**documentDocumentFieldsStatsGET**](V1Api.md#documentDocumentFieldsStatsGET) | **GET** /api/v1/document/document-fields/stats/ | 
 [**documentDocumentFieldsUidCheckFormulaPOST**](V1Api.md#documentDocumentFieldsUidCheckFormulaPOST) | **POST** /api/v1/document/document-fields/{uid}/check_formula/ | 
 [**documentDocumentFieldsUidClonePOST**](V1Api.md#documentDocumentFieldsUidClonePOST) | **POST** /api/v1/document/document-fields/{uid}/clone/ | 
@@ -107,6 +119,7 @@ Method | HTTP request | Description
 [**documentDocumentTypesGET**](V1Api.md#documentDocumentTypesGET) | **GET** /api/v1/document/document-types/ | 
 [**documentDocumentTypesImportDocTypePUT**](V1Api.md#documentDocumentTypesImportDocTypePUT) | **PUT** /api/v1/document/document-types/import_doc_type/ | 
 [**documentDocumentTypesPOST**](V1Api.md#documentDocumentTypesPOST) | **POST** /api/v1/document/document-types/ | 
+[**documentDocumentTypesSchemeMigrationsGET**](V1Api.md#documentDocumentTypesSchemeMigrationsGET) | **GET** /api/v1/document/document-types/scheme_migrations/ | 
 [**documentDocumentTypesStatsGET**](V1Api.md#documentDocumentTypesStatsGET) | **GET** /api/v1/document/document-types/stats/ | 
 [**documentDocumentTypesUidClonePOST**](V1Api.md#documentDocumentTypesUidClonePOST) | **POST** /api/v1/document/document-types/{uid}/clone/ | 
 [**documentDocumentTypesUidDELETE**](V1Api.md#documentDocumentTypesUidDELETE) | **DELETE** /api/v1/document/document-types/{uid}/ | 
@@ -120,6 +133,7 @@ Method | HTTP request | Description
 [**documentDocumentsDownloadZipGET**](V1Api.md#documentDocumentsDownloadZipGET) | **GET** /api/v1/document/documents/download_zip/ | 
 [**documentDocumentsForUserGET**](V1Api.md#documentDocumentsForUserGET) | **GET** /api/v1/document/documents/for-user/ | 
 [**documentDocumentsGET**](V1Api.md#documentDocumentsGET) | **GET** /api/v1/document/documents/ | 
+[**documentDocumentsIdActionsGET**](V1Api.md#documentDocumentsIdActionsGET) | **GET** /api/v1/document/documents/{id}/actions/ | 
 [**documentDocumentsIdDELETE**](V1Api.md#documentDocumentsIdDELETE) | **DELETE** /api/v1/document/documents/{id}/ | 
 [**documentDocumentsIdDataGET**](V1Api.md#documentDocumentsIdDataGET) | **GET** /api/v1/document/documents/{id}/data/ | 
 [**documentDocumentsIdDefinitionsGET**](V1Api.md#documentDocumentsIdDefinitionsGET) | **GET** /api/v1/document/documents/{id}/definitions/ | 
@@ -130,9 +144,12 @@ Method | HTTP request | Description
 [**documentDocumentsIdFieldsPUT**](V1Api.md#documentDocumentsIdFieldsPUT) | **PUT** /api/v1/document/documents/{id}/fields/ | 
 [**documentDocumentsIdFullTextGET**](V1Api.md#documentDocumentsIdFullTextGET) | **GET** /api/v1/document/documents/{id}/full_text/ | 
 [**documentDocumentsIdGET**](V1Api.md#documentDocumentsIdGET) | **GET** /api/v1/document/documents/{id}/ | 
+[**documentDocumentsIdHasPdfInfoGET**](V1Api.md#documentDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/documents/{id}/has_pdf_info/ | 
 [**documentDocumentsIdPATCH**](V1Api.md#documentDocumentsIdPATCH) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**documentDocumentsIdPUT**](V1Api.md#documentDocumentsIdPUT) | **PUT** /api/v1/document/documents/{id}/ | 
+[**documentDocumentsIdPdfReprGET**](V1Api.md#documentDocumentsIdPdfReprGET) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
 [**documentDocumentsIdShowGET**](V1Api.md#documentDocumentsIdShowGET) | **GET** /api/v1/document/documents/{id}/show/ | 
+[**documentDocumentsIdSimilarGET**](V1Api.md#documentDocumentsIdSimilarGET) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**documentDocumentsMarkDeletePOST**](V1Api.md#documentDocumentsMarkDeletePOST) | **POST** /api/v1/document/documents/mark_delete/ | 
 [**documentDocumentsPOST**](V1Api.md#documentDocumentsPOST) | **POST** /api/v1/document/documents/ | 
 [**documentDocumentsUnmarkDeletePOST**](V1Api.md#documentDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/documents/unmark_delete/ | 
@@ -156,6 +173,7 @@ Method | HTTP request | Description
 [**documentProjectProjectPkDocumentsDownloadZipGET**](V1Api.md#documentProjectProjectPkDocumentsDownloadZipGET) | **GET** /api/v1/document/project/{project_pk}/documents/download_zip/ | 
 [**documentProjectProjectPkDocumentsForUserGET**](V1Api.md#documentProjectProjectPkDocumentsForUserGET) | **GET** /api/v1/document/project/{project_pk}/documents/for-user/ | 
 [**documentProjectProjectPkDocumentsGET**](V1Api.md#documentProjectProjectPkDocumentsGET) | **GET** /api/v1/document/project/{project_pk}/documents/ | 
+[**documentProjectProjectPkDocumentsIdActionsGET**](V1Api.md#documentProjectProjectPkDocumentsIdActionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/actions/ | 
 [**documentProjectProjectPkDocumentsIdDELETE**](V1Api.md#documentProjectProjectPkDocumentsIdDELETE) | **DELETE** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**documentProjectProjectPkDocumentsIdDataGET**](V1Api.md#documentProjectProjectPkDocumentsIdDataGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/data/ | 
 [**documentProjectProjectPkDocumentsIdDefinitionsGET**](V1Api.md#documentProjectProjectPkDocumentsIdDefinitionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/definitions/ | 
@@ -166,9 +184,12 @@ Method | HTTP request | Description
 [**documentProjectProjectPkDocumentsIdFieldsPUT**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
 [**documentProjectProjectPkDocumentsIdFullTextGET**](V1Api.md#documentProjectProjectPkDocumentsIdFullTextGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/full_text/ | 
 [**documentProjectProjectPkDocumentsIdGET**](V1Api.md#documentProjectProjectPkDocumentsIdGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**documentProjectProjectPkDocumentsIdHasPdfInfoGET**](V1Api.md#documentProjectProjectPkDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/has_pdf_info/ | 
 [**documentProjectProjectPkDocumentsIdPATCH**](V1Api.md#documentProjectProjectPkDocumentsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**documentProjectProjectPkDocumentsIdPUT**](V1Api.md#documentProjectProjectPkDocumentsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**documentProjectProjectPkDocumentsIdPdfReprGET**](V1Api.md#documentProjectProjectPkDocumentsIdPdfReprGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
 [**documentProjectProjectPkDocumentsIdShowGET**](V1Api.md#documentProjectProjectPkDocumentsIdShowGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
+[**documentProjectProjectPkDocumentsIdSimilarGET**](V1Api.md#documentProjectProjectPkDocumentsIdSimilarGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**documentProjectProjectPkDocumentsMarkDeletePOST**](V1Api.md#documentProjectProjectPkDocumentsMarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
 [**documentProjectProjectPkDocumentsPOST**](V1Api.md#documentProjectProjectPkDocumentsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/ | 
 [**documentProjectProjectPkDocumentsUnmarkDeletePOST**](V1Api.md#documentProjectProjectPkDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/unmark_delete/ | 
@@ -222,6 +243,7 @@ Method | HTTP request | Description
 [**extractRatioUsageTopGET**](V1Api.md#extractRatioUsageTopGET) | **GET** /api/v1/extract/ratio-usage/top/ | 
 [**extractRegulationUsageGET**](V1Api.md#extractRegulationUsageGET) | **GET** /api/v1/extract/regulation-usage/ | 
 [**extractRegulationUsageTopGET**](V1Api.md#extractRegulationUsageTopGET) | **GET** /api/v1/extract/regulation-usage/top/ | 
+[**extractTermTagsGET**](V1Api.md#extractTermTagsGET) | **GET** /api/v1/extract/term-tags/ | 
 [**extractTermUsageGET**](V1Api.md#extractTermUsageGET) | **GET** /api/v1/extract/term-usage/ | 
 [**extractTermUsageTopGET**](V1Api.md#extractTermUsageTopGET) | **GET** /api/v1/extract/term-usage/top/ | 
 [**extractTrademarkUsageGET**](V1Api.md#extractTrademarkUsageGET) | **GET** /api/v1/extract/trademark-usage/ | 
@@ -235,27 +257,39 @@ Method | HTTP request | Description
 [**mediaDataPathGET**](V1Api.md#mediaDataPathGET) | **GET** /api/media-data/{path}/ | 
 [**projectProjectClusteringGET**](V1Api.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ | 
 [**projectProjectClusteringIdGET**](V1Api.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ | 
+[**projectProjectsFormFieldsGET**](V1Api.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ | 
 [**projectProjectsGET**](V1Api.md#projectProjectsGET) | **GET** /api/v1/project/projects/ | 
+[**projectProjectsIdActiveTasksGET**](V1Api.md#projectProjectsIdActiveTasksGET) | **GET** /api/v1/project/projects/{id}/active_tasks/ | 
 [**projectProjectsIdAnnotationsAssigneesGET**](V1Api.md#projectProjectsIdAnnotationsAssigneesGET) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ | 
 [**projectProjectsIdAssignAnnotationsPOST**](V1Api.md#projectProjectsIdAssignAnnotationsPOST) | **POST** /api/v1/project/projects/{id}/assign_annotations/ | 
 [**projectProjectsIdAssignDocumentPOST**](V1Api.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**projectProjectsIdAssignDocumentsPOST**](V1Api.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**projectProjectsIdAssigneesGET**](V1Api.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ | 
 [**projectProjectsIdCleanupPOST**](V1Api.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
+[**projectProjectsIdClusterActionsGET**](V1Api.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**projectProjectsIdClusterPOST**](V1Api.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ | 
 [**projectProjectsIdClusteringStatusGET**](V1Api.md#projectProjectsIdClusteringStatusGET) | **GET** /api/v1/project/projects/{id}/clustering-status/ | 
 [**projectProjectsIdDELETE**](V1Api.md#projectProjectsIdDELETE) | **DELETE** /api/v1/project/projects/{id}/ | 
+[**projectProjectsIdDeleteDocumentSimilarityResultsDELETE**](V1Api.md#projectProjectsIdDeleteDocumentSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ | 
+[**projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](V1Api.md#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ | 
 [**projectProjectsIdDetectFieldValuesPOST**](V1Api.md#projectProjectsIdDetectFieldValuesPOST) | **POST** /api/v1/project/projects/{id}/detect_field_values/ | 
+[**projectProjectsIdFormFieldsGET**](V1Api.md#projectProjectsIdFormFieldsGET) | **GET** /api/v1/project/projects/{id}/form-fields/ | 
 [**projectProjectsIdGET**](V1Api.md#projectProjectsIdGET) | **GET** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdMakeSearchablePdfPOST**](V1Api.md#projectProjectsIdMakeSearchablePdfPOST) | **POST** /api/v1/project/projects/{id}/make-searchable-pdf/ | 
+[**projectProjectsIdLocateItemsPOST**](V1Api.md#projectProjectsIdLocateItemsPOST) | **POST** /api/v1/project/projects/{id}/locate_items/ | 
 [**projectProjectsIdMarkDeletePOST**](V1Api.md#projectProjectsIdMarkDeletePOST) | **POST** /api/v1/project/projects/{id}/mark_delete/ | 
 [**projectProjectsIdPATCH**](V1Api.md#projectProjectsIdPATCH) | **PATCH** /api/v1/project/projects/{id}/ | 
 [**projectProjectsIdPUT**](V1Api.md#projectProjectsIdPUT) | **PUT** /api/v1/project/projects/{id}/ | 
 [**projectProjectsIdProgressGET**](V1Api.md#projectProjectsIdProgressGET) | **GET** /api/v1/project/projects/{id}/progress/ | 
+[**projectProjectsIdSearchSimilarDocumentsPOST**](V1Api.md#projectProjectsIdSearchSimilarDocumentsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ | 
+[**projectProjectsIdSearchSimilarTextUnitsPOST**](V1Api.md#projectProjectsIdSearchSimilarTextUnitsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ | 
 [**projectProjectsIdSendClustersToProjectPOST**](V1Api.md#projectProjectsIdSendClustersToProjectPOST) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ | 
 [**projectProjectsIdSetAnnotationStatusPOST**](V1Api.md#projectProjectsIdSetAnnotationStatusPOST) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ | 
 [**projectProjectsIdSetStatusPOST**](V1Api.md#projectProjectsIdSetStatusPOST) | **POST** /api/v1/project/projects/{id}/set_status/ | 
+[**projectProjectsIdSettingsActionsGET**](V1Api.md#projectProjectsIdSettingsActionsGET) | **GET** /api/v1/project/projects/{id}/settings_actions/ | 
+[**projectProjectsIdTaskTaskIdTaskLogsGET**](V1Api.md#projectProjectsIdTaskTaskIdTaskLogsGET) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ | 
+[**projectProjectsIdTasksGET**](V1Api.md#projectProjectsIdTasksGET) | **GET** /api/v1/project/projects/{id}/tasks/ | 
 [**projectProjectsIdUnmarkDeletePOST**](V1Api.md#projectProjectsIdUnmarkDeletePOST) | **POST** /api/v1/project/projects/{id}/unmark_delete/ | 
+[**projectProjectsIdUpdateDocumentFieldsPOST**](V1Api.md#projectProjectsIdUpdateDocumentFieldsPOST) | **POST** /api/v1/project/projects/{id}/update_document_fields/ | 
 [**projectProjectsPOST**](V1Api.md#projectProjectsPOST) | **POST** /api/v1/project/projects/ | 
 [**projectProjectsProjectStatsGET**](V1Api.md#projectProjectsProjectStatsGET) | **GET** /api/v1/project/projects/project_stats/ | 
 [**projectProjectsRecentGET**](V1Api.md#projectProjectsRecentGET) | **GET** /api/v1/project/projects/recent/ | 
@@ -276,6 +310,7 @@ Method | HTTP request | Description
 [**projectUploadSessionUidDeleteFileDELETE**](V1Api.md#projectUploadSessionUidDeleteFileDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ | 
 [**projectUploadSessionUidFilesPOST**](V1Api.md#projectUploadSessionUidFilesPOST) | **POST** /api/v1/project/upload-session/{uid}/files/ | 
 [**projectUploadSessionUidGET**](V1Api.md#projectUploadSessionUidGET) | **GET** /api/v1/project/upload-session/{uid}/ | 
+[**projectUploadSessionUidPATCH**](V1Api.md#projectUploadSessionUidPATCH) | **PATCH** /api/v1/project/upload-session/{uid}/ | 
 [**projectUploadSessionUidProgressGET**](V1Api.md#projectUploadSessionUidProgressGET) | **GET** /api/v1/project/upload-session/{uid}/progress/ | 
 [**projectUploadSessionUidUploadPOST**](V1Api.md#projectUploadSessionUidUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/upload/ | 
 [**rawdbConfigGET**](V1Api.md#rawdbConfigGET) | **GET** /api/v1/rawdb/config/ | 
@@ -291,34 +326,39 @@ Method | HTTP request | Description
 [**restAuthPasswordResetPOST**](V1Api.md#restAuthPasswordResetPOST) | **POST** /rest-auth/password/reset/ | 
 [**restAuthRegistrationPOST**](V1Api.md#restAuthRegistrationPOST) | **POST** /rest-auth/registration/ | 
 [**restAuthRegistrationVerifyEmailPOST**](V1Api.md#restAuthRegistrationVerifyEmailPOST) | **POST** /rest-auth/registration/verify-email/ | 
+[**similarityDocumentSimilarityByFeaturesGET**](V1Api.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
+[**similarityDocumentSimilarityByFeaturesPOST**](V1Api.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 [**similarityPartySimilarityGET**](V1Api.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ | 
 [**similarityPartySimilarityPOST**](V1Api.md#similarityPartySimilarityPOST) | **POST** /api/v1/similarity/party-similarity/ | 
-[**similaritySimilarityByFeaturesGET**](V1Api.md#similaritySimilarityByFeaturesGET) | **GET** /api/v1/similarity/similarity-by-features/ | 
-[**similaritySimilarityByFeaturesPOST**](V1Api.md#similaritySimilarityByFeaturesPOST) | **POST** /api/v1/similarity/similarity-by-features/ | 
+[**similarityProjectDocumentsSimilarityByVectorsGET**](V1Api.md#similarityProjectDocumentsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
+[**similarityProjectDocumentsSimilarityByVectorsPOST**](V1Api.md#similarityProjectDocumentsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
+[**similarityProjectTextUnitsSimilarityByVectorsGET**](V1Api.md#similarityProjectTextUnitsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
+[**similarityProjectTextUnitsSimilarityByVectorsPOST**](V1Api.md#similarityProjectTextUnitsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
 [**similaritySimilarityGET**](V1Api.md#similaritySimilarityGET) | **GET** /api/v1/similarity/similarity/ | 
 [**similaritySimilarityPOST**](V1Api.md#similaritySimilarityPOST) | **POST** /api/v1/similarity/similarity/ | 
+[**similarityTextUnitSimilarityByFeaturesGET**](V1Api.md#similarityTextUnitSimilarityByFeaturesGET) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ | 
+[**similarityTextUnitSimilarityByFeaturesPOST**](V1Api.md#similarityTextUnitSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ | 
 [**taskCleanTasksPOST**](V1Api.md#taskCleanTasksPOST) | **POST** /api/v1/task/clean-tasks/ | 
 [**taskLoadDictionariesPOST**](V1Api.md#taskLoadDictionariesPOST) | **POST** /api/v1/task/load-dictionaries/ | 
 [**taskLoadDocumentsGET**](V1Api.md#taskLoadDocumentsGET) | **GET** /api/v1/task/load-documents/ | 
 [**taskLoadDocumentsPOST**](V1Api.md#taskLoadDocumentsPOST) | **POST** /api/v1/task/load-documents/ | 
 [**taskLocateGET**](V1Api.md#taskLocateGET) | **GET** /api/v1/task/locate/ | 
 [**taskLocatePOST**](V1Api.md#taskLocatePOST) | **POST** /api/v1/task/locate/ | 
+[**taskProcessTextExtractionResultsRequestIdPOST**](V1Api.md#taskProcessTextExtractionResultsRequestIdPOST) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ | 
 [**taskPurgeTaskPOST**](V1Api.md#taskPurgeTaskPOST) | **POST** /api/v1/task/purge-task/ | 
 [**taskRecallTaskGET**](V1Api.md#taskRecallTaskGET) | **GET** /api/v1/task/recall-task/ | 
 [**taskRecallTaskPOST**](V1Api.md#taskRecallTaskPOST) | **POST** /api/v1/task/recall-task/ | 
+[**taskReindexroutinesCheckSchedulePOST**](V1Api.md#taskReindexroutinesCheckSchedulePOST) | **POST** /api/v1/task/reindexroutines/check_schedule | 
 [**taskTaskLogGET**](V1Api.md#taskTaskLogGET) | **GET** /api/v1/task/task-log/ | 
 [**taskTaskStatusGET**](V1Api.md#taskTaskStatusGET) | **GET** /api/v1/task/task-status/ | 
 [**taskTasksGET**](V1Api.md#taskTasksGET) | **GET** /api/v1/task/tasks/ | 
 [**taskTasksIdGET**](V1Api.md#taskTasksIdGET) | **GET** /api/v1/task/tasks/{id}/ | 
+[**taskTasksProjectProjectIdActiveTasksGET**](V1Api.md#taskTasksProjectProjectIdActiveTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ | 
+[**taskTasksProjectProjectIdTasksGET**](V1Api.md#taskTasksProjectProjectIdTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ | 
 [**taskUpdateElasticIndexGET**](V1Api.md#taskUpdateElasticIndexGET) | **GET** /api/v1/task/update-elastic-index/ | 
 [**taskUpdateElasticIndexPOST**](V1Api.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ | 
 [**tusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**tusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-[**usersRolesGET**](V1Api.md#usersRolesGET) | **GET** /api/v1/users/roles/ | 
-[**usersRolesIdGET**](V1Api.md#usersRolesIdGET) | **GET** /api/v1/users/roles/{id}/ | 
-[**usersRolesIdPATCH**](V1Api.md#usersRolesIdPATCH) | **PATCH** /api/v1/users/roles/{id}/ | 
-[**usersRolesIdPUT**](V1Api.md#usersRolesIdPUT) | **PUT** /api/v1/users/roles/{id}/ | 
-[**usersRolesPOST**](V1Api.md#usersRolesPOST) | **POST** /api/v1/users/roles/ | 
 [**usersUsersFormFieldsGET**](V1Api.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ | 
 [**usersUsersGET**](V1Api.md#usersUsersGET) | **GET** /api/v1/users/users/ | 
 [**usersUsersIdFormFieldsGET**](V1Api.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -619,7 +659,7 @@ Name | Type | Description  | Notes
 
 
 
-Document Similarity List
+Base Document Similarity List
 
 ### Example
 ```java
@@ -667,6 +707,144 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;DocumentSimilarity&gt;**](DocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeDocumentTransformerListGET"></a>
+# **analyzeDocumentTransformerListGET**
+> List&lt;Transformer&gt; analyzeDocumentTransformerListGET(jqFilters)
+
+
+
+MLModel List - document transformers only
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Transformer> result = apiInstance.analyzeDocumentTransformerListGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeDocumentTransformerListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Transformer&gt;**](Transformer.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeMlModelListGET"></a>
+# **analyzeMlModelListGET**
+> List&lt;MLModel&gt; analyzeMlModelListGET(jqFilters)
+
+
+
+MLModel List
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<MLModel> result = apiInstance.analyzeMlModelListGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeMlModelListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;MLModel&gt;**](MLModel.md)
 
 ### Authorization
 
@@ -736,6 +914,455 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;PartySimilarity&gt;**](PartySimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeProjectDocumentSimilarityListGET"></a>
+# **analyzeProjectDocumentSimilarityListGET**
+> List&lt;ProjectDocumentSimilarity&gt; analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters)
+
+
+
+Project Document Similarity List for ONE document
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Integer textMaxLength = 56; // Integer | document b text max length, 0 to get all text
+    Integer runId = 56; // Integer | run id or document id required
+    Integer documentId = 56; // Integer | run id or document id required
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectDocumentSimilarity> result = apiInstance.analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeProjectDocumentSimilarityListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
+ **runId** | **Integer**| run id or document id required | [optional]
+ **documentId** | **Integer**| run id or document id required | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeProjectTextUnitSimilarityListGET"></a>
+# **analyzeProjectTextUnitSimilarityListGET**
+> List&lt;ProjectTextUnitSimilarity&gt; analyzeProjectTextUnitSimilarityListGET(jqFilters, textMaxLength, runId, lastRun, textUnitId, documentId, locationStart, locationEnd, selection)
+
+
+
+Project Text Unit Similarity List for ONE text unit
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    Integer textMaxLength = 56; // Integer | text unit b text max length, 0 to get all text
+    Integer runId = 56; // Integer | run id or text unit id required
+    Boolean lastRun = true; // Boolean | run id or last_run or text unit id required
+    Integer textUnitId = 56; // Integer | run id or text unit id required
+    Integer documentId = 56; // Integer | document ID
+    Integer locationStart = 56; // Integer | start of chosen text block in a Document
+    Integer locationEnd = 56; // Integer | end of chosen text block in a Document
+    List<Object> selection = null; // List<Object> | selection coordinates
+    try {
+      List<ProjectTextUnitSimilarity> result = apiInstance.analyzeProjectTextUnitSimilarityListGET(jqFilters, textMaxLength, runId, lastRun, textUnitId, documentId, locationStart, locationEnd, selection);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeProjectTextUnitSimilarityListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+ **textMaxLength** | **Integer**| text unit b text max length, 0 to get all text | [optional]
+ **runId** | **Integer**| run id or text unit id required | [optional]
+ **lastRun** | **Boolean**| run id or last_run or text unit id required | [optional]
+ **textUnitId** | **Integer**| run id or text unit id required | [optional]
+ **documentId** | **Integer**| document ID | [optional]
+ **locationStart** | **Integer**| start of chosen text block in a Document | [optional]
+ **locationEnd** | **Integer**| end of chosen text block in a Document | [optional]
+ **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional]
+
+### Return type
+
+[**List&lt;ProjectTextUnitSimilarity&gt;**](ProjectTextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeProjectTextUnitSimilarityListPOST"></a>
+# **analyzeProjectTextUnitSimilarityListPOST**
+> ProjectTextUnitSimilarity analyzeProjectTextUnitSimilarityListPOST(similarProjectTextUnitsRequest)
+
+
+
+Project Text Unit Similarity List for ONE text unit
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    SimilarProjectTextUnitsRequest similarProjectTextUnitsRequest = new SimilarProjectTextUnitsRequest(); // SimilarProjectTextUnitsRequest | 
+    try {
+      ProjectTextUnitSimilarity result = apiInstance.analyzeProjectTextUnitSimilarityListPOST(similarProjectTextUnitsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeProjectTextUnitSimilarityListPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional]
+
+### Return type
+
+[**ProjectTextUnitSimilarity**](ProjectTextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+<a name="analyzeSimilarityRunsGET"></a>
+# **analyzeSimilarityRunsGET**
+> List&lt;SimilarityRun&gt; analyzeSimilarityRunsGET(unitSource, projectId, jqFilters)
+
+
+
+list Similarity Run objects
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String unitSource = "unitSource_example"; // String | document / text_unit
+    Integer projectId = 56; // Integer | Project ID
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<SimilarityRun> result = apiInstance.analyzeSimilarityRunsGET(unitSource, projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeSimilarityRunsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **unitSource** | **String**| document / text_unit | [optional]
+ **projectId** | **Integer**| Project ID | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;SimilarityRun&gt;**](SimilarityRun.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeSimilarityRunsIdDELETE"></a>
+# **analyzeSimilarityRunsIdDELETE**
+> analyzeSimilarityRunsIdDELETE(id, unitSource, projectId)
+
+
+
+delete Similarity Run object
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this similarity run.
+    String unitSource = "unitSource_example"; // String | document / text_unit
+    Integer projectId = 56; // Integer | Project ID
+    try {
+      apiInstance.analyzeSimilarityRunsIdDELETE(id, unitSource, projectId);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeSimilarityRunsIdDELETE");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this similarity run. |
+ **unitSource** | **String**| document / text_unit | [optional]
+ **projectId** | **Integer**| Project ID | [optional]
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** |  |  -  |
+
+<a name="analyzeSimilarityRunsIdGET"></a>
+# **analyzeSimilarityRunsIdGET**
+> SimilarityRun analyzeSimilarityRunsIdGET(id, unitSource, projectId, jqFilters)
+
+
+
+get Similarity Run object
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this similarity run.
+    String unitSource = "unitSource_example"; // String | document / text_unit
+    Integer projectId = 56; // Integer | Project ID
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      SimilarityRun result = apiInstance.analyzeSimilarityRunsIdGET(id, unitSource, projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeSimilarityRunsIdGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this similarity run. |
+ **unitSource** | **String**| document / text_unit | [optional]
+ **projectId** | **Integer**| Project ID | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**SimilarityRun**](SimilarityRun.md)
 
 ### Authorization
 
@@ -1515,7 +2142,7 @@ Name | Type | Description  | Notes
 
 
 
-Text Unit Similarity List
+Base Text Unit Similarity List
 
 ### Example
 ```java
@@ -1563,6 +2190,75 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;TextUnitSimilarity&gt;**](TextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="analyzeTextUnitTransformerListGET"></a>
+# **analyzeTextUnitTransformerListGET**
+> List&lt;Transformer&gt; analyzeTextUnitTransformerListGET(jqFilters)
+
+
+
+MLModel List - text unit transformers only
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Transformer> result = apiInstance.analyzeTextUnitTransformerListGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#analyzeTextUnitTransformerListGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Transformer&gt;**](Transformer.md)
 
 ### Authorization
 
@@ -1651,7 +2347,7 @@ Name | Type | Description  | Notes
 
 <a name="commonActionsGET"></a>
 # **commonActionsGET**
-> List&lt;Action&gt; commonActionsGET(jqFilters)
+> List&lt;List&lt;Action&gt;&gt; commonActionsGET(projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -1679,9 +2375,12 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.commonActionsGET(jqFilters);
+      List<List<Action>> result = apiInstance.commonActionsGET(projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#commonActionsGET");
@@ -1698,11 +2397,14 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**List&lt;List&lt;Action&gt;&gt;**](List.md)
 
 ### Authorization
 
@@ -1720,7 +2422,7 @@ Name | Type | Description  | Notes
 
 <a name="commonActionsIdGET"></a>
 # **commonActionsIdGET**
-> Action commonActionsIdGET(id, jqFilters)
+> List&lt;Action&gt; commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -1749,9 +2451,12 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this action.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      Action result = apiInstance.commonActionsIdGET(id, jqFilters);
+      List<Action> result = apiInstance.commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#commonActionsIdGET");
@@ -1769,11 +2474,14 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this action. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-[**Action**](Action.md)
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -1782,75 +2490,6 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="commonAppVariablesDELETE"></a>
-# **commonAppVariablesDELETE**
-> String commonAppVariablesDELETE(appVarDelete)
-
-
-
-Delete specific App Variable by name     Param:         - name: str         - category: str
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    AppVarDelete appVarDelete = new AppVarDelete(); // AppVarDelete | 
-    try {
-      String result = apiInstance.commonAppVariablesDELETE(appVarDelete);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#commonAppVariablesDELETE");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **appVarDelete** | [**AppVarDelete**](AppVarDelete.md)|  | [optional]
-
-### Return type
-
-**String**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
@@ -1927,13 +2566,11 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
-<a name="commonAppVariablesPOST"></a>
-# **commonAppVariablesPOST**
-> String commonAppVariablesPOST(requestBody)
+<a name="commonAppVariablesListGET"></a>
+# **commonAppVariablesListGET**
+> List&lt;AppVar&gt; commonAppVariablesListGET(jqFilters)
 
 
-
-Create or update App Variables      Params:         key1: val1,         key2: val2, etc
 
 ### Example
 ```java
@@ -1957,12 +2594,12 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      String result = apiInstance.commonAppVariablesPOST(requestBody);
+      List<AppVar> result = apiInstance.commonAppVariablesListGET(jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#commonAppVariablesPOST");
+      System.err.println("Exception when calling V1Api#commonAppVariablesListGET");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -1976,7 +2613,147 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;AppVar&gt;**](AppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="commonAppVariablesProjectProjectIdGET"></a>
+# **commonAppVariablesProjectProjectIdGET**
+> List&lt;ProjectAppVar&gt; commonAppVariablesProjectProjectIdGET(projectId)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    try {
+      List<ProjectAppVar> result = apiInstance.commonAppVariablesProjectProjectIdGET(projectId);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#commonAppVariablesProjectProjectIdGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+
+### Return type
+
+[**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="commonAppVariablesProjectProjectIdPUT"></a>
+# **commonAppVariablesProjectProjectIdPUT**
+> String commonAppVariablesProjectProjectIdPUT(projectId, projectAppVar)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    List<ProjectAppVar> projectAppVar = Arrays.asList(); // List<ProjectAppVar> | 
+    try {
+      String result = apiInstance.commonAppVariablesProjectProjectIdPUT(projectId, projectAppVar);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#commonAppVariablesProjectProjectIdPUT");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+ **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional]
 
 ### Return type
 
@@ -3260,7 +4037,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     try {
       apiInstance.commonReviewStatusGroupsIdDELETE(id);
     } catch (ApiException e) {
@@ -3278,7 +4055,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
 
 ### Return type
 
@@ -3328,7 +4105,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
       ReviewStatusGroup result = apiInstance.commonReviewStatusGroupsIdGET(id, jqFilters);
@@ -3348,7 +4125,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
@@ -3399,7 +4176,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     ReviewStatusGroup reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup | 
     try {
       ReviewStatusGroup result = apiInstance.commonReviewStatusGroupsIdPATCH(id, reviewStatusGroup);
@@ -3419,7 +4196,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
@@ -3470,7 +4247,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status group.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status Group.
     ReviewStatusGroup reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup | 
     try {
       ReviewStatusGroup result = apiInstance.commonReviewStatusGroupsIdPUT(id, reviewStatusGroup);
@@ -3490,7 +4267,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status group. |
+ **id** | **String**| A unique integer value identifying this Review Status Group. |
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
 
 ### Return type
@@ -3679,7 +4456,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     try {
       apiInstance.commonReviewStatusesIdDELETE(id);
     } catch (ApiException e) {
@@ -3697,7 +4474,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
 
 ### Return type
 
@@ -3747,7 +4524,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
       ReviewStatusDetail result = apiInstance.commonReviewStatusesIdGET(id, jqFilters);
@@ -3767,7 +4544,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
  **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
@@ -3818,7 +4595,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     ReviewStatus reviewStatus = new ReviewStatus(); // ReviewStatus | 
     try {
       ReviewStatus result = apiInstance.commonReviewStatusesIdPATCH(id, reviewStatus);
@@ -3838,7 +4615,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type
@@ -3889,7 +4666,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this review status.
+    String id = "id_example"; // String | A unique integer value identifying this Review Status.
     ReviewStatus reviewStatus = new ReviewStatus(); // ReviewStatus | 
     try {
       ReviewStatus result = apiInstance.commonReviewStatusesIdPUT(id, reviewStatus);
@@ -3909,7 +4686,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this review status. |
+ **id** | **String**| A unique integer value identifying this Review Status. |
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
 
 ### Return type
@@ -5999,6 +6776,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentFieldsCheckFieldFormulaPOST"></a>
+# **documentDocumentFieldsCheckFieldFormulaPOST**
+> DocumentFieldDetail documentDocumentFieldsCheckFieldFormulaPOST(checkNewDocumentFieldFormulaRequest)
+
+
+
+Check formula for new NOT SAVED Document Field Either \&quot;request.data.formula\&quot; or \&quot;request.data.hide_until_python\&quot; should be filled. Expects request data arguments: - formula: str OR - convert_decimals_to_floats_in_formula_args: bool - hide_until_python: str - field_type: str - document_type: str - document type uid - depends_on_fields: List[str] - list of field uids
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    CheckNewDocumentFieldFormulaRequest checkNewDocumentFieldFormulaRequest = new CheckNewDocumentFieldFormulaRequest(); // CheckNewDocumentFieldFormulaRequest | 
+    try {
+      DocumentFieldDetail result = apiInstance.documentDocumentFieldsCheckFieldFormulaPOST(checkNewDocumentFieldFormulaRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentFieldsCheckFieldFormulaPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **checkNewDocumentFieldFormulaRequest** | [**CheckNewDocumentFieldFormulaRequest**](CheckNewDocumentFieldFormulaRequest.md)|  | [optional]
+
+### Return type
+
+[**DocumentFieldDetail**](DocumentFieldDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="documentDocumentFieldsFormFieldsGET"></a>
 # **documentDocumentFieldsFormFieldsGET**
 > Map&lt;String, Object&gt; documentDocumentFieldsFormFieldsGET()
@@ -6132,6 +6978,75 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+
+<a name="documentDocumentFieldsPOST"></a>
+# **documentDocumentFieldsPOST**
+> DocumentFieldCreate documentDocumentFieldsPOST(documentFieldCreate)
+
+
+
+Create Document Field     Params:         - document_type: uid of Document Type         - code: str - Unique Short name for field, max 50 symbols, should contain only latin letters, digits, and underscores         - long_code: str - Unique Calculated field, max 150 symbols         - title: str - Verbose name for field, max 100 symbols         - description: str - optional         - type: str - max 30 symbols (from pre-defined choices)         - text_unit_type: str - (from pre-defined choices) default &#x3D; sentences         - value_detection_strategy: str - max 50 chars (from pre-defined choices)         - unsure_choice_value: str - max 256 chars, default&#x3D;null         - unsure_thresholds_by_value: json         - classifier_init_script: str         - formula: str         - convert_decimals_to_floats_in_formula_args: bool         - depends_on_fields: array of uids, optional         - confidence: str - max 100 chars (from pre-defined choices)         - requires_text_annotations: bool, default&#x3D;True         - read_only: bool, default&#x3D;False         - category: int - id of DocumentFieldCategory instance         - default_value: json         - choices: str - \\n-separated list of choices         - allow_values_not_specified_in_choices: bool - default&#x3D;False         - metadata: json, optional         - training_finished: bool, default&#x3D;False         - dirty: bool, default&#x3D;False         - order: integer - default&#x3D;0         - trained_after_documents_number: integer, default&#x3D;null         - hidden_always: bool - default&#x3D;False         - hide_until_python: str, optional         - hide_until_js: str, optional         - display_yes_no: bool - default&#x3D;False
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    DocumentFieldCreate documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate | 
+    try {
+      DocumentFieldCreate result = apiInstance.documentDocumentFieldsPOST(documentFieldCreate);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentFieldsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional]
+
+### Return type
+
+[**DocumentFieldCreate**](DocumentFieldCreate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
 
 <a name="documentDocumentFieldsStatsGET"></a>
 # **documentDocumentFieldsStatsGET**
@@ -7056,7 +7971,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Note
+Fill in \&quot;self.action_message\&quot; attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 ```java
@@ -7459,6 +8374,71 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **201** |  |  -  |
+
+<a name="documentDocumentTypesSchemeMigrationsGET"></a>
+# **documentDocumentTypesSchemeMigrationsGET**
+> Map&lt;String, Object&gt; documentDocumentTypesSchemeMigrationsGET()
+
+
+
+Get Document Type model versions.
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.documentDocumentTypesSchemeMigrationsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentTypesSchemeMigrationsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
 
 <a name="documentDocumentTypesStatsGET"></a>
 # **documentDocumentTypesStatsGET**
@@ -8357,6 +9337,81 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentsIdActionsGET"></a>
+# **documentDocumentsIdActionsGET**
+> List&lt;Action&gt; documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentsIdActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentDocumentsIdDELETE"></a>
 # **documentDocumentsIdDELETE**
 > documentDocumentsIdDELETE(id)
@@ -9042,6 +10097,73 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentsIdHasPdfInfoGET"></a>
+# **documentDocumentsIdHasPdfInfoGET**
+> Boolean documentDocumentsIdHasPdfInfoGET(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      Boolean result = apiInstance.documentDocumentsIdHasPdfInfoGET(id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentsIdHasPdfInfoGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+**Boolean**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentDocumentsIdPATCH"></a>
 # **documentDocumentsIdPATCH**
 > DocumentDetail documentDocumentsIdPATCH(id, documentDetail)
@@ -9182,6 +10304,73 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentsIdPdfReprGET"></a>
+# **documentDocumentsIdPdfReprGET**
+> DocumentPDFRepr documentDocumentsIdPdfReprGET(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      DocumentPDFRepr result = apiInstance.documentDocumentsIdPdfReprGET(id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentsIdPdfReprGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentDocumentsIdShowGET"></a>
 # **documentDocumentsIdShowGET**
 > File documentDocumentsIdShowGET(id, alt)
@@ -9211,7 +10400,7 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this document.
-    Boolean alt = true; // Boolean | Get alternative document file if exists
+    String alt = "alt_example"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentDocumentsIdShowGET(id, alt);
       System.out.println(result);
@@ -9231,11 +10420,84 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this document. |
- **alt** | **Boolean**| Get alternative document file if exists | [optional]
+ **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt]
 
 ### Return type
 
 [**File**](File.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="documentDocumentsIdSimilarGET"></a>
+# **documentDocumentsIdSimilarGET**
+> ProjectDocumentSimilarity documentDocumentsIdSimilarGET(id, textMaxLength, jqFilters)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer textMaxLength = 56; // Integer | document b text max length, 0 to get all text
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      ProjectDocumentSimilarity result = apiInstance.documentDocumentsIdSimilarGET(id, textMaxLength, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentsIdSimilarGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+ **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
 
 ### Authorization
 
@@ -10871,6 +12133,83 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentProjectProjectPkDocumentsIdActionsGET"></a>
+# **documentProjectProjectPkDocumentsIdActionsGET**
+> List&lt;Action&gt; documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentProjectProjectPkDocumentsIdActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentProjectProjectPkDocumentsIdDELETE"></a>
 # **documentProjectProjectPkDocumentsIdDELETE**
 > documentProjectProjectPkDocumentsIdDELETE(projectPk, id)
@@ -11576,6 +12915,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentProjectProjectPkDocumentsIdHasPdfInfoGET"></a>
+# **documentProjectProjectPkDocumentsIdHasPdfInfoGET**
+> Boolean documentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      Boolean result = apiInstance.documentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentProjectProjectPkDocumentsIdHasPdfInfoGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+**Boolean**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentProjectProjectPkDocumentsIdPATCH"></a>
 # **documentProjectProjectPkDocumentsIdPATCH**
 > DocumentDetail documentProjectProjectPkDocumentsIdPATCH(projectPk, id, documentDetail)
@@ -11720,6 +13128,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentProjectProjectPkDocumentsIdPdfReprGET"></a>
+# **documentProjectProjectPkDocumentsIdPdfReprGET**
+> DocumentPDFRepr documentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      DocumentPDFRepr result = apiInstance.documentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentProjectProjectPkDocumentsIdPdfReprGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentProjectProjectPkDocumentsIdShowGET"></a>
 # **documentProjectProjectPkDocumentsIdShowGET**
 > File documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt)
@@ -11750,7 +13227,7 @@ public class Example {
     V1Api apiInstance = new V1Api(defaultClient);
     String projectPk = "projectPk_example"; // String | 
     String id = "id_example"; // String | A unique integer value identifying this document.
-    Boolean alt = true; // Boolean | Get alternative document file if exists
+    String alt = "alt_example"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt);
       System.out.println(result);
@@ -11771,11 +13248,86 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **projectPk** | **String**|  |
  **id** | **String**| A unique integer value identifying this document. |
- **alt** | **Boolean**| Get alternative document file if exists | [optional]
+ **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt]
 
 ### Return type
 
 [**File**](File.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="documentProjectProjectPkDocumentsIdSimilarGET"></a>
+# **documentProjectProjectPkDocumentsIdSimilarGET**
+> ProjectDocumentSimilarity documentProjectProjectPkDocumentsIdSimilarGET(projectPk, id, textMaxLength, jqFilters)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer textMaxLength = 56; // Integer | document b text max length, 0 to get all text
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      ProjectDocumentSimilarity result = apiInstance.documentProjectProjectPkDocumentsIdSimilarGET(projectPk, id, textMaxLength, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentProjectProjectPkDocumentsIdSimilarGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+ **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
 
 ### Authorization
 
@@ -12207,7 +13759,7 @@ Name | Type | Description  | Notes
 
 <a name="dumpDocumentConfigGET"></a>
 # **dumpDocumentConfigGET**
-> Map&lt;String, Object&gt; dumpDocumentConfigGET()
+> OneOfarrayfile dumpDocumentConfigGET(download, documentTypeCodes)
 
 
 
@@ -12235,8 +13787,10 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
+    Boolean download = true; // Boolean | Download as file
+    String documentTypeCodes = "documentTypeCodes_example"; // String | Document Type codes separated by comma
     try {
-      Map<String, Object> result = apiInstance.dumpDocumentConfigGET();
+      OneOfarrayfile result = apiInstance.dumpDocumentConfigGET(download, documentTypeCodes);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpDocumentConfigGET");
@@ -12250,11 +13804,15 @@ public class Example {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **Boolean**| Download as file | [optional]
+ **documentTypeCodes** | **String**| Document Type codes separated by comma | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -12273,11 +13831,11 @@ This endpoint does not need any parameter.
 
 <a name="dumpDocumentConfigPUT"></a>
 # **dumpDocumentConfigPUT**
-> File dumpDocumentConfigPUT(requestBody)
+> String dumpDocumentConfigPUT(requestBody)
 
 
 
-Upload field values
+Dump document types, fields, field detectors and  document filters to json.
 
 ### Example
 ```java
@@ -12301,9 +13859,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
     try {
-      File result = apiInstance.dumpDocumentConfigPUT(requestBody);
+      String result = apiInstance.dumpDocumentConfigPUT(requestBody);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpDocumentConfigPUT");
@@ -12320,11 +13878,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
 
 ### Return type
 
-[**File**](File.md)
+**String**
 
 ### Authorization
 
@@ -12332,13 +13890,14 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 <a name="dumpDumpFixturePOST"></a>
 # **dumpDumpFixturePOST**
@@ -12411,11 +13970,11 @@ Name | Type | Description  | Notes
 
 <a name="dumpDumpGET"></a>
 # **dumpDumpGET**
-> Map&lt;String, Object&gt; dumpDumpGET()
+> OneOfarrayfile dumpDumpGET(download)
 
 
 
-Dump all users, roles, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 ```java
@@ -12439,8 +13998,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
+    Boolean download = true; // Boolean | Download as file
     try {
-      Map<String, Object> result = apiInstance.dumpDumpGET();
+      OneOfarrayfile result = apiInstance.dumpDumpGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpDumpGET");
@@ -12454,11 +14014,14 @@ public class Example {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **Boolean**| Download as file | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -12477,11 +14040,11 @@ This endpoint does not need any parameter.
 
 <a name="dumpDumpPUT"></a>
 # **dumpDumpPUT**
-> File dumpDumpPUT(requestBody)
+> String dumpDumpPUT(requestBody)
 
 
 
-Upload field values
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 ```java
@@ -12505,9 +14068,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
     try {
-      File result = apiInstance.dumpDumpPUT(requestBody);
+      String result = apiInstance.dumpDumpPUT(requestBody);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpDumpPUT");
@@ -12524,11 +14087,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
 
 ### Return type
 
-[**File**](File.md)
+**String**
 
 ### Authorization
 
@@ -12536,21 +14099,22 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 <a name="dumpFieldValuesGET"></a>
 # **dumpFieldValuesGET**
-> Map&lt;String, Object&gt; dumpFieldValuesGET()
+> OneOfarrayfile dumpFieldValuesGET(download)
 
 
 
-Download field values
+Dump field values to json.
 
 ### Example
 ```java
@@ -12574,8 +14138,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
+    Boolean download = true; // Boolean | Download as file
     try {
-      Map<String, Object> result = apiInstance.dumpFieldValuesGET();
+      OneOfarrayfile result = apiInstance.dumpFieldValuesGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpFieldValuesGET");
@@ -12589,11 +14154,14 @@ public class Example {
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **Boolean**| Download as file | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -12612,7 +14180,7 @@ This endpoint does not need any parameter.
 
 <a name="dumpFieldValuesPUT"></a>
 # **dumpFieldValuesPUT**
-> File dumpFieldValuesPUT(requestBody)
+> String dumpFieldValuesPUT(requestBody)
 
 
 
@@ -12640,9 +14208,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
     try {
-      File result = apiInstance.dumpFieldValuesPUT(requestBody);
+      String result = apiInstance.dumpFieldValuesPUT(requestBody);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpFieldValuesPUT");
@@ -12659,11 +14227,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
 
 ### Return type
 
-[**File**](File.md)
+**String**
 
 ### Authorization
 
@@ -12671,17 +14239,18 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+**400** |  |  -  |
 
 <a name="dumpLoadFixturePOST"></a>
 # **dumpLoadFixturePOST**
-> Map&lt;String, Object&gt; dumpLoadFixturePOST(loadFixture)
+> List&lt;Map&lt;String, Object&gt;&gt; dumpLoadFixturePOST(loadFixture)
 
 
 
@@ -12711,7 +14280,7 @@ public class Example {
     V1Api apiInstance = new V1Api(defaultClient);
     LoadFixture loadFixture = new LoadFixture(); // LoadFixture | 
     try {
-      Map<String, Object> result = apiInstance.dumpLoadFixturePOST(loadFixture);
+      List<Map<String, Object>> result = apiInstance.dumpLoadFixturePOST(loadFixture);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpLoadFixturePOST");
@@ -12732,7 +14301,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -12820,7 +14389,7 @@ Name | Type | Description  | Notes
 
 <a name="extractAmountUsageTopGET"></a>
 # **extractAmountUsageTopGET**
-> List&lt;Object&gt; extractAmountUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractAmountUsageTopGET()
 
 
 
@@ -12848,9 +14417,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractAmountUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractAmountUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractAmountUsageTopGET");
@@ -12864,14 +14432,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -12958,7 +14523,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCitationUsageTopGET"></a>
 # **extractCitationUsageTopGET**
-> List&lt;Object&gt; extractCitationUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCitationUsageTopGET()
 
 
 
@@ -12986,9 +14551,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCitationUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCitationUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractCitationUsageTopGET");
@@ -13002,14 +14566,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -13096,7 +14657,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCopyrightUsageTopGET"></a>
 # **extractCopyrightUsageTopGET**
-> List&lt;Object&gt; extractCopyrightUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCopyrightUsageTopGET()
 
 
 
@@ -13124,9 +14685,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCopyrightUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCopyrightUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractCopyrightUsageTopGET");
@@ -13140,14 +14700,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -13234,7 +14791,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCourtUsageTopGET"></a>
 # **extractCourtUsageTopGET**
-> List&lt;Object&gt; extractCourtUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCourtUsageTopGET()
 
 
 
@@ -13262,9 +14819,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCourtUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCourtUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractCourtUsageTopGET");
@@ -13278,14 +14834,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -13372,7 +14925,7 @@ Name | Type | Description  | Notes
 
 <a name="extractCurrencyUsageTopGET"></a>
 # **extractCurrencyUsageTopGET**
-> List&lt;Object&gt; extractCurrencyUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractCurrencyUsageTopGET()
 
 
 
@@ -13400,9 +14953,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractCurrencyUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractCurrencyUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractCurrencyUsageTopGET");
@@ -13416,14 +14968,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -13510,7 +15059,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDateDurationUsageTopGET"></a>
 # **extractDateDurationUsageTopGET**
-> List&lt;Object&gt; extractDateDurationUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDateDurationUsageTopGET()
 
 
 
@@ -13538,9 +15087,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDateDurationUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDateDurationUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractDateDurationUsageTopGET");
@@ -13554,14 +15102,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -13847,7 +15392,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDateUsageTopGET"></a>
 # **extractDateUsageTopGET**
-> List&lt;Object&gt; extractDateUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDateUsageTopGET()
 
 
 
@@ -13875,9 +15420,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDateUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDateUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractDateUsageTopGET");
@@ -13891,14 +15435,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -13985,7 +15526,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDefinitionUsageTopGET"></a>
 # **extractDefinitionUsageTopGET**
-> List&lt;Object&gt; extractDefinitionUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDefinitionUsageTopGET()
 
 
 
@@ -14013,9 +15554,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDefinitionUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDefinitionUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractDefinitionUsageTopGET");
@@ -14029,14 +15569,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -14123,7 +15660,7 @@ Name | Type | Description  | Notes
 
 <a name="extractDistanceUsageTopGET"></a>
 # **extractDistanceUsageTopGET**
-> List&lt;Object&gt; extractDistanceUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractDistanceUsageTopGET()
 
 
 
@@ -14151,9 +15688,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractDistanceUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractDistanceUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractDistanceUsageTopGET");
@@ -14167,14 +15703,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -14261,7 +15794,7 @@ Name | Type | Description  | Notes
 
 <a name="extractGeoAliasUsageTopGET"></a>
 # **extractGeoAliasUsageTopGET**
-> List&lt;Object&gt; extractGeoAliasUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractGeoAliasUsageTopGET()
 
 
 
@@ -14289,9 +15822,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractGeoAliasUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractGeoAliasUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractGeoAliasUsageTopGET");
@@ -14305,14 +15837,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -14610,7 +16139,7 @@ Name | Type | Description  | Notes
 
 <a name="extractGeoEntityUsageTopGET"></a>
 # **extractGeoEntityUsageTopGET**
-> List&lt;Object&gt; extractGeoEntityUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractGeoEntityUsageTopGET()
 
 
 
@@ -14638,9 +16167,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractGeoEntityUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractGeoEntityUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractGeoEntityUsageTopGET");
@@ -14654,14 +16182,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -14957,7 +16482,7 @@ Name | Type | Description  | Notes
 
 <a name="extractPartyUsageTopGET"></a>
 # **extractPartyUsageTopGET**
-> List&lt;Object&gt; extractPartyUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractPartyUsageTopGET()
 
 
 
@@ -14985,9 +16510,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractPartyUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractPartyUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractPartyUsageTopGET");
@@ -15001,14 +16525,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -15095,7 +16616,7 @@ Name | Type | Description  | Notes
 
 <a name="extractPercentUsageTopGET"></a>
 # **extractPercentUsageTopGET**
-> List&lt;Object&gt; extractPercentUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractPercentUsageTopGET()
 
 
 
@@ -15123,9 +16644,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractPercentUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractPercentUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractPercentUsageTopGET");
@@ -15139,14 +16659,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -15233,7 +16750,7 @@ Name | Type | Description  | Notes
 
 <a name="extractRatioUsageTopGET"></a>
 # **extractRatioUsageTopGET**
-> List&lt;Object&gt; extractRatioUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractRatioUsageTopGET()
 
 
 
@@ -15261,9 +16778,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractRatioUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractRatioUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractRatioUsageTopGET");
@@ -15277,14 +16793,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -15371,7 +16884,7 @@ Name | Type | Description  | Notes
 
 <a name="extractRegulationUsageTopGET"></a>
 # **extractRegulationUsageTopGET**
-> List&lt;Object&gt; extractRegulationUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractRegulationUsageTopGET()
 
 
 
@@ -15399,12 +16912,75 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractRegulationUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractRegulationUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractRegulationUsageTopGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="extractTermTagsGET"></a>
+# **extractTermTagsGET**
+> List&lt;TermTag&gt; extractTermTagsGET(jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<TermTag> result = apiInstance.extractTermTagsGET(jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#extractTermTagsGET");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -15422,7 +16998,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;TermTag&gt;**](TermTag.md)
 
 ### Authorization
 
@@ -15509,7 +17085,7 @@ Name | Type | Description  | Notes
 
 <a name="extractTermUsageTopGET"></a>
 # **extractTermUsageTopGET**
-> List&lt;Object&gt; extractTermUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractTermUsageTopGET()
 
 
 
@@ -15537,9 +17113,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractTermUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractTermUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractTermUsageTopGET");
@@ -15553,14 +17128,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -15647,7 +17219,7 @@ Name | Type | Description  | Notes
 
 <a name="extractTrademarkUsageTopGET"></a>
 # **extractTrademarkUsageTopGET**
-> List&lt;Object&gt; extractTrademarkUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractTrademarkUsageTopGET()
 
 
 
@@ -15675,9 +17247,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractTrademarkUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractTrademarkUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractTrademarkUsageTopGET");
@@ -15691,14 +17262,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -15992,7 +17560,7 @@ Name | Type | Description  | Notes
 
 <a name="extractUrlUsageTopGET"></a>
 # **extractUrlUsageTopGET**
-> List&lt;Object&gt; extractUrlUsageTopGET(jqFilters)
+> List&lt;Map&lt;String, Object&gt;&gt; extractUrlUsageTopGET()
 
 
 
@@ -16020,9 +17588,8 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Object> result = apiInstance.extractUrlUsageTopGET(jqFilters);
+      List<Map<String, Object>> result = apiInstance.extractUrlUsageTopGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#extractUrlUsageTopGET");
@@ -16036,14 +17603,11 @@ public class Example {
 ```
 
 ### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)
 
 ### Authorization
 
@@ -16341,6 +17905,71 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="projectProjectsFormFieldsGET"></a>
+# **projectProjectsFormFieldsGET**
+> Map&lt;String, Object&gt; projectProjectsFormFieldsGET()
+
+
+
+GET model form fields description to build UI form for an object:       - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\&quot;input\&quot; | \&quot;select\&quot; | \&quot;checkbox\&quot; | ...), data_type: (\&quot;string\&quot;, \&quot;integer\&quot;, \&quot;date\&quot;, ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.projectProjectsFormFieldsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsFormFieldsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectProjectsGET"></a>
 # **projectProjectsGET**
 > List&lt;ProjectList&gt; projectProjectsGET(jqFilters)
@@ -16395,6 +18024,75 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**List&lt;ProjectList&gt;**](ProjectList.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectProjectsIdActiveTasksGET"></a>
+# **projectProjectsIdActiveTasksGET**
+> List&lt;ProjectActiveTasks&gt; projectProjectsIdActiveTasksGET(id, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectActiveTasks> result = apiInstance.projectProjectsIdActiveTasksGET(id, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdActiveTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
 
 ### Authorization
 
@@ -16836,6 +18534,81 @@ Name | Type | Description  | Notes
 **201** |  |  -  |
 **200** |  |  -  |
 
+<a name="projectProjectsIdClusterActionsGET"></a>
+# **projectProjectsIdClusterActionsGET**
+> List&lt;Action&gt; projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdClusterActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectProjectsIdClusterPOST"></a>
 # **projectProjectsIdClusterPOST**
 > ClusterProjectResponse projectProjectsIdClusterPOST(id, clusterProjectRequest)
@@ -17048,6 +18821,138 @@ null (empty response body)
 |-------------|-------------|------------------|
 **204** |  |  -  |
 
+<a name="projectProjectsIdDeleteDocumentSimilarityResultsDELETE"></a>
+# **projectProjectsIdDeleteDocumentSimilarityResultsDELETE**
+> projectProjectsIdDeleteDocumentSimilarityResultsDELETE(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    try {
+      apiInstance.projectProjectsIdDeleteDocumentSimilarityResultsDELETE(id);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdDeleteDocumentSimilarityResultsDELETE");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** |  |  -  |
+
+<a name="projectProjectsIdDeleteTextUnitSimilarityResultsDELETE"></a>
+# **projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**
+> projectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    try {
+      apiInstance.projectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: Not defined
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**204** |  |  -  |
+
 <a name="projectProjectsIdDetectFieldValuesPOST"></a>
 # **projectProjectsIdDetectFieldValuesPOST**
 > TaskIdResponse projectProjectsIdDetectFieldValuesPOST(id, detectProjectFieldValuesRequest)
@@ -17116,6 +19021,75 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **201** |  |  -  |
+
+<a name="projectProjectsIdFormFieldsGET"></a>
+# **projectProjectsIdFormFieldsGET**
+> Map&lt;String, Object&gt; projectProjectsIdFormFieldsGET(id)
+
+
+
+GET model form fields description to build UI form for EXISTING object:       - value: any - object field value      - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\&quot;input\&quot; | \&quot;select\&quot; | \&quot;checkbox\&quot; | ...), data_type: (\&quot;string\&quot;, \&quot;integer\&quot;, \&quot;date\&quot;, ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this user.
+    try {
+      Map<String, Object> result = apiInstance.projectProjectsIdFormFieldsGET(id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdFormFieldsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this user. |
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
 
 <a name="projectProjectsIdGET"></a>
 # **projectProjectsIdGET**
@@ -17188,9 +19162,9 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
-<a name="projectProjectsIdMakeSearchablePdfPOST"></a>
-# **projectProjectsIdMakeSearchablePdfPOST**
-> TaskIdResponse projectProjectsIdMakeSearchablePdfPOST(id, makeSearchablePDFRequest)
+<a name="projectProjectsIdLocateItemsPOST"></a>
+# **projectProjectsIdLocateItemsPOST**
+> ProjectDetail projectProjectsIdLocateItemsPOST(id, projectDetail)
 
 
 
@@ -17217,12 +19191,12 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this project.
-    MakeSearchablePDFRequest makeSearchablePDFRequest = new MakeSearchablePDFRequest(); // MakeSearchablePDFRequest | 
+    ProjectDetail projectDetail = new ProjectDetail(); // ProjectDetail | 
     try {
-      TaskIdResponse result = apiInstance.projectProjectsIdMakeSearchablePdfPOST(id, makeSearchablePDFRequest);
+      ProjectDetail result = apiInstance.projectProjectsIdLocateItemsPOST(id, projectDetail);
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#projectProjectsIdMakeSearchablePdfPOST");
+      System.err.println("Exception when calling V1Api#projectProjectsIdLocateItemsPOST");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -17237,11 +19211,11 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this project. |
- **makeSearchablePDFRequest** | [**MakeSearchablePDFRequest**](MakeSearchablePDFRequest.md)|  | [optional]
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -17405,7 +19379,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Project
+Create Document/TextUnit Vectors if needed Update ocr_enable project app var if needed
 
 ### Example
 ```java
@@ -17538,6 +19512,144 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+
+<a name="projectProjectsIdSearchSimilarDocumentsPOST"></a>
+# **projectProjectsIdSearchSimilarDocumentsPOST**
+> TaskIdResponse projectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    ProjectSearchSimilarDocumentsRequest projectSearchSimilarDocumentsRequest = new ProjectSearchSimilarDocumentsRequest(); // ProjectSearchSimilarDocumentsRequest | 
+    try {
+      TaskIdResponse result = apiInstance.projectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdSearchSimilarDocumentsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional]
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+<a name="projectProjectsIdSearchSimilarTextUnitsPOST"></a>
+# **projectProjectsIdSearchSimilarTextUnitsPOST**
+> TaskIdResponse projectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    ProjectSearchSimilarTextUnitsRequest projectSearchSimilarTextUnitsRequest = new ProjectSearchSimilarTextUnitsRequest(); // ProjectSearchSimilarTextUnitsRequest | 
+    try {
+      TaskIdResponse result = apiInstance.projectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdSearchSimilarTextUnitsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional]
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
 
 <a name="projectProjectsIdSendClustersToProjectPOST"></a>
 # **projectProjectsIdSendClustersToProjectPOST**
@@ -17754,6 +19866,223 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **201** |  |  -  |
 
+<a name="projectProjectsIdSettingsActionsGET"></a>
+# **projectProjectsIdSettingsActionsGET**
+> List&lt;Action&gt; projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdSettingsActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectProjectsIdTaskTaskIdTaskLogsGET"></a>
+# **projectProjectsIdTaskTaskIdTaskLogsGET**
+> TaskLogResponse projectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    String taskId = "taskId_example"; // String | 
+    Integer recordsLimit = 56; // Integer | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      TaskLogResponse result = apiInstance.projectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdTaskTaskIdTaskLogsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **taskId** | **String**|  |
+ **recordsLimit** | **Integer**|  | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**TaskLogResponse**](TaskLogResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="projectProjectsIdTasksGET"></a>
+# **projectProjectsIdTasksGET**
+> List&lt;ProjectTasks&gt; projectProjectsIdTasksGET(id, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectTasks> result = apiInstance.projectProjectsIdTasksGET(id, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectProjectsIdUnmarkDeletePOST"></a>
 # **projectProjectsIdUnmarkDeletePOST**
 > MarkUnmarkForDeleteProjectsReponse projectProjectsIdUnmarkDeletePOST(id, markUnmarkForDeleteProjectsRequest)
@@ -17825,13 +20154,85 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **201** |  |  -  |
 
+<a name="projectProjectsIdUpdateDocumentFieldsPOST"></a>
+# **projectProjectsIdUpdateDocumentFieldsPOST**
+> TaskIdResponse projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest)
+
+
+
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \&quot;all\&quot; is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest | 
+    try {
+      TaskIdResponse result = apiInstance.projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdUpdateDocumentFieldsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional]
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+**404** |  |  -  |
+
 <a name="projectProjectsPOST"></a>
 # **projectProjectsPOST**
 > ProjectCreate projectProjectsPOST(projectCreate)
 
 
 
-Create Project
+Create Document/TextUnit Vectors if needed
 
 ### Example
 ```java
@@ -18591,7 +20992,7 @@ Name | Type | Description  | Notes
 
 <a name="projectUploadSessionPOST"></a>
 # **projectUploadSessionPOST**
-> UploadSession projectUploadSessionPOST(uploadSession)
+> UploadSessionCreate projectUploadSessionPOST(uploadSessionCreate)
 
 
 
@@ -18619,9 +21020,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    UploadSession uploadSession = new UploadSession(); // UploadSession | 
+    UploadSessionCreate uploadSessionCreate = new UploadSessionCreate(); // UploadSessionCreate | 
     try {
-      UploadSession result = apiInstance.projectUploadSessionPOST(uploadSession);
+      UploadSessionCreate result = apiInstance.projectUploadSessionPOST(uploadSessionCreate);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#projectUploadSessionPOST");
@@ -18638,11 +21039,11 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **uploadSession** | [**UploadSession**](UploadSession.md)|  | [optional]
+ **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional]
 
 ### Return type
 
-[**UploadSession**](UploadSession.md)
+[**UploadSessionCreate**](UploadSessionCreate.md)
 
 ### Authorization
 
@@ -19232,6 +21633,77 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="projectUploadSessionUidPATCH"></a>
+# **projectUploadSessionUidPATCH**
+> UploadSessionUpdate projectUploadSessionUidPATCH(uid, uploadSessionUpdate)
+
+
+
+Partial Update Session Upload
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String uid = "uid_example"; // String | A UUID string identifying this upload session.
+    UploadSessionUpdate uploadSessionUpdate = new UploadSessionUpdate(); // UploadSessionUpdate | 
+    try {
+      UploadSessionUpdate result = apiInstance.projectUploadSessionUidPATCH(uid, uploadSessionUpdate);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectUploadSessionUidPATCH");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **uid** | **String**| A UUID string identifying this upload session. |
+ **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional]
+
+### Return type
+
+[**UploadSessionUpdate**](UploadSessionUpdate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="projectUploadSessionUidProgressGET"></a>
 # **projectUploadSessionUidProgressGET**
 > ProjectUploadSessionProgressResponse projectUploadSessionUidProgressGET(uid)
@@ -19682,7 +22154,7 @@ Name | Type | Description  | Notes
 
 <a name="rawdbSocialAccountsGET"></a>
 # **rawdbSocialAccountsGET**
-> List&lt;Object&gt; rawdbSocialAccountsGET()
+> SocialAccountsResponse rawdbSocialAccountsGET()
 
 
 
@@ -19709,7 +22181,7 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     try {
-      List<Object> result = apiInstance.rawdbSocialAccountsGET();
+      SocialAccountsResponse result = apiInstance.rawdbSocialAccountsGET();
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#rawdbSocialAccountsGET");
@@ -19727,7 +22199,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**List&lt;Object&gt;**
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 
@@ -20287,6 +22759,140 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **201** |  |  -  |
 
+<a name="similarityDocumentSimilarityByFeaturesGET"></a>
+# **similarityDocumentSimilarityByFeaturesGET**
+> Map&lt;String, Object&gt; similarityDocumentSimilarityByFeaturesGET()
+
+
+
+\&quot;Similarity\&quot; admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.similarityDocumentSimilarityByFeaturesGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#similarityDocumentSimilarityByFeaturesGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="similarityDocumentSimilarityByFeaturesPOST"></a>
+# **similarityDocumentSimilarityByFeaturesPOST**
+> SimilarityPOSTObjectResponse similarityDocumentSimilarityByFeaturesPOST(documentSimilarityByFeaturesForm)
+
+
+
+\&quot;Similarity\&quot; admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    DocumentSimilarityByFeaturesForm documentSimilarityByFeaturesForm = new DocumentSimilarityByFeaturesForm(); // DocumentSimilarityByFeaturesForm | 
+    try {
+      SimilarityPOSTObjectResponse result = apiInstance.similarityDocumentSimilarityByFeaturesPOST(documentSimilarityByFeaturesForm);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#similarityDocumentSimilarityByFeaturesPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional]
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="similarityPartySimilarityGET"></a>
 # **similarityPartySimilarityGET**
 > Map&lt;String, Object&gt; similarityPartySimilarityGET()
@@ -20354,7 +22960,7 @@ This endpoint does not need any parameter.
 
 <a name="similarityPartySimilarityPOST"></a>
 # **similarityPartySimilarityPOST**
-> SimilarityPOSTObjectResponse similarityPartySimilarityPOST(requestBody)
+> SimilarityPOSTObjectResponse similarityPartySimilarityPOST(partySimilarityForm)
 
 
 
@@ -20382,9 +22988,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    PartySimilarityForm partySimilarityForm = new PartySimilarityForm(); // PartySimilarityForm | 
     try {
-      SimilarityPOSTObjectResponse result = apiInstance.similarityPartySimilarityPOST(requestBody);
+      SimilarityPOSTObjectResponse result = apiInstance.similarityPartySimilarityPOST(partySimilarityForm);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#similarityPartySimilarityPOST");
@@ -20401,7 +23007,7 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional]
 
 ### Return type
 
@@ -20421,13 +23027,13 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
-<a name="similaritySimilarityByFeaturesGET"></a>
-# **similaritySimilarityByFeaturesGET**
-> Map&lt;String, Object&gt; similaritySimilarityByFeaturesGET()
+<a name="similarityProjectDocumentsSimilarityByVectorsGET"></a>
+# **similarityProjectDocumentsSimilarityByVectorsGET**
+> Map&lt;String, Object&gt; similarityProjectDocumentsSimilarityByVectorsGET()
 
 
 
-\&quot;Similarity\&quot; admin task  POST params:     - search_similar_documents: bool     - search_similar_text_units: bool     - similarity_threshold: int     - use_idf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+\&quot;Similarity\&quot; admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - feature_source: \&quot;vector\&quot;     - create_reverse_relations: bool - create B-A relations     - item_id: int     - use_tfidf: bool     - delete: bool
 
 ### Example
 ```java
@@ -20452,10 +23058,10 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     try {
-      Map<String, Object> result = apiInstance.similaritySimilarityByFeaturesGET();
+      Map<String, Object> result = apiInstance.similarityProjectDocumentsSimilarityByVectorsGET();
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#similaritySimilarityByFeaturesGET");
+      System.err.println("Exception when calling V1Api#similarityProjectDocumentsSimilarityByVectorsGET");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -20486,13 +23092,13 @@ This endpoint does not need any parameter.
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
-<a name="similaritySimilarityByFeaturesPOST"></a>
-# **similaritySimilarityByFeaturesPOST**
-> SimilarityPOSTObjectResponse similaritySimilarityByFeaturesPOST(requestBody)
+<a name="similarityProjectDocumentsSimilarityByVectorsPOST"></a>
+# **similarityProjectDocumentsSimilarityByVectorsPOST**
+> SimilarityPOSTObjectResponse similarityProjectDocumentsSimilarityByVectorsPOST(projectDocumentsSimilarityByVectorsForm)
 
 
 
-\&quot;Similarity\&quot; admin task  POST params:     - search_similar_documents: bool     - search_similar_text_units: bool     - similarity_threshold: int     - use_idf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+\&quot;Similarity\&quot; admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - feature_source: \&quot;vector\&quot;     - create_reverse_relations: bool - create B-A relations     - item_id: int     - use_tfidf: bool     - delete: bool
 
 ### Example
 ```java
@@ -20516,12 +23122,12 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    ProjectDocumentsSimilarityByVectorsForm projectDocumentsSimilarityByVectorsForm = new ProjectDocumentsSimilarityByVectorsForm(); // ProjectDocumentsSimilarityByVectorsForm | 
     try {
-      SimilarityPOSTObjectResponse result = apiInstance.similaritySimilarityByFeaturesPOST(requestBody);
+      SimilarityPOSTObjectResponse result = apiInstance.similarityProjectDocumentsSimilarityByVectorsPOST(projectDocumentsSimilarityByVectorsForm);
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#similaritySimilarityByFeaturesPOST");
+      System.err.println("Exception when calling V1Api#similarityProjectDocumentsSimilarityByVectorsPOST");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -20535,7 +23141,141 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional]
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="similarityProjectTextUnitsSimilarityByVectorsGET"></a>
+# **similarityProjectTextUnitsSimilarityByVectorsGET**
+> Map&lt;String, Object&gt; similarityProjectTextUnitsSimilarityByVectorsGET()
+
+
+
+\&quot;Similarity\&quot; admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - unit_type: str sentence|paragraph     - feature_source: \&quot;vector\&quot;     - create_reverse_relations: bool - create B-A relations     - use_tfidf: bool     - delete: bool
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.similarityProjectTextUnitsSimilarityByVectorsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#similarityProjectTextUnitsSimilarityByVectorsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="similarityProjectTextUnitsSimilarityByVectorsPOST"></a>
+# **similarityProjectTextUnitsSimilarityByVectorsPOST**
+> SimilarityPOSTObjectResponse similarityProjectTextUnitsSimilarityByVectorsPOST(projectTextUnitsSimilarityByVectorsForm)
+
+
+
+\&quot;Similarity\&quot; admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - unit_type: str sentence|paragraph     - feature_source: \&quot;vector\&quot;     - create_reverse_relations: bool - create B-A relations     - use_tfidf: bool     - delete: bool
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    ProjectTextUnitsSimilarityByVectorsForm projectTextUnitsSimilarityByVectorsForm = new ProjectTextUnitsSimilarityByVectorsForm(); // ProjectTextUnitsSimilarityByVectorsForm | 
+    try {
+      SimilarityPOSTObjectResponse result = apiInstance.similarityProjectTextUnitsSimilarityByVectorsPOST(projectTextUnitsSimilarityByVectorsForm);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#similarityProjectTextUnitsSimilarityByVectorsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional]
 
 ### Return type
 
@@ -20622,7 +23362,7 @@ This endpoint does not need any parameter.
 
 <a name="similaritySimilarityPOST"></a>
 # **similaritySimilarityPOST**
-> SimilarityPOSTObjectResponse similaritySimilarityPOST(requestBody)
+> SimilarityPOSTObjectResponse similaritySimilarityPOST(similarityForm)
 
 
 
@@ -20650,9 +23390,9 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    SimilarityForm similarityForm = new SimilarityForm(); // SimilarityForm | 
     try {
-      SimilarityPOSTObjectResponse result = apiInstance.similaritySimilarityPOST(requestBody);
+      SimilarityPOSTObjectResponse result = apiInstance.similaritySimilarityPOST(similarityForm);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#similaritySimilarityPOST");
@@ -20669,7 +23409,141 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+ **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional]
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="similarityTextUnitSimilarityByFeaturesGET"></a>
+# **similarityTextUnitSimilarityByFeaturesGET**
+> Map&lt;String, Object&gt; similarityTextUnitSimilarityByFeaturesGET()
+
+
+
+\&quot;Similarity\&quot; admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.similarityTextUnitSimilarityByFeaturesGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#similarityTextUnitSimilarityByFeaturesGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="similarityTextUnitSimilarityByFeaturesPOST"></a>
+# **similarityTextUnitSimilarityByFeaturesPOST**
+> SimilarityPOSTObjectResponse similarityTextUnitSimilarityByFeaturesPOST(textUnitSimilarityByFeaturesForm)
+
+
+
+\&quot;Similarity\&quot; admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    TextUnitSimilarityByFeaturesForm textUnitSimilarityByFeaturesForm = new TextUnitSimilarityByFeaturesForm(); // TextUnitSimilarityByFeaturesForm | 
+    try {
+      SimilarityPOSTObjectResponse result = apiInstance.similarityTextUnitSimilarityByFeaturesPOST(textUnitSimilarityByFeaturesForm);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#similarityTextUnitSimilarityByFeaturesPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional]
 
 ### Return type
 
@@ -21095,6 +23969,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="taskProcessTextExtractionResultsRequestIdPOST"></a>
+# **taskProcessTextExtractionResultsRequestIdPOST**
+> Object taskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String requestId = "requestId_example"; // String | 
+    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    try {
+      Object result = apiInstance.taskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#taskProcessTextExtractionResultsRequestIdPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestId** | **String**|  |
+ **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="taskPurgeTaskPOST"></a>
 # **taskPurgeTaskPOST**
 > Map&lt;String, Object&gt; taskPurgeTaskPOST(requestBody)
@@ -21298,9 +24241,76 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="taskReindexroutinesCheckSchedulePOST"></a>
+# **taskReindexroutinesCheckSchedulePOST**
+> Object taskReindexroutinesCheckSchedulePOST(requestBody)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Map<String, Object> requestBody = null; // Map<String, Object> | 
+    try {
+      Object result = apiInstance.taskReindexroutinesCheckSchedulePOST(requestBody);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#taskReindexroutinesCheckSchedulePOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="taskTaskLogGET"></a>
 # **taskTaskLogGET**
-> Map&lt;String, Object&gt; taskTaskLogGET(taskId, recordsLimit)
+> List&lt;TaskLogResponse&gt; taskTaskLogGET(taskId, recordsLimit, jqFilters)
 
 
 
@@ -21330,8 +24340,9 @@ public class Example {
     V1Api apiInstance = new V1Api(defaultClient);
     String taskId = "taskId_example"; // String | 
     Integer recordsLimit = 56; // Integer | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      Map<String, Object> result = apiInstance.taskTaskLogGET(taskId, recordsLimit);
+      List<TaskLogResponse> result = apiInstance.taskTaskLogGET(taskId, recordsLimit, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#taskTaskLogGET");
@@ -21348,12 +24359,13 @@ public class Example {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **taskId** | **String**|  | [optional]
+ **taskId** | **String**|  |
  **recordsLimit** | **Integer**|  | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
 
 ### Return type
 
-**Map&lt;String, Object&gt;**
+[**List&lt;TaskLogResponse&gt;**](TaskLogResponse.md)
 
 ### Authorization
 
@@ -21564,6 +24576,144 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**Task**](Task.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="taskTasksProjectProjectIdActiveTasksGET"></a>
+# **taskTasksProjectProjectIdActiveTasksGET**
+> List&lt;ProjectActiveTasks&gt; taskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectActiveTasks> result = apiInstance.taskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#taskTasksProjectProjectIdActiveTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="taskTasksProjectProjectIdTasksGET"></a>
+# **taskTasksProjectProjectIdTasksGET**
+> List&lt;ProjectTasks&gt; taskTasksProjectProjectIdTasksGET(projectId, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectId = "projectId_example"; // String | 
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<ProjectTasks> result = apiInstance.taskTasksProjectProjectIdTasksGET(projectId, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#taskTasksProjectProjectIdTasksGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **String**|  |
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
 
 ### Authorization
 
@@ -21797,7 +24947,7 @@ Name | Type | Description  | Notes
 
 <a name="tusUploadSessionUploadSessionIdUploadPOST"></a>
 # **tusUploadSessionUploadSessionIdUploadPOST**
-> tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, body)
+> tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, requestBody)
 
 
 
@@ -21830,9 +24980,9 @@ public class Example {
     String uploadMetadata = "uploadMetadata_example"; // String | Upload metadata include file name, relative path, etc.
     String tusResumable = "tusResumable_example"; // String | 1.0.0
     Boolean force = true; // Boolean | Upload a file even if it exists.
-    Object body = null; // Object | 
+    Map<String, Object> requestBody = null; // Map<String, Object> | 
     try {
-      apiInstance.tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, body);
+      apiInstance.tusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, requestBody);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#tusUploadSessionUploadSessionIdUploadPOST");
       System.err.println("Status code: " + e.getCode());
@@ -21853,7 +25003,7 @@ Name | Type | Description  | Notes
  **uploadMetadata** | **String**| Upload metadata include file name, relative path, etc. |
  **tusResumable** | **String**| 1.0.0 |
  **force** | **Boolean**| Upload a file even if it exists. | [optional]
- **body** | **Object**|  | [optional]
+ **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
 
 ### Return type
 
@@ -21873,357 +25023,6 @@ null (empty response body)
 |-------------|-------------|------------------|
 **201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
 **400** |  |  -  |
-
-<a name="usersRolesGET"></a>
-# **usersRolesGET**
-> List&lt;Role&gt; usersRolesGET(jqFilters)
-
-
-
-Role List
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
-    try {
-      List<Role> result = apiInstance.usersRolesGET(jqFilters);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#usersRolesGET");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
-
-### Return type
-
-[**List&lt;Role&gt;**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="usersRolesIdGET"></a>
-# **usersRolesIdGET**
-> Role usersRolesIdGET(id, jqFilters)
-
-
-
-Retrieve Role
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this role.
-    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
-    try {
-      Role result = apiInstance.usersRolesIdGET(id, jqFilters);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#usersRolesIdGET");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this role. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="usersRolesIdPATCH"></a>
-# **usersRolesIdPATCH**
-> Role usersRolesIdPATCH(id, role)
-
-
-
-Partial Update Role
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this role.
-    Role role = new Role(); // Role | 
-    try {
-      Role result = apiInstance.usersRolesIdPATCH(id, role);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#usersRolesIdPATCH");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this role. |
- **role** | [**Role**](Role.md)|  | [optional]
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="usersRolesIdPUT"></a>
-# **usersRolesIdPUT**
-> Role usersRolesIdPUT(id, role)
-
-
-
-Update Role
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    String id = "id_example"; // String | A unique integer value identifying this role.
-    Role role = new Role(); // Role | 
-    try {
-      Role result = apiInstance.usersRolesIdPUT(id, role);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#usersRolesIdPUT");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this role. |
- **role** | [**Role**](Role.md)|  | [optional]
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="usersRolesPOST"></a>
-# **usersRolesPOST**
-> Role usersRolesPOST(role)
-
-
-
-Create Role
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    Role role = new Role(); // Role | 
-    try {
-      Role result = apiInstance.usersRolesPOST(role);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#usersRolesPOST");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **role** | [**Role**](Role.md)|  | [optional]
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**201** |  |  -  |
 
 <a name="usersUsersFormFieldsGET"></a>
 # **usersUsersFormFieldsGET**

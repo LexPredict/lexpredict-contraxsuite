@@ -2,6 +2,7 @@
 
 # PartySimilarity
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -14,7 +15,8 @@ Name | Type | Description | Notes
 **partyBName** | **String** |  |  [optional] [readonly]
 **partyBPk** | **String** |  |  [optional] [readonly]
 **partyBTypeAbbr** | **String** |  |  [optional] [readonly]
-**similarity** | **String** |  | 
+**similarity** | **BigDecimal** |  | 
+**run** | [**DocumentSimilarityRun**](DocumentSimilarityRun.md) |  |  [optional]
 
 
 

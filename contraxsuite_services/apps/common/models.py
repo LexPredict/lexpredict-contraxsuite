@@ -26,7 +26,7 @@
 
 # Standard imports
 import pickle
-from typing import Dict, Any
+from typing import Any, Optional, Tuple, Dict, List
 
 # Django imports
 from django.conf import settings
@@ -35,7 +35,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models, transaction, connection
-from django.db.models import Count, Avg, Max, Case, When, IntegerField
+from django.db.models import Count, Avg, Max, Case, When, IntegerField, UniqueConstraint
 from django.db.models.base import ModelBase
 from django.db.models.deletion import CASCADE, DO_NOTHING
 from django.db.models.lookups import IContains, Contains, Lookup
@@ -43,6 +43,8 @@ from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
+from django.db.models import Q
+from django.utils import timezone
 
 # Third-party imports
 import pandas as pd
@@ -52,13 +54,16 @@ from simple_history.models import HistoricalRecords
 # Project imports
 from apps.common import redis, signals
 from apps.common.log_utils import ProcessLogger
+from apps.common.logger import CsLogger
 from apps.common.migration_utils import is_migration_in_process
+from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
+from apps.common.singleton import Singleton
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,21 +71,396 @@ __email__ = "support@contraxsuite.com"
 is_migrating = is_migration_in_process()
 
 
-class AppVar(models.Model):
-    DEFAULT_CATEGORY = 'general'
-    COMMON_CATEGORY = 'Common'
-    DEPLOYMENT_CATEGORY = 'Deployment'
-    DOCUMENT_CATEGORY = 'Document'
-    EXTRACT_CATEGORY = 'Extract'
-    NOTIFICATIONS_CATEGORY = 'Notifications'
-    RAWDB_CATEGORY = 'RawDB'
-    TASK_CATEGORY = 'Task'
-    MAIL_CATEGORY = 'Mail server'
+class AppVarQuerySet(models.QuerySet):
+    def delete(self):
+        for args in self.values('category', 'name', 'project_id', 'access_type'):
+            AppVarStorage.clear_key(**args)
+        return super().delete()
 
-    """Storage for application variables"""
+
+class ProjectAppVar:
+    # project-level app var data, used as DTO
+    # the logic under getting and setting ProjectAppVar is too complex to implement on
+    # API level
+    def __init__(self,
+                 category: str,
+                 name: str,
+                 access_type: str,
+                 description: str = '',
+                 value: Any = None,
+                 use_system: bool = False,
+                 system_value: Any = None):
+        self.category = category
+        self.name = name
+        self.access_type = access_type
+        self.description = description
+        self.value = value
+        self.use_system = use_system
+        self.system_value = system_value
+
+    def __str__(self):
+        us_sys = ' [use system] ' if self.use_system else ''
+        return f'{self.category}: {self.name}{us_sys}. value="{self.value}". system value="{self.system_value}"'
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class AppVarsCollection:
+    # static class that
+    APP_VARS: Dict[Tuple[str, str], 'AppVar'] = {}
+    SYSTEM_ONLY_APP_VARS: Dict[Tuple[str, str], 'AppVar'] = {}
+
+    @classmethod
+    def store_app_var(cls,
+                      category: str,
+                      name: str,
+                      value: Any,
+                      description: str,
+                      access_type: str,
+                      system_only: bool):
+        default_app_var = AppVar()
+        default_app_var.category = category
+        default_app_var.name = name
+        default_app_var.description = description
+        default_app_var.value = value
+        default_app_var.access_type = access_type
+        cls.APP_VARS[(category, name)] = default_app_var
+
+        if system_only:
+            cls.SYSTEM_ONLY_APP_VARS[(category, name)] = default_app_var
+
+
+@Singleton
+class KnownAppVars:
+    # The class ensures all app vars are initialized before we read them
+    def __init__(self):
+        from apps.common.app_vars import init_app_vars
+        init_app_vars()
+
+    def get_system_only_app_vars(self) -> Dict[Tuple[str, str], 'AppVar']:
+        return AppVarsCollection.SYSTEM_ONLY_APP_VARS
+
+    def find_app_var(self, category: str, name: str) -> Optional['AppVar']:
+        return AppVarsCollection.APP_VARS.get((category, name,))
+
+
+class AppVarStorage:
+    APP_VAR_CACHE_EXPIRES_SECONDS = 60 * 15
+
+    @classmethod
+    def val(cls,
+            category: str,
+            name: str,
+            description: str,
+            access_type: str,
+            default_value: Any,
+            project_id: Optional[int] = None) -> Any:
+
+        # mock in migrating / test mode
+        if cls._should_return_mock():
+            return default_value
+
+        # first, get the appvar value from cache
+        stored = cls._read_cached(category, name, access_type, project_id)
+        if stored:
+            return stored
+
+        # if the appvar is not cached - try to find it in the DB by full key
+        db_values = cls._read_db_values(category, name, project_id)
+
+        if project_id in db_values:
+            # exact match in DB
+            cls._cache(category, name, access_type, project_id, db_values[project_id])
+            return db_values[project_id]
+
+        if db_values:
+            db_value = list(db_values.values())[0]
+            # there's no such record in DB but there's a system level appvar stored
+            # cache the value with the project_id provided even if the value is not specified on the
+            # project's level in the DB
+            cls._cache(category, name, access_type, project_id, db_value)
+            return db_value
+
+        # AppVar wasn't saved yet
+        # the problem is - where is the default value we should store?
+        model = AppVar()
+        model.category = category
+        model.name = name
+        model.description = description
+        model.access_type = access_type
+        model.project_id = project_id
+        model.date = timezone.now()
+        model.value = default_value
+        cls._save_app_var_db_record(model)
+        cls._cache(category, name, access_type, project_id, default_value)
+        return model.value
+
+    @classmethod
+    def set(cls,
+            category: str,
+            name: str,
+            value: Any,
+            description: str = '',
+            access_type: str = 'auth',
+            project_id: Optional[int] = None,
+            overwrite: bool = False) -> 'AppVar':
+        if cls._should_return_mock():
+            mock: AppVar = AppVar()
+            mock.category = category
+            mock.name = name
+            mock.value = value
+            mock.project_id = project_id
+            mock.description = description
+            mock.access_type = access_type
+            return mock
+
+        obj: AppVar  # IDE can't defer the type of the unpacked variable
+        created: bool
+        obj, created = cls._check_app_var_in_db(
+            category, description, name, access_type, project_id, value)
+
+        if not created and overwrite:
+            obj.value = value
+            obj.access_type = access_type    # set access_type via admin site
+            cls._save_app_var_db_record(obj)
+
+        # force renew cached value
+        cls._cache(category, name, access_type, project_id, obj.value)
+        return obj
+
+    @classmethod
+    def get_project_app_vars(cls,
+                             project_id: int,
+                             user: User = None,
+                             exclude_system_only: bool = True) -> List[ProjectAppVar]:
+        # we need a full set of app vars here:
+        # - those defined on system level
+        # - and those defined for this particular project
+        # we can't be sure all these values are cached so we just query the DB
+        # TODO: the question is: what if an app var is not stored in the DB?
+        a_vars = cls._get_project_db_app_vars(project_id, user)
+        var_by_name: Dict[Tuple[str, str], ProjectAppVar] = {}
+        system_vars = None
+        if exclude_system_only:
+            system_vars = KnownAppVars().get_system_only_app_vars()
+
+        for v in a_vars:  # type: AppVar
+            is_system_var = v.project_id is None
+            key = (v.category, v.name,)
+            if system_vars is not None and key in system_vars:
+                continue
+
+            if key in var_by_name:
+                p_var = var_by_name[key]
+            else:
+                p_var = ProjectAppVar(category=v.category, name=v.name, description=v.description, access_type=v.access_type)
+                p_var.use_system = is_system_var
+                var_by_name[key] = p_var
+            p_var.description = p_var.description or v.description
+            if not is_system_var:
+                p_var.use_system = False
+            field_value = 'system_value' if is_system_var else 'value'
+            setattr(p_var, field_value, v.value)
+
+        return list(var_by_name.values())
+
+    @classmethod
+    def apply_project_app_vars(cls,
+                               project_id: int,
+                               p_vars: List[ProjectAppVar],
+                               user_id: Optional[int]) -> None:
+        # we probably got here from project-appvars-PATCH request
+        # first, delete project app vars with "use_system=True"
+        # SIC: we don't update system values here
+        system_vars = [v for v in p_vars if v.use_system]
+        # delete in DB and clear in cache
+        for v in system_vars:
+            cls._delete_app_var_rows(project_id, v.category, v.name)
+            cls.clear_key(v.category, v.name, v.access_type, project_id)
+
+        # TODO: add a check that passed project app var has corresponding system app var to forbid hacker actions + admin access?
+
+        # store per project app vars
+        known_vars = KnownAppVars()
+        project_vars = [v for v in p_vars if not v.use_system]
+        for v in project_vars:
+            # cached_value = cls._read_cached(v.category, v.name, project_id)
+            # if cached_value == v.value:
+            #     continue
+            # store the value in DB and cache the value
+            db_var = AppVar()
+            db_var.category = v.category
+            db_var.name = v.name
+            db_var.access_type = v.access_type
+            db_var.description = v.description
+            if not db_var.description:
+                default_appvar = known_vars.find_app_var(v.category, v.name)
+                if default_appvar:
+                    db_var.description = db_var.description or default_appvar.description or ''
+            db_var.value = v.value
+            db_var.user_id = user_id
+
+            cls._save_app_var_in_db(
+                db_var.category,
+                db_var.description,
+                db_var.name,
+                db_var.access_type,
+                project_id,
+                db_var.value,
+                db_var.user_id
+            )
+            # cache
+            cls._cache(db_var.category, db_var.name, db_var.access_type, project_id, db_var.value)
+
+    @classmethod
+    def _get_project_db_app_vars(cls, project_id: int, user: User = None):
+        qs = AppVar.objects.filter(Q(project_id__isnull=True) | Q(project_id=project_id))
+        if user and not user.is_superuser:
+            qs = qs.exclude(access_type='admin')    # TODO: figure out further if we should use secure things in proj.
+        return list(qs)
+
+    @classmethod
+    def _should_return_mock(cls) -> bool:
+        return is_migrating or settings.TEST_RUN_MODE
+
+    @classmethod
+    def _save_app_var_db_record(cls, app_var: 'AppVar'):
+        app_var.save()
+
+    @classmethod
+    def _delete_app_var_rows(cls, project_id: int, category: str, name: str):
+        AppVar.objects.filter(project_id=project_id, category=category, name=name).delete()
+
+    @classmethod
+    def _read_db_values(cls,
+                        category: str,
+                        name: str,
+                        project_id: Optional[int]) -> Dict[Optional[int], Any]:
+        search_conditions = Q(category=category, name=name, project_id__isnull=True)
+        if project_id is not None:
+            search_conditions |= Q(category=category, name=name, project_id=project_id)
+        return dict(AppVar.objects.filter(search_conditions).values_list('project_id', 'value'))
+
+    @classmethod
+    def _save_app_var_in_db(cls,
+                            category: str,
+                            description: str,
+                            name: str,
+                            access_type: str,
+                            project_id: Optional[int],
+                            value: Any,
+                            user_id: Optional[int] = None) -> Tuple['AppVar', bool]:
+        return cls._get_or_update_app_var(category, description, name, access_type,
+                                          project_id, value, user_id, True)
+
+    @classmethod
+    def _check_app_var_in_db(cls,
+                             category: str,
+                             description: str,
+                             name: str,
+                             access_type: str,
+                             project_id: Optional[int],
+                             value: Any,
+                             user_id: Optional[int] = None) -> Tuple['AppVar', bool]:
+        return cls._get_or_update_app_var(category, description, name, access_type,
+                                          project_id, value, user_id, False)
+
+    @classmethod
+    def _get_or_update_app_var(
+            cls,
+            category: str,
+            description: str,
+            name: str,
+            access_type: str,
+            project_id: Optional[int],
+            value: Any,
+            user_id: Optional[int] = None,
+            update_db_value: bool = False) -> Tuple['AppVar', bool]:
+        routine = AppVar.objects.update_or_create if update_db_value else AppVar.objects.get_or_create
+        try:
+            obj, created = routine(
+                defaults={'value': value, 'description': description, 'user_id': user_id, 'access_type': access_type},
+                category=category,
+                name=name,
+                project_id=project_id)
+            return obj, created
+        except Exception as e:
+            logger = CsLogger.get_django_logger()
+            logger.error(f'''Error saving app var ([{category}:{name}], description: [{description}]. 
+                value: [{value}]).\n{e}''')
+            raise
+
+    @classmethod
+    def _cache(cls, category: str, name: str, access_type: str, project_id: Optional[int], value: Any):
+        if project_id is None:
+            # we also delete all project level cached values because
+            # they might be derived from the system-level value
+            cls.clear_cache_values(category, name, access_type)
+
+        key = cls._make_cache_key(category, name, access_type, project_id)
+        redis.push(key, value, ex=cls.APP_VAR_CACHE_EXPIRES_SECONDS)
+
+    @classmethod
+    def clear_cache_values(cls, category: str, name: str, access_type: str):
+        key_pattern = cls._make_cache_key(category, name, access_type, None) + ':*'
+        for key in redis.list_keys(key_pattern):
+            key = key.decode('utf-8')
+            redis.popd(key, False)
+
+    @classmethod
+    def _read_cached(cls, category: str, name: str, access_type: str, project_id: Optional[int]) -> Any:
+        return redis.pop(cls._make_cache_key(category, name, access_type, project_id))
+
+    @classmethod
+    def _make_cache_key(cls,
+                        category: str,
+                        name: str,
+                        access_type: str,
+                        project_id: Optional[int] = None):
+        if project_id is not None:
+            return f'app_var:{category}:{name}:{access_type}:{project_id}'
+        return f'app_var:{category}:{name}:{access_type}'
+
+    @classmethod
+    def clear_key(cls, category: str, name: str, access_type: str, project_id: Optional[int] = None):
+        cache_key = cls._make_cache_key(category, name, access_type, project_id)
+        redis.popd(cache_key)
+
+    @classmethod
+    def clear(cls, category: str, name: str, access_type: str, project_id: Optional[int] = None) -> Tuple[Any, Any]:
+        # clear cache additionally in case if key exists in cache, but doesn't exist in DB
+        cls.clear_key(category, name, access_type, project_id)
+        return AppVar.objects.filter(category=category, name=name, project_id=project_id).delete()
+
+
+class AppVar(models.Model):
+    """
+    Storage for application variables.
+    """
+    DEFAULT_CATEGORY: str = 'general'
+    COMMON_CATEGORY: str = 'Common'
+    DEPLOYMENT_CATEGORY: str = 'Deployment'
+    DOCUMENT_CATEGORY: str = 'Document'
+    EXTRACT_CATEGORY: str = 'Extract'
+    NOTIFICATIONS_CATEGORY: str = 'Notifications'
+    RAWDB_CATEGORY: str = 'RawDB'
+    TASK_CATEGORY: str = 'Task'
+    MAIL_CATEGORY: str = 'Mail server'
+    ACCESS_TYPE_CHOICES = (('all', 'Available for all users'),
+                           ('auth', 'Available for authenticated users '),
+                           ('admin', 'Available for superusers / admins only'))
 
     class Meta:
-        unique_together = (('category', 'name'),)
+        verbose_name: str = 'App Var'
+        verbose_name_plural: str = 'App Vars'
+        constraints = [
+            UniqueConstraint(fields=['category', 'name', 'project'],
+                             name='unique_with_project'),
+            UniqueConstraint(fields=['category', 'name'],
+                             condition=Q(project=None),
+                             name='unique_without_project'),
+        ]
 
     # variable category, unique together with name
     category = models.CharField(max_length=100, db_index=True, default=DEFAULT_CATEGORY)
@@ -91,6 +471,11 @@ class AppVar(models.Model):
     # variable data
     value = JSONField(blank=True, null=True)
 
+    access_type = models.CharField(max_length=10, choices=ACCESS_TYPE_CHOICES, default='auth')
+
+    # project-level configuration
+    project = models.ForeignKey('project.Project', blank=True, null=True, on_delete=CASCADE, default=None)
+
     # variable description
     description = models.TextField(blank=True)
 
@@ -98,87 +483,35 @@ class AppVar(models.Model):
     date = models.DateTimeField(auto_now=True, db_index=True)
 
     # last modified user
-    user = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
+    user = models.ForeignKey(User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
 
     history = HistoricalRecords()
 
+    objects = AppVarQuerySet.as_manager()
+
     def __str__(self):
-        return f"App Variable (category={self.category} name={self.name})"
+        return f'App Variable (category={self.category} name={self.name} project={self.project})'
+
+    def val(self, project_id: Optional[int] = None) -> Any:
+        return AppVarStorage.val(
+            self.category, self.name, self.description, self.access_type, self.value, project_id)
 
     @classmethod
-    def get_values_by_category(cls, category: str) -> Dict[str, Any]:
-        if is_migrating:
-            return {}
-        cat_vals = {}
-        for name, value in AppVar.objects.filter(category=category).values_list('name', 'value'):
-            cat_vals[name] = value
-        return cat_vals
+    def set(cls,
+            category: str,
+            name: str,
+            value: Any,
+            description: str = '',
+            access_type: str = 'auth',
+            project_id: Optional[int] = None,
+            system_only: bool = True,
+            overwrite: bool = False) -> 'AppVar':
+        AppVarsCollection.store_app_var(category, name, value, description, access_type, system_only)
+        return AppVarStorage.set(category, name, value, description, access_type, project_id, overwrite)
 
-    def get_cached_value(self, cache: Dict[str, Any]) -> Any:
-        if self.name in cache:
-            return cache[self.name]
-        return self.val
-
-    @property
-    def cache_key(self):
-        return f'app_var:{self.category}:{self.name}'
-
-    def cache(self):
-        redis.push(self.cache_key, self.value)
-
-    @classmethod
-    def set(cls, category: str, name: str, value, description='', overwrite=False) -> 'AppVar':
-        if is_migrating or settings.TEST_RUN_MODE:
-            mock = AppVar()
-            mock.category = category
-            mock.name = name
-            mock.value = value
-            mock.description = description
-            return mock
-
-        obj, created = cls.objects.get_or_create(
-            category=category,
-            name=name,
-            defaults={"value": value, "description": description})
-        if not created and overwrite:
-            obj.value = value
-            obj.save()
-
-        # force renew cached value
-        obj.cache()
-        return obj
-
-    @classmethod
-    def get(cls, category: str, name: str, default=None):
-        if is_migrating or settings.TEST_RUN_MODE:
-            return default
-        qs = cls.objects.filter(name=name, category=category)
-        for v in qs.values_list('value', flat=True):
-            return v
-        return default
-
-    @property
-    def val(self):
-        if is_migrating or settings.TEST_RUN_MODE:
-            return self.value
-        if redis.exists(self.cache_key) is True:
-            return redis.pop(self.cache_key)
-        try:
-            self.refresh_from_db()
-        except AppVar.DoesNotExist:
-            self.save()
-        self.cache()
-        return self.value
-
-    def save(self, **kwargs):
-        res = super().save(**kwargs)
-        self.cache()
-        return res
-
-    @classmethod
-    def clear(cls, name: str, category: str):
-        return cls.objects.filter(name=name, category=category).delete()
+    def delete(self, **kwargs):
+        AppVarStorage.clear_key(self.category, self.name, self.access_type, self.project_id)
+        return super().delete(**kwargs)
 
 
 @receiver(models.signals.post_save, sender=AppVar)
@@ -212,13 +545,14 @@ class ReviewStatusGroup(models.Model):
 
     class Meta:
         ordering = ['order', 'name', 'code']
+        verbose_name = 'Review Status Group'
+        verbose_name_plural = 'Review Status Groups'
 
     def __str__(self):
         """"
         String representation
         """
-        return "ReviewStatusGroup (pk={0}, name={1})" \
-            .format(self.pk, self.name)
+        return f'ReviewStatusGroup (pk={self.pk}, name={self.name})'
 
     def save(self, **kwargs):
         if not self.code:
@@ -248,14 +582,14 @@ class ReviewStatus(models.Model):
 
     class Meta:
         ordering = ['order', 'name', 'code']
+        verbose_name = 'Review Status'
         verbose_name_plural = 'Review Statuses'
 
     def __str__(self):
         """"
         String representation
         """
-        return "ReviewStatus (pk={0}, name={1})" \
-            .format(self.pk, self.name)
+        return f'ReviewStatus (pk={self.pk}, name={self.name})'
 
     def _fire_saved(self, old_instance=None):
         signals.review_status_saved.send(self.__class__, user=None, instance=self, old_instance=old_instance)
@@ -264,10 +598,9 @@ class ReviewStatus(models.Model):
         if not self.code:
             self.code = self.name.lower().replace(' ', '_')
         old_instance = ReviewStatus.objects.filter(pk=self.pk).first()
-        res = super().save(**kwargs)
+        super().save(**kwargs)
         with transaction.atomic():
             transaction.on_commit(lambda: self._fire_saved(old_instance))
-        return res
 
     @classmethod
     def initial_status(cls):
@@ -283,12 +616,22 @@ class ReviewStatus(models.Model):
         status = cls.initial_status()
         return cls.initial_status().pk if status else None
 
+    @property
+    def is_final(self):
+        if self.group:
+            return not self.group.is_active
+
 
 def get_default_status():
     return ReviewStatus.initial_status_pk()
 
 
 class ObjectStorage(models.Model):
+
+    class Meta:
+        verbose_name = 'Object Storage'
+        verbose_name_plural = 'Object Stores'
+
     key = models.CharField(max_length=100, primary_key=True, db_index=True)
 
     last_updated = models.DateTimeField(null=False, blank=False, default=now)
@@ -310,29 +653,34 @@ class ObjectStorage(models.Model):
 
 
 class Action(models.Model):
-    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE)
-    name = models.CharField(max_length=50, default='list')
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_pk = models.CharField(max_length=36, blank=True, null=True)
+    # action name - mostly just human-readable short view action value like "Document Note Created"
+    name = models.CharField(max_length=50, default='unknown', db_index=True)
+    # verbose name / something more informative that just action name either action description
+    message = models.TextField(blank=True, null=True, db_index=True)
+    # view.action value: update, partial_update, create, list, retrieve, destroy, etc.
+    view_action = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+
+    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE, db_index=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, db_index=True)
+    object_pk = models.CharField(max_length=36, blank=True, null=True, db_index=True)
     object = GenericForeignKey('content_type', 'object_pk')
-    date = models.DateTimeField(auto_now=True)
+    date = models.DateTimeField(auto_now=True, db_index=True)
     model_name = models.CharField(max_length=50, blank=True, null=True)
     app_label = models.CharField(max_length=20, blank=True, null=True)
-    object_str = models.CharField(max_length=200, blank=True, null=True)
+    object_str = models.CharField(max_length=200, blank=True, null=True, db_index=True)
+    request_data = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     def __str__(self):
-        return '{} - {} - {} - {}'.format(
-            self.user.username,
-            self.name,
-            self.object or self.content_type.model.capitalize(),
-            self.date)
+        return f'{self.user.name if self.user else "None"} - ' \
+               f'{self.name} - ' \
+               f'{self.model_name}#{self.object_pk} - ' \
+               f'{self.date}'
 
     def save(self, **kwargs):
-        self.model_name = self.content_type.model_class().__name__
-        self.app_label = self.content_type.app_label
-        self.object_str = None
-        if self.object_pk:
-            self.object_str = str(self.object)
+        # TODO: disable as it should produce extra DB calls
+        # self.object_str = None
+        # if self.object_pk:
+        #     self.object_str = str(self.object)
         return super().save(**kwargs)
 
 
@@ -355,6 +703,10 @@ class ThreadDumpRecord(models.Model):
     memory_usage = models.BigIntegerField(null=True, blank=True)
     memory_usage_system_wide = models.BigIntegerField(null=True, blank=True)
     dump = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Thread Dump Record'
+        verbose_name_plural = 'Thread Dump Records'
 
 
 class MethodStats(models.Model):
@@ -385,6 +737,7 @@ class MethodStats(models.Model):
     error_traceback = models.TextField(null=True, blank=True)
 
     class Meta:
+        verbose_name = 'Method Stat'
         verbose_name_plural = 'Method Stats'
 
     def __str__(self):
@@ -474,6 +827,11 @@ def delete_plugin(sender, instance, **kwargs):
 
 
 class MenuGroup(models.Model):
+
+    class Meta:
+        verbose_name = 'Menu Group'
+        verbose_name_plural = 'Menu Groups'
+
     name = models.CharField(
         max_length=100, db_index=True,
         help_text='Menu item group (folder) name.')
@@ -504,6 +862,11 @@ def save_menu_group(sender, instance, created, **kwargs):
 
 
 class MenuItem(models.Model):
+
+    class Meta:
+        verbose_name = 'Menu Item'
+        verbose_name_plural = 'Menu Items'
+
     name = models.CharField(
         max_length=100, db_index=True,
         help_text='Menu item name.')
@@ -597,7 +960,7 @@ class FullTextSearch(Lookup):
         query_value = ' & '.join(['<->'.join(i.strip('%').split()) for i in rhs_params])
 
         from apps.common.app_vars import PG_FULL_TEXT_SEARCH_LOCALE
-        locale = PG_FULL_TEXT_SEARCH_LOCALE.val
+        locale = PG_FULL_TEXT_SEARCH_LOCALE.val()
         return f"{column_name} @@ to_tsquery('pg_catalog.{locale}', '{query_value}')", []
 
     def as_postgresql(self, qn, connection):
@@ -643,14 +1006,19 @@ class ContainsOrFullTextSearch(FullTextSearch):
 
     def enable_full_text_search(self, qn):
         from apps.common.app_vars import USE_FULL_TEXT_SEARCH, AUTO_FULL_TEXT_SEARCH_CUTOFF
-        if USE_FULL_TEXT_SEARCH.val == 'auto':
+        if USE_FULL_TEXT_SEARCH.val() == 'auto':
             target = qn.klass_info['model'] if qn.klass_info is not None else self.lhs.alias
             approx_table_rows = approx_count(target)
-            return approx_table_rows > AUTO_FULL_TEXT_SEARCH_CUTOFF.val
-        return USE_FULL_TEXT_SEARCH.val
+            return approx_table_rows > AUTO_FULL_TEXT_SEARCH_CUTOFF.val()
+        return USE_FULL_TEXT_SEARCH.val()
 
 
 class ExportFile(models.Model):
+
+    class Meta:
+        verbose_name = 'Export File'
+        verbose_name_plural = 'Export Files'
+
     file_path = models.CharField(
         max_length=1024,
         db_index=True,

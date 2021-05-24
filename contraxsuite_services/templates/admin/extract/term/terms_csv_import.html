@@ -1,0 +1,112 @@
+{% load static %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.1.1/jquery-confirm.min.js"></script>
+<script type="text/javascript">
+  $(document).ready(function () {
+    var action_url = 'upload_csv_file/';
+    $('.load-form').click(function(){
+      var jc = $.confirm({
+        title: 'Import terms from CSV',
+        backgroundDismiss: true,
+        columnClass: 'col-md-6',
+        type: 'blue',
+        icon: 'fa fa-warning text-warning',
+        content: function(){
+          var self = this;
+          $.get(action_url).done(function(data){
+            var content = '<form enctype="multipart/form-data">' + data.form_data + '</form>';
+            var $content = $(content);
+            self.setContent($content);
+          }).fail(function(xhr) {
+            jc.close();
+            // if getting a form failed
+            $.alert({
+              icon: 'fa fa-warning text-danger',
+              title: xhr.responseText,
+              type: 'red',
+              content: '',
+              columnClass: 'col-md-4'
+            });
+            return false
+          })
+        },
+        buttons: {
+          confirm: {
+            text: 'Import',
+            btnClass: 'btn btn-info',
+            action: function(){
+              var jc = this;
+              var form = jc.$content.find('form');
+              form.find('.error').remove();
+              // POST action succeed
+              var onSuccess = function(data, status, xhr){
+                jc.close();
+                if (data && data.status == 'error') {
+                    $.alert({
+                      icon: 'fa fa-spinner fa-spin text-error',
+                      title: 'Error',
+                      type: 'red',
+                      content: data.message || '',
+                      columnClass: 'col-md-4'
+                    });
+                    return false;
+                }
+
+                $.alert({
+                  icon: 'fa fa-spinner fa-spin text-warning',
+                  title: 'Done',
+                  type: 'orange',
+                  content: '',
+                  columnClass: 'col-md-4'
+                });
+                return false;
+              };
+              // POST action failed
+              var onError = function(data) {
+                console.log(data);
+                // if form error - highlight form field
+                if (data.responseJSON && typeof data.responseJSON === 'object') {
+                  $.each(data.responseJSON, function (field, error) {
+                    var error_p = '<p class="error">' + error[0] + '</p>';
+                    form.find('#id_' + field).before(error_p);
+                  });
+                }
+                // otherwise just close popup and show a warning
+                else {
+                  jc.close();
+                  $.alert({
+                    icon: 'fa fa-warning text-danger',
+                    title: 'Something went wrong',
+                    type: 'red',
+                    content: data.statusText,
+                    columnClass: 'col-md-4'
+                  });
+                }
+                return false;
+              };
+              // use FormData rather than form.serialize() for file fields; kept as is for info
+              if (window.FormData){
+                var formdata = new FormData(form[0])}
+              var post_data = formdata ? formdata : form.serialize();
+              post_data.append('csrfmiddlewaretoken', $("[name=csrfmiddlewaretoken]").val());
+
+              // send POST with file
+              $.ajax({
+                url: action_url,
+                type: 'POST',
+                data: post_data,
+                contentType: false,
+                processData: false,
+                success: onSuccess,
+                error: onError});
+              return false;
+            }
+          },
+          cancel: {
+            btnClass: 'btn'
+          }
+        }
+      });
+    });
+  })
+</script>

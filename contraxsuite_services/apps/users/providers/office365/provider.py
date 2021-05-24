@@ -33,9 +33,9 @@ from apps.users.providers.custom_auxilary import route_next_param_to_query, deri
     format_data_message, is_email_addr_format, log_error
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,13 +64,22 @@ class Office365Provider(OAuth2Provider):
         return ['openid', 'User.read']
 
     def extract_uid(self, data):
+        if 'id' not in data:
+            raise Exception(f'Office365Provider: data contains no "id" field. Data is:\n{data}')
         return str(data['id'])
+
+    def sociallogin_from_response(self, request, response):
+        if not response:
+            msg = 'Office365Provider.sociallogin_from_response() - no data returned'
+            log_error(msg)
+            raise Exception(msg)
+        return super().sociallogin_from_response(request, response)
 
     def extract_common_fields(self, data):
         user_email = data.get('mail', '')
         if not user_email:
             from apps.users.app_vars import READ_AZURE_AD_PRINCIPAL_EMAIL
-            if READ_AZURE_AD_PRINCIPAL_EMAIL.val:
+            if READ_AZURE_AD_PRINCIPAL_EMAIL.val():
                 user_email = data.get('userPrincipalName', '')
                 if not is_email_addr_format(user_email):
                     user_email = ''

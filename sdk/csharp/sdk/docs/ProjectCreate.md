@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 **Description** | **string** |  | [optional] 
 **Type** | **string** |  | [optional] 
 **SendEmailNotification** | **bool** |  | [optional] 
+**TermTags** | **List&lt;int&gt;** |  | [optional] 
+**CompanytypeTags** | **List&lt;int&gt;** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

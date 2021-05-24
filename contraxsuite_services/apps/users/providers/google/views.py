@@ -23,27 +23,27 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
-import logging
 
 import requests
-from allauth.socialaccount.providers.oauth2.client import OAuth2Error
 
-from allauth.socialaccount.providers.oauth2.views import (
-    OAuth2Adapter, OAuth2CallbackView, OAuth2LoginView)
-from .provider import GoogleProvider
-from ..custom_uris import get_callback_url
-from ...adapters import email_follows_pattern
-from ...models import User
+from allauth.socialaccount.providers.oauth2.client import OAuth2Error
+from allauth.socialaccount.providers.oauth2.views import OAuth2Adapter, OAuth2CallbackView, OAuth2LoginView
+
+from apps.common.logger import CsLogger
+from apps.users.adapters import email_follows_pattern
+from apps.users.models import User
+from apps.users.providers.google.provider import GoogleProvider
+from apps.users.providers.custom_uris import get_callback_url
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
 class GoogleOAuth2Adapter(OAuth2Adapter):

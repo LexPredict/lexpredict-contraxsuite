@@ -38,8 +38,7 @@ from apps.common.log_utils import ProcessLogger
 from apps.document.models import Document, DocumentType
 from apps.document.constants import FieldSpec
 from apps.rawdb.constants import DOC_NUM_PER_SUB_TASK, DOC_NUM_PER_MAIN_TASK
-from apps.rawdb.field_value_tables import (
-    adapt_table_structure)
+from apps.rawdb.field_value_tables import adapt_table_structure
 from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 from apps.rawdb.field_value_tables import cache_document_fields
 from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
@@ -47,9 +46,9 @@ from apps.users.models import User
 import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -172,7 +171,7 @@ def manual_reindex(task: ExtendedTask,
                    force: bool = False,
                    project_id: Optional[int] = None):
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
     run_parameters = {'document type': document_type_code}
@@ -210,7 +209,7 @@ def _reindex_document_ids_packets(task: ExtendedTask, ids_packets: Generator[Lis
              max_retries=3)
 def reindex_all_project_documents(task: ExtendedTask, project_pk: Any) -> None:
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
     _reindex_document_ids_packets(task,
@@ -227,7 +226,7 @@ def reindex_all_project_documents(task: ExtendedTask, project_pk: Any) -> None:
              max_retries=3)
 def reindex_assignee_for_all_documents_in_system(task: ExtendedTask, assignee_pk: Any) -> None:
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
     _reindex_document_ids_packets(task,
@@ -245,7 +244,7 @@ def reindex_assignee_for_all_documents_in_system(task: ExtendedTask, assignee_pk
              max_retries=3)
 def reindex_status_name_for_all_documents_in_system(task: ExtendedTask, status_pk: Any) -> None:
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         task.log_info('Document caching to raw tables is disabled in Commons / App Vars')
         return
     _reindex_document_ids_packets(task,
@@ -275,7 +274,7 @@ def auto_reindex_not_tracked(task: ExtendedTask,
                              document_type_code: str = None,
                              force: bool = False):
     from apps.rawdb.app_vars import APP_VAR_DISABLE_RAW_DB_CACHING
-    if APP_VAR_DISABLE_RAW_DB_CACHING.val:
+    if APP_VAR_DISABLE_RAW_DB_CACHING.val():
         return
     document_types = [DocumentType.objects.get(code=document_type_code)] \
         if document_type_code is not None else DocumentType.objects.all()
@@ -333,7 +332,9 @@ def adapt_tables_and_reindex(task: ExtendedTask,
     log = CeleryTaskLogger(task)
     from apps.document.repository.document_repository import DocumentRepository
     doc_repo = DocumentRepository()
-
+    from apps.rawdb.app_vars import APP_VAR_RAW_DB_REINDEX_PACK_SIZE, APP_VAR_RAW_DB_REINDEX_PRIORITY
+    reindex_pack_size = APP_VAR_RAW_DB_REINDEX_PACK_SIZE.val()
+    reindex_priority = APP_VAR_RAW_DB_REINDEX_PRIORITY.val()
     for document_type in document_types:
         reindex_needed = adapt_table_structure(log,
                                                document_type,
@@ -346,13 +347,10 @@ def adapt_tables_and_reindex(task: ExtendedTask,
                 purge_task(prev_task)
             doc_ids = doc_repo.get_doc_ids_by_project(project_id, DOC_NUM_PER_SUB_TASK) if project_id \
                 else doc_repo.get_doc_ids_by_type(document_type.uid, DOC_NUM_PER_SUB_TASK)
-
-            args = [(ids,) for ids in doc_ids]
             task.log_info(f'Initiating re-index for all documents of {document_type.code} '
                           f' - forced tables recreating.')
-            task.run_sub_tasks('Reindex set of documents',
-                               cache_document_fields_for_doc_ids_tracked,
-                               args)
+
+            run_cache_document_fields_in_chunks(task, reindex_pack_size, reindex_priority, doc_ids)
         elif reindex_needed or force_reindex:
             comment = 'forced' if force_reindex else 'reindex needed'
             task.log_info(f'Raw DB table for document type {document_type.code} '
@@ -365,9 +363,7 @@ def adapt_tables_and_reindex(task: ExtendedTask,
                 project_id, DOC_NUM_PER_SUB_TASK) if project_id else \
                 get_all_doc_ids_not_planned_to_index_by_doc_type(
                     document_type.uid, DOC_NUM_PER_SUB_TASK)
-            args = [(ids,) for ids in doc_ids]
-            task.run_sub_tasks('Reindex set of documents',
-                               cache_document_fields_for_doc_ids_tracked, args)
+            run_cache_document_fields_in_chunks(task, reindex_pack_size, reindex_priority, doc_ids)
         else:
             # If we did not alter the table but there are non-indexed docs fo this type
             # then we trigger the re-index task making it index non-indexed docs only.
@@ -382,9 +378,28 @@ def adapt_tables_and_reindex(task: ExtendedTask,
             doc_ids = non_indexed_doc_ids_not_planned_to_index_by_project(
                 document_type, project_id, DOC_NUM_PER_SUB_TASK) if project_id \
                 else non_indexed_doc_ids_not_planned_to_index_by_doc_type(
-                    document_type, DOC_NUM_PER_SUB_TASK)
-            args = [(ids,) for ids in doc_ids]
-            task.run_sub_tasks('Reindex set of documents', cache_document_fields_for_doc_ids_tracked, args)
+                document_type, DOC_NUM_PER_SUB_TASK)
+            run_cache_document_fields_in_chunks(task, reindex_pack_size, reindex_priority, doc_ids)
+
+
+def run_cache_document_fields_in_chunks(task: ExtendedTask,
+                                        reindex_pack_size: int,
+                                        priority: int,
+                                        doc_ids: Union[Iterable[int], Generator[List[int], None, None]]):
+    priority = priority or None
+    if reindex_pack_size:
+        for doc_pack in chunks(doc_ids, reindex_pack_size):
+            args = [(ids,) for ids in doc_pack]
+            task.run_sub_tasks('Reindex set of documents',
+                               cache_document_fields_for_doc_ids_tracked,
+                               args,
+                               priority=priority)
+    else:
+        args = [(ids,) for ids in doc_ids]
+        task.run_sub_tasks('Reindex set of documents',
+                           cache_document_fields_for_doc_ids_tracked,
+                           args,
+                           priority=priority)
 
 
 def cache_document_fields_for_doc_ids(task: ExtendedTask,

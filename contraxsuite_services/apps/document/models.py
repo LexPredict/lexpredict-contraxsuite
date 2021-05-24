@@ -26,29 +26,32 @@
 
 # Standard imports
 import datetime
+import gc
 import hashlib
+import os
 import pickle
 import re
 import uuid
 from enum import Enum
 from io import StringIO
-from typing import List, Union, Any, Tuple
+from typing import List, Union, Any, Tuple, Dict, Optional
 
 import jiphy
+import msgpack
 import pandas as pd
 
 # Django imports
 from ckeditor.fields import RichTextField
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
-from django.db.models import Count, F, Value, QuerySet, Index, Q
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Concat
+from django.db.models import F, Value, QuerySet, Q, Index
 from django.dispatch import receiver
 from django.utils.html import format_html
 from django.utils.timezone import now
@@ -58,30 +61,29 @@ from picklefield import PickledObjectField
 from simple_history.models import HistoricalRecords
 
 from apps.common.fields import StringUUIDField, CustomJSONField
+from apps.common.file_storage import get_file_storage
 from apps.common.managers import BulkSignalsManager
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
 from apps.common.models import get_default_status
+from apps.common.validators import RegexPatternValidator
 from apps.document import constants
 from apps.document.value_extraction_hints import ValueExtractionHint, ORDINAL_EXTRACTION_HINTS
 from apps.users.models import User, CustomUserObjectPermission
-from apps.users.permissions import remove_perm, document_type_manager_permissions
+from apps.users.permissions import remove_perm, document_type_manager_permissions, document_permissions
 
 # WARNING: Do not import from field_types.py here to avoid cyclic dependencies and unpredictable behavior.
 # When RawdbFieldHandler of a field is required - use RawdbFieldHandler.of() in the client code.
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-def all_reviewers():
-    return {'role': 'reviewer'}
-
-
 EXTRACTION_HINT_CHOICES = tuple((hint.name, hint.name) for hint in ValueExtractionHint)
+file_storage = get_file_storage()
 
 
 class TimeStampedModel(models.Model):
@@ -106,6 +108,18 @@ class TimeStampedModel(models.Model):
             models.signals.post_save.connect(func, sender=sender)
 
 
+class LazyTimeStampedModel(models.Model):
+    created_date = models.DateTimeField(null=True, blank=True, db_index=True)
+    modified_date = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_by = models.ForeignKey(
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
+    modified_by = models.ForeignKey(
+        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
+
+    class Meta:
+        abstract = True
+
+
 class DocumentFieldCategory(models.Model):
     document_type = models.ForeignKey('document.DocumentType', null=True, blank=False,
                                       related_name='categories', on_delete=CASCADE)
@@ -127,6 +141,34 @@ class DocumentFieldCategory(models.Model):
 
     def __repr__(self):
         return self.__str__()
+
+
+@receiver(models.signals.pre_delete, sender=DocumentFieldCategory)
+def notify_category_deleted(sender, instance, **kwargs):
+    from apps.document.notifications import notify_document_field_category_event
+    notify_document_field_category_event(instance, 'deleted')
+
+
+@receiver(models.signals.post_save, sender=DocumentFieldCategory)
+def notify_category_created(sender, instance, created, **kwargs):
+    if created:
+        from apps.document.notifications import notify_document_field_category_event
+        notify_document_field_category_event(instance, 'created')
+
+
+@receiver(models.signals.pre_save, sender=DocumentFieldCategory)
+def notify_category_updated(sender, instance, **kwargs):
+    from apps.document.notifications import notify_document_field_category_event
+    if instance.pk:
+        prev_instance_state = DocumentFieldCategory.objects.get(pk=instance.pk)
+        changes = {}
+        for field in ['name', 'order', 'document_type']:
+            old_value = getattr(prev_instance_state, field)
+            new_value = getattr(instance, field)
+            if new_value != old_value:
+                changes[field] = {'from': old_value, 'to': new_value}
+        if changes:
+            notify_document_field_category_event(instance, 'changed', changes)
 
 
 class DocumentFieldFamily(models.Model):
@@ -166,24 +208,6 @@ class DocumentFieldFamily(models.Model):
 
 
 class DocumentFieldManager(models.Manager):
-    def set_dirty_for_value(self, field_id: int, doc_type_id: str):
-        field = self.get(pk=field_id, document_type_id=doc_type_id)
-        field.dirty = True
-        field.save()
-
-    def _get_dirty_fields_filter(self):
-        user_delay = DocumentFieldManager.get_user_delay()
-        return self.filter(dirty=True,
-                           value_detection_strategy__in=DocumentField.VALUE_DETECTION_AUTO_TRAINABLE,
-                           training_finished=False,
-                           modified_date__lt=user_delay)
-
-    def has_dirty_fields(self):
-        return self._get_dirty_fields_filter().exists()
-
-    def get_dirty_fields(self):
-        return self._get_dirty_fields_filter().prefetch_related('document_type').all()
-
     def assigned_fields(self):
         return self.filter(document_type__isnull=False)
 
@@ -239,79 +263,46 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
     # Type of the text unit to parse.
     text_unit_type = models.CharField(max_length=10, choices=UNIT_TYPES, default='sentence')
 
-    DETECT_LIMIT_NONE = 'NONE'
-    DETECT_LIMIT_UNIT = 'UNIT'
-
-    DETECT_LIMIT_OPTIONS = [(DETECT_LIMIT_NONE, 'No Limit'),
-                            (DETECT_LIMIT_UNIT, 'Limit to N "text unit type" units')]
-
-    # see detect_limit_count
-    detect_limit_unit = models.CharField(max_length=10,
-                                         choices=DETECT_LIMIT_OPTIONS,
-                                         default=DETECT_LIMIT_NONE,
-                                         help_text='''Choose to add an upward limit to the amount of document text 
-                                         ContraxSuite will search for this Document Field. For example, you can choose 
-                                         to only search the first 10 paragraphs of text for the value required (this 
-                                         often works best for values like “Company,” “Execution Date,” or “Parties,”
-                                         all of which typically appear in the first few paragraphs of a contract).''')
-
-    # while detecting field value restrict to N units (see detect_limit_unit)
-    # 0 means no limit
-    detect_limit_count = models.IntegerField(null=False, default=0, db_index=True, help_text='''Specify the maximum 
-range for a bounded search. Field detection begins at the top of the document and continues until this Nth 
-"Detect limit unit" element.''')
-
     DEFAULT_UNSURE_THRESHOLD = 0.9
 
     VD_DISABLED = 'disabled'
 
     VD_USE_REGEXPS_ONLY = 'use_regexps_only'
 
-    VD_REGEXP_TABLE = 'regexp_table'
+    VD_USE_MULTILINE_ONLY = 'regexp_table'
 
     VD_USE_FORMULA_ONLY = 'use_formula_only'
 
-    VD_REGEXPS_AND_TEXT_BASED_ML = 'regexps_and_text_based_ml'
-
     VD_TEXT_BASED_ML_ONLY = 'text_based_ml_only'
-
-    VD_FORMULA_AND_FIELD_BASED_ML = 'formula_and_fields_based_ml'
 
     VD_FIELD_BASED_ML_ONLY = 'fields_based_ml_only'
 
     VD_FIELD_BASED_WITH_UNSURE_ML_ONLY = 'fields_based_prob_ml_only'
 
-    VD_PYTHON_CODED_FIELD = 'python_coded_field'
-
     VD_FIELD_BASED_REGEXPS = 'field_based_regexps'
 
     VD_MLFLOW_MODEL = 'mlflow_model'
 
-    VALUE_DETECTION_AUTO_TRAINABLE = {
-        VD_REGEXPS_AND_TEXT_BASED_ML,
-        VD_FORMULA_AND_FIELD_BASED_ML,
-    }
+    VALUE_DETECTION_STRATEGY_API_CHOICES = [
+        (VD_DISABLED, 'Field detection disabled'),
+        (VD_USE_REGEXPS_ONLY, 'No ML. Use regexp Field Detectors'),
+        (VD_USE_FORMULA_ONLY, 'No ML. Use formula only'),
+        (VD_USE_MULTILINE_ONLY, 'Use Multi-Line Field Detectors'),
+        (VD_TEXT_BASED_ML_ONLY, 'Use pre-trained text-based ML only'),
+        (VD_MLFLOW_MODEL, 'Use pre-trained MLflow model to find matching text units')
+    ]
 
-    VALUE_DETECTION_STRATEGY_CHOICES = [(VD_DISABLED, 'Field detection disabled'),
-                                        (VD_USE_REGEXPS_ONLY,
-                                         'No ML. Use regexp field detectors.'),
-                                        (VD_REGEXP_TABLE,
-                                         'Use regexp pattern: value collection.'),
-                                        (VD_USE_FORMULA_ONLY,
-                                         'No ML. Use formula only.'),
-                                        (VD_REGEXPS_AND_TEXT_BASED_ML,
-                                         'Start with regexps, switch to text-based ML when possible.'),
-                                        (VD_TEXT_BASED_ML_ONLY,
-                                         'Use pre-trained text-based ML only.'),
-                                        (VD_FORMULA_AND_FIELD_BASED_ML,
-                                         'Start with formula, switch to fields-based ML when possible.'),
-                                        (VD_FIELD_BASED_ML_ONLY, 'Use pre-trained field-based ML only.'),
-                                        (VD_FIELD_BASED_WITH_UNSURE_ML_ONLY,
-                                         'Use pre-trained field-based ML with "Unsure" category.'),
-                                        (VD_PYTHON_CODED_FIELD, 'Use python class for value detection.'),
-                                        (VD_FIELD_BASED_REGEXPS, 'Apply regexp field detectors to '
-                                                                 'depends-on field values'),
-                                        (VD_MLFLOW_MODEL, 'Use pre-trained mlflow model to find matching text units.')]
+    VALUE_DETECTION_STRATEGY_CHOICES = [
+        (VD_DISABLED, 'Field detection disabled'),
+        (VD_USE_REGEXPS_ONLY, 'No ML. Use regexp Field Detectors'),
+        (VD_USE_FORMULA_ONLY, 'No ML. Use formula only'),
+        (VD_USE_MULTILINE_ONLY, 'Use Multi-Line Field Detectors'),
+        (VD_TEXT_BASED_ML_ONLY, 'Use pre-trained text-based ML only'),
+        (VD_FIELD_BASED_ML_ONLY, 'Use pre-trained field-based ML only'),
+        (VD_FIELD_BASED_WITH_UNSURE_ML_ONLY, 'Use pre-trained field-based ML with "Unsure" category'),
+        (VD_FIELD_BASED_REGEXPS, 'Apply regexp Field Detectors to depends-on field values'),
+        (VD_MLFLOW_MODEL, 'Use pre-trained MLflow model to find matching text units')
+    ]
 
     value_detection_strategy = models.CharField(max_length=50,
                                                 choices=VALUE_DETECTION_STRATEGY_CHOICES,
@@ -334,8 +325,6 @@ range for a bounded search. Field detection begins at the top of the document an
     or the choice value specified in "Unsure choice value" field. Format: { "value1": 0.9, "value2": 0.5, ...}.
      Default: ''' + str(DEFAULT_UNSURE_THRESHOLD))
 
-    python_coded_field = models.CharField(max_length=100, null=True, blank=True)
-
     mlflow_model_uri = models.CharField(max_length=1024, null=True, blank=True, help_text='''MLFlow model URI 
     understandable by the MLFlow artifact downloading routines.''')
 
@@ -354,9 +343,8 @@ range for a bounded search. Field detection begins at the top of the document an
     Use this checkbox for converting them to Python float type before calculating the formula. 
     Float: 0.1 + 0.2 = 0.30000000000000004. Decimal: 0.1 + 0.2 = 0.3.''')
 
-    value_regexp = models.TextField(null=True, blank=True, help_text='''This regular expression is run on the sentence 
-    found by a Field Detector and extracts a specific string value from a Text Unit. The first matching group is used if
-     the regular expression returns multiple matching groups. This is only applicable to string fields.''')
+    value_regexp = models.TextField(null=True, blank=True, validators=[RegexPatternValidator()], help_text='''This regular expression is run on the sentence 
+    found by a Field Detector and extracts a specific string value from a Text Unit. If the regular expression returns multiple matching groups, then the first matching group will be used by the Field. This is only applicable to String Fields.''')
 
     depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields', symmetrical=False)
 
@@ -367,10 +355,8 @@ range for a bounded search. Field detection begins at the top of the document an
 
     read_only = models.BooleanField(default=False, null=False, blank=False)
 
-    default_value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder, help_text='''When populated, this 
-    default value is displayed in the user interface’s annotator sidebar for the associated field. If not populated, the
-     Field Value remains empty by default. Please wrap entries with quotes, example: “landlord”. This is only applicable
-      to Choice and Multichoice fields.''')
+    default_value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder,
+                              help_text='''If populated, the Default Value will be displayed for this Field if no other value is found by the chosen Value Detection Strategy. Leave this form blank to have the Field Value remain empty by default. Please wrap entries with quotes, example: “landlord”. This is only applicable to Choice and Multi Choice Fields.''')
 
     # In case the type of the field requires selecting one of pre-defined values -
     # they should be stored \n-separated in the "choices" property
@@ -385,13 +371,6 @@ range for a bounded search. Field detection begins at the top of the document an
     admin_unit_details.short_description = "Unit Details"
 
     allow_values_not_specified_in_choices = models.BooleanField(blank=False, null=False, default=False)
-
-    # Used for quickly detecting a value if one of these regexps is matched.
-    # Format:
-    # { "regexp": "choice_value", "regexp": "choice_value", ..... }
-    # For field-based field detecting (formulas/ML/field detectors):
-    #   - strategies try to find any of these regexps
-    stop_words = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
     metadata = CustomJSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
@@ -423,7 +402,9 @@ range for a bounded search. Field detection begins at the top of the document an
         source = source or self.title
         code = re.sub(r'\W+', '_', source.lower()).strip('_')
         if DocumentField.objects.filter(code=code, document_type=self.document_type).exists():
-            similar_codes = DocumentField.objects.filter(code__iregex=re.sub(r'(.+?)\d+$', r'\1\\d+', code), document_type=self.document_type)
+            similar_codes = DocumentField.objects.filter(
+                code__iregex=re.sub(r'(.+?)\d+$', r'\1\\d+', code),
+                document_type=self.document_type)
             latest_index = max([int(re.sub(r'.+?(\d+)?$', r'\1', i) or 0)
                                 for i in similar_codes.values_list('code', flat=True)])
             code_base = re.sub(r'_?\d+$', '', code)
@@ -434,10 +415,10 @@ range for a bounded search. Field detection begins at the top of the document an
         return self.value_detection_strategy and self.value_detection_strategy != self.VD_DISABLED
 
     def get_depends_on_uids(self) -> QuerySet:
-        return self.depends_on_fields.all().values_list('pk', flat=True)
+        return self.depends_on_fields.values_list('pk', flat=True)
 
     def get_depends_on_codes(self) -> QuerySet:
-        return self.depends_on_fields.all().values_list('code', flat=True)
+        return self.depends_on_fields.values_list('code', flat=True)
 
     class Meta:
         unique_together = (('code', 'document_type'), ('code', 'document_type', 'modified_by', 'modified_date'),)
@@ -447,8 +428,7 @@ range for a bounded search. Field detection begins at the top of the document an
             Index(fields=['training_finished']),
             Index(fields=['modified_date']),
             Index(fields=['text_unit_type']),
-            Index(fields=['confidence']),
-            Index(fields=['python_coded_field'])]
+            Index(fields=['confidence'])]
         permissions = (
             ('view_documentfield_stats', 'View document field stats'),
             ('clone_documentfield', 'Clone document field'),
@@ -505,17 +485,31 @@ range for a bounded search. Field detection begins at the top of the document an
                and self.modified_date < DocumentFieldManager.get_user_delay()
 
     def save(self, *args, **kwargs):
+        # check "depends_on_fields" listed fields have the same document type
+        wrong_fields: List[str] = []
+        own_doc_code = self.document_type.code
+        if self.uid:  # if uid is None, the field hasn't been stored yet
+            for f_code, f_type in self.depends_on_fields.values_list('code', 'document_type__code'):
+                if f_type != own_doc_code:
+                    wrong_fields.append(f'{f_code} ({f_type})')
+            if wrong_fields:
+                raise ValidationError('Following fields listed in "depends on fields" have different '
+                                      'document type: ' + ', '.join(wrong_fields),
+                                      'depends_on_field')
+
         self.hide_until_python = self.hide_until_python.strip() if self.hide_until_python else ''
         self.hide_until_js = jiphy.to.javascript(self.hide_until_python) if self.hide_until_python else ''
+
+        document_type = None
+        if self.document_type is not None:
+            document_type = DocumentType.objects.get(pk=self.document_type.pk)
+
         with transaction.atomic():
             for values in DocumentField.objects.filter(pk=self.pk).values('document_type__pk', 'type'):
                 if values['document_type__pk'] != self.document_type.pk or values['type'] != self.type:
                     # DocumentFieldValue.objects.filter(field=self).delete()
                     FieldAnnotation.objects.filter(field=self).delete()
                     break
-            document_type = None
-            if self.document_type is not None:
-                document_type = DocumentType.objects.get(pk=self.document_type.pk)
             self.long_code = self.get_long_code(self, document_type)
             super().save(*args, **kwargs)
 
@@ -539,9 +533,13 @@ range for a bounded search. Field detection begins at the top of the document an
 
 
 @receiver(models.signals.pre_delete, sender=DocumentField)
-def remove_document_field_perms(sender, instance, **kwargs):
+def remove_document_field(sender, instance, **kwargs):
     ctype = get_content_type(DocumentField)
     CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=instance.pk).delete()
+    # set modified_by for doc type
+    doc_type = instance.document_type
+    doc_type.modified_by = instance.request_user
+    doc_type.save()
 
 
 @receiver(models.signals.post_save, sender=DocumentField)
@@ -551,6 +549,11 @@ def save_document_field(sender, instance, created, **kwargs):
         # grant_document_field_perms
         for perm_name in document_type_manager_permissions['document_field']:
             assign_perm(perm_name, instance.created_by, instance)
+    # set modified_by for doc type
+    doc_type = instance.document_type
+    if hasattr(instance, 'request_user'):
+        doc_type.modified_by = instance.request_user
+    doc_type.save()
 
 
 class DocumentType(TimeStampedModel):
@@ -558,8 +561,10 @@ class DocumentType(TimeStampedModel):
     DocumentType describes custom document type.
     """
 
-    DOCUMENT_EDITOR_CHOICES = ['save_by_field', 'save_all_fields_at_once', 'no_text']
-    DOCUMENT_EDITOR_CHOICES = [(i, i) for i in DOCUMENT_EDITOR_CHOICES]
+    DOCUMENT_EDITOR_CHOICES = (
+        ('save_by_field', 'Save Fields Individually'),  # the first value is default
+        ('save_all_fields_at_once', 'Save All Fields At Once'),
+    )
     GENERIC_TYPE_CODE = constants.DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 
     # Make pk field unique
@@ -581,11 +586,19 @@ only Latin letters, digits, and underscores.''')
     search_fields = models.ManyToManyField(
         DocumentField, related_name='search_field_document_type', blank=True)
 
-    editor_type = models.CharField(max_length=100, blank=True, null=True, choices=DOCUMENT_EDITOR_CHOICES)
+    editor_type = models.CharField(max_length=100,
+                                   default=DOCUMENT_EDITOR_CHOICES[0][0],
+                                   choices=DOCUMENT_EDITOR_CHOICES)
 
     metadata = CustomJSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
-    managers = models.ManyToManyField(User, related_name='document_type_managers', blank=True)
+    managers = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='document_type_managers',
+        help_text='Choose which users can modify this Document Type. '
+                  'Users chosen as Managers can be of any System-Level Permission.'
+    )
 
     class Meta:
         unique_together = (('code', 'modified_by', 'modified_date'),)
@@ -623,12 +636,10 @@ only Latin letters, digits, and underscores.''')
     def is_generic(self):
         return self.code == DocumentType.GENERIC_TYPE_CODE
 
-    def save(self, *args, **kwargs):
-        with transaction.atomic():
-            super().save(*args, **kwargs)
-            DocumentField.objects \
-                .filter(document_type=self) \
-                .update(long_code=Concat(Value(self.code + ': '), F('code')))
+    def rename_child_fields(self):
+        DocumentField.objects \
+            .filter(document_type=self) \
+            .update(long_code=Concat(Value(f'{self.code}: '), F('code')))
 
 
 @receiver(models.signals.post_save, sender=DocumentType)
@@ -670,7 +681,7 @@ class DocumentManager(models.Manager):
     use_in_migrations = True
 
     def get_queryset(self):
-        qs = super(DocumentManager, self).get_queryset().filter(delete_pending=False)
+        qs = super().get_queryset().filter(delete_pending=False)
         qs.use_in_migrations = True
         return qs
 
@@ -686,12 +697,13 @@ class DocumentAllObjectsManager(models.Manager.from_queryset(DocumentQuerySet)):
     pass
 
 
-class Document(models.Model):
+class Document(LazyTimeStampedModel):
     """Document object model
 
-    Document is the root class for the `document` app model.  Each :model:`document.Document`
-    can contain zero or more :model:`document.TextUnit`, as well as its own set of fixed and
+    Document is the root class for the :mod:`apps.document` app model.  Each :class:`Document<apps.document.models.Document>`
+    can contain zero or more :class:`TextUnit<apps.document.models.TextUnit>`, as well as its own set of fixed and
     flexible metadata about the document per se.
+
     """
     LOG_FIELD_DOC_ID = 'log_document_id'
     LOG_FIELD_DOC_NAME = 'log_document_name'
@@ -710,7 +722,8 @@ class Document(models.Model):
     description = models.TextField(null=True, db_index=True)
 
     # Language,  as detected upon ingestion and stored via ISO code
-    language = models.CharField(max_length=3, blank=True, null=True, db_index=True)
+    # The longest one is `tzm-Latn-DZ`
+    language = models.CharField(max_length=11, blank=True, null=True, db_index=True)
 
     # Document source name, e.g., Acme File System or Acme Google Mail
     source = models.CharField(max_length=1024, db_index=True, null=True)
@@ -746,7 +759,7 @@ class Document(models.Model):
     # apply custom objects manager
     objects = DocumentObjectsManager()
 
-    ql_objects = DocumentAllObjectsManager()
+    ql_objects = DjangoQLQuerySet.as_manager()
 
     all_objects = models.Manager.from_queryset(DocumentQuerySet)()
 
@@ -768,7 +781,7 @@ class Document(models.Model):
 
     document_class = models.CharField(max_length=256, db_index=True, blank=True, null=True)
 
-    fields_dirty = models.DateTimeField(db_index=True, null=True)
+    document_contract_class = models.CharField(max_length=256, db_index=True, blank=True, null=True)
 
     ocr_rating = models.FloatField(blank=True, db_index=True, null=True)
 
@@ -820,17 +833,6 @@ class Document(models.Model):
     def available_assignees(self):
         return self.project.available_assignees
 
-    def set_language_from_text_units(self):
-        langs = self.textunit_set \
-            .filter(unit_type='paragraph') \
-            .values('language') \
-            .order_by() \
-            .annotate(count=Count('pk'))
-        if langs:
-            lang = sorted(langs, key=lambda i: -i['count'])[0]['language']
-            self.language = lang
-            self.save()
-
     def is_completed(self):
         return not self.status.is_active
 
@@ -874,6 +876,53 @@ class Document(models.Model):
             if val is None:
                 break
         return val, True
+
+    @classmethod
+    def get_allowed_document_ids(cls, user_id):
+        from guardian.shortcuts import get_objects_for_user
+        from apps.project.models import Project
+        user = User.objects.get(pk=user_id)
+        document_ids = list(get_objects_for_user(user, 'document.view_document', Document).values_list('pk', flat=True))
+        project_ids = get_objects_for_user(user, 'project.view_documents', Project).values_list('pk', flat=True)
+        document_ids += list(cls.objects.filter(project_id__in=project_ids).values_list('pk', flat=True))
+        return set(document_ids)
+
+    def get_alt_source_path_or(self, another):
+        return self.alt_source_path if self.alt_source_path and file_storage.document_exists(self.alt_source_path) \
+            else another
+
+    class SourceMode:
+        initial = 'initial'
+        alt = 'alt'
+        strict_alt = 'strict_alt'
+        alt_for_pdf = 'alt_for_pdf'
+
+        @classmethod
+        def modes(cls):
+            return [i for i in dir(cls) if not i.startswith('_') and i != 'modes']
+
+    def get_source_path(self, mode: str = 'initial'):
+        """
+        Get document path in local storage
+        initial - return source path
+        alt - return alt source path if exists else initial
+        strict_alt - return alt source path if exists else None
+        alt_for_pdf - return alt source path for PDFs otherwise - initial
+        :param mode: str
+        :return: str
+        """
+        modes = self.SourceMode.modes()
+        if mode not in modes:
+            raise RuntimeError(f'"mode" argument should be one of {modes}')
+        if mode == self.SourceMode.alt:
+            return self.get_alt_source_path_or(self.source_path)
+        if mode == self.SourceMode.strict_alt:
+            return self.get_alt_source_path_or(None)
+        if mode == self.SourceMode.alt_for_pdf:    # TODO: may be make more complex based on content type using "magic"
+            file_desc = self.name or self.source_path or ''
+            if os.path.splitext(os.path.basename(file_desc))[-1].lower() == '.pdf':
+                return self.get_alt_source_path_or(self.source_path)
+        return self.source_path    # 'initial' or 'alt_for_pdf' if it's not pdf
 
     @classmethod
     def reset_status_from_annotations(cls, ann_status, project=None, document_ids=None):
@@ -929,6 +978,18 @@ class Document(models.Model):
                                   cache_generic_fields=False,
                                   cache_user_fields=False)
 
+    def save(self, **kwargs):
+        cache_modified_date = kwargs.pop('cache_modified_date', False)
+        super().save(**kwargs)
+        if cache_modified_date:
+            self.refresh_from_db()
+            from apps.document.tasks import plan_process_document_changed
+            plan_process_document_changed(self.pk,
+                                          system_fields_changed=['modified_by', 'modified_date'],
+                                          generic_fields_changed=False,
+                                          user_fields_changed=False,
+                                          changed_by_user_id=self.modified_by.id if self.modified_by else None)
+
 
 @receiver(models.signals.post_delete, sender=Document)
 def full_delete(sender, instance, **kwargs):
@@ -939,12 +1000,11 @@ def full_delete(sender, instance, **kwargs):
 
 
 @receiver(models.signals.pre_save, sender=Document)
-def update_pernissions(sender, instance, **kwargs):
+def update_permissions(sender, instance, **kwargs):
     # change perms for assignees
     if instance.pk:
         db_instance = Document.objects.get(pk=instance.pk)
         if instance.assignee_id != db_instance.assignee_id:
-            from apps.users.permissions import document_permissions, remove_perm
             if db_instance.assignee is not None:
                 for perm_name in document_permissions:
                     remove_perm(perm_name, db_instance.assignee, instance)
@@ -970,6 +1030,91 @@ class DocumentText(models.Model):
         return self.full_text
 
 
+class DocumentPDFRepresentation(models.Model):
+    """Additional information for the Document related to its representation in PDF format such as
+    the bounding boxes of each character in its extracted plain text.
+    """
+
+    # Document FK
+    document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE, related_name='document_pdf_repr')
+
+    char_bboxes = models.BinaryField(null=True, blank=True,
+                                     help_text='''Bounding boxes of all characters of the document text in 
+                                           format of list of [page_num, x_on_page, y_on_page, w, h].''')
+
+    pages = models.BinaryField(null=True, blank=True,
+                               help_text='''Information on PDF representation of the document pages.
+        List of dictionaries: { 'number': ..., 'start': ..., 'end': ..., 'bbox': ... }
+        where
+        "start" is offset in plain text of the first character on the page;
+        "end" is offset in plain text + 1 of the last character on the page;
+        "bbox" is bounding box in PDF coordinates in format: [x, y, w, h]. X and Y are usually zeros.''')
+
+    @property
+    def char_bboxes_list(self) -> List[List[float]]:
+        if not self.char_bboxes:
+            return []
+        gc.disable()
+        try:
+            markup = msgpack.unpackb(self.char_bboxes, raw=False, use_list=False)
+        finally:
+            gc.enable()
+        if markup:
+            return markup['char_bboxes']
+        return []
+
+    @property
+    def pages_list(self) -> List[Dict[str, Any]]:
+        # returns: [{'number': 0, 'start': 0, 'end': 1109,
+        #            'bbox': [0.0, 0.0, 595.2999877929688, 841.8900146484375]}, ...
+        if not self.pages:
+            return []
+        return self.unpack_pages(self.pages)
+
+    def set_pages(self, pages: List[Dict[str, Any]]):
+        self.pages = msgpack.packb(pages, use_bin_type=True, use_single_float=True)
+
+    @classmethod
+    def unpack_pages(cls, pages: Optional[bytes]) -> List[Dict[str, Any]]:
+        if pages is None or not len(pages):
+            return []
+        return msgpack.unpackb(pages, raw=False)
+
+    @classmethod
+    def find_page_by_smb_index(cls, pages: List[Tuple[int, int]], char_index: int) -> int:
+        # finds page with start_index <= char_index < end_index
+        # where each page is a tuple of (start_index, end_index)
+        # returns -1 if such page is not found
+        if not pages:
+            return -1
+        if char_index == 0:
+            return 0
+        if len(pages) < 10:
+            for i in range(len(pages)):
+                if pages[i][0] <= char_index < pages[i][1]:
+                    return i
+            return -1
+
+        a, b = 0, len(pages) - 1
+        while b > a:
+            if b - a == 1:
+                if pages[a][0] <= char_index < pages[a][1]:
+                    return a
+                if pages[b][0] <= char_index < pages[b][1]:
+                    return b
+                return -1
+
+            o = a + round((b - a) / 1.41)
+            if char_index < pages[o][0]:
+                b = o
+                continue
+            if char_index > pages[o][1]:
+                a = o
+                continue
+            return o
+        return -1
+
+
 class DocumentMetadata(models.Model):
     # Document FK
     document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE)
@@ -981,7 +1126,7 @@ class DocumentMetadata(models.Model):
 class DocumentTag(models.Model):
     """DocumentTag object model
 
-    DocumentTag is a flexible class for applying labels or tags to a :model:`document.Document`.
+    DocumentTag is a flexible class for applying labels or tags to a :class:`Document<apps.document.models.Document>`.
     Each Document can have zero or more DocumentTag records, which can be subsequently used for
     unsupervised task accuracy assessment, semi-supervised tasks, and supervised tasks, as well
     as reporting.
@@ -1008,7 +1153,7 @@ class DocumentProperty(TimeStampedModel):
     """DocumentProperty object model
 
     DocumentProperty is a flexible class for creating key-value properties for a
-    :model:`document.Document`.  Each Document can have zero or more DocumentProperty records,
+    :class:`Document<apps.document.models.Document>`.  Each Document can have zero or more DocumentProperty records,
     which may be used either at document ingestion to store metadata or subsequently to store
     any information that may be relevant.
 
@@ -1070,7 +1215,7 @@ def save_document_property(sender, instance, created, **kwargs):
 class DocumentRelation(models.Model):
     """DocumentRelation object model
 
-    DocumentRelation is a flexible class for linking two :model:`document.Document` objects.
+    DocumentRelation is a flexible class for linking two :class:`Document<apps.document.models.Document>` objects.
     These records can be used to define a many-to-many network or graph, where each relationship
     or "edge" can have a specific `relation_type`.
 
@@ -1155,8 +1300,7 @@ class DocumentNote(models.Model):
                                       system_fields_changed=[DocumentSystemField.notes.value],
                                       generic_fields_changed=False,
                                       user_fields_changed=False,
-                                      changed_by_user_id=user.pk if user else None
-                                      )
+                                      changed_by_user_id=user.pk if user else None)
 
 
 @receiver(models.signals.post_save, sender=DocumentNote)
@@ -1262,7 +1406,7 @@ class TextUnitText(models.Model):
 class TextUnitTag(models.Model):
     """TextUnitTag object model
 
-    TextUnitTag is a flexible class for applying labels or tags to a :model:`document.TextUnit`.
+    TextUnitTag is a flexible class for applying labels or tags to a :class:`TextUnit<apps.document.models.TextUnit>`.
     Each TextUnit can have zero or more TextUnitTag records, which can be subsequently used for
     unsupervised task accuracy assessment, semi-supervised tasks, and supervised tasks, as well
     as reporting.
@@ -1296,7 +1440,7 @@ class TextUnitProperty(TimeStampedModel):
     """TextUnitProperty object model
 
     TextUnitProperty is a flexible class for creating key-value properties for a
-    :model:`document.TextUnit`.  Each TextUnit can have zero or more TextUnitProperty records,
+    :class:`TextUnit<apps.document.models.TextUnit>`.  Each TextUnit can have zero or more TextUnitProperty records,
     which may be used either at document ingestion to store metadata, such as Track Changes or
     annotations, or subsequently to store relevant information.
     """
@@ -1337,7 +1481,7 @@ def save_text_unit_property(sender, instance, created, **kwargs):
 class TextUnitRelation(models.Model):
     """DocumentRelation object model
 
-    DocumentRelation is a flexible class for linking two :model:`document.Document` objects.
+    DocumentRelation is a flexible class for linking two :class:`Document<apps.document.models.Document>` objects.
     These records can be used to define a many-to-many network or graph, where each relationship
     or "edge" can have a specific `relation_type`.
 
@@ -1471,7 +1615,7 @@ class DocumentFieldDetector(models.Model):
                                 help_text='''Field detector category used for technical needs e.g. for determining 
 which field detectors were created automatically during import process.''')
 
-    exclude_regexps = models.TextField(blank=True, null=True,
+    exclude_regexps = models.TextField(blank=True, null=True, validators=[RegexPatternValidator()],
                                        help_text='''Enter regular expressions, each on a new line, for text patterns 
 you want EXCLUDED. The Field Detector will attempt to skip any Text Unit that contains any of the patterns written 
 here, and will move on to the next Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash 
@@ -1486,7 +1630,7 @@ definitions, then the Field Detector skips and moves to the next Text Unit. If t
 Field Detector checks against those requirements. The Field Detector marks the entire Text Unit as a match. Note that 
 the Field Detector checks for definition words after filtering using the Exclude regexps.''')
 
-    include_regexps = models.TextField(blank=True, null=True, help_text='''Enter regular expressions, each on a new 
+    include_regexps = models.TextField(blank=True, null=True, validators=[RegexPatternValidator()], help_text='''Enter regular expressions, each on a new 
 line, for text patterns you want INCLUDED. The Field Detector will attempt to match each of these regular expressions 
 within a given Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash or slow ContraxSuite. 
 Use bounded multipliers for variable length matching, like “.{0,100}” or similar. Note that Include regexps are checked 
@@ -1515,6 +1659,28 @@ specific values should be prioritized for extraction, when multiple values of th
 should be passed to the extraction function. Example: In the string "2019-01-23 is the start date and 2019-01-24 is the 
 end date," if text part = "Before matching substring" and Include regexp is "is.{0,100}start" then "2019-01-23" will be 
 parsed correctly as the start date.''')
+
+    DETECT_LIMIT_NONE = 'NONE'
+    DETECT_LIMIT_UNIT = 'UNIT'
+
+    DETECT_LIMIT_OPTIONS = [(DETECT_LIMIT_NONE, 'No Limit'),
+                            (DETECT_LIMIT_UNIT, 'Limit to N "text unit type" units')]
+
+    # see detect_limit_count
+    detect_limit_unit = models.CharField(max_length=10,
+                                         choices=DETECT_LIMIT_OPTIONS,
+                                         default=DETECT_LIMIT_NONE,
+                                         help_text='''Choose to add an upward limit to the amount of document text 
+                                             ContraxSuite will search for this Document Field. For example, you can choose 
+                                             to only search the first 10 paragraphs of text for the value required (this 
+                                             often works best for values like “Company,” “Execution Date,” or “Parties,”
+                                             all of which typically appear in the first few paragraphs of a contract).''')
+
+    # while detecting field value restrict to N units (see detect_limit_unit)
+    # 0 means no limit
+    detect_limit_count = models.IntegerField(null=False, default=0, db_index=True, help_text='''Specify the maximum 
+    range for a bounded search. Field detection begins at the top of the document and continues until this Nth 
+    "Detect limit unit" element.''')
 
     @property
     def include_matchers(self):
@@ -1629,6 +1795,30 @@ parsed correctly as the start date.''')
         except Exception as exc:
             errors.append(('detected_value', exc,))
         return errors
+
+
+@receiver(models.signals.pre_delete, sender=DocumentFieldDetector)
+def remove_document_field_detector(sender, instance, using, **kwargs):
+    doc_type = instance.field.document_type
+    if hasattr(instance, 'request_user'):
+        doc_type.modified_by = instance.request_user
+    doc_type.save()
+
+
+@receiver(models.signals.post_save, sender=DocumentFieldDetector)
+def save_document_field_detector(sender, instance, created, **kwargs):
+    # set modified_by for doc type
+    doc_field: DocumentField = instance.field
+    doc_type = instance.field.document_type
+    if hasattr(instance, 'request_user'):
+        doc_type.modified_by = instance.request_user
+        doc_type.modified_date = now()
+
+        doc_field.modified_by = instance.request_user
+        doc_field.modified_date = now()
+
+        doc_type.save()
+        doc_field.save()
 
 
 class DocumentFieldMultilineRegexDetector(models.Model):
@@ -2008,6 +2198,10 @@ class DocumentTable(models.Model):
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
 
     table = PickledObjectField(compress=True)
+
+    bounding_rect = ArrayField(models.FloatField(), blank=True, null=True)
+
+    page = models.IntegerField(null=False, default=0, db_index=True)
 
     def __repr__(self):
         return ''

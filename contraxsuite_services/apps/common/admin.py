@@ -29,21 +29,25 @@ import os
 
 from django import forms
 from django.contrib import admin
+from django.forms import ModelChoiceField
 from django.http import HttpResponse, JsonResponse
 from django.urls import path, reverse
+from django.utils.safestring import mark_safe
 from rest_framework_tracking.admin import APIRequestLogAdmin
+from django.db.models import Q, Case, Value, When, IntegerField
 
 # Project imports
 from apps.common.decorators import get_function_from_str
 from apps.common.file_storage import get_file_storage
 from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action, \
     CustomAPIRequestLog, APIRequestLog, MethodStats, MethodStatsCollectorPlugin, \
-    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage, ExportFile
+    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage, ExportFile, AppVarStorage
+from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,7 +70,7 @@ class AppVarListFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        cats = set([v for v in AppVar.objects.all().values_list('category', flat=True)])
+        cats = set(AppVar.objects.values_list('category', flat=True))
         return sorted([(c, c) for c in cats], key=lambda c: c[0])
         # return [('Common', 'Common'), ('Document', 'Document'), ('Extract', 'Extract')]
 
@@ -81,7 +85,48 @@ class AppVarListFilter(admin.SimpleListFilter):
         return queryset.filter(category=self.value())
 
 
+class AppVarAccessTypeFilter(admin.SimpleListFilter):
+    title = 'Access Type'
+    parameter_name = 'access_type'
+    default_value = 'auth'
+
+    def lookups(self, request, model_admin):
+        return AppVar.ACCESS_TYPE_CHOICES
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        return queryset.filter(access_type=self.value())
+
+
+class AppVarProjectFilter(admin.SimpleListFilter):
+    title = 'Project'
+    parameter_name = 'project'
+    default_value = 'System'
+
+    def lookups(self, request, model_admin):
+        projects = set(Project.objects.values_list('id', 'name'))
+        items = sorted([(id, f'{id}, {name}') for id, name in projects], key=lambda c: -c[0])
+        return items
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        if not self.value():
+            return queryset.filter(project_id__isnull=True)
+        return queryset.filter(Q(project_id=self.value()) | Q(project_id__isnull=True))
+
+
+class AppVarProjectChoiceField(ModelChoiceField):
+    def label_from_instance(self, obj: Project):
+        return f'{obj.pk}, {obj.name}'
+
+
 class AppVarAdminForm(forms.ModelForm):
+    SELECTED_PROJECT = None
 
     class Meta:
         model = AppVar
@@ -94,16 +139,51 @@ class AppVarAdminForm(forms.ModelForm):
             )
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = Project.objects.order_by('-pk')
+        if self.SELECTED_PROJECT:
+            qs = Project.objects.annotate(
+                custom_order=Case(
+                    When(id=self.SELECTED_PROJECT, then=Value(999999)),
+                    default='id',
+                    output_field=IntegerField(),
+                )
+            ).order_by('-custom_order')
+
+        self.fields['project'] = AppVarProjectChoiceField(queryset=qs, required=False)
+
 
 class AppVarAdmin(admin.ModelAdmin):
-    list_display = ['category', 'name', 'value', 'description']
+    actions = None
+    list_display = ['category', 'name', 'access_type', 'project', 'value', 'custom_description']
     search_fields = ['name', 'description']
-    list_editable = ['value']
-    list_display_links = ['category']
-    list_filter = (AppVarListFilter, )
+    list_editable = ['value', 'project']
+    list_display_links = ['name']
+    list_filter = (AppVarListFilter, AppVarProjectFilter, AppVarAccessTypeFilter)
+
+    def custom_description(self, object):
+        return mark_safe(object.description)
+
+    custom_description.short_description = 'Description'
 
     def get_changelist_form(self, request, **kwargs):
+        AppVarAdminForm.SELECTED_PROJECT = request.GET.get('project', None)
         return AppVarAdminForm
+
+    def save_model(self, request, obj: AppVar, form, change: bool):
+        # super().save_model(request, obj, form, change)
+        AppVarStorage.set(obj.category, obj.name, obj.value,
+                          obj.description, obj.access_type, obj.project_id, overwrite=True)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'project':
+            kwargs['queryset'] = Project.objects.order_by('-id')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.list_display_links = None
 
 
 class ExportFileAdminForm(forms.ModelForm):
@@ -178,8 +258,8 @@ class ReviewStatusAdmin(admin.ModelAdmin):
 
 
 class ActionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'name', 'object', 'date')
-    search_fields = ('name', 'user__username')
+    list_display = ('id', 'user', 'view_action', 'name', 'message', 'model_name', 'object_pk', 'date')
+    search_fields = ('name', 'user__name', 'object_pk', 'message')
 
 
 class MethodStatsAdmin(admin.ModelAdmin):

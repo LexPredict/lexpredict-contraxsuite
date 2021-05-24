@@ -37,9 +37,9 @@ from apps.document.field_types import LinkedDocumentsField, TypedField
 from apps.document.models import DocumentField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -73,7 +73,7 @@ class DocumentSimilarityConfig(models.Model):
             -> List[Tuple[str, str]]:
         document_type = dst_field.document_type
         feature_vector_fields = dst_field.depends_on_fields.all()
-        res = list()
+        res = []
 
         if date_constraint_days is not None and date_constraint_days < 1:
             res.append((ATTR_DATE_CONSTRAINT_DAYS, 'Date constraint days should be either empty or a '
@@ -98,7 +98,7 @@ class DocumentSimilarityConfig(models.Model):
         if not feature_vector_fields:
             res.append((ATTR_FEATURE_VECTOR_FIELDS, 'Feature vector fields list can not be empty.'))
 
-        wrong_doc_type_fields = list()
+        wrong_doc_type_fields = []
         for f in feature_vector_fields:
             if f.document_type_id != dst_field.document_type_id:
                 wrong_doc_type_fields.append(f.code)

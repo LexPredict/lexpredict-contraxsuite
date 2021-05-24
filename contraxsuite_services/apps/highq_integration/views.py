@@ -39,9 +39,9 @@ from apps.highq_integration.utils import HighQ_API_Client, format_token_fields
 from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,8 +50,8 @@ __email__ = "support@contraxsuite.com"
 # AUTHENTICATION
 # -----------------------------------------------------------------------------
 def callback(
-        request: HttpRequest,
-        highq_configuration_id: int,
+    request: HttpRequest,
+    highq_configuration_id: int,
 ) -> HttpResponseRedirect:
     """
     Args:
@@ -95,12 +95,11 @@ def callback(
         r_isheet_columns_admin.raise_for_status()
         if r_isheet_columns_admin.ok:
             return redirect(
-                to=f'{settings.API_URL_PROTOCOL}://{settings.HOST_NAME}/explorer/admin/'
-                   'highq_integration/highqconfiguration/',
+                to=f'{settings.API_URL_PROTOCOL}://{settings.HOST_NAME}'
+                   '/explorer/admin/highq_integration/highqconfiguration/',
                 permanent=False
             )
-        else:
-            raise HTTPError
+        raise HTTPError
     except HTTPError:
         # TODO: some sort of error page
         pass

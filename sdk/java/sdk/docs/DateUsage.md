@@ -2,11 +2,12 @@
 
 # DateUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**date** | [**LocalDate**](LocalDate.md) |  | 
+**date** | **LocalDate** |  | 
 **count** | **Integer** |  |  [optional]
 **pk** | **Integer** |  |  [optional] [readonly]
 **textUnitPk** | **String** |  |  [optional] [readonly]

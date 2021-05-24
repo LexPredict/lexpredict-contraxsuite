@@ -25,9 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
-import logging
 from typing import Optional
-
 import regex as re
 from django.contrib.auth.models import Group
 from allauth.account.adapter import DefaultAccountAdapter
@@ -38,7 +36,7 @@ from allauth.utils import build_absolute_uri
 from django.conf import settings
 from django.contrib.auth.forms import password_validation, PasswordResetForm, loader
 from django.core.exceptions import PermissionDenied
-from django.core.mail.message import EmailMultiAlternatives
+from django.core.mail.message import EmailMultiAlternatives, EmailMessage
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.urls import reverse
@@ -46,31 +44,33 @@ from rest_auth.serializers import PasswordResetConfirmSerializer, PasswordResetS
     UserModel, force_text, uid_decoder, default_token_generator, ValidationError
 from rest_framework import serializers
 
-from apps.users.app_vars import DEFAULT_USER_GROUP
+from apps.common.logger import CsLogger
+from apps.notifications.mail_server_config import MailServerConfig
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
 class AccountAdapter(DefaultAccountAdapter):
     """
+    django-allauth
     Generic account adapter.
     """
     def get_from_email(self):
         """
-        This is a hook that can be overridden to programatically
+        This is a hook that can be overridden to programmatically
         set the 'from' email address for sending emails
         """
         from apps.common.app_vars import SUPPORT_EMAIL
-        return SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL
+        return SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL
 
     def render_mail(self, template_prefix, email, context):
         msg = super().render_mail(template_prefix, email, context)
@@ -86,7 +86,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
     def is_open_for_signup(self, request):
         from apps.users.app_vars import ACCOUNT_ALLOW_REGISTRATION
-        return ACCOUNT_ALLOW_REGISTRATION.val
+        return ACCOUNT_ALLOW_REGISTRATION.val()
 
     def get_email_confirmation_url(self, request, emailconfirmation):
         url = reverse(
@@ -97,6 +97,15 @@ class AccountAdapter(DefaultAccountAdapter):
             url)
         return ret
 
+    def send_mail(self, template_prefix, email, context):
+        msg: EmailMessage = self.render_mail(template_prefix, email, context)
+        try:
+            msg.connection = MailServerConfig.make_connection_config()
+        except Exception as e:
+            logger.error(f'Error in getting MailServerConfig (AccountAdapter.send_mail): {e}')
+            raise
+        msg.send()
+
 
 @receiver(post_save, sender=User)
 def set_new_social_user_default_group(sender, instance: User, **kwargs):
@@ -104,8 +113,8 @@ def set_new_social_user_default_group(sender, instance: User, **kwargs):
         return
     if instance.origin != User.USER_ORIGIN_SOCIAL:
         return
-
-    group_name = DEFAULT_USER_GROUP.val
+    from apps.users.app_vars import DEFAULT_USER_GROUP
+    group_name = DEFAULT_USER_GROUP.val()
     if not group_name:
         return
     group = Group.objects.get(name=group_name)
@@ -125,11 +134,11 @@ def set_new_social_user_inactive(sender, instance: User, **_kwargs):
     from apps.users.app_vars import ALLOWED_EMAIL_DOMAINS, AUTO_REG_EMAIL_DOMAINS
 
     email = instance.email
-    is_auto_reg_email = email_follows_pattern(email, AUTO_REG_EMAIL_DOMAINS.val)
+    is_auto_reg_email = email_follows_pattern(email, AUTO_REG_EMAIL_DOMAINS.val())
     if is_auto_reg_email:
         return
 
-    is_allowed_email = email_follows_pattern(email, ALLOWED_EMAIL_DOMAINS.val)
+    is_allowed_email = email_follows_pattern(email, ALLOWED_EMAIL_DOMAINS.val())
     if is_allowed_email:
         # this is a new social account registration - we'll make it inactive
         # until the administrator confirms the user account
@@ -142,7 +151,7 @@ def set_new_social_user_inactive(sender, instance: User, **_kwargs):
 def email_follows_pattern(email: str, pattern: Optional[str] = None) -> bool:
     from apps.users.app_vars import ALLOWED_EMAIL_DOMAINS
     if pattern is None:
-        pattern = ALLOWED_EMAIL_DOMAINS.val
+        pattern = ALLOWED_EMAIL_DOMAINS.val()
     if not email or not pattern:
         return False
     at_index = email.index('@')
@@ -184,7 +193,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             return
         email_adr, email_verified = emails[0].email, emails[0].verified
         from apps.users.app_vars import SOCIALACCOUNT_EMAIL_VERIFIED_ONLY
-        if SOCIALACCOUNT_EMAIL_VERIFIED_ONLY.val and not email_verified:
+        if SOCIALACCOUNT_EMAIL_VERIFIED_ONLY.val() and not email_verified:
             msg = f'Email "{email_adr}" is not verified'
             logger.error(msg)
             raise PermissionDenied(msg)
@@ -195,7 +204,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             return
 
         # we're here: 1 - the user email is found in our DB among registered users' emails
-        if SOCIALACCOUNT_EMAIL_VERIFIED_ONLY.val and not email_verified:
+        if SOCIALACCOUNT_EMAIL_VERIFIED_ONLY.val() and not email_verified:
             # 1.2 - deny the request
             msg = f'Existing email "{email_adr}" is not verified'
             logger.error(msg)
@@ -213,7 +222,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def is_open_for_signup(self, request, sociallogin):
         from apps.users.app_vars import SOCIAL_ACCOUNT_ALLOW_REGISTRATION
-        return SOCIAL_ACCOUNT_ALLOW_REGISTRATION.val
+        return SOCIAL_ACCOUNT_ALLOW_REGISTRATION.val()
 
     def populate_user(self,
                       request,
@@ -311,11 +320,11 @@ class CustomEmailMultiAlternatives(EmailMultiAlternatives):
 
         from django.core.mail import get_connection
         if not self.connection:
-            from apps.notifications.app_vars import APP_VAR_EMAIL_BACKEND
+            from apps.notifications.app_vars import get_email_backend_class
             self.connection = get_connection(
 
                 # !!! customized backend
-                backend=APP_VAR_EMAIL_BACKEND.val or settings.EMAIL_BACKEND,
+                backend=get_email_backend_class() or settings.EMAIL_BACKEND,
                 fail_silently=fail_silently)
         return self.connection
 
@@ -332,12 +341,11 @@ class CustomPasswordResetForm(PasswordResetForm):
         subject = ''.join(subject.splitlines())
         body = loader.render_to_string(email_template_name, context)
 
-        from apps.notifications.mail_server_config import MailServerConfig
         from apps.common.app_vars import SUPPORT_EMAIL
         backend = MailServerConfig.make_connection_config()
         email = EmailMultiAlternatives(subject=subject,
                                        body=body,
-                                       from_email=SUPPORT_EMAIL.val or settings.DEFAULT_FROM_EMAIL,
+                                       from_email=SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL,
                                        to=[to_email],
                                        connection=backend)
         if html_email_template_name is not None:
@@ -352,17 +360,29 @@ class CustomPasswordResetSerializer(PasswordResetSerializer):
     """
     password_reset_form_class = CustomPasswordResetForm
 
-    def save(self):
-        request = self.context.get('request')
-        # Set some values to trigger the send_email method.
+    def get_email_options(self) -> dict:
+        """
+        Overrides default method by adding `extra_email_context`.
+        """
+        from apps.common.app_vars import SUPPORT_EMAIL
+        return {
+            'subject_template_name': 'registration/password_reset_subject.txt',
+            'html_email_template_name': 'registration/password_reset_email.html',
+            'extra_email_context': {
+                'support_email': SUPPORT_EMAIL.val(),
+            }
+        }
 
-        # !!! substituted 'from_email'
+    def save(self):
+        """
+        Overrides default method by adding AppVar to `from_email`.
+        """
+        request = self.context.get('request')
         from apps.common.app_vars import SUPPORT_EMAIL
         opts = {
             'use_https': request.is_secure(),
-            'from_email': SUPPORT_EMAIL.val or getattr(settings, 'DEFAULT_FROM_EMAIL'),
+            'from_email': SUPPORT_EMAIL.val() or getattr(settings, 'DEFAULT_FROM_EMAIL'),
             'request': request,
         }
-
         opts.update(self.get_email_options())
         self.reset_form.save(**opts)

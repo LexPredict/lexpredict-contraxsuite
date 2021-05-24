@@ -26,20 +26,23 @@
 
 import hashlib
 import pickle
+from collections import Iterable
+from typing import Dict, Optional
 
 from django.db import models
 from django.db.models.deletion import CASCADE, DO_NOTHING
 from django.db.models.signals import post_save, pre_delete, post_delete
 from django.dispatch import receiver
+from lexnlp.config.en.company_types import CompanyDescriptor
 
 from lexnlp.extract.common.entities.entity_banlist import EntityBanListItem
 
 from apps.common import redis
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -83,8 +86,7 @@ class TermManager(models.Manager):
     def bulk_create(self, objs, **kwargs):
         # to update global cached terms if they are loaded via fixtures
         super().bulk_create(objs, **kwargs)
-        from apps.extract.dict_data_cache import cache_term_stems
-        cache_term_stems()
+        invalidate_terms_cache()
 
 
 class Term(models.Model):
@@ -93,40 +95,83 @@ class Term(models.Model):
     """
     term = models.CharField(max_length=1024, db_index=True)
     source = models.CharField(max_length=1024, db_index=True, null=True)
-    definition_url = models.CharField(max_length=1024, null=True)
+    definition_url = models.CharField(max_length=1024, null=True, verbose_name='Locale')
+    tags = models.ManyToManyField(to='extract.TermTag', blank=True, db_index=True)
     objects = TermManager()
 
     class Meta:
         ordering = ('term', 'source')
 
     def __str__(self):
-        return "Term (term={0}, source={1})" \
-            .format(self.term, self.source)
+        return f'Term (term={self.term}, source={self.source})'
 
 
-@receiver(post_save, sender=Term)
-def cache_term(instance, **kwargs):
-    from apps.extract.dict_data_cache import cache_term_stems
-    # update global cache
-    cache_term_stems()
-    for project_id in instance.projecttermconfiguration_set.values_list('project_id', flat=True):
-        # update project-term caches
-        cache_term_stems(project_id)
+class TermTag(models.Model):
+    DEFAULT_TAG = 'default'
+
+    name = models.CharField(max_length=100, db_index=True,
+                            default=DEFAULT_TAG, unique=True, blank=False)
+
+    def __str__(self):
+        return f'{self.name} #{self.pk}'
+
+    def delete(self, **kwargs):
+        if self.name == TermTag.DEFAULT_TAG:
+            raise RuntimeError(f'Deleting default tag (name="{TermTag.DEFAULT_TAG}") is not allowed.')
+        super().delete(**kwargs)
 
 
-@receiver(pre_delete, sender=Term)
-def delete_term_recache_projecttermconfig(instance, **kwargs):
-    # update project-term caches
-    for config in instance.projecttermconfiguration_set.all():
-        config.terms.remove(instance)
-        # this activates ProjectTermConfiguration m2m_changed signal where deleted term is handled
+class CompanyTypeManager(models.Manager):
+    def bulk_create(self, objs, **kwargs):
+        super().bulk_create(objs, **kwargs)
+        invalidate_company_type_cache()
 
 
-@receiver(post_delete, sender=Term)
-def delete_cached_term(instance, **kwargs):
-    # update global cache
-    from apps.extract.dict_data_cache import cache_term_stems
-    cache_term_stems()
+class CompanyType(models.Model):
+    """
+    Legal term/dictionary entry
+    """
+    alias = models.CharField(max_length=512, db_index=True, unique=True)
+    abbreviation = models.CharField(max_length=128, db_index=True, null=True)
+    label = models.CharField(max_length=512, db_index=True, null=True)
+    tags = models.ManyToManyField(to='extract.CompanyTypeTag', blank=True, db_index=True)
+    objects = CompanyTypeManager()
+
+    class Meta:
+        ordering = ('alias', 'abbreviation')
+
+    def __str__(self):
+        return f'"{self.abbreviation}" "{self.alias}"'
+
+    @classmethod
+    def to_company_descriptors(cls, comp_types: 'Iterable[CompanyType]') -> Dict[str, CompanyDescriptor]:
+        dct: Dict[str, CompanyDescriptor] = {}
+        for c in comp_types:
+            dct[c.alias] = CompanyDescriptor(c.alias, c.abbreviation, c.label)
+        return dct
+
+    @classmethod
+    def get_comp_types_hash(cls, comp_types: 'Optional[Iterable[CompanyType]]') -> str:
+        s = ''
+        if comp_types:
+            for c in comp_types:
+                s += f'{c.alias}, {c.label}, {c.abbreviation};'
+        return hash(s) if s else ''
+
+
+class CompanyTypeTag(models.Model):
+    DEFAULT_TAG = 'default'
+
+    name = models.CharField(max_length=100, db_index=True,
+                            default='', unique=True, blank=False)
+
+    def __str__(self):
+        return f'{self.name} #{self.pk}'
+
+    def delete(self, **kwargs):
+        if self.name == CompanyTypeTag.DEFAULT_TAG:
+            raise RuntimeError(f'Deleting default tag (name="{CompanyTypeTag.DEFAULT_TAG}") is not allowed.')
+        super().delete(**kwargs)
 
 
 class TermUsage(Usage):
@@ -703,3 +748,33 @@ class BanListRecord(models.Model):
 @receiver(pre_delete, sender=BanListRecord)
 def on_banlist_record_delete(instance, **kwargs):
     BanListRecord.rewrite_cache()
+
+
+@receiver(post_save, sender=Term)
+def cache_term(instance, **kwargs):
+    invalidate_terms_cache()
+
+
+@receiver(post_delete, sender=Term)
+def delete_cached_term(instance, **kwargs):
+    invalidate_terms_cache()
+
+
+def invalidate_terms_cache():
+    from apps.extract.term_stems import TermStemsCache
+    TermStemsCache.invalidate()
+
+
+@receiver(post_save, sender=CompanyType)
+def cache_company_types(instance, **kwargs):
+    invalidate_company_type_cache()
+
+
+@receiver(post_delete, sender=CompanyType)
+def delete_cached_company_types(instance, **kwargs):
+    invalidate_company_type_cache()
+
+
+def invalidate_company_type_cache():
+    from apps.extract.company_types import CompanyTypeCache
+    CompanyTypeCache.invalidate()

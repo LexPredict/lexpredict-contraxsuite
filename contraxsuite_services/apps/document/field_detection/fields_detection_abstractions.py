@@ -25,15 +25,15 @@
 # -*- coding: utf-8 -*-
 
 from django.db.models import QuerySet
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 from apps.common.log_utils import ProcessLogger
 from apps.document.repository.dto import FieldValueDTO
-from apps.document.models import ClassifierModel, Document, DocumentField, TextUnit
+from apps.document.models import ClassifierModel, Document, DocumentField, TextUnit, DocumentFieldDetector
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,9 +69,11 @@ class FieldDetectionStrategy:
         raise NotImplementedError()
 
     @classmethod
-    def reduce_textunits_by_detection_limit(cls,
-                                            text_units: Union[QuerySet, Sequence[TextUnit]],
-                                            field: DocumentField) -> Union[QuerySet, Sequence[TextUnit]]:
+    def reduce_textunits_by_detection_limit(
+            cls,
+            text_units: Union[QuerySet, Sequence[TextUnit]],
+            field: DocumentField,
+            detector: DocumentFieldDetector) -> Union[QuerySet, Sequence[TextUnit]]:
         """
         Checks if `text_units` are ordered ascendingly by `location_start`.
         If `detect_limit_count` is greater than 0, then `text_units` are sliced at that index and returned.
@@ -101,15 +103,15 @@ class FieldDetectionStrategy:
         """
         # if field.detect_limit_unit == DocumentField.DETECT_LIMIT_CHAR:
         #     return text_units.filter(location_end__lt=field.detect_limit_count)
-        if field.detect_limit_unit != 'NONE':
-            if field.detect_limit_count > 0:
+        if detector.detect_limit_unit != 'NONE':
+            if detector.detect_limit_count > 0:
                 if isinstance(text_units, QuerySet):
                     text_units = text_units.order_by('location_start', 'pk')
                     for child in text_units.query.where.children:
                         lhs = child.__dict__['lhs'].identity
                         if lhs[2][1] == ('document.TextUnit', 'unit_type'):
                             if child.__dict__['rhs'] == field.text_unit_type:
-                                return text_units[:field.detect_limit_count]
+                                return text_units[:detector.detect_limit_count]
                     raise ValueError('parameter `text_units`, a QuerySet, has not' +
                                      'been filtered by `unit_type')
 
@@ -119,7 +121,7 @@ class FieldDetectionStrategy:
                             text_units,
                             key=lambda tu: (tu.location_start, tu.pk),
                             reverse=False
-                        )[:field.detect_limit_count]
+                        )[:detector.detect_limit_count]
 
                 raise TypeError('parameter `text_units` must be of type' +
                                 'QuerySet[TextUnit] or Sequence[TextUnit]')

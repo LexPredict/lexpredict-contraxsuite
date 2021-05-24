@@ -1,3 +1,29 @@
+"""
+    Copyright (C) 2017, ContraxSuite, LLC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    You can also be released from the requirements of the license by purchasing
+    a commercial license from ContraxSuite, LLC. Buying such a license is
+    mandatory as soon as you develop commercial activities involving ContraxSuite
+    software without disclosing the source code of your own applications.  These
+    activities include: offering paid services to customers as an ASP or "cloud"
+    provider, processing documents on the fly in a web application,
+    or shipping ContraxSuite within a closed source product.
+"""
+# -*- coding: utf-8 -*-
+
 from dataclasses import dataclass
 from time import time
 from typing import Set, List, Dict, Any, Callable
@@ -9,6 +35,14 @@ from django.db.models import F
 from apps.celery import app
 from apps.common.log_utils import ProcessLogger
 from apps.task.models import Task
+
+__author__ = "ContraxSuite, LLC; LexPredict, LLC"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
+__maintainer__ = "LexPredict, LLC"
+__email__ = "support@contraxsuite.com"
+
 
 TASK_BAD_HEALTH_CHECK_RETRIES = 3
 IGNORE_WORKER_KINDS = {'beat'}
@@ -24,8 +58,6 @@ class CeleryStats:
 
 def get_celery_stats() -> CeleryStats:
     task_ids = set()
-    all_worker_kinds = set()
-    busy_worker_kinds = set()
     i = Inspect(app=app)
 
     all_workers = set()
@@ -64,7 +96,7 @@ def check_task_health(log: ProcessLogger,
                       restart_task_func: Callable[[str], None]):
     """
     Find and process unhealthy tasks - the tasks which are hanging in PENDING while there is at least one
-    free worker of each kind (default, high, doc_load).
+    free worker of each kind (default, high).
     This is intended to wait silently until all other tasks processed and next re-send the hanged PENDING tasks.
 
 
@@ -110,8 +142,8 @@ def check_task_health(log: ProcessLogger,
 
     query_time_spent = time() - query_time_start
 
-    restarted_tasks = list()
-    could_not_restart_tasks = list()
+    restarted_tasks = []
+    could_not_restart_tasks = []
     for task_id, task_name in to_restart:
         try:
             restart_task_func(task_id)

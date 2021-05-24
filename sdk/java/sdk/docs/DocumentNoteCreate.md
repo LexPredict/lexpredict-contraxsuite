@@ -2,13 +2,14 @@
 
 # DocumentNoteCreate
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **pk** | **Integer** |  |  [optional] [readonly]
 **note** | **String** |  | 
-**timestamp** | [**OffsetDateTime**](OffsetDateTime.md) |  |  [optional] [readonly]
+**timestamp** | **OffsetDateTime** |  |  [optional] [readonly]
 **locationStart** | **Integer** |  |  [optional]
 **locationEnd** | **Integer** |  |  [optional]
 **documentId** | **Integer** |  | 
@@ -17,6 +18,7 @@ Name | Type | Description | Notes
 **userId** | **String** |  |  [optional] [readonly]
 **username** | **String** |  |  [optional]
 **user** | [**DocumentDetailUser**](DocumentDetailUser.md) |  |  [optional]
+**selections** | **List&lt;Object&gt;** |  |  [optional] [readonly]
 
 
 

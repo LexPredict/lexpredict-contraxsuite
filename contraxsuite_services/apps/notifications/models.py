@@ -39,12 +39,12 @@ from apps.rawdb.constants import FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED,
 from apps.rawdb.field_value_tables import query_documents, \
     DocumentQueryResults
 from apps.rawdb.rawdb.query_parsing import SortDirection
-from apps.users.models import User, Role
+from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -293,8 +293,6 @@ class DocumentDigestConfig(models.Model):
 
     period = models.CharField(max_length=100, blank=True, null=True, choices=DIGEST_PERIOD_CHOICES)
 
-    for_role = models.ForeignKey(Role, null=True, blank=True, on_delete=CASCADE)
-
     for_user = models.ForeignKey(User, null=True, blank=True, on_delete=CASCADE)
 
     subject = models.CharField(max_length=1024, null=True, blank=True, help_text='''Template of the email subject in 
@@ -368,8 +366,6 @@ class DocumentEvent:
     default_bulk_subject = None
     default_bulk_header = None
 
-    pass
-
 
 class DocumentLoadedEvent:
     code = 'document_loaded'
@@ -426,18 +422,6 @@ class CurrentAssignee(NotificationRecipients):
         return [User.objects.get(pk=assignee_id)] if assignee_id is not None else None
 
 
-class SpecifiedRole(NotificationRecipients):
-    code = 'specified_role'
-    title = 'Specified role'
-
-    def resolve(self, subscription: 'DocumentNotificationSubscription', document_fields: Dict[str, Any]) \
-            -> Optional[List[User]]:
-        role = subscription.specified_role
-        if not role:
-            return None
-        return list(role.user_set.all())
-
-
 class SpecifiedUser(NotificationRecipients):
     code = 'specified_user'
     title = 'Specified user'
@@ -448,7 +432,7 @@ class SpecifiedUser(NotificationRecipients):
         return [subscription.specified_user]
 
 
-NOTIFICATION_RECIPIENTS = [CurrentAssignee(), SpecifiedRole(), SpecifiedUser()]
+NOTIFICATION_RECIPIENTS = [CurrentAssignee(), SpecifiedUser()]
 NOTIFICATION_RECIPIENTS_BY_CODE = {d.code: d
                                    for d in NOTIFICATION_RECIPIENTS}  # type: Dict[str, NotificationRecipients]
 NOTIFICATION_RECIPIENTS_CHOICES = ((d.code, d.title) for d in NOTIFICATION_RECIPIENTS)
@@ -472,8 +456,6 @@ class DocumentNotificationSubscription(models.Model):
     event = models.CharField(max_length=100, blank=False, null=False, choices=DOCUMENT_EVENTS_CHOICES)
 
     recipients = models.CharField(max_length=100, blank=False, null=False, choices=NOTIFICATION_RECIPIENTS_CHOICES)
-
-    specified_role = models.ForeignKey(Role, blank=True, null=True, on_delete=CASCADE)
 
     specified_user = models.ForeignKey(User, blank=True, null=True, on_delete=CASCADE)
 

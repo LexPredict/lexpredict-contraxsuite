@@ -1,5 +1,6 @@
 # CourtUsage
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

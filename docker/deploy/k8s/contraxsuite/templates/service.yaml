@@ -56,8 +56,8 @@ metadata:
   name: contrax-mlflow-tracking
 spec:
   ports:
-  - name: "15000"
-    port: 15000
+  - name: "5000"
+    port: 5000
     targetPort: 5000
   selector:
     app: contrax-mlflow-tracking
@@ -84,6 +84,23 @@ spec:
       protocol: TCP
   selector:
     app: contrax-webdav
+status:
+  loadBalancer: {}
+
+---
+#contrax-tes-webdav
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  name: contrax-tes-webdav
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: contrax-tes-webdav
 status:
   loadBalancer: {}
 
@@ -158,9 +175,9 @@ spec:
 status:
   loadBalancer: {}
 
----
-{{ end }}
 
+{{ end }}
+---
 #contrax-elasticsearch
 
 apiVersion: v1
@@ -248,6 +265,8 @@ spec:
   ports:
     - port: 5672
       protocol: TCP
+    # - port: 15672
+    #   protocol: TCP
   selector:
     app: contrax-rabbitmq
 status:
@@ -328,5 +347,174 @@ spec:
       protocol: TCP
   selector:
     app: contrax-daphne
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-pgbouncer-websrv
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: contrax-pgbouncer-session
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+  selector:
+    app: contrax-pgbouncer-session
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-pgbouncer-celery
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: contrax-pgbouncer-transaction
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+  selector:
+    app: contrax-pgbouncer-transaction
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-celery-beat
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: contrax-celery-beat
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: contrax-celery-beat
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-celery
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: contrax-celery
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: contrax-celery
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-celery-doc-load
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: contrax-celery-doc-load
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: contrax-celery-doc-load
+status:
+  loadBalancer: {}
+
+---
+
+#contrax-celery-high
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: contrax-celery-high
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: contrax-celery-high
+status:
+  loadBalancer: {}
+
+---
+#tes-celery-worker
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: tes-celery-worker
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: tes-celery-worker
+status:
+  loadBalancer: {}
+
+---
+#tes-celery-beat
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: tes-celery-beat
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: tes-celery-beat
+status:
+  loadBalancer: {}
+
+
+---
+#tes-web-api
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.namespace}}
+  annotations:
+  name: tes-web-api
+spec:
+  ports:
+    - port: 8000
+      protocol: TCP
+  selector:
+    app: tes-web-api
 status:
   loadBalancer: {}

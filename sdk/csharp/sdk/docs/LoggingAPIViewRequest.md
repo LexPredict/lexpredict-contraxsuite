@@ -6,7 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **QueryInfo** | **Object** |  | 
-**Records** | [**List&lt;AnyType&gt;**](AnyType.md) |  | 
+**Records** | **List&lt;Object&gt;** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

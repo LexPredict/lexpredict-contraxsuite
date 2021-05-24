@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,7 +68,7 @@ class TableExportMap:
             row_val = row[cl]
             if row_val == '\\N':
                 row_val = None
-            if row_val == np.nan or row_val == math.nan:
+            if row_val in (np.nan, math.nan):
                 row_val = None
             if isinstance(row_val, float) and math.isnan(row_val):
                 row_val = None
@@ -103,7 +103,7 @@ class TableExportMap:
                      'records were already imported')
 
     def read_default_columns(self, cursor) -> None:
-        sql = f"select column_name from information_schema.columns " +\
+        sql = "select column_name from information_schema.columns " +\
               f"where table_name = '{self.table_name}';"  # data_type
         cursor.execute(sql)
         for row in cursor.fetchall():
@@ -133,10 +133,10 @@ class TableExportMapCollection:
             TableExportMap('document_fieldannotation'),
             TableExportMap('document_textunit'),
             TableExportMap('document_textunittext',
-                           where_clause='p where exists(select id from document_textunit d ' +\
+                           where_clause='p where exists(select id from document_textunit d ' +
                            'where d.id = p.text_unit_id and d.document_id in ({document_ids}))'),
             TableExportMap('document_documentnote'),
-            TableExportMap('document_documentproperty'), # 'created_by_id', 'modified_by_id',
+            TableExportMap('document_documentproperty'),   # 'created_by_id', 'modified_by_id',
             TableExportMap('document_documentrelation',
                            where_clause='where document_a_id in ({document_ids}) ' +
                                         'and document_b_id in ({document_ids})'),
@@ -151,11 +151,11 @@ class TableExportMapCollection:
                            where_clause='p where exists(select id from document_textunit d ' + \
                            'where d.id = p.text_unit_id and d.document_id in ({document_ids}))'),
             TableExportMap('document_textunitrelation',
-                           where_clause='p where exists(select id from document_textunit d ' + \
-                           'where (d.id = p.text_unit_a_id or d.id = p.text_unit_b_id) ' + \
+                           where_clause='p where exists(select id from document_textunit d ' +
+                           'where (d.id = p.text_unit_a_id or d.id = p.text_unit_b_id) ' +
                            'and d.document_id in ({document_ids}))'),
             TableExportMap('document_textunittag',
-                           where_clause='p where exists(select id from document_textunit d ' + \
+                           where_clause='p where exists(select id from document_textunit d ' +
                            'where d.id = p.text_unit_id and d.document_id in ({document_ids}))'),
         ]
         default_where_clause = 'where document_id in ({document_ids})'

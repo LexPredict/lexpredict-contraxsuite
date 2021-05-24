@@ -38,9 +38,9 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeText
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -211,23 +211,20 @@ class EditableTableWidget(Textarea):
         df.sort_values('value', inplace=True)
 
         # build an HTML table
-        markup = f'<table name="{name}_table" ' +\
-                 'class="table table-striped table-bordered table-hover table-condensed">' +\
-                 '<tr><th>Value</th><th>Pattern</th></tr>\n'
-        for i, row in df.iterrows():
+        markup = f'<table name="{name}_table" ' \
+                 f'class="table table-striped table-bordered table-hover table-condensed">' \
+                 f'<tr><th>Value</th><th>Pattern</th></tr>\n'
+        for _, row in df.iterrows():
             cell_value = html.escape(row[0])
             cell_pattern = html.escape(row[1])
             markup += f'<tr><td>{cell_value}</td><td>{cell_pattern}</td></tr>'
-        markup += '<tr><td data-row="new-row"><a href="#">Add row...</a></td>' + \
+        markup += '<tr><td data-row="new-row"><a href="#">Add row...</a></td>' \
                   '<td data-row="new-row"><a href="#">Add row...</a></td></tr>'
         markup += '</table>\n'
 
         html_value = html.escape(value or '', quote=True)
         markup += f'<input name="{name}" type="hidden" value="{html_value}" />\n'
         return markup
-
-    def value_from_datadict(self, data, files, name):
-        return super().value_from_datadict(data, files, name)
 
 
 class CustomLabelModelChoiceField(forms.ModelChoiceField):
@@ -238,5 +235,4 @@ class CustomLabelModelChoiceField(forms.ModelChoiceField):
         super().__init__(*args, **kwargs)
 
     def label_from_instance(self, obj):
-        return self.custom_formatter(obj) if self.custom_formatter \
-            else super().label_from_instance(obj)
+        return self.custom_formatter(obj) if self.custom_formatter else super().label_from_instance(obj)

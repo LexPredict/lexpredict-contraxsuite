@@ -24,7 +24,6 @@
 """
 # -*- coding: utf-8 -*-
 
-import asyncio
 from typing import Optional, Set, Dict, Iterable, List
 
 import redis
@@ -34,18 +33,17 @@ from channels.layers import get_channel_layer
 from channels_redis.core import RedisChannelLayer
 from django.conf import settings
 from django.db.models import QuerySet
-from django.db import connection
 
+from apps.common.logger import CsLogger
 from apps.common.singleton import Singleton
-from apps.task.utils.logger import get_django_logger
 from apps.users.models import User
 from apps.users.authentication import token_cache
 from apps.websocket.channel_message import ChannelMessage
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -190,7 +188,7 @@ class ContraxsuiteWSConsumer(AsyncJsonWebsocketConsumer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = get_django_logger()
+        self.logger = CsLogger.get_django_logger()
         self.ws = Websockets()
 
     async def connect(self):

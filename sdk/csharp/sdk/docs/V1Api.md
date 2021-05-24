@@ -9,7 +9,15 @@ Method | HTTP request | Description
 [**AnalyzeDocumentClusterIdPATCH**](V1Api.md#analyzedocumentclusteridpatch) | **PATCH** /api/v1/analyze/document-cluster/{id}/ | 
 [**AnalyzeDocumentClusterIdPUT**](V1Api.md#analyzedocumentclusteridput) | **PUT** /api/v1/analyze/document-cluster/{id}/ | 
 [**AnalyzeDocumentSimilarityListGET**](V1Api.md#analyzedocumentsimilaritylistget) | **GET** /api/v1/analyze/document-similarity/list/ | 
+[**AnalyzeDocumentTransformerListGET**](V1Api.md#analyzedocumenttransformerlistget) | **GET** /api/v1/analyze/document-transformer/list/ | 
+[**AnalyzeMlModelListGET**](V1Api.md#analyzemlmodellistget) | **GET** /api/v1/analyze/ml-model/list/ | 
 [**AnalyzePartySimilarityListGET**](V1Api.md#analyzepartysimilaritylistget) | **GET** /api/v1/analyze/party-similarity/list/ | 
+[**AnalyzeProjectDocumentSimilarityListGET**](V1Api.md#analyzeprojectdocumentsimilaritylistget) | **GET** /api/v1/analyze/project-document-similarity/list/ | 
+[**AnalyzeProjectTextUnitSimilarityListGET**](V1Api.md#analyzeprojecttextunitsimilaritylistget) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ | 
+[**AnalyzeProjectTextUnitSimilarityListPOST**](V1Api.md#analyzeprojecttextunitsimilaritylistpost) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ | 
+[**AnalyzeSimilarityRunsGET**](V1Api.md#analyzesimilarityrunsget) | **GET** /api/v1/analyze/similarity-runs/ | 
+[**AnalyzeSimilarityRunsIdDELETE**](V1Api.md#analyzesimilarityrunsiddelete) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ | 
+[**AnalyzeSimilarityRunsIdGET**](V1Api.md#analyzesimilarityrunsidget) | **GET** /api/v1/analyze/similarity-runs/{id}/ | 
 [**AnalyzeTextUnitClassificationsGET**](V1Api.md#analyzetextunitclassificationsget) | **GET** /api/v1/analyze/text-unit-classifications/ | 
 [**AnalyzeTextUnitClassificationsIdDELETE**](V1Api.md#analyzetextunitclassificationsiddelete) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ | 
 [**AnalyzeTextUnitClassificationsIdGET**](V1Api.md#analyzetextunitclassificationsidget) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ | 
@@ -22,12 +30,14 @@ Method | HTTP request | Description
 [**AnalyzeTextUnitClassifiersIdGET**](V1Api.md#analyzetextunitclassifiersidget) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ | 
 [**AnalyzeTextUnitClusterListGET**](V1Api.md#analyzetextunitclusterlistget) | **GET** /api/v1/analyze/text-unit-cluster/list/ | 
 [**AnalyzeTextUnitSimilarityListGET**](V1Api.md#analyzetextunitsimilaritylistget) | **GET** /api/v1/analyze/text-unit-similarity/list/ | 
+[**AnalyzeTextUnitTransformerListGET**](V1Api.md#analyzetextunittransformerlistget) | **GET** /api/v1/analyze/text-unit-transformer/list/ | 
 [**AnalyzeTypeaheadTextUnitClassificationFieldNameGET**](V1Api.md#analyzetypeaheadtextunitclassificationfieldnameget) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ | 
 [**CommonActionsGET**](V1Api.md#commonactionsget) | **GET** /api/v1/common/actions/ | 
 [**CommonActionsIdGET**](V1Api.md#commonactionsidget) | **GET** /api/v1/common/actions/{id}/ | 
-[**CommonAppVariablesDELETE**](V1Api.md#commonappvariablesdelete) | **DELETE** /api/v1/common/app-variables/ | 
 [**CommonAppVariablesGET**](V1Api.md#commonappvariablesget) | **GET** /api/v1/common/app-variables/ | 
-[**CommonAppVariablesPOST**](V1Api.md#commonappvariablespost) | **POST** /api/v1/common/app-variables/ | 
+[**CommonAppVariablesListGET**](V1Api.md#commonappvariableslistget) | **GET** /api/v1/common/app-variables/list/ | 
+[**CommonAppVariablesProjectProjectIdGET**](V1Api.md#commonappvariablesprojectprojectidget) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
+[**CommonAppVariablesProjectProjectIdPUT**](V1Api.md#commonappvariablesprojectprojectidput) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
 [**CommonMediaPathGET**](V1Api.md#commonmediapathget) | **GET** /api/v1/common/media/{path}/ | 
 [**CommonMenuGroupsFormFieldsGET**](V1Api.md#commonmenugroupsformfieldsget) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**CommonMenuGroupsGET**](V1Api.md#commonmenugroupsget) | **GET** /api/v1/common/menu-groups/ | 
@@ -86,8 +96,10 @@ Method | HTTP request | Description
 [**DocumentDocumentFieldDetectorsUidPUT**](V1Api.md#documentdocumentfielddetectorsuidput) | **PUT** /api/v1/document/document-field-detectors/{uid}/ | 
 [**DocumentDocumentFieldValuesGET**](V1Api.md#documentdocumentfieldvaluesget) | **GET** /api/v1/document/document-field-values/ | 
 [**DocumentDocumentFieldValuesIdGET**](V1Api.md#documentdocumentfieldvaluesidget) | **GET** /api/v1/document/document-field-values/{id}/ | 
+[**DocumentDocumentFieldsCheckFieldFormulaPOST**](V1Api.md#documentdocumentfieldscheckfieldformulapost) | **POST** /api/v1/document/document-fields/check_field_formula/ | 
 [**DocumentDocumentFieldsFormFieldsGET**](V1Api.md#documentdocumentfieldsformfieldsget) | **GET** /api/v1/document/document-fields/form-fields/ | 
 [**DocumentDocumentFieldsGET**](V1Api.md#documentdocumentfieldsget) | **GET** /api/v1/document/document-fields/ | 
+[**DocumentDocumentFieldsPOST**](V1Api.md#documentdocumentfieldspost) | **POST** /api/v1/document/document-fields/ | 
 [**DocumentDocumentFieldsStatsGET**](V1Api.md#documentdocumentfieldsstatsget) | **GET** /api/v1/document/document-fields/stats/ | 
 [**DocumentDocumentFieldsUidCheckFormulaPOST**](V1Api.md#documentdocumentfieldsuidcheckformulapost) | **POST** /api/v1/document/document-fields/{uid}/check_formula/ | 
 [**DocumentDocumentFieldsUidClonePOST**](V1Api.md#documentdocumentfieldsuidclonepost) | **POST** /api/v1/document/document-fields/{uid}/clone/ | 
@@ -107,6 +119,7 @@ Method | HTTP request | Description
 [**DocumentDocumentTypesGET**](V1Api.md#documentdocumenttypesget) | **GET** /api/v1/document/document-types/ | 
 [**DocumentDocumentTypesImportDocTypePUT**](V1Api.md#documentdocumenttypesimportdoctypeput) | **PUT** /api/v1/document/document-types/import_doc_type/ | 
 [**DocumentDocumentTypesPOST**](V1Api.md#documentdocumenttypespost) | **POST** /api/v1/document/document-types/ | 
+[**DocumentDocumentTypesSchemeMigrationsGET**](V1Api.md#documentdocumenttypesschememigrationsget) | **GET** /api/v1/document/document-types/scheme_migrations/ | 
 [**DocumentDocumentTypesStatsGET**](V1Api.md#documentdocumenttypesstatsget) | **GET** /api/v1/document/document-types/stats/ | 
 [**DocumentDocumentTypesUidClonePOST**](V1Api.md#documentdocumenttypesuidclonepost) | **POST** /api/v1/document/document-types/{uid}/clone/ | 
 [**DocumentDocumentTypesUidDELETE**](V1Api.md#documentdocumenttypesuiddelete) | **DELETE** /api/v1/document/document-types/{uid}/ | 
@@ -120,6 +133,7 @@ Method | HTTP request | Description
 [**DocumentDocumentsDownloadZipGET**](V1Api.md#documentdocumentsdownloadzipget) | **GET** /api/v1/document/documents/download_zip/ | 
 [**DocumentDocumentsForUserGET**](V1Api.md#documentdocumentsforuserget) | **GET** /api/v1/document/documents/for-user/ | 
 [**DocumentDocumentsGET**](V1Api.md#documentdocumentsget) | **GET** /api/v1/document/documents/ | 
+[**DocumentDocumentsIdActionsGET**](V1Api.md#documentdocumentsidactionsget) | **GET** /api/v1/document/documents/{id}/actions/ | 
 [**DocumentDocumentsIdDELETE**](V1Api.md#documentdocumentsiddelete) | **DELETE** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdDataGET**](V1Api.md#documentdocumentsiddataget) | **GET** /api/v1/document/documents/{id}/data/ | 
 [**DocumentDocumentsIdDefinitionsGET**](V1Api.md#documentdocumentsiddefinitionsget) | **GET** /api/v1/document/documents/{id}/definitions/ | 
@@ -130,9 +144,12 @@ Method | HTTP request | Description
 [**DocumentDocumentsIdFieldsPUT**](V1Api.md#documentdocumentsidfieldsput) | **PUT** /api/v1/document/documents/{id}/fields/ | 
 [**DocumentDocumentsIdFullTextGET**](V1Api.md#documentdocumentsidfulltextget) | **GET** /api/v1/document/documents/{id}/full_text/ | 
 [**DocumentDocumentsIdGET**](V1Api.md#documentdocumentsidget) | **GET** /api/v1/document/documents/{id}/ | 
+[**DocumentDocumentsIdHasPdfInfoGET**](V1Api.md#documentdocumentsidhaspdfinfoget) | **GET** /api/v1/document/documents/{id}/has_pdf_info/ | 
 [**DocumentDocumentsIdPATCH**](V1Api.md#documentdocumentsidpatch) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdPUT**](V1Api.md#documentdocumentsidput) | **PUT** /api/v1/document/documents/{id}/ | 
+[**DocumentDocumentsIdPdfReprGET**](V1Api.md#documentdocumentsidpdfreprget) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
 [**DocumentDocumentsIdShowGET**](V1Api.md#documentdocumentsidshowget) | **GET** /api/v1/document/documents/{id}/show/ | 
+[**DocumentDocumentsIdSimilarGET**](V1Api.md#documentdocumentsidsimilarget) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**DocumentDocumentsMarkDeletePOST**](V1Api.md#documentdocumentsmarkdeletepost) | **POST** /api/v1/document/documents/mark_delete/ | 
 [**DocumentDocumentsPOST**](V1Api.md#documentdocumentspost) | **POST** /api/v1/document/documents/ | 
 [**DocumentDocumentsUnmarkDeletePOST**](V1Api.md#documentdocumentsunmarkdeletepost) | **POST** /api/v1/document/documents/unmark_delete/ | 
@@ -156,6 +173,7 @@ Method | HTTP request | Description
 [**DocumentProjectProjectPkDocumentsDownloadZipGET**](V1Api.md#documentprojectprojectpkdocumentsdownloadzipget) | **GET** /api/v1/document/project/{project_pk}/documents/download_zip/ | 
 [**DocumentProjectProjectPkDocumentsForUserGET**](V1Api.md#documentprojectprojectpkdocumentsforuserget) | **GET** /api/v1/document/project/{project_pk}/documents/for-user/ | 
 [**DocumentProjectProjectPkDocumentsGET**](V1Api.md#documentprojectprojectpkdocumentsget) | **GET** /api/v1/document/project/{project_pk}/documents/ | 
+[**DocumentProjectProjectPkDocumentsIdActionsGET**](V1Api.md#documentprojectprojectpkdocumentsidactionsget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/actions/ | 
 [**DocumentProjectProjectPkDocumentsIdDELETE**](V1Api.md#documentprojectprojectpkdocumentsiddelete) | **DELETE** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdDataGET**](V1Api.md#documentprojectprojectpkdocumentsiddataget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/data/ | 
 [**DocumentProjectProjectPkDocumentsIdDefinitionsGET**](V1Api.md#documentprojectprojectpkdocumentsiddefinitionsget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/definitions/ | 
@@ -166,9 +184,12 @@ Method | HTTP request | Description
 [**DocumentProjectProjectPkDocumentsIdFieldsPUT**](V1Api.md#documentprojectprojectpkdocumentsidfieldsput) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
 [**DocumentProjectProjectPkDocumentsIdFullTextGET**](V1Api.md#documentprojectprojectpkdocumentsidfulltextget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/full_text/ | 
 [**DocumentProjectProjectPkDocumentsIdGET**](V1Api.md#documentprojectprojectpkdocumentsidget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**DocumentProjectProjectPkDocumentsIdHasPdfInfoGET**](V1Api.md#documentprojectprojectpkdocumentsidhaspdfinfoget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/has_pdf_info/ | 
 [**DocumentProjectProjectPkDocumentsIdPATCH**](V1Api.md#documentprojectprojectpkdocumentsidpatch) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdPUT**](V1Api.md#documentprojectprojectpkdocumentsidput) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**DocumentProjectProjectPkDocumentsIdPdfReprGET**](V1Api.md#documentprojectprojectpkdocumentsidpdfreprget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
 [**DocumentProjectProjectPkDocumentsIdShowGET**](V1Api.md#documentprojectprojectpkdocumentsidshowget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
+[**DocumentProjectProjectPkDocumentsIdSimilarGET**](V1Api.md#documentprojectprojectpkdocumentsidsimilarget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**DocumentProjectProjectPkDocumentsMarkDeletePOST**](V1Api.md#documentprojectprojectpkdocumentsmarkdeletepost) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
 [**DocumentProjectProjectPkDocumentsPOST**](V1Api.md#documentprojectprojectpkdocumentspost) | **POST** /api/v1/document/project/{project_pk}/documents/ | 
 [**DocumentProjectProjectPkDocumentsUnmarkDeletePOST**](V1Api.md#documentprojectprojectpkdocumentsunmarkdeletepost) | **POST** /api/v1/document/project/{project_pk}/documents/unmark_delete/ | 
@@ -222,6 +243,7 @@ Method | HTTP request | Description
 [**ExtractRatioUsageTopGET**](V1Api.md#extractratiousagetopget) | **GET** /api/v1/extract/ratio-usage/top/ | 
 [**ExtractRegulationUsageGET**](V1Api.md#extractregulationusageget) | **GET** /api/v1/extract/regulation-usage/ | 
 [**ExtractRegulationUsageTopGET**](V1Api.md#extractregulationusagetopget) | **GET** /api/v1/extract/regulation-usage/top/ | 
+[**ExtractTermTagsGET**](V1Api.md#extracttermtagsget) | **GET** /api/v1/extract/term-tags/ | 
 [**ExtractTermUsageGET**](V1Api.md#extracttermusageget) | **GET** /api/v1/extract/term-usage/ | 
 [**ExtractTermUsageTopGET**](V1Api.md#extracttermusagetopget) | **GET** /api/v1/extract/term-usage/top/ | 
 [**ExtractTrademarkUsageGET**](V1Api.md#extracttrademarkusageget) | **GET** /api/v1/extract/trademark-usage/ | 
@@ -235,27 +257,39 @@ Method | HTTP request | Description
 [**MediaDataPathGET**](V1Api.md#mediadatapathget) | **GET** /api/media-data/{path}/ | 
 [**ProjectProjectClusteringGET**](V1Api.md#projectprojectclusteringget) | **GET** /api/v1/project/project-clustering/ | 
 [**ProjectProjectClusteringIdGET**](V1Api.md#projectprojectclusteringidget) | **GET** /api/v1/project/project-clustering/{id}/ | 
+[**ProjectProjectsFormFieldsGET**](V1Api.md#projectprojectsformfieldsget) | **GET** /api/v1/project/projects/form-fields/ | 
 [**ProjectProjectsGET**](V1Api.md#projectprojectsget) | **GET** /api/v1/project/projects/ | 
+[**ProjectProjectsIdActiveTasksGET**](V1Api.md#projectprojectsidactivetasksget) | **GET** /api/v1/project/projects/{id}/active_tasks/ | 
 [**ProjectProjectsIdAnnotationsAssigneesGET**](V1Api.md#projectprojectsidannotationsassigneesget) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ | 
 [**ProjectProjectsIdAssignAnnotationsPOST**](V1Api.md#projectprojectsidassignannotationspost) | **POST** /api/v1/project/projects/{id}/assign_annotations/ | 
 [**ProjectProjectsIdAssignDocumentPOST**](V1Api.md#projectprojectsidassigndocumentpost) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**ProjectProjectsIdAssignDocumentsPOST**](V1Api.md#projectprojectsidassigndocumentspost) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**ProjectProjectsIdAssigneesGET**](V1Api.md#projectprojectsidassigneesget) | **GET** /api/v1/project/projects/{id}/assignees/ | 
 [**ProjectProjectsIdCleanupPOST**](V1Api.md#projectprojectsidcleanuppost) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
+[**ProjectProjectsIdClusterActionsGET**](V1Api.md#projectprojectsidclusteractionsget) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**ProjectProjectsIdClusterPOST**](V1Api.md#projectprojectsidclusterpost) | **POST** /api/v1/project/projects/{id}/cluster/ | 
 [**ProjectProjectsIdClusteringStatusGET**](V1Api.md#projectprojectsidclusteringstatusget) | **GET** /api/v1/project/projects/{id}/clustering-status/ | 
 [**ProjectProjectsIdDELETE**](V1Api.md#projectprojectsiddelete) | **DELETE** /api/v1/project/projects/{id}/ | 
+[**ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE**](V1Api.md#projectprojectsiddeletedocumentsimilarityresultsdelete) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ | 
+[**ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](V1Api.md#projectprojectsiddeletetextunitsimilarityresultsdelete) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ | 
 [**ProjectProjectsIdDetectFieldValuesPOST**](V1Api.md#projectprojectsiddetectfieldvaluespost) | **POST** /api/v1/project/projects/{id}/detect_field_values/ | 
+[**ProjectProjectsIdFormFieldsGET**](V1Api.md#projectprojectsidformfieldsget) | **GET** /api/v1/project/projects/{id}/form-fields/ | 
 [**ProjectProjectsIdGET**](V1Api.md#projectprojectsidget) | **GET** /api/v1/project/projects/{id}/ | 
-[**ProjectProjectsIdMakeSearchablePdfPOST**](V1Api.md#projectprojectsidmakesearchablepdfpost) | **POST** /api/v1/project/projects/{id}/make-searchable-pdf/ | 
+[**ProjectProjectsIdLocateItemsPOST**](V1Api.md#projectprojectsidlocateitemspost) | **POST** /api/v1/project/projects/{id}/locate_items/ | 
 [**ProjectProjectsIdMarkDeletePOST**](V1Api.md#projectprojectsidmarkdeletepost) | **POST** /api/v1/project/projects/{id}/mark_delete/ | 
 [**ProjectProjectsIdPATCH**](V1Api.md#projectprojectsidpatch) | **PATCH** /api/v1/project/projects/{id}/ | 
 [**ProjectProjectsIdPUT**](V1Api.md#projectprojectsidput) | **PUT** /api/v1/project/projects/{id}/ | 
 [**ProjectProjectsIdProgressGET**](V1Api.md#projectprojectsidprogressget) | **GET** /api/v1/project/projects/{id}/progress/ | 
+[**ProjectProjectsIdSearchSimilarDocumentsPOST**](V1Api.md#projectprojectsidsearchsimilardocumentspost) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ | 
+[**ProjectProjectsIdSearchSimilarTextUnitsPOST**](V1Api.md#projectprojectsidsearchsimilartextunitspost) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ | 
 [**ProjectProjectsIdSendClustersToProjectPOST**](V1Api.md#projectprojectsidsendclusterstoprojectpost) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ | 
 [**ProjectProjectsIdSetAnnotationStatusPOST**](V1Api.md#projectprojectsidsetannotationstatuspost) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ | 
 [**ProjectProjectsIdSetStatusPOST**](V1Api.md#projectprojectsidsetstatuspost) | **POST** /api/v1/project/projects/{id}/set_status/ | 
+[**ProjectProjectsIdSettingsActionsGET**](V1Api.md#projectprojectsidsettingsactionsget) | **GET** /api/v1/project/projects/{id}/settings_actions/ | 
+[**ProjectProjectsIdTaskTaskIdTaskLogsGET**](V1Api.md#projectprojectsidtasktaskidtasklogsget) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ | 
+[**ProjectProjectsIdTasksGET**](V1Api.md#projectprojectsidtasksget) | **GET** /api/v1/project/projects/{id}/tasks/ | 
 [**ProjectProjectsIdUnmarkDeletePOST**](V1Api.md#projectprojectsidunmarkdeletepost) | **POST** /api/v1/project/projects/{id}/unmark_delete/ | 
+[**ProjectProjectsIdUpdateDocumentFieldsPOST**](V1Api.md#projectprojectsidupdatedocumentfieldspost) | **POST** /api/v1/project/projects/{id}/update_document_fields/ | 
 [**ProjectProjectsPOST**](V1Api.md#projectprojectspost) | **POST** /api/v1/project/projects/ | 
 [**ProjectProjectsProjectStatsGET**](V1Api.md#projectprojectsprojectstatsget) | **GET** /api/v1/project/projects/project_stats/ | 
 [**ProjectProjectsRecentGET**](V1Api.md#projectprojectsrecentget) | **GET** /api/v1/project/projects/recent/ | 
@@ -276,6 +310,7 @@ Method | HTTP request | Description
 [**ProjectUploadSessionUidDeleteFileDELETE**](V1Api.md#projectuploadsessionuiddeletefiledelete) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ | 
 [**ProjectUploadSessionUidFilesPOST**](V1Api.md#projectuploadsessionuidfilespost) | **POST** /api/v1/project/upload-session/{uid}/files/ | 
 [**ProjectUploadSessionUidGET**](V1Api.md#projectuploadsessionuidget) | **GET** /api/v1/project/upload-session/{uid}/ | 
+[**ProjectUploadSessionUidPATCH**](V1Api.md#projectuploadsessionuidpatch) | **PATCH** /api/v1/project/upload-session/{uid}/ | 
 [**ProjectUploadSessionUidProgressGET**](V1Api.md#projectuploadsessionuidprogressget) | **GET** /api/v1/project/upload-session/{uid}/progress/ | 
 [**ProjectUploadSessionUidUploadPOST**](V1Api.md#projectuploadsessionuiduploadpost) | **POST** /api/v1/project/upload-session/{uid}/upload/ | 
 [**RawdbConfigGET**](V1Api.md#rawdbconfigget) | **GET** /api/v1/rawdb/config/ | 
@@ -291,34 +326,39 @@ Method | HTTP request | Description
 [**RestAuthPasswordResetPOST**](V1Api.md#restauthpasswordresetpost) | **POST** /rest-auth/password/reset/ | 
 [**RestAuthRegistrationPOST**](V1Api.md#restauthregistrationpost) | **POST** /rest-auth/registration/ | 
 [**RestAuthRegistrationVerifyEmailPOST**](V1Api.md#restauthregistrationverifyemailpost) | **POST** /rest-auth/registration/verify-email/ | 
+[**SimilarityDocumentSimilarityByFeaturesGET**](V1Api.md#similaritydocumentsimilaritybyfeaturesget) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
+[**SimilarityDocumentSimilarityByFeaturesPOST**](V1Api.md#similaritydocumentsimilaritybyfeaturespost) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 [**SimilarityPartySimilarityGET**](V1Api.md#similaritypartysimilarityget) | **GET** /api/v1/similarity/party-similarity/ | 
 [**SimilarityPartySimilarityPOST**](V1Api.md#similaritypartysimilaritypost) | **POST** /api/v1/similarity/party-similarity/ | 
-[**SimilaritySimilarityByFeaturesGET**](V1Api.md#similaritysimilaritybyfeaturesget) | **GET** /api/v1/similarity/similarity-by-features/ | 
-[**SimilaritySimilarityByFeaturesPOST**](V1Api.md#similaritysimilaritybyfeaturespost) | **POST** /api/v1/similarity/similarity-by-features/ | 
+[**SimilarityProjectDocumentsSimilarityByVectorsGET**](V1Api.md#similarityprojectdocumentssimilaritybyvectorsget) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
+[**SimilarityProjectDocumentsSimilarityByVectorsPOST**](V1Api.md#similarityprojectdocumentssimilaritybyvectorspost) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
+[**SimilarityProjectTextUnitsSimilarityByVectorsGET**](V1Api.md#similarityprojecttextunitssimilaritybyvectorsget) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
+[**SimilarityProjectTextUnitsSimilarityByVectorsPOST**](V1Api.md#similarityprojecttextunitssimilaritybyvectorspost) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
 [**SimilaritySimilarityGET**](V1Api.md#similaritysimilarityget) | **GET** /api/v1/similarity/similarity/ | 
 [**SimilaritySimilarityPOST**](V1Api.md#similaritysimilaritypost) | **POST** /api/v1/similarity/similarity/ | 
+[**SimilarityTextUnitSimilarityByFeaturesGET**](V1Api.md#similaritytextunitsimilaritybyfeaturesget) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ | 
+[**SimilarityTextUnitSimilarityByFeaturesPOST**](V1Api.md#similaritytextunitsimilaritybyfeaturespost) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ | 
 [**TaskCleanTasksPOST**](V1Api.md#taskcleantaskspost) | **POST** /api/v1/task/clean-tasks/ | 
 [**TaskLoadDictionariesPOST**](V1Api.md#taskloaddictionariespost) | **POST** /api/v1/task/load-dictionaries/ | 
 [**TaskLoadDocumentsGET**](V1Api.md#taskloaddocumentsget) | **GET** /api/v1/task/load-documents/ | 
 [**TaskLoadDocumentsPOST**](V1Api.md#taskloaddocumentspost) | **POST** /api/v1/task/load-documents/ | 
 [**TaskLocateGET**](V1Api.md#tasklocateget) | **GET** /api/v1/task/locate/ | 
 [**TaskLocatePOST**](V1Api.md#tasklocatepost) | **POST** /api/v1/task/locate/ | 
+[**TaskProcessTextExtractionResultsRequestIdPOST**](V1Api.md#taskprocesstextextractionresultsrequestidpost) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ | 
 [**TaskPurgeTaskPOST**](V1Api.md#taskpurgetaskpost) | **POST** /api/v1/task/purge-task/ | 
 [**TaskRecallTaskGET**](V1Api.md#taskrecalltaskget) | **GET** /api/v1/task/recall-task/ | 
 [**TaskRecallTaskPOST**](V1Api.md#taskrecalltaskpost) | **POST** /api/v1/task/recall-task/ | 
+[**TaskReindexroutinesCheckSchedulePOST**](V1Api.md#taskreindexroutinescheckschedulepost) | **POST** /api/v1/task/reindexroutines/check_schedule | 
 [**TaskTaskLogGET**](V1Api.md#tasktasklogget) | **GET** /api/v1/task/task-log/ | 
 [**TaskTaskStatusGET**](V1Api.md#tasktaskstatusget) | **GET** /api/v1/task/task-status/ | 
 [**TaskTasksGET**](V1Api.md#tasktasksget) | **GET** /api/v1/task/tasks/ | 
 [**TaskTasksIdGET**](V1Api.md#tasktasksidget) | **GET** /api/v1/task/tasks/{id}/ | 
+[**TaskTasksProjectProjectIdActiveTasksGET**](V1Api.md#tasktasksprojectprojectidactivetasksget) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ | 
+[**TaskTasksProjectProjectIdTasksGET**](V1Api.md#tasktasksprojectprojectidtasksget) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ | 
 [**TaskUpdateElasticIndexGET**](V1Api.md#taskupdateelasticindexget) | **GET** /api/v1/task/update-elastic-index/ | 
 [**TaskUpdateElasticIndexPOST**](V1Api.md#taskupdateelasticindexpost) | **POST** /api/v1/task/update-elastic-index/ | 
 [**TusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusuploadsessionuploadsessioniduploadguidpatch) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**TusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusuploadsessionuploadsessioniduploadpost) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-[**UsersRolesGET**](V1Api.md#usersrolesget) | **GET** /api/v1/users/roles/ | 
-[**UsersRolesIdGET**](V1Api.md#usersrolesidget) | **GET** /api/v1/users/roles/{id}/ | 
-[**UsersRolesIdPATCH**](V1Api.md#usersrolesidpatch) | **PATCH** /api/v1/users/roles/{id}/ | 
-[**UsersRolesIdPUT**](V1Api.md#usersrolesidput) | **PUT** /api/v1/users/roles/{id}/ | 
-[**UsersRolesPOST**](V1Api.md#usersrolespost) | **POST** /api/v1/users/roles/ | 
 [**UsersUsersFormFieldsGET**](V1Api.md#usersusersformfieldsget) | **GET** /api/v1/users/users/form-fields/ | 
 [**UsersUsersGET**](V1Api.md#usersusersget) | **GET** /api/v1/users/users/ | 
 [**UsersUsersIdFormFieldsGET**](V1Api.md#usersusersidformfieldsget) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -399,6 +439,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -481,6 +522,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -561,6 +603,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -643,6 +686,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -660,7 +704,7 @@ Name | Type | Description  | Notes
 
 
 
-Document Similarity List
+Base Document Similarity List
 
 ### Example
 
@@ -721,6 +765,167 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeDocumentTransformerListGET
+
+> List&lt;Transformer&gt; AnalyzeDocumentTransformerListGET (Dictionary<string, string> jqFilters = null)
+
+
+
+MLModel List - document transformers only
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeDocumentTransformerListGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Transformer> result = apiInstance.AnalyzeDocumentTransformerListGET(jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeDocumentTransformerListGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Transformer&gt;**](Transformer.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeMlModelListGET
+
+> List&lt;MLModel&gt; AnalyzeMlModelListGET (Dictionary<string, string> jqFilters = null)
+
+
+
+MLModel List
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeMlModelListGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<MLModel> result = apiInstance.AnalyzeMlModelListGET(jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeMlModelListGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;MLModel&gt;**](MLModel.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -801,6 +1006,522 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeProjectDocumentSimilarityListGET
+
+> List&lt;ProjectDocumentSimilarity&gt; AnalyzeProjectDocumentSimilarityListGET (int? textMaxLength = null, int? runId = null, int? documentId = null, Dictionary<string, string> jqFilters = null)
+
+
+
+Project Document Similarity List for ONE document
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeProjectDocumentSimilarityListGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
+            var runId = 56;  // int? | run id or document id required (optional) 
+            var documentId = 56;  // int? | run id or document id required (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectDocumentSimilarity> result = apiInstance.AnalyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeProjectDocumentSimilarityListGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **textMaxLength** | **int?**| document b text max length, 0 to get all text | [optional] 
+ **runId** | **int?**| run id or document id required | [optional] 
+ **documentId** | **int?**| run id or document id required | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeProjectTextUnitSimilarityListGET
+
+> List&lt;ProjectTextUnitSimilarity&gt; AnalyzeProjectTextUnitSimilarityListGET (Dictionary<string, string> jqFilters = null, int? textMaxLength = null, int? runId = null, bool? lastRun = null, int? textUnitId = null, int? documentId = null, int? locationStart = null, int? locationEnd = null, List<Object> selection = null)
+
+
+
+Project Text Unit Similarity List for ONE text unit
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeProjectTextUnitSimilarityListGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+            var textMaxLength = 56;  // int? | text unit b text max length, 0 to get all text (optional) 
+            var runId = 56;  // int? | run id or text unit id required (optional) 
+            var lastRun = true;  // bool? | run id or last_run or text unit id required (optional) 
+            var textUnitId = 56;  // int? | run id or text unit id required (optional) 
+            var documentId = 56;  // int? | document ID (optional) 
+            var locationStart = 56;  // int? | start of chosen text block in a Document (optional) 
+            var locationEnd = 56;  // int? | end of chosen text block in a Document (optional) 
+            var selection = new List<Object>(); // List<Object> | selection coordinates (optional) 
+
+            try
+            {
+                List<ProjectTextUnitSimilarity> result = apiInstance.AnalyzeProjectTextUnitSimilarityListGET(jqFilters, textMaxLength, runId, lastRun, textUnitId, documentId, locationStart, locationEnd, selection);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeProjectTextUnitSimilarityListGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+ **textMaxLength** | **int?**| text unit b text max length, 0 to get all text | [optional] 
+ **runId** | **int?**| run id or text unit id required | [optional] 
+ **lastRun** | **bool?**| run id or last_run or text unit id required | [optional] 
+ **textUnitId** | **int?**| run id or text unit id required | [optional] 
+ **documentId** | **int?**| document ID | [optional] 
+ **locationStart** | **int?**| start of chosen text block in a Document | [optional] 
+ **locationEnd** | **int?**| end of chosen text block in a Document | [optional] 
+ **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional] 
+
+### Return type
+
+[**List&lt;ProjectTextUnitSimilarity&gt;**](ProjectTextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeProjectTextUnitSimilarityListPOST
+
+> ProjectTextUnitSimilarity AnalyzeProjectTextUnitSimilarityListPOST (SimilarProjectTextUnitsRequest similarProjectTextUnitsRequest = null)
+
+
+
+Project Text Unit Similarity List for ONE text unit
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeProjectTextUnitSimilarityListPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var similarProjectTextUnitsRequest = new SimilarProjectTextUnitsRequest(); // SimilarProjectTextUnitsRequest |  (optional) 
+
+            try
+            {
+                ProjectTextUnitSimilarity result = apiInstance.AnalyzeProjectTextUnitSimilarityListPOST(similarProjectTextUnitsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeProjectTextUnitSimilarityListPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional] 
+
+### Return type
+
+[**ProjectTextUnitSimilarity**](ProjectTextUnitSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeSimilarityRunsGET
+
+> List&lt;SimilarityRun&gt; AnalyzeSimilarityRunsGET (string unitSource = null, int? projectId = null, Dictionary<string, string> jqFilters = null)
+
+
+
+list Similarity Run objects
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeSimilarityRunsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var projectId = 56;  // int? | Project ID (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<SimilarityRun> result = apiInstance.AnalyzeSimilarityRunsGET(unitSource, projectId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeSimilarityRunsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **unitSource** | **string**| document / text_unit | [optional] 
+ **projectId** | **int?**| Project ID | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;SimilarityRun&gt;**](SimilarityRun.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeSimilarityRunsIdDELETE
+
+> void AnalyzeSimilarityRunsIdDELETE (string id, string unitSource = null, int? projectId = null)
+
+
+
+delete Similarity Run object
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeSimilarityRunsIdDELETEExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this similarity run.
+            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var projectId = 56;  // int? | Project ID (optional) 
+
+            try
+            {
+                apiInstance.AnalyzeSimilarityRunsIdDELETE(id, unitSource, projectId);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeSimilarityRunsIdDELETE: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this similarity run. | 
+ **unitSource** | **string**| document / text_unit | [optional] 
+ **projectId** | **int?**| Project ID | [optional] 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeSimilarityRunsIdGET
+
+> SimilarityRun AnalyzeSimilarityRunsIdGET (string id, string unitSource = null, int? projectId = null, Dictionary<string, string> jqFilters = null)
+
+
+
+get Similarity Run object
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeSimilarityRunsIdGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this similarity run.
+            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var projectId = 56;  // int? | Project ID (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                SimilarityRun result = apiInstance.AnalyzeSimilarityRunsIdGET(id, unitSource, projectId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeSimilarityRunsIdGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this similarity run. | 
+ **unitSource** | **string**| document / text_unit | [optional] 
+ **projectId** | **int?**| Project ID | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**SimilarityRun**](SimilarityRun.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -880,6 +1601,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -957,6 +1679,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1039,6 +1762,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1117,6 +1841,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1197,6 +1922,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1274,6 +2000,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1354,6 +2081,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1433,6 +2161,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1510,6 +2239,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1590,6 +2320,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1669,6 +2400,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1686,7 +2418,7 @@ Name | Type | Description  | Notes
 
 
 
-Text Unit Similarity List
+Base Text Unit Similarity List
 
 ### Example
 
@@ -1747,6 +2479,87 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## AnalyzeTextUnitTransformerListGET
+
+> List&lt;Transformer&gt; AnalyzeTextUnitTransformerListGET (Dictionary<string, string> jqFilters = null)
+
+
+
+MLModel List - text unit transformers only
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class AnalyzeTextUnitTransformerListGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Transformer> result = apiInstance.AnalyzeTextUnitTransformerListGET(jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.AnalyzeTextUnitTransformerListGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Transformer&gt;**](Transformer.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1829,6 +2642,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1842,7 +2656,7 @@ Name | Type | Description  | Notes
 
 ## CommonActionsGET
 
-> List&lt;Action&gt; CommonActionsGET (Dictionary<string, string> jqFilters = null)
+> List&lt;List&lt;Action&gt;&gt; CommonActionsGET (int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -1870,11 +2684,14 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<Action> result = apiInstance.CommonActionsGET(jqFilters);
+                List<List<Action>> result = apiInstance.CommonActionsGET(projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1893,11 +2710,14 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+**List<List<Action>>**
 
 ### Authorization
 
@@ -1907,6 +2727,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1921,7 +2742,7 @@ Name | Type | Description  | Notes
 
 ## CommonActionsIdGET
 
-> Action CommonActionsIdGET (string id, Dictionary<string, string> jqFilters = null)
+> List&lt;Action&gt; CommonActionsIdGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -1950,11 +2771,14 @@ namespace Example
 
             var apiInstance = new V1Api(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this action.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                Action result = apiInstance.CommonActionsIdGET(id, jqFilters);
+                List<Action> result = apiInstance.CommonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1974,11 +2798,14 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this action. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
 
-[**Action**](Action.md)
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -1989,84 +2816,6 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## CommonAppVariablesDELETE
-
-> string CommonAppVariablesDELETE (AppVarDelete appVarDelete = null)
-
-
-
-Delete specific App Variable by name     Param:         - name: str         - category: str
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class CommonAppVariablesDELETEExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var appVarDelete = new AppVarDelete(); // AppVarDelete |  (optional) 
-
-            try
-            {
-                string result = apiInstance.CommonAppVariablesDELETE(appVarDelete);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.CommonAppVariablesDELETE: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **appVarDelete** | [**AppVarDelete**](AppVarDelete.md)|  | [optional] 
-
-### Return type
-
-**string**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json
-- **Accept**: application/json
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2147,6 +2896,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2158,13 +2908,11 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
-## CommonAppVariablesPOST
+## CommonAppVariablesListGET
 
-> string CommonAppVariablesPOST (Dictionary<string, Object> requestBody = null)
+> List&lt;AppVar&gt; CommonAppVariablesListGET (Dictionary<string, string> jqFilters = null)
 
 
-
-Create or update App Variables      Params:         key1: val1,         key2: val2, etc
 
 ### Example
 
@@ -2177,7 +2925,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class CommonAppVariablesPOSTExample
+    public class CommonAppVariablesListGETExample
     {
         public static void Main()
         {
@@ -2188,16 +2936,16 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                string result = apiInstance.CommonAppVariablesPOST(requestBody);
+                List<AppVar> result = apiInstance.CommonAppVariablesListGET(jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling V1Api.CommonAppVariablesPOST: " + e.Message );
+                Debug.Print("Exception when calling V1Api.CommonAppVariablesListGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -2211,7 +2959,169 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;AppVar&gt;**](AppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CommonAppVariablesProjectProjectIdGET
+
+> List&lt;ProjectAppVar&gt; CommonAppVariablesProjectProjectIdGET (string projectId)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class CommonAppVariablesProjectProjectIdGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+
+            try
+            {
+                List<ProjectAppVar> result = apiInstance.CommonAppVariablesProjectProjectIdGET(projectId);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.CommonAppVariablesProjectProjectIdGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+
+### Return type
+
+[**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CommonAppVariablesProjectProjectIdPUT
+
+> string CommonAppVariablesProjectProjectIdPUT (string projectId, List<ProjectAppVar> projectAppVar = null)
+
+
+
+Based on custom AppVar model storage
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class CommonAppVariablesProjectProjectIdPUTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+            var projectAppVar = new List<ProjectAppVar>(); // List<ProjectAppVar> |  (optional) 
+
+            try
+            {
+                string result = apiInstance.CommonAppVariablesProjectProjectIdPUT(projectId, projectAppVar);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.CommonAppVariablesProjectProjectIdPUT: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+ **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional] 
 
 ### Return type
 
@@ -2225,6 +3135,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2307,6 +3218,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, */*
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2382,6 +3294,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2456,6 +3369,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2534,6 +3448,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2614,6 +3529,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2692,6 +3608,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2774,6 +3691,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2855,6 +3773,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2934,6 +3853,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3009,6 +3929,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3083,6 +4004,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3161,6 +4083,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3241,6 +4164,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3319,6 +4243,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3401,6 +4326,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3482,6 +4408,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3560,6 +4487,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3640,6 +4568,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3681,7 +4610,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
 
             try
             {
@@ -3703,7 +4632,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
 
 ### Return type
 
@@ -3717,6 +4646,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3759,7 +4689,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -3783,7 +4713,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
@@ -3798,6 +4728,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3840,7 +4771,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -3864,7 +4795,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
 
 ### Return type
@@ -3879,6 +4810,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3921,7 +4853,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status group.
+            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -3945,7 +4877,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status group. | 
+ **id** | **string**| A unique integer value identifying this Review Status Group. | 
  **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] 
 
 ### Return type
@@ -3960,6 +4892,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4040,6 +4973,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4119,6 +5053,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4160,7 +5095,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
 
             try
             {
@@ -4182,7 +5117,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
 
 ### Return type
 
@@ -4196,6 +5131,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4238,7 +5174,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -4262,7 +5198,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
  **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
@@ -4277,6 +5213,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4319,7 +5256,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -4343,7 +5280,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
 
 ### Return type
@@ -4358,6 +5295,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4400,7 +5338,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this review status.
+            var id = id_example;  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -4424,7 +5362,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this review status. | 
+ **id** | **string**| A unique integer value identifying this Review Status. | 
  **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] 
 
 ### Return type
@@ -4439,6 +5377,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4519,6 +5458,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4595,6 +5535,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4675,6 +5616,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4749,6 +5691,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4828,6 +5771,7 @@ void (empty response body)
 - **Content-Type**: Not defined
 - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -4906,6 +5850,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -4988,6 +5933,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5066,6 +6012,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5146,6 +6093,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5222,6 +6170,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5301,6 +6250,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5383,6 +6333,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5457,6 +6408,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5537,6 +6489,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5614,6 +6567,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5693,6 +6647,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5775,6 +6730,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -5855,6 +6811,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -5937,6 +6894,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6016,6 +6974,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6090,6 +7049,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6170,6 +7130,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6249,6 +7210,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6326,6 +7288,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6405,6 +7368,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6487,6 +7451,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6567,6 +7532,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6649,6 +7615,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -6727,6 +7694,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6809,10 +7777,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentFieldsCheckFieldFormulaPOST
+
+> DocumentFieldDetail DocumentDocumentFieldsCheckFieldFormulaPOST (CheckNewDocumentFieldFormulaRequest checkNewDocumentFieldFormulaRequest = null)
+
+
+
+Check formula for new NOT SAVED Document Field Either \"request.data.formula\" or \"request.data.hide_until_python\" should be filled. Expects request data arguments: - formula: str OR - convert_decimals_to_floats_in_formula_args: bool - hide_until_python: str - field_type: str - document_type: str - document type uid - depends_on_fields: List[str] - list of field uids
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentFieldsCheckFieldFormulaPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var checkNewDocumentFieldFormulaRequest = new CheckNewDocumentFieldFormulaRequest(); // CheckNewDocumentFieldFormulaRequest |  (optional) 
+
+            try
+            {
+                DocumentFieldDetail result = apiInstance.DocumentDocumentFieldsCheckFieldFormulaPOST(checkNewDocumentFieldFormulaRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentFieldsCheckFieldFormulaPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **checkNewDocumentFieldFormulaRequest** | [**CheckNewDocumentFieldFormulaRequest**](CheckNewDocumentFieldFormulaRequest.md)|  | [optional] 
+
+### Return type
+
+[**DocumentFieldDetail**](DocumentFieldDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -6883,6 +7932,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -6963,10 +8013,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentFieldsPOST
+
+> DocumentFieldCreate DocumentDocumentFieldsPOST (DocumentFieldCreate documentFieldCreate = null)
+
+
+
+Create Document Field     Params:         - document_type: uid of Document Type         - code: str - Unique Short name for field, max 50 symbols, should contain only latin letters, digits, and underscores         - long_code: str - Unique Calculated field, max 150 symbols         - title: str - Verbose name for field, max 100 symbols         - description: str - optional         - type: str - max 30 symbols (from pre-defined choices)         - text_unit_type: str - (from pre-defined choices) default = sentences         - value_detection_strategy: str - max 50 chars (from pre-defined choices)         - unsure_choice_value: str - max 256 chars, default=null         - unsure_thresholds_by_value: json         - classifier_init_script: str         - formula: str         - convert_decimals_to_floats_in_formula_args: bool         - depends_on_fields: array of uids, optional         - confidence: str - max 100 chars (from pre-defined choices)         - requires_text_annotations: bool, default=True         - read_only: bool, default=False         - category: int - id of DocumentFieldCategory instance         - default_value: json         - choices: str - \\n-separated list of choices         - allow_values_not_specified_in_choices: bool - default=False         - metadata: json, optional         - training_finished: bool, default=False         - dirty: bool, default=False         - order: integer - default=0         - trained_after_documents_number: integer, default=null         - hidden_always: bool - default=False         - hide_until_python: str, optional         - hide_until_js: str, optional         - display_yes_no: bool - default=False
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentFieldsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate |  (optional) 
+
+            try
+            {
+                DocumentFieldCreate result = apiInstance.DocumentDocumentFieldsPOST(documentFieldCreate);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentFieldsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional] 
+
+### Return type
+
+[**DocumentFieldCreate**](DocumentFieldCreate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -7039,6 +8170,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7121,6 +8253,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7202,6 +8335,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7279,6 +8413,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7358,6 +8493,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7440,6 +8576,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7520,6 +8657,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7602,6 +8740,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7682,6 +8821,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7770,6 +8910,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -7847,6 +8988,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -7929,6 +9071,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8010,6 +9153,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8027,7 +9171,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Note
+Fill in \"self.action_message\" attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 
@@ -8090,6 +9234,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8170,6 +9315,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8244,6 +9390,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8324,6 +9471,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8400,6 +9548,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8480,10 +9629,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentTypesSchemeMigrationsGET
+
+> Dictionary&lt;string, Object&gt; DocumentDocumentTypesSchemeMigrationsGET ()
+
+
+
+Get Document Type model versions.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentTypesSchemeMigrationsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.DocumentDocumentTypesSchemeMigrationsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentTypesSchemeMigrationsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -8552,6 +9778,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8634,6 +9861,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8711,6 +9939,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8791,6 +10020,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -8869,6 +10099,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -8951,6 +10182,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9031,6 +10263,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9113,6 +10346,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9194,6 +10428,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9270,6 +10505,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9350,6 +10586,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, application/zip
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9423,6 +10660,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9507,6 +10745,93 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdActionsGET
+
+> List&lt;Action&gt; DocumentDocumentsIdActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.DocumentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentsIdActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9582,6 +10907,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9664,6 +10990,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9740,6 +11067,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9820,6 +11148,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -9896,6 +11225,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -9976,6 +11306,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10054,6 +11385,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -10134,6 +11466,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10210,6 +11543,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -10292,6 +11626,85 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdHasPdfInfoGET
+
+> bool DocumentDocumentsIdHasPdfInfoGET (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdHasPdfInfoGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                bool result = apiInstance.DocumentDocumentsIdHasPdfInfoGET(id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentsIdHasPdfInfoGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+**bool**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10370,6 +11783,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -10452,6 +11866,85 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdPdfReprGET
+
+> DocumentPDFRepr DocumentDocumentsIdPdfReprGET (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdPdfReprGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                DocumentPDFRepr result = apiInstance.DocumentDocumentsIdPdfReprGET(id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentsIdPdfReprGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10465,7 +11958,7 @@ Name | Type | Description  | Notes
 
 ## DocumentDocumentsIdShowGET
 
-> System.IO.Stream DocumentDocumentsIdShowGET (string id, bool? alt = null)
+> System.IO.Stream DocumentDocumentsIdShowGET (string id, string alt = null)
 
 
 
@@ -10492,7 +11985,7 @@ namespace Example
 
             var apiInstance = new V1Api(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = true;  // bool? | Get alternative document file if exists (optional) 
+            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -10516,7 +12009,7 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this document. | 
- **alt** | **bool?**| Get alternative document file if exists | [optional] 
+ **alt** | **string**| Get alternative document file if exists | [optional] 
 
 ### Return type
 
@@ -10530,6 +12023,91 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentDocumentsIdSimilarGET
+
+> ProjectDocumentSimilarity DocumentDocumentsIdSimilarGET (string id, int? textMaxLength = null, Dictionary<string, string> jqFilters = null)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdSimilarGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                ProjectDocumentSimilarity result = apiInstance.DocumentDocumentsIdSimilarGET(id, textMaxLength, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentsIdSimilarGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+ **textMaxLength** | **int?**| document b text max length, 0 to get all text | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -10610,6 +12188,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10686,6 +12265,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -10766,6 +12346,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10845,6 +12426,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -10922,6 +12504,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11004,6 +12587,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -11082,6 +12666,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11164,6 +12749,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -11243,6 +12829,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -11321,6 +12908,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11402,6 +12990,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11486,6 +13075,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -11566,6 +13156,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11650,6 +13241,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -11728,6 +13320,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11809,6 +13402,7 @@ void (empty response body)
 - **Content-Type**: Not defined
 - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -11889,6 +13483,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -11973,6 +13568,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12056,6 +13652,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12136,6 +13733,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -12218,6 +13816,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, application/zip
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12295,6 +13894,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -12381,6 +13981,95 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdActionsGET
+
+> List&lt;Action&gt; DocumentProjectProjectPkDocumentsIdActionsGET (string projectPk, string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.DocumentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentProjectProjectPkDocumentsIdActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12458,6 +14147,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -12542,6 +14232,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12620,6 +14311,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -12702,6 +14394,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12780,6 +14473,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -12862,6 +14556,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -12942,6 +14637,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13024,6 +14720,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -13102,6 +14799,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13186,6 +14884,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdHasPdfInfoGET
+
+> bool DocumentProjectProjectPkDocumentsIdHasPdfInfoGET (string projectPk, string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdHasPdfInfoGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                bool result = apiInstance.DocumentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentProjectProjectPkDocumentsIdHasPdfInfoGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+**bool**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -13266,6 +15045,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13350,6 +15130,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdPdfReprGET
+
+> DocumentPDFRepr DocumentProjectProjectPkDocumentsIdPdfReprGET (string projectPk, string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdPdfReprGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+
+            try
+            {
+                DocumentPDFRepr result = apiInstance.DocumentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentProjectProjectPkDocumentsIdPdfReprGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -13363,7 +15224,7 @@ Name | Type | Description  | Notes
 
 ## DocumentProjectProjectPkDocumentsIdShowGET
 
-> System.IO.Stream DocumentProjectProjectPkDocumentsIdShowGET (string projectPk, string id, bool? alt = null)
+> System.IO.Stream DocumentProjectProjectPkDocumentsIdShowGET (string projectPk, string id, string alt = null)
 
 
 
@@ -13391,7 +15252,7 @@ namespace Example
             var apiInstance = new V1Api(Configuration.Default);
             var projectPk = projectPk_example;  // string | 
             var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = true;  // bool? | Get alternative document file if exists (optional) 
+            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -13416,7 +15277,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **projectPk** | **string**|  | 
  **id** | **string**| A unique integer value identifying this document. | 
- **alt** | **bool?**| Get alternative document file if exists | [optional] 
+ **alt** | **string**| Get alternative document file if exists | [optional] 
 
 ### Return type
 
@@ -13430,6 +15291,93 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## DocumentProjectProjectPkDocumentsIdSimilarGET
+
+> ProjectDocumentSimilarity DocumentProjectProjectPkDocumentsIdSimilarGET (string projectPk, string id, int? textMaxLength = null, Dictionary<string, string> jqFilters = null)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdSimilarGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectPk = projectPk_example;  // string | 
+            var id = id_example;  // string | A unique integer value identifying this document.
+            var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                ProjectDocumentSimilarity result = apiInstance.DocumentProjectProjectPkDocumentsIdSimilarGET(projectPk, id, textMaxLength, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentProjectProjectPkDocumentsIdSimilarGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+ **textMaxLength** | **int?**| document b text max length, 0 to get all text | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13512,6 +15460,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -13590,6 +15539,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13672,6 +15622,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -13744,6 +15695,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13823,6 +15775,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13905,6 +15858,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -13918,7 +15872,7 @@ Name | Type | Description  | Notes
 
 ## DumpDocumentConfigGET
 
-> Dictionary&lt;string, Object&gt; DumpDocumentConfigGET ()
+> OneOfarrayfile DumpDocumentConfigGET (bool? download = null, string documentTypeCodes = null)
 
 
 
@@ -13946,10 +15900,12 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
+            var download = true;  // bool? | Download as file (optional) 
+            var documentTypeCodes = documentTypeCodes_example;  // string | Document Type codes separated by comma (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpDocumentConfigGET();
+                OneOfarrayfile result = apiInstance.DumpDocumentConfigGET(download, documentTypeCodes);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -13965,11 +15921,15 @@ namespace Example
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool?**| Download as file | [optional] 
+ **documentTypeCodes** | **string**| Document Type codes separated by comma | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -13979,6 +15939,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -13994,11 +15955,11 @@ This endpoint does not need any parameter.
 
 ## DumpDocumentConfigPUT
 
-> System.IO.Stream DumpDocumentConfigPUT (Dictionary<string, Object> requestBody = null)
+> string DumpDocumentConfigPUT (List<Dictionary<string, Object>> requestBody = null)
 
 
 
-Upload field values
+Dump document types, fields, field detectors and  document filters to json.
 
 ### Example
 
@@ -14022,11 +15983,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var requestBody = new List<Dictionary<string, Object>>(); // List<Dictionary<string, Object>> |  (optional) 
 
             try
             {
-                System.IO.Stream result = apiInstance.DumpDocumentConfigPUT(requestBody);
+                string result = apiInstance.DumpDocumentConfigPUT(requestBody);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14045,11 +16006,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **requestBody** | [**List&lt;Dictionary&lt;string, Object&gt;&gt;**](Dictionary.md)|  | [optional] 
 
 ### Return type
 
-**System.IO.Stream**
+**string**
 
 ### Authorization
 
@@ -14057,13 +16018,15 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -14139,6 +16102,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -14152,11 +16116,11 @@ Name | Type | Description  | Notes
 
 ## DumpDumpGET
 
-> Dictionary&lt;string, Object&gt; DumpDumpGET ()
+> OneOfarrayfile DumpDumpGET (bool? download = null)
 
 
 
-Dump all users, roles, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 
@@ -14180,10 +16144,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
+            var download = true;  // bool? | Download as file (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpDumpGET();
+                OneOfarrayfile result = apiInstance.DumpDumpGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14199,11 +16164,14 @@ namespace Example
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool?**| Download as file | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -14213,6 +16181,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -14228,11 +16197,11 @@ This endpoint does not need any parameter.
 
 ## DumpDumpPUT
 
-> System.IO.Stream DumpDumpPUT (Dictionary<string, Object> requestBody = null)
+> string DumpDumpPUT (List<Dictionary<string, Object>> requestBody = null)
 
 
 
-Upload field values
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 
@@ -14256,11 +16225,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var requestBody = new List<Dictionary<string, Object>>(); // List<Dictionary<string, Object>> |  (optional) 
 
             try
             {
-                System.IO.Stream result = apiInstance.DumpDumpPUT(requestBody);
+                string result = apiInstance.DumpDumpPUT(requestBody);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14279,11 +16248,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **requestBody** | [**List&lt;Dictionary&lt;string, Object&gt;&gt;**](Dictionary.md)|  | [optional] 
 
 ### Return type
 
-**System.IO.Stream**
+**string**
 
 ### Authorization
 
@@ -14291,13 +16260,15 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -14307,11 +16278,11 @@ Name | Type | Description  | Notes
 
 ## DumpFieldValuesGET
 
-> Dictionary&lt;string, Object&gt; DumpFieldValuesGET ()
+> OneOfarrayfile DumpFieldValuesGET (bool? download = null)
 
 
 
-Download field values
+Dump field values to json.
 
 ### Example
 
@@ -14335,10 +16306,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
+            var download = true;  // bool? | Download as file (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpFieldValuesGET();
+                OneOfarrayfile result = apiInstance.DumpFieldValuesGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14354,11 +16326,14 @@ namespace Example
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool?**| Download as file | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -14368,6 +16343,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -14383,7 +16359,7 @@ This endpoint does not need any parameter.
 
 ## DumpFieldValuesPUT
 
-> System.IO.Stream DumpFieldValuesPUT (Dictionary<string, Object> requestBody = null)
+> string DumpFieldValuesPUT (List<Dictionary<string, Object>> requestBody = null)
 
 
 
@@ -14411,11 +16387,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var requestBody = new List<Dictionary<string, Object>>(); // List<Dictionary<string, Object>> |  (optional) 
 
             try
             {
-                System.IO.Stream result = apiInstance.DumpFieldValuesPUT(requestBody);
+                string result = apiInstance.DumpFieldValuesPUT(requestBody);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14434,11 +16410,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **requestBody** | [**List&lt;Dictionary&lt;string, Object&gt;&gt;**](Dictionary.md)|  | [optional] 
 
 ### Return type
 
-**System.IO.Stream**
+**string**
 
 ### Authorization
 
@@ -14446,13 +16422,15 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -14462,7 +16440,7 @@ Name | Type | Description  | Notes
 
 ## DumpLoadFixturePOST
 
-> Dictionary&lt;string, Object&gt; DumpLoadFixturePOST (LoadFixture loadFixture = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; DumpLoadFixturePOST (LoadFixture loadFixture = null)
 
 
 
@@ -14494,7 +16472,7 @@ namespace Example
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpLoadFixturePOST(loadFixture);
+                List<Dictionary<string, Object>> result = apiInstance.DumpLoadFixturePOST(loadFixture);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14517,7 +16495,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**Dictionary<string, Object>**
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -14527,6 +16505,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -14608,6 +16587,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -14621,7 +16601,7 @@ Name | Type | Description  | Notes
 
 ## ExtractAmountUsageTopGET
 
-> List&lt;AnyType&gt; ExtractAmountUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractAmountUsageTopGET ()
 
 
 
@@ -14649,11 +16629,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractAmountUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractAmountUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14669,14 +16648,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -14686,6 +16662,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -14766,6 +16743,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -14779,7 +16757,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCitationUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCitationUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCitationUsageTopGET ()
 
 
 
@@ -14807,11 +16785,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCitationUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCitationUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14827,14 +16804,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -14844,6 +16818,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -14924,6 +16899,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -14937,7 +16913,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCopyrightUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCopyrightUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCopyrightUsageTopGET ()
 
 
 
@@ -14965,11 +16941,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCopyrightUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCopyrightUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14985,14 +16960,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -15002,6 +16974,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15082,6 +17055,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -15095,7 +17069,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCourtUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCourtUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCourtUsageTopGET ()
 
 
 
@@ -15123,11 +17097,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCourtUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCourtUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -15143,14 +17116,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -15160,6 +17130,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15240,6 +17211,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -15253,7 +17225,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCurrencyUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCurrencyUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCurrencyUsageTopGET ()
 
 
 
@@ -15281,11 +17253,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCurrencyUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCurrencyUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -15301,14 +17272,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -15318,6 +17286,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15398,6 +17367,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -15411,7 +17381,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDateDurationUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDateDurationUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDateDurationUsageTopGET ()
 
 
 
@@ -15439,11 +17409,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDateDurationUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDateDurationUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -15459,14 +17428,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -15476,6 +17442,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15551,6 +17518,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15631,6 +17599,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -15705,6 +17674,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15785,6 +17755,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -15798,7 +17769,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDateUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDateUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDateUsageTopGET ()
 
 
 
@@ -15826,11 +17797,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDateUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDateUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -15846,14 +17816,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -15863,6 +17830,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -15943,6 +17911,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -15956,7 +17925,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDefinitionUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDefinitionUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDefinitionUsageTopGET ()
 
 
 
@@ -15984,11 +17953,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDefinitionUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDefinitionUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -16004,14 +17972,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -16021,6 +17986,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -16101,6 +18067,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -16114,7 +18081,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDistanceUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDistanceUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDistanceUsageTopGET ()
 
 
 
@@ -16142,11 +18109,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDistanceUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDistanceUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -16162,14 +18128,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -16179,6 +18142,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -16259,6 +18223,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -16272,7 +18237,7 @@ Name | Type | Description  | Notes
 
 ## ExtractGeoAliasUsageTopGET
 
-> List&lt;AnyType&gt; ExtractGeoAliasUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractGeoAliasUsageTopGET ()
 
 
 
@@ -16300,11 +18265,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractGeoAliasUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractGeoAliasUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -16320,14 +18284,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -16337,6 +18298,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -16416,6 +18378,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -16498,6 +18461,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -16579,6 +18543,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -16658,6 +18623,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -16671,7 +18637,7 @@ Name | Type | Description  | Notes
 
 ## ExtractGeoEntityUsageTopGET
 
-> List&lt;AnyType&gt; ExtractGeoEntityUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractGeoEntityUsageTopGET ()
 
 
 
@@ -16699,11 +18665,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractGeoEntityUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractGeoEntityUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -16719,14 +18684,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -16736,6 +18698,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -16815,6 +18778,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -16897,6 +18861,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -16975,6 +18940,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -17055,6 +19021,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -17068,7 +19035,7 @@ Name | Type | Description  | Notes
 
 ## ExtractPartyUsageTopGET
 
-> List&lt;AnyType&gt; ExtractPartyUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractPartyUsageTopGET ()
 
 
 
@@ -17096,11 +19063,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractPartyUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractPartyUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -17116,14 +19082,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -17133,6 +19096,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -17213,6 +19177,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -17226,7 +19191,7 @@ Name | Type | Description  | Notes
 
 ## ExtractPercentUsageTopGET
 
-> List&lt;AnyType&gt; ExtractPercentUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractPercentUsageTopGET ()
 
 
 
@@ -17254,11 +19219,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractPercentUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractPercentUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -17274,14 +19238,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -17291,6 +19252,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -17371,6 +19333,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -17384,7 +19347,7 @@ Name | Type | Description  | Notes
 
 ## ExtractRatioUsageTopGET
 
-> List&lt;AnyType&gt; ExtractRatioUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractRatioUsageTopGET ()
 
 
 
@@ -17412,11 +19375,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractRatioUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractRatioUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -17432,14 +19394,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -17449,6 +19408,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -17529,6 +19489,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -17542,7 +19503,7 @@ Name | Type | Description  | Notes
 
 ## ExtractRegulationUsageTopGET
 
-> List&lt;AnyType&gt; ExtractRegulationUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractRegulationUsageTopGET ()
 
 
 
@@ -17570,16 +19531,90 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractRegulationUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractRegulationUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
                 Debug.Print("Exception when calling V1Api.ExtractRegulationUsageTopGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**List<Dictionary<string, Object>>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ExtractTermTagsGET
+
+> List&lt;TermTag&gt; ExtractTermTagsGET (Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ExtractTermTagsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<TermTag> result = apiInstance.ExtractTermTagsGET(jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ExtractTermTagsGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -17597,7 +19632,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+[**List&lt;TermTag&gt;**](TermTag.md)
 
 ### Authorization
 
@@ -17607,6 +19642,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -17687,6 +19723,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -17700,7 +19737,7 @@ Name | Type | Description  | Notes
 
 ## ExtractTermUsageTopGET
 
-> List&lt;AnyType&gt; ExtractTermUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractTermUsageTopGET ()
 
 
 
@@ -17728,11 +19765,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractTermUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractTermUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -17748,14 +19784,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -17765,6 +19798,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -17845,6 +19879,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -17858,7 +19893,7 @@ Name | Type | Description  | Notes
 
 ## ExtractTrademarkUsageTopGET
 
-> List&lt;AnyType&gt; ExtractTrademarkUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractTrademarkUsageTopGET ()
 
 
 
@@ -17886,11 +19921,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractTrademarkUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractTrademarkUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -17906,14 +19940,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -17923,6 +19954,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18003,6 +20035,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -18081,6 +20114,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18161,6 +20195,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -18240,6 +20275,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -18253,7 +20289,7 @@ Name | Type | Description  | Notes
 
 ## ExtractUrlUsageTopGET
 
-> List&lt;AnyType&gt; ExtractUrlUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractUrlUsageTopGET ()
 
 
 
@@ -18281,11 +20317,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractUrlUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractUrlUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -18301,14 +20336,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -18318,6 +20350,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18397,6 +20430,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18481,6 +20515,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json, */*
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -18559,6 +20594,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18641,6 +20677,83 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsFormFieldsGET
+
+> Dictionary&lt;string, Object&gt; ProjectProjectsFormFieldsGET ()
+
+
+
+GET model form fields description to build UI form for an object:       - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\"input\" | \"select\" | \"checkbox\" | ...), data_type: (\"string\", \"integer\", \"date\", ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsFormFieldsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.ProjectProjectsFormFieldsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsFormFieldsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -18720,6 +20833,87 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdActiveTasksGET
+
+> List&lt;ProjectActiveTasks&gt; ProjectProjectsIdActiveTasksGET (string id, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdActiveTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectActiveTasks> result = apiInstance.ProjectProjectsIdActiveTasksGET(id, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdActiveTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -18798,6 +20992,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18879,6 +21074,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -18962,6 +21158,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -19044,6 +21241,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -19123,6 +21321,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -19205,10 +21404,97 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdClusterActionsGET
+
+> List&lt;Action&gt; ProjectProjectsIdClusterActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdClusterActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.ProjectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdClusterActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
 | **200** |  |  -  |
 
 [[Back to top]](#)
@@ -19286,6 +21572,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -19369,6 +21656,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -19447,6 +21735,161 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE
+
+> void ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdDeleteDocumentSimilarityResultsDELETEExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+
+            try
+            {
+                apiInstance.ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE(id);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdDeleteDocumentSimilarityResultsDELETE: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE
+
+> void ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE (string id)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETEExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+
+            try
+            {
+                apiInstance.ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdDeleteTextUnitSimilarityResultsDELETE: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -19527,10 +21970,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdFormFieldsGET
+
+> Dictionary&lt;string, Object&gt; ProjectProjectsIdFormFieldsGET (string id)
+
+
+
+GET model form fields description to build UI form for EXISTING object:       - value: any - object field value      - field_type: str - CharField, IntegerField, SomeSerializerField - i.e. fields from a serializer      - ui_element: dict - {type: (\"input\" | \"select\" | \"checkbox\" | ...), data_type: (\"string\", \"integer\", \"date\", ...), ...}      - label: str - field label declared in a serializer field (default NULL)      - field_name: str - field name declared in a serializer field (default NULL)      - help_text: str - field help text declared in a serializer field (default NULL)      - required: bool - whether field is required      - read_only: bool - whether field is read only      - allow_null: bool - whether field is may be null      - default: bool - default (initial) field value for a new object (default NULL)      - choices: array - choices to select from [{choice_id1: choice_verbose_name1, ....}] (default NULL)
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdFormFieldsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this user.
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.ProjectProjectsIdFormFieldsGET(id);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdFormFieldsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this user. | 
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -19608,6 +22132,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -19619,9 +22144,9 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
-## ProjectProjectsIdMakeSearchablePdfPOST
+## ProjectProjectsIdLocateItemsPOST
 
-> TaskIdResponse ProjectProjectsIdMakeSearchablePdfPOST (string id, MakeSearchablePDFRequest makeSearchablePDFRequest = null)
+> ProjectDetail ProjectProjectsIdLocateItemsPOST (string id, ProjectDetail projectDetail = null)
 
 
 
@@ -19636,7 +22161,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class ProjectProjectsIdMakeSearchablePdfPOSTExample
+    public class ProjectProjectsIdLocateItemsPOSTExample
     {
         public static void Main()
         {
@@ -19648,16 +22173,16 @@ namespace Example
 
             var apiInstance = new V1Api(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this project.
-            var makeSearchablePDFRequest = new MakeSearchablePDFRequest(); // MakeSearchablePDFRequest |  (optional) 
+            var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
 
             try
             {
-                TaskIdResponse result = apiInstance.ProjectProjectsIdMakeSearchablePdfPOST(id, makeSearchablePDFRequest);
+                ProjectDetail result = apiInstance.ProjectProjectsIdLocateItemsPOST(id, projectDetail);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling V1Api.ProjectProjectsIdMakeSearchablePdfPOST: " + e.Message );
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdLocateItemsPOST: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -19672,11 +22197,11 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this project. | 
- **makeSearchablePDFRequest** | [**MakeSearchablePDFRequest**](MakeSearchablePDFRequest.md)|  | [optional] 
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] 
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -19686,6 +22211,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -19768,6 +22294,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -19849,6 +22376,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -19866,7 +22394,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Project
+Create Document/TextUnit Vectors if needed Update ocr_enable project app var if needed
 
 ### Example
 
@@ -19929,6 +22457,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -20009,10 +22538,171 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdSearchSimilarDocumentsPOST
+
+> TaskIdResponse ProjectProjectsIdSearchSimilarDocumentsPOST (string id, ProjectSearchSimilarDocumentsRequest projectSearchSimilarDocumentsRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdSearchSimilarDocumentsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectSearchSimilarDocumentsRequest = new ProjectSearchSimilarDocumentsRequest(); // ProjectSearchSimilarDocumentsRequest |  (optional) 
+
+            try
+            {
+                TaskIdResponse result = apiInstance.ProjectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdSearchSimilarDocumentsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional] 
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdSearchSimilarTextUnitsPOST
+
+> TaskIdResponse ProjectProjectsIdSearchSimilarTextUnitsPOST (string id, ProjectSearchSimilarTextUnitsRequest projectSearchSimilarTextUnitsRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdSearchSimilarTextUnitsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectSearchSimilarTextUnitsRequest = new ProjectSearchSimilarTextUnitsRequest(); // ProjectSearchSimilarTextUnitsRequest |  (optional) 
+
+            try
+            {
+                TaskIdResponse result = apiInstance.ProjectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdSearchSimilarTextUnitsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional] 
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -20089,6 +22779,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -20173,6 +22864,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -20254,10 +22946,261 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdSettingsActionsGET
+
+> List&lt;Action&gt; ProjectProjectsIdSettingsActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdSettingsActionsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectId = 56;  // int? | Project ID (optional) 
+            var documentId = 56;  // int? | Document ID (optional) 
+            var viewActions = new List<string>(); // List<string> | Action names (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<Action> result = apiInstance.ProjectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdSettingsActionsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectId** | **int?**| Project ID | [optional] 
+ **documentId** | **int?**| Document ID | [optional] 
+ **viewActions** | [**List&lt;string&gt;**](string.md)| Action names | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdTaskTaskIdTaskLogsGET
+
+> TaskLogResponse ProjectProjectsIdTaskTaskIdTaskLogsGET (string id, string taskId, int? recordsLimit = null, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdTaskTaskIdTaskLogsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var taskId = taskId_example;  // string | 
+            var recordsLimit = 56;  // int? |  (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                TaskLogResponse result = apiInstance.ProjectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdTaskTaskIdTaskLogsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **taskId** | **string**|  | 
+ **recordsLimit** | **int?**|  | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**TaskLogResponse**](TaskLogResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdTasksGET
+
+> List&lt;ProjectTasks&gt; ProjectProjectsIdTasksGET (string id, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectTasks> result = apiInstance.ProjectProjectsIdTasksGET(id, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -20335,10 +23278,94 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectProjectsIdUpdateDocumentFieldsPOST
+
+> TaskIdResponse ProjectProjectsIdUpdateDocumentFieldsPOST (string id, UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = null)
+
+
+
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdUpdateDocumentFieldsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest |  (optional) 
+
+            try
+            {
+                TaskIdResponse result = apiInstance.ProjectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdUpdateDocumentFieldsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional] 
+
+### Return type
+
+[**TaskIdResponse**](TaskIdResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -20352,7 +23379,7 @@ Name | Type | Description  | Notes
 
 
 
-Create Project
+Create Document/TextUnit Vectors if needed
 
 ### Example
 
@@ -20413,6 +23440,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -20493,6 +23521,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -20571,6 +23600,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -20651,6 +23681,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -20730,6 +23761,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -20807,6 +23839,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -20889,6 +23922,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -20969,6 +24003,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -21051,6 +24086,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -21129,6 +24165,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -21209,6 +24246,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -21222,7 +24260,7 @@ Name | Type | Description  | Notes
 
 ## ProjectUploadSessionPOST
 
-> UploadSession ProjectUploadSessionPOST (UploadSession uploadSession = null)
+> UploadSessionCreate ProjectUploadSessionPOST (UploadSessionCreate uploadSessionCreate = null)
 
 
 
@@ -21250,11 +24288,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uploadSession = new UploadSession(); // UploadSession |  (optional) 
+            var uploadSessionCreate = new UploadSessionCreate(); // UploadSessionCreate |  (optional) 
 
             try
             {
-                UploadSession result = apiInstance.ProjectUploadSessionPOST(uploadSession);
+                UploadSessionCreate result = apiInstance.ProjectUploadSessionPOST(uploadSessionCreate);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -21273,11 +24311,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **uploadSession** | [**UploadSession**](UploadSession.md)|  | [optional] 
+ **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional] 
 
 ### Return type
 
-[**UploadSession**](UploadSession.md)
+[**UploadSessionCreate**](UploadSessionCreate.md)
 
 ### Authorization
 
@@ -21287,6 +24325,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -21366,6 +24405,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -21448,6 +24488,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -21529,6 +24570,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -21607,6 +24649,7 @@ void (empty response body)
 - **Content-Type**: Not defined
 - **Accept**: Not defined
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -21684,6 +24727,7 @@ void (empty response body)
 
 - **Content-Type**: Not defined
 - **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -21765,6 +24809,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -21858,6 +24903,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/offset+octet-stream
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -21942,6 +24988,89 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ProjectUploadSessionUidPATCH
+
+> UploadSessionUpdate ProjectUploadSessionUidPATCH (string uid, UploadSessionUpdate uploadSessionUpdate = null)
+
+
+
+Partial Update Session Upload
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectUploadSessionUidPATCHExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uploadSessionUpdate = new UploadSessionUpdate(); // UploadSessionUpdate |  (optional) 
+
+            try
+            {
+                UploadSessionUpdate result = apiInstance.ProjectUploadSessionUidPATCH(uid, uploadSessionUpdate);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectUploadSessionUidPATCH: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **uid** | **string**| A UUID string identifying this upload session. | 
+ **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional] 
+
+### Return type
+
+[**UploadSessionUpdate**](UploadSessionUpdate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22020,6 +25149,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -22112,6 +25242,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22186,6 +25317,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -22292,6 +25424,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22373,6 +25506,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22450,6 +25584,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22463,7 +25598,7 @@ Name | Type | Description  | Notes
 
 ## RawdbSocialAccountsGET
 
-> List&lt;AnyType&gt; RawdbSocialAccountsGET ()
+> SocialAccountsResponse RawdbSocialAccountsGET ()
 
 
 
@@ -22492,7 +25627,7 @@ namespace Example
 
             try
             {
-                List<AnyType> result = apiInstance.RawdbSocialAccountsGET();
+                SocialAccountsResponse result = apiInstance.RawdbSocialAccountsGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -22512,7 +25647,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 
@@ -22522,6 +25657,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -22602,6 +25738,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22676,6 +25813,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -22756,6 +25894,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22834,6 +25973,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -22914,6 +26054,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -22993,6 +26134,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23069,6 +26211,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -23147,10 +26290,167 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityDocumentSimilarityByFeaturesGET
+
+> Dictionary&lt;string, Object&gt; SimilarityDocumentSimilarityByFeaturesGET ()
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityDocumentSimilarityByFeaturesGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.SimilarityDocumentSimilarityByFeaturesGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.SimilarityDocumentSimilarityByFeaturesGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityDocumentSimilarityByFeaturesPOST
+
+> SimilarityPOSTObjectResponse SimilarityDocumentSimilarityByFeaturesPOST (DocumentSimilarityByFeaturesForm documentSimilarityByFeaturesForm = null)
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityDocumentSimilarityByFeaturesPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var documentSimilarityByFeaturesForm = new DocumentSimilarityByFeaturesForm(); // DocumentSimilarityByFeaturesForm |  (optional) 
+
+            try
+            {
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityDocumentSimilarityByFeaturesPOST(documentSimilarityByFeaturesForm);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.SimilarityDocumentSimilarityByFeaturesPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional] 
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -23222,6 +26522,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23235,7 +26536,7 @@ This endpoint does not need any parameter.
 
 ## SimilarityPartySimilarityPOST
 
-> SimilarityPOSTObjectResponse SimilarityPartySimilarityPOST (Dictionary<string, Object> requestBody = null)
+> SimilarityPOSTObjectResponse SimilarityPartySimilarityPOST (PartySimilarityForm partySimilarityForm = null)
 
 
 
@@ -23263,11 +26564,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var partySimilarityForm = new PartySimilarityForm(); // PartySimilarityForm |  (optional) 
 
             try
             {
-                SimilarityPOSTObjectResponse result = apiInstance.SimilarityPartySimilarityPOST(requestBody);
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityPartySimilarityPOST(partySimilarityForm);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -23286,7 +26587,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional] 
 
 ### Return type
 
@@ -23301,6 +26602,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23312,13 +26614,13 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
-## SimilaritySimilarityByFeaturesGET
+## SimilarityProjectDocumentsSimilarityByVectorsGET
 
-> Dictionary&lt;string, Object&gt; SimilaritySimilarityByFeaturesGET ()
+> Dictionary&lt;string, Object&gt; SimilarityProjectDocumentsSimilarityByVectorsGET ()
 
 
 
-\"Similarity\" admin task  POST params:     - search_similar_documents: bool     - search_similar_text_units: bool     - similarity_threshold: int     - use_idf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - item_id: int     - use_tfidf: bool     - delete: bool
 
 ### Example
 
@@ -23331,7 +26633,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class SimilaritySimilarityByFeaturesGETExample
+    public class SimilarityProjectDocumentsSimilarityByVectorsGETExample
     {
         public static void Main()
         {
@@ -23345,12 +26647,12 @@ namespace Example
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.SimilaritySimilarityByFeaturesGET();
+                Dictionary<string, Object> result = apiInstance.SimilarityProjectDocumentsSimilarityByVectorsGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling V1Api.SimilaritySimilarityByFeaturesGET: " + e.Message );
+                Debug.Print("Exception when calling V1Api.SimilarityProjectDocumentsSimilarityByVectorsGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -23376,6 +26678,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23387,13 +26690,13 @@ This endpoint does not need any parameter.
 [[Back to README]](../README.md)
 
 
-## SimilaritySimilarityByFeaturesPOST
+## SimilarityProjectDocumentsSimilarityByVectorsPOST
 
-> SimilarityPOSTObjectResponse SimilaritySimilarityByFeaturesPOST (Dictionary<string, Object> requestBody = null)
+> SimilarityPOSTObjectResponse SimilarityProjectDocumentsSimilarityByVectorsPOST (ProjectDocumentsSimilarityByVectorsForm projectDocumentsSimilarityByVectorsForm = null)
 
 
 
-\"Similarity\" admin task  POST params:     - search_similar_documents: bool     - search_similar_text_units: bool     - similarity_threshold: int     - use_idf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - item_id: int     - use_tfidf: bool     - delete: bool
 
 ### Example
 
@@ -23406,7 +26709,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class SimilaritySimilarityByFeaturesPOSTExample
+    public class SimilarityProjectDocumentsSimilarityByVectorsPOSTExample
     {
         public static void Main()
         {
@@ -23417,16 +26720,16 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var projectDocumentsSimilarityByVectorsForm = new ProjectDocumentsSimilarityByVectorsForm(); // ProjectDocumentsSimilarityByVectorsForm |  (optional) 
 
             try
             {
-                SimilarityPOSTObjectResponse result = apiInstance.SimilaritySimilarityByFeaturesPOST(requestBody);
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityProjectDocumentsSimilarityByVectorsPOST(projectDocumentsSimilarityByVectorsForm);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling V1Api.SimilaritySimilarityByFeaturesPOST: " + e.Message );
+                Debug.Print("Exception when calling V1Api.SimilarityProjectDocumentsSimilarityByVectorsPOST: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -23440,7 +26743,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional] 
 
 ### Return type
 
@@ -23454,6 +26757,163 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityProjectTextUnitsSimilarityByVectorsGET
+
+> Dictionary&lt;string, Object&gt; SimilarityProjectTextUnitsSimilarityByVectorsGET ()
+
+
+
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - unit_type: str sentence|paragraph     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - use_tfidf: bool     - delete: bool
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityProjectTextUnitsSimilarityByVectorsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.SimilarityProjectTextUnitsSimilarityByVectorsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.SimilarityProjectTextUnitsSimilarityByVectorsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityProjectTextUnitsSimilarityByVectorsPOST
+
+> SimilarityPOSTObjectResponse SimilarityProjectTextUnitsSimilarityByVectorsPOST (ProjectTextUnitsSimilarityByVectorsForm projectTextUnitsSimilarityByVectorsForm = null)
+
+
+
+\"Similarity\" admin task  POST params:     - project_id: int     - distance_type: str - see scipy.spatial.distance._METRICS     - similarity_threshold: int     - unit_type: str sentence|paragraph     - feature_source: \"vector\"     - create_reverse_relations: bool - create B-A relations     - use_tfidf: bool     - delete: bool
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityProjectTextUnitsSimilarityByVectorsPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectTextUnitsSimilarityByVectorsForm = new ProjectTextUnitsSimilarityByVectorsForm(); // ProjectTextUnitsSimilarityByVectorsForm |  (optional) 
+
+            try
+            {
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityProjectTextUnitsSimilarityByVectorsPOST(projectTextUnitsSimilarityByVectorsForm);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.SimilarityProjectTextUnitsSimilarityByVectorsPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional] 
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -23530,6 +26990,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23543,7 +27004,7 @@ This endpoint does not need any parameter.
 
 ## SimilaritySimilarityPOST
 
-> SimilarityPOSTObjectResponse SimilaritySimilarityPOST (Dictionary<string, Object> requestBody = null)
+> SimilarityPOSTObjectResponse SimilaritySimilarityPOST (SimilarityForm similarityForm = null)
 
 
 
@@ -23571,11 +27032,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var similarityForm = new SimilarityForm(); // SimilarityForm |  (optional) 
 
             try
             {
-                SimilarityPOSTObjectResponse result = apiInstance.SimilaritySimilarityPOST(requestBody);
+                SimilarityPOSTObjectResponse result = apiInstance.SimilaritySimilarityPOST(similarityForm);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -23594,7 +27055,7 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional] 
 
 ### Return type
 
@@ -23608,6 +27069,163 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityTextUnitSimilarityByFeaturesGET
+
+> Dictionary&lt;string, Object&gt; SimilarityTextUnitSimilarityByFeaturesGET ()
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityTextUnitSimilarityByFeaturesGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.SimilarityTextUnitSimilarityByFeaturesGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.SimilarityTextUnitSimilarityByFeaturesGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## SimilarityTextUnitSimilarityByFeaturesPOST
+
+> SimilarityPOSTObjectResponse SimilarityTextUnitSimilarityByFeaturesPOST (TextUnitSimilarityByFeaturesForm textUnitSimilarityByFeaturesForm = null)
+
+
+
+\"Similarity\" admin task  POST params:     - similarity_threshold: int     - use_tfidf: bool     - delete: bool     - project: int     - feature_source: list - list[date, definition, duration, court,       currency_name, currency_value, term, party, geoentity]     - unit_type: str sentence|paragraph     - distance_type: str - see scipy.spatial.distance._METRICS
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class SimilarityTextUnitSimilarityByFeaturesPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var textUnitSimilarityByFeaturesForm = new TextUnitSimilarityByFeaturesForm(); // TextUnitSimilarityByFeaturesForm |  (optional) 
+
+            try
+            {
+                SimilarityPOSTObjectResponse result = apiInstance.SimilarityTextUnitSimilarityByFeaturesPOST(textUnitSimilarityByFeaturesForm);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.SimilarityTextUnitSimilarityByFeaturesPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional] 
+
+### Return type
+
+[**SimilarityPOSTObjectResponse**](SimilarityPOSTObjectResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -23688,6 +27306,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23767,6 +27386,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23841,6 +27461,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -23921,6 +27542,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -23995,6 +27617,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -24075,10 +27698,91 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TaskProcessTextExtractionResultsRequestIdPOST
+
+> Object TaskProcessTextExtractionResultsRequestIdPOST (string requestId, Dictionary<string, Object> requestBody = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskProcessTextExtractionResultsRequestIdPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var requestId = requestId_example;  // string | 
+            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+
+            try
+            {
+                Object result = apiInstance.TaskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.TaskProcessTextExtractionResultsRequestIdPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestId** | **string**|  | 
+ **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -24154,6 +27858,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -24228,6 +27933,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -24308,6 +28014,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -24319,9 +28026,87 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## TaskReindexroutinesCheckSchedulePOST
+
+> Object TaskReindexroutinesCheckSchedulePOST (Dictionary<string, Object> requestBody = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskReindexroutinesCheckSchedulePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+
+            try
+            {
+                Object result = apiInstance.TaskReindexroutinesCheckSchedulePOST(requestBody);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.TaskReindexroutinesCheckSchedulePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+
+### Return type
+
+**Object**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## TaskTaskLogGET
 
-> Dictionary&lt;string, Object&gt; TaskTaskLogGET (string taskId = null, int? recordsLimit = null)
+> List&lt;TaskLogResponse&gt; TaskTaskLogGET (string taskId, int? recordsLimit = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -24349,12 +28134,13 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var taskId = taskId_example;  // string |  (optional) 
+            var taskId = taskId_example;  // string | 
             var recordsLimit = 56;  // int? |  (optional) 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.TaskTaskLogGET(taskId, recordsLimit);
+                List<TaskLogResponse> result = apiInstance.TaskTaskLogGET(taskId, recordsLimit, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -24373,12 +28159,13 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **taskId** | **string**|  | [optional] 
+ **taskId** | **string**|  | 
  **recordsLimit** | **int?**|  | [optional] 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**List&lt;TaskLogResponse&gt;**](TaskLogResponse.md)
 
 ### Authorization
 
@@ -24388,6 +28175,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -24468,6 +28256,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -24547,6 +28336,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -24629,6 +28419,167 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TaskTasksProjectProjectIdActiveTasksGET
+
+> List&lt;ProjectActiveTasks&gt; TaskTasksProjectProjectIdActiveTasksGET (string projectId, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskTasksProjectProjectIdActiveTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectActiveTasks> result = apiInstance.TaskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.TaskTasksProjectProjectIdActiveTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectActiveTasks&gt;**](ProjectActiveTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## TaskTasksProjectProjectIdTasksGET
+
+> List&lt;ProjectTasks&gt; TaskTasksProjectProjectIdTasksGET (string projectId, Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class TaskTasksProjectProjectIdTasksGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectId = projectId_example;  // string | 
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<ProjectTasks> result = apiInstance.TaskTasksProjectProjectIdTasksGET(projectId, jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.TaskTasksProjectProjectIdTasksGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectId** | **string**|  | 
+ **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+
+### Return type
+
+[**List&lt;ProjectTasks&gt;**](ProjectTasks.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -24703,6 +28654,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -24782,6 +28734,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -24872,6 +28825,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/offset+octet-stream
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -24888,7 +28842,7 @@ Name | Type | Description  | Notes
 
 ## TusUploadSessionUploadSessionIdUploadPOST
 
-> void TusUploadSessionUploadSessionIdUploadPOST (string uploadSessionId, int uploadLength, string uploadMetadata, string tusResumable, bool? force = null, Object body = null)
+> void TusUploadSessionUploadSessionIdUploadPOST (string uploadSessionId, int uploadLength, string uploadMetadata, string tusResumable, bool? force = null, Dictionary<string, Object> requestBody = null)
 
 
 
@@ -24921,11 +28875,11 @@ namespace Example
             var uploadMetadata = uploadMetadata_example;  // string | Upload metadata include file name, relative path, etc.
             var tusResumable = tusResumable_example;  // string | 1.0.0
             var force = true;  // bool? | Upload a file even if it exists. (optional) 
-            var body = ;  // Object |  (optional) 
+            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
 
             try
             {
-                apiInstance.TusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, body);
+                apiInstance.TusUploadSessionUploadSessionIdUploadPOST(uploadSessionId, uploadLength, uploadMetadata, tusResumable, force, requestBody);
             }
             catch (ApiException e)
             {
@@ -24948,7 +28902,7 @@ Name | Type | Description  | Notes
  **uploadMetadata** | **string**| Upload metadata include file name, relative path, etc. | 
  **tusResumable** | **string**| 1.0.0 | 
  **force** | **bool?**| Upload a file even if it exists. | [optional] 
- **body** | **Object**|  | [optional] 
+ **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
 
 ### Return type
 
@@ -24963,412 +28917,12 @@ void (empty response body)
 - **Content-Type**: application/json
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
 | **400** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## UsersRolesGET
-
-> List&lt;Role&gt; UsersRolesGET (Dictionary<string, string> jqFilters = null)
-
-
-
-Role List
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class UsersRolesGETExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
-
-            try
-            {
-                List<Role> result = apiInstance.UsersRolesGET(jqFilters);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.UsersRolesGET: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
-
-### Return type
-
-[**List&lt;Role&gt;**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## UsersRolesIdGET
-
-> Role UsersRolesIdGET (string id, Dictionary<string, string> jqFilters = null)
-
-
-
-Retrieve Role
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class UsersRolesIdGETExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this role.
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
-
-            try
-            {
-                Role result = apiInstance.UsersRolesIdGET(id, jqFilters);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.UsersRolesIdGET: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this role. | 
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## UsersRolesIdPATCH
-
-> Role UsersRolesIdPATCH (string id, Role role = null)
-
-
-
-Partial Update Role
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class UsersRolesIdPATCHExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this role.
-            var role = new Role(); // Role |  (optional) 
-
-            try
-            {
-                Role result = apiInstance.UsersRolesIdPATCH(id, role);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.UsersRolesIdPATCH: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this role. | 
- **role** | [**Role**](Role.md)|  | [optional] 
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
-- **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## UsersRolesIdPUT
-
-> Role UsersRolesIdPUT (string id, Role role = null)
-
-
-
-Update Role
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class UsersRolesIdPUTExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this role.
-            var role = new Role(); // Role |  (optional) 
-
-            try
-            {
-                Role result = apiInstance.UsersRolesIdPUT(id, role);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.UsersRolesIdPUT: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **string**| A unique integer value identifying this role. | 
- **role** | [**Role**](Role.md)|  | [optional] 
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
-- **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## UsersRolesPOST
-
-> Role UsersRolesPOST (Role role = null)
-
-
-
-Create Role
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class UsersRolesPOSTExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var role = new Role(); // Role |  (optional) 
-
-            try
-            {
-                Role result = apiInstance.UsersRolesPOST(role);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.UsersRolesPOST: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **role** | [**Role**](Role.md)|  | [optional] 
-
-### Return type
-
-[**Role**](Role.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
-- **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -25439,6 +28993,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -25519,6 +29074,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -25597,6 +29153,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -25679,6 +29236,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -25759,6 +29317,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -25841,6 +29400,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -25920,6 +29480,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -25994,6 +29555,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -26074,6 +29636,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -26088,7 +29651,7 @@ Name | Type | Description  | Notes
 
 ## VarGET
 
-> AnyType VarGET (string var)
+> Object VarGET (string var)
 
 
 
@@ -26118,7 +29681,7 @@ namespace Example
 
             try
             {
-                AnyType result = apiInstance.VarGET(var);
+                Object result = apiInstance.VarGET(var);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -26141,7 +29704,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**AnyType**](AnyType.md)
+**Object**
 
 ### Authorization
 
@@ -26151,6 +29714,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/coreapi+json, application/openapi+json, text/html
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

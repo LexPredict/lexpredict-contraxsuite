@@ -26,14 +26,16 @@
 
 import pickle
 import socket
+import sys
 import time
 
 import click
+import pandas as pd
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,7 +62,7 @@ def predict_on_server(unix_socket_path: str, model_input, timeout_in_seconds: in
         sock.connect(unix_socket_path)
         sock.sendall(data)
 
-        data_chunks = list()
+        data_chunks = []
 
         try:
             data_chunk = sock.recv(4096)
@@ -70,8 +72,7 @@ def predict_on_server(unix_socket_path: str, model_input, timeout_in_seconds: in
         except socket.timeout as e:
             if e.args[0] == 'timed out':
                 raise TimeoutError('Timeout waiting for mlflow model server response.')
-            else:
-                raise RuntimeError('Mlflow server closed connection.')
+            raise RuntimeError('Mlflow server closed connection.')
 
         data = b''.join(data_chunks)
 
@@ -79,8 +80,7 @@ def predict_on_server(unix_socket_path: str, model_input, timeout_in_seconds: in
 
         if isinstance(res, Exception):
             raise res
-        else:
-            return res
+        return res
     finally:
         sock.close()
 
@@ -96,8 +96,6 @@ def run(click_ctx, unix_socket_path):
         click.echo(click_ctx.get_help())
         click_ctx.exit()
 
-    import pandas as pd
-    import sys
     model_input = pd.read_json(sys.stdin, orient='records')
     start = time.time()
     model_output = predict_on_server(unix_socket_path, model_input, timeout_in_seconds=5)

@@ -24,8 +24,13 @@
 """
 # -*- coding: utf-8 -*-
 
+# Standard library imports
+from typing import Generator, List, Tuple
+
 # Django imports
-from django.forms import CharField, Form
+from settings import PROJECT_APPS
+from django.apps import apps
+from django.forms import CharField, CheckboxSelectMultiple, Form, MultipleChoiceField
 from django.utils.translation import ugettext_lazy as _
 
 # Project imports
@@ -33,9 +38,9 @@ from apps.common.widgets import LTRCheckboxField, LTRCheckboxWidget
 from apps.common.widgets import FriendlyPasswordInput
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -86,3 +91,20 @@ class ReindexDBForm(Form):
              ' please do not do inserts/updates/deletes in DB while the task is running.'
     reindex = checkbox_field("Run REINDEX DATABASE", initial=True)
     vacuum = checkbox_field("Run VACUUM ANALYZE")
+
+
+class DBSchemaSelectionForm(Form):
+
+    project_apps: Generator[str, None, None] = \
+        (app.split('.')[1] for app in PROJECT_APPS)
+
+    choices: List[Tuple[str, str]] = sorted(set(
+        (app_name, app_name) for app_name in project_apps
+        if next(apps.get_app_config(app_name).get_models(), None) is not None
+    ))
+
+    contraxsuite_apps = MultipleChoiceField(
+        choices=choices,
+        label='ContraxSuite Apps',
+        widget=CheckboxSelectMultiple,
+    )

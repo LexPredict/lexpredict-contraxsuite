@@ -33,8 +33,10 @@ Method | HTTP request | Description
 [**documentDocumentFieldDetectorsUidPUT**](DocumentApi.md#documentDocumentFieldDetectorsUidPUT) | **PUT** /api/v1/document/document-field-detectors/{uid}/ | 
 [**documentDocumentFieldValuesGET**](DocumentApi.md#documentDocumentFieldValuesGET) | **GET** /api/v1/document/document-field-values/ | 
 [**documentDocumentFieldValuesIdGET**](DocumentApi.md#documentDocumentFieldValuesIdGET) | **GET** /api/v1/document/document-field-values/{id}/ | 
+[**documentDocumentFieldsCheckFieldFormulaPOST**](DocumentApi.md#documentDocumentFieldsCheckFieldFormulaPOST) | **POST** /api/v1/document/document-fields/check_field_formula/ | 
 [**documentDocumentFieldsFormFieldsGET**](DocumentApi.md#documentDocumentFieldsFormFieldsGET) | **GET** /api/v1/document/document-fields/form-fields/ | 
 [**documentDocumentFieldsGET**](DocumentApi.md#documentDocumentFieldsGET) | **GET** /api/v1/document/document-fields/ | 
+[**documentDocumentFieldsPOST**](DocumentApi.md#documentDocumentFieldsPOST) | **POST** /api/v1/document/document-fields/ | 
 [**documentDocumentFieldsStatsGET**](DocumentApi.md#documentDocumentFieldsStatsGET) | **GET** /api/v1/document/document-fields/stats/ | 
 [**documentDocumentFieldsUidCheckFormulaPOST**](DocumentApi.md#documentDocumentFieldsUidCheckFormulaPOST) | **POST** /api/v1/document/document-fields/{uid}/check_formula/ | 
 [**documentDocumentFieldsUidClonePOST**](DocumentApi.md#documentDocumentFieldsUidClonePOST) | **POST** /api/v1/document/document-fields/{uid}/clone/ | 
@@ -54,6 +56,7 @@ Method | HTTP request | Description
 [**documentDocumentTypesGET**](DocumentApi.md#documentDocumentTypesGET) | **GET** /api/v1/document/document-types/ | 
 [**documentDocumentTypesImportDocTypePUT**](DocumentApi.md#documentDocumentTypesImportDocTypePUT) | **PUT** /api/v1/document/document-types/import_doc_type/ | 
 [**documentDocumentTypesPOST**](DocumentApi.md#documentDocumentTypesPOST) | **POST** /api/v1/document/document-types/ | 
+[**documentDocumentTypesSchemeMigrationsGET**](DocumentApi.md#documentDocumentTypesSchemeMigrationsGET) | **GET** /api/v1/document/document-types/scheme_migrations/ | 
 [**documentDocumentTypesStatsGET**](DocumentApi.md#documentDocumentTypesStatsGET) | **GET** /api/v1/document/document-types/stats/ | 
 [**documentDocumentTypesUidClonePOST**](DocumentApi.md#documentDocumentTypesUidClonePOST) | **POST** /api/v1/document/document-types/{uid}/clone/ | 
 [**documentDocumentTypesUidDELETE**](DocumentApi.md#documentDocumentTypesUidDELETE) | **DELETE** /api/v1/document/document-types/{uid}/ | 
@@ -67,6 +70,7 @@ Method | HTTP request | Description
 [**documentDocumentsDownloadZipGET**](DocumentApi.md#documentDocumentsDownloadZipGET) | **GET** /api/v1/document/documents/download_zip/ | 
 [**documentDocumentsForUserGET**](DocumentApi.md#documentDocumentsForUserGET) | **GET** /api/v1/document/documents/for-user/ | 
 [**documentDocumentsGET**](DocumentApi.md#documentDocumentsGET) | **GET** /api/v1/document/documents/ | 
+[**documentDocumentsIdActionsGET**](DocumentApi.md#documentDocumentsIdActionsGET) | **GET** /api/v1/document/documents/{id}/actions/ | 
 [**documentDocumentsIdDELETE**](DocumentApi.md#documentDocumentsIdDELETE) | **DELETE** /api/v1/document/documents/{id}/ | 
 [**documentDocumentsIdDataGET**](DocumentApi.md#documentDocumentsIdDataGET) | **GET** /api/v1/document/documents/{id}/data/ | 
 [**documentDocumentsIdDefinitionsGET**](DocumentApi.md#documentDocumentsIdDefinitionsGET) | **GET** /api/v1/document/documents/{id}/definitions/ | 
@@ -77,9 +81,12 @@ Method | HTTP request | Description
 [**documentDocumentsIdFieldsPUT**](DocumentApi.md#documentDocumentsIdFieldsPUT) | **PUT** /api/v1/document/documents/{id}/fields/ | 
 [**documentDocumentsIdFullTextGET**](DocumentApi.md#documentDocumentsIdFullTextGET) | **GET** /api/v1/document/documents/{id}/full_text/ | 
 [**documentDocumentsIdGET**](DocumentApi.md#documentDocumentsIdGET) | **GET** /api/v1/document/documents/{id}/ | 
+[**documentDocumentsIdHasPdfInfoGET**](DocumentApi.md#documentDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/documents/{id}/has_pdf_info/ | 
 [**documentDocumentsIdPATCH**](DocumentApi.md#documentDocumentsIdPATCH) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**documentDocumentsIdPUT**](DocumentApi.md#documentDocumentsIdPUT) | **PUT** /api/v1/document/documents/{id}/ | 
+[**documentDocumentsIdPdfReprGET**](DocumentApi.md#documentDocumentsIdPdfReprGET) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
 [**documentDocumentsIdShowGET**](DocumentApi.md#documentDocumentsIdShowGET) | **GET** /api/v1/document/documents/{id}/show/ | 
+[**documentDocumentsIdSimilarGET**](DocumentApi.md#documentDocumentsIdSimilarGET) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**documentDocumentsMarkDeletePOST**](DocumentApi.md#documentDocumentsMarkDeletePOST) | **POST** /api/v1/document/documents/mark_delete/ | 
 [**documentDocumentsPOST**](DocumentApi.md#documentDocumentsPOST) | **POST** /api/v1/document/documents/ | 
 [**documentDocumentsUnmarkDeletePOST**](DocumentApi.md#documentDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/documents/unmark_delete/ | 
@@ -103,6 +110,7 @@ Method | HTTP request | Description
 [**documentProjectProjectPkDocumentsDownloadZipGET**](DocumentApi.md#documentProjectProjectPkDocumentsDownloadZipGET) | **GET** /api/v1/document/project/{project_pk}/documents/download_zip/ | 
 [**documentProjectProjectPkDocumentsForUserGET**](DocumentApi.md#documentProjectProjectPkDocumentsForUserGET) | **GET** /api/v1/document/project/{project_pk}/documents/for-user/ | 
 [**documentProjectProjectPkDocumentsGET**](DocumentApi.md#documentProjectProjectPkDocumentsGET) | **GET** /api/v1/document/project/{project_pk}/documents/ | 
+[**documentProjectProjectPkDocumentsIdActionsGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdActionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/actions/ | 
 [**documentProjectProjectPkDocumentsIdDELETE**](DocumentApi.md#documentProjectProjectPkDocumentsIdDELETE) | **DELETE** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**documentProjectProjectPkDocumentsIdDataGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdDataGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/data/ | 
 [**documentProjectProjectPkDocumentsIdDefinitionsGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdDefinitionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/definitions/ | 
@@ -113,9 +121,12 @@ Method | HTTP request | Description
 [**documentProjectProjectPkDocumentsIdFieldsPUT**](DocumentApi.md#documentProjectProjectPkDocumentsIdFieldsPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
 [**documentProjectProjectPkDocumentsIdFullTextGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdFullTextGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/full_text/ | 
 [**documentProjectProjectPkDocumentsIdGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**documentProjectProjectPkDocumentsIdHasPdfInfoGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/has_pdf_info/ | 
 [**documentProjectProjectPkDocumentsIdPATCH**](DocumentApi.md#documentProjectProjectPkDocumentsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**documentProjectProjectPkDocumentsIdPUT**](DocumentApi.md#documentProjectProjectPkDocumentsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**documentProjectProjectPkDocumentsIdPdfReprGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdPdfReprGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
 [**documentProjectProjectPkDocumentsIdShowGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdShowGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
+[**documentProjectProjectPkDocumentsIdSimilarGET**](DocumentApi.md#documentProjectProjectPkDocumentsIdSimilarGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**documentProjectProjectPkDocumentsMarkDeletePOST**](DocumentApi.md#documentProjectProjectPkDocumentsMarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
 [**documentProjectProjectPkDocumentsPOST**](DocumentApi.md#documentProjectProjectPkDocumentsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/ | 
 [**documentProjectProjectPkDocumentsUnmarkDeletePOST**](DocumentApi.md#documentProjectProjectPkDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/unmark_delete/ | 
@@ -2124,6 +2135,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentFieldsCheckFieldFormulaPOST"></a>
+# **documentDocumentFieldsCheckFieldFormulaPOST**
+> DocumentFieldDetail documentDocumentFieldsCheckFieldFormulaPOST(checkNewDocumentFieldFormulaRequest)
+
+
+
+Check formula for new NOT SAVED Document Field Either \&quot;request.data.formula\&quot; or \&quot;request.data.hide_until_python\&quot; should be filled. Expects request data arguments: - formula: str OR - convert_decimals_to_floats_in_formula_args: bool - hide_until_python: str - field_type: str - document_type: str - document type uid - depends_on_fields: List[str] - list of field uids
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    CheckNewDocumentFieldFormulaRequest checkNewDocumentFieldFormulaRequest = new CheckNewDocumentFieldFormulaRequest(); // CheckNewDocumentFieldFormulaRequest | 
+    try {
+      DocumentFieldDetail result = apiInstance.documentDocumentFieldsCheckFieldFormulaPOST(checkNewDocumentFieldFormulaRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentFieldsCheckFieldFormulaPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **checkNewDocumentFieldFormulaRequest** | [**CheckNewDocumentFieldFormulaRequest**](CheckNewDocumentFieldFormulaRequest.md)|  | [optional]
+
+### Return type
+
+[**DocumentFieldDetail**](DocumentFieldDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="documentDocumentFieldsFormFieldsGET"></a>
 # **documentDocumentFieldsFormFieldsGET**
 > Map&lt;String, Object&gt; documentDocumentFieldsFormFieldsGET()
@@ -2257,6 +2337,75 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+
+<a name="documentDocumentFieldsPOST"></a>
+# **documentDocumentFieldsPOST**
+> DocumentFieldCreate documentDocumentFieldsPOST(documentFieldCreate)
+
+
+
+Create Document Field     Params:         - document_type: uid of Document Type         - code: str - Unique Short name for field, max 50 symbols, should contain only latin letters, digits, and underscores         - long_code: str - Unique Calculated field, max 150 symbols         - title: str - Verbose name for field, max 100 symbols         - description: str - optional         - type: str - max 30 symbols (from pre-defined choices)         - text_unit_type: str - (from pre-defined choices) default &#x3D; sentences         - value_detection_strategy: str - max 50 chars (from pre-defined choices)         - unsure_choice_value: str - max 256 chars, default&#x3D;null         - unsure_thresholds_by_value: json         - classifier_init_script: str         - formula: str         - convert_decimals_to_floats_in_formula_args: bool         - depends_on_fields: array of uids, optional         - confidence: str - max 100 chars (from pre-defined choices)         - requires_text_annotations: bool, default&#x3D;True         - read_only: bool, default&#x3D;False         - category: int - id of DocumentFieldCategory instance         - default_value: json         - choices: str - \\n-separated list of choices         - allow_values_not_specified_in_choices: bool - default&#x3D;False         - metadata: json, optional         - training_finished: bool, default&#x3D;False         - dirty: bool, default&#x3D;False         - order: integer - default&#x3D;0         - trained_after_documents_number: integer, default&#x3D;null         - hidden_always: bool - default&#x3D;False         - hide_until_python: str, optional         - hide_until_js: str, optional         - display_yes_no: bool - default&#x3D;False
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    DocumentFieldCreate documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate | 
+    try {
+      DocumentFieldCreate result = apiInstance.documentDocumentFieldsPOST(documentFieldCreate);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentFieldsPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional]
+
+### Return type
+
+[**DocumentFieldCreate**](DocumentFieldCreate.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
 
 <a name="documentDocumentFieldsStatsGET"></a>
 # **documentDocumentFieldsStatsGET**
@@ -3181,7 +3330,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Note
+Fill in \&quot;self.action_message\&quot; attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 ```java
@@ -3584,6 +3733,71 @@ Name | Type | Description  | Notes
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **201** |  |  -  |
+
+<a name="documentDocumentTypesSchemeMigrationsGET"></a>
+# **documentDocumentTypesSchemeMigrationsGET**
+> Map&lt;String, Object&gt; documentDocumentTypesSchemeMigrationsGET()
+
+
+
+Get Document Type model versions.
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.documentDocumentTypesSchemeMigrationsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentTypesSchemeMigrationsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
 
 <a name="documentDocumentTypesStatsGET"></a>
 # **documentDocumentTypesStatsGET**
@@ -4482,6 +4696,81 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentsIdActionsGET"></a>
+# **documentDocumentsIdActionsGET**
+> List&lt;Action&gt; documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentsIdActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentDocumentsIdDELETE"></a>
 # **documentDocumentsIdDELETE**
 > documentDocumentsIdDELETE(id)
@@ -5167,6 +5456,73 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentsIdHasPdfInfoGET"></a>
+# **documentDocumentsIdHasPdfInfoGET**
+> Boolean documentDocumentsIdHasPdfInfoGET(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      Boolean result = apiInstance.documentDocumentsIdHasPdfInfoGET(id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentsIdHasPdfInfoGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+**Boolean**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentDocumentsIdPATCH"></a>
 # **documentDocumentsIdPATCH**
 > DocumentDetail documentDocumentsIdPATCH(id, documentDetail)
@@ -5307,6 +5663,73 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentDocumentsIdPdfReprGET"></a>
+# **documentDocumentsIdPdfReprGET**
+> DocumentPDFRepr documentDocumentsIdPdfReprGET(id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      DocumentPDFRepr result = apiInstance.documentDocumentsIdPdfReprGET(id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentsIdPdfReprGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentDocumentsIdShowGET"></a>
 # **documentDocumentsIdShowGET**
 > File documentDocumentsIdShowGET(id, alt)
@@ -5336,7 +5759,7 @@ public class Example {
 
     DocumentApi apiInstance = new DocumentApi(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this document.
-    Boolean alt = true; // Boolean | Get alternative document file if exists
+    String alt = "alt_example"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentDocumentsIdShowGET(id, alt);
       System.out.println(result);
@@ -5356,11 +5779,84 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this document. |
- **alt** | **Boolean**| Get alternative document file if exists | [optional]
+ **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt]
 
 ### Return type
 
 [**File**](File.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="documentDocumentsIdSimilarGET"></a>
+# **documentDocumentsIdSimilarGET**
+> ProjectDocumentSimilarity documentDocumentsIdSimilarGET(id, textMaxLength, jqFilters)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer textMaxLength = 56; // Integer | document b text max length, 0 to get all text
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      ProjectDocumentSimilarity result = apiInstance.documentDocumentsIdSimilarGET(id, textMaxLength, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentDocumentsIdSimilarGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this document. |
+ **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
 
 ### Authorization
 
@@ -6996,6 +7492,83 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentProjectProjectPkDocumentsIdActionsGET"></a>
+# **documentProjectProjectPkDocumentsIdActionsGET**
+> List&lt;Action&gt; documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer projectId = 56; // Integer | Project ID
+    Integer documentId = 56; // Integer | Document ID
+    List<String> viewActions = Arrays.asList(); // List<String> | Action names
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      List<Action> result = apiInstance.documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentProjectProjectPkDocumentsIdActionsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+ **projectId** | **Integer**| Project ID | [optional]
+ **documentId** | **Integer**| Document ID | [optional]
+ **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**List&lt;Action&gt;**](Action.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentProjectProjectPkDocumentsIdDELETE"></a>
 # **documentProjectProjectPkDocumentsIdDELETE**
 > documentProjectProjectPkDocumentsIdDELETE(projectPk, id)
@@ -7701,6 +8274,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentProjectProjectPkDocumentsIdHasPdfInfoGET"></a>
+# **documentProjectProjectPkDocumentsIdHasPdfInfoGET**
+> Boolean documentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      Boolean result = apiInstance.documentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentProjectProjectPkDocumentsIdHasPdfInfoGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+**Boolean**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentProjectProjectPkDocumentsIdPATCH"></a>
 # **documentProjectProjectPkDocumentsIdPATCH**
 > DocumentDetail documentProjectProjectPkDocumentsIdPATCH(projectPk, id, documentDetail)
@@ -7845,6 +8487,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="documentProjectProjectPkDocumentsIdPdfReprGET"></a>
+# **documentProjectProjectPkDocumentsIdPdfReprGET**
+> DocumentPDFRepr documentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    try {
+      DocumentPDFRepr result = apiInstance.documentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentProjectProjectPkDocumentsIdPdfReprGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+
+### Return type
+
+[**DocumentPDFRepr**](DocumentPDFRepr.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
 <a name="documentProjectProjectPkDocumentsIdShowGET"></a>
 # **documentProjectProjectPkDocumentsIdShowGET**
 > File documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt)
@@ -7875,7 +8586,7 @@ public class Example {
     DocumentApi apiInstance = new DocumentApi(defaultClient);
     String projectPk = "projectPk_example"; // String | 
     String id = "id_example"; // String | A unique integer value identifying this document.
-    Boolean alt = true; // Boolean | Get alternative document file if exists
+    String alt = "alt_example"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt);
       System.out.println(result);
@@ -7896,11 +8607,86 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **projectPk** | **String**|  |
  **id** | **String**| A unique integer value identifying this document. |
- **alt** | **Boolean**| Get alternative document file if exists | [optional]
+ **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt]
 
 ### Return type
 
 [**File**](File.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="documentProjectProjectPkDocumentsIdSimilarGET"></a>
+# **documentProjectProjectPkDocumentsIdSimilarGET**
+> ProjectDocumentSimilarity documentProjectProjectPkDocumentsIdSimilarGET(projectPk, id, textMaxLength, jqFilters)
+
+
+
+Re-use ProjectDocumentSimilarityListAPIView to get similarities  as resource for this API is not Document model, but DocumentSimilarity
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.DocumentApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    DocumentApi apiInstance = new DocumentApi(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    Integer textMaxLength = 56; // Integer | document b text max length, 0 to get all text
+    Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
+    try {
+      ProjectDocumentSimilarity result = apiInstance.documentProjectProjectPkDocumentsIdSimilarGET(projectPk, id, textMaxLength, jqFilters);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling DocumentApi#documentProjectProjectPkDocumentsIdSimilarGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **String**|  |
+ **id** | **String**| A unique integer value identifying this document. |
+ **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
+ **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+
+### Return type
+
+[**ProjectDocumentSimilarity**](ProjectDocumentSimilarity.md)
 
 ### Authorization
 

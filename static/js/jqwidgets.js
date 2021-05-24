@@ -516,8 +516,9 @@
          session_id: sessionId
        },
        success: function(response) {
-         var popText = 'Restart ' + response['tasks'] + ' tasks in "' +
-            response['status'] + '" status?';
+         var popText = 'Restart ' + response['tasks']
+             + (response['tasks'] === 1 ? ' task ' : ' tasks ')
+             + 'with "' + response['status'] + '" status?';
          show_task_popup(pk, url, grid,
             title,
             'fa fa-refresh text-warning',

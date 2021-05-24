@@ -26,18 +26,19 @@
 
 from apps.document.models import Document
 from apps.similarity.chunk_similarity_task import ChunkSimilarity
-from apps.similarity.forms import (
-    PreconfiguredDocumentSimilaritySearchForm, SimilarityForm,
-    PartySimilarityForm, ChunkSimilarityForm, SimilarityByFeaturesForm)
+from apps.similarity.forms import PreconfiguredDocumentSimilaritySearchForm, SimilarityForm, \
+    PartySimilarityForm, ChunkSimilarityForm, \
+    DocumentSimilarityByFeaturesForm, TextUnitSimilarityByFeaturesForm, \
+    ProjectDocumentsSimilarityByVectorsForm, ProjectTextUnitsSimilarityByVectorsForm
 from apps.similarity.similarity_metrics import make_text_units_query, SimilarityLimits
-from apps.similarity.tasks import (
-    PreconfiguredDocumentSimilaritySearch, Similarity, PartySimilarity, SimilarityByFeatures)
+from apps.similarity.tasks import PreconfiguredDocumentSimilaritySearch, Similarity, \
+    PartySimilarity, DocumentSimilarityByFeatures, TextUnitSimilarityByFeatures
 from apps.task.views import BaseAjaxTaskView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,7 +77,7 @@ class SimilarityView(BaseAjaxTaskView):
             search_target = 'document' if data.get('search_similar_documents') else 'unit'
 
         if search_target == 'document':
-            count = Document.objects.all().count() if not proj_id \
+            count = Document.objects.count() if not proj_id \
                 else Document.objects.filter(project_id=proj_id).count()
             count_limit = SimilarityLimits.WARN_MAX_DOCUMENTS
             unit_type = 'documents'
@@ -94,9 +95,24 @@ class SimilarityView(BaseAjaxTaskView):
                                    'confirm': True})
 
 
-class SimilarityByFeaturesView(BaseAjaxTaskView):
-    task_class = SimilarityByFeatures
-    form_class = SimilarityByFeaturesForm
+class ProjectDocumentsSimilarityByVectorsView(BaseAjaxTaskView):
+    task_class = DocumentSimilarityByFeatures
+    form_class = ProjectDocumentsSimilarityByVectorsForm
+
+
+class ProjectTextUnitsSimilarityByVectorsView(BaseAjaxTaskView):
+    task_class = TextUnitSimilarityByFeatures
+    form_class = ProjectTextUnitsSimilarityByVectorsForm
+
+
+class DocumentSimilarityByFeaturesView(BaseAjaxTaskView):
+    task_class = DocumentSimilarityByFeatures
+    form_class = DocumentSimilarityByFeaturesForm
+
+
+class TextUnitSimilarityByFeaturesView(BaseAjaxTaskView):
+    task_class = TextUnitSimilarityByFeatures
+    form_class = TextUnitSimilarityByFeaturesForm
 
 
 class ChunkSimilarityView(SimilarityView):

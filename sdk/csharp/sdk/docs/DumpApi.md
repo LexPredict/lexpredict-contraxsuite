@@ -17,7 +17,7 @@ Method | HTTP request | Description
 
 ## DumpDocumentConfigGET
 
-> Dictionary&lt;string, Object&gt; DumpDocumentConfigGET ()
+> OneOfarrayfile DumpDocumentConfigGET (bool? download = null, string documentTypeCodes = null)
 
 
 
@@ -45,10 +45,12 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DumpApi(Configuration.Default);
+            var download = true;  // bool? | Download as file (optional) 
+            var documentTypeCodes = documentTypeCodes_example;  // string | Document Type codes separated by comma (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpDocumentConfigGET();
+                OneOfarrayfile result = apiInstance.DumpDocumentConfigGET(download, documentTypeCodes);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -64,11 +66,15 @@ namespace Example
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool?**| Download as file | [optional] 
+ **documentTypeCodes** | **string**| Document Type codes separated by comma | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -78,6 +84,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -93,11 +100,11 @@ This endpoint does not need any parameter.
 
 ## DumpDocumentConfigPUT
 
-> System.IO.Stream DumpDocumentConfigPUT (Dictionary<string, Object> requestBody = null)
+> string DumpDocumentConfigPUT (List<Dictionary<string, Object>> requestBody = null)
 
 
 
-Upload field values
+Dump document types, fields, field detectors and  document filters to json.
 
 ### Example
 
@@ -121,11 +128,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DumpApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var requestBody = new List<Dictionary<string, Object>>(); // List<Dictionary<string, Object>> |  (optional) 
 
             try
             {
-                System.IO.Stream result = apiInstance.DumpDocumentConfigPUT(requestBody);
+                string result = apiInstance.DumpDocumentConfigPUT(requestBody);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -144,11 +151,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **requestBody** | [**List&lt;Dictionary&lt;string, Object&gt;&gt;**](Dictionary.md)|  | [optional] 
 
 ### Return type
 
-**System.IO.Stream**
+**string**
 
 ### Authorization
 
@@ -156,13 +163,15 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -238,6 +247,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -251,11 +261,11 @@ Name | Type | Description  | Notes
 
 ## DumpDumpGET
 
-> Dictionary&lt;string, Object&gt; DumpDumpGET ()
+> OneOfarrayfile DumpDumpGET (bool? download = null)
 
 
 
-Dump all users, roles, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 
@@ -279,10 +289,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DumpApi(Configuration.Default);
+            var download = true;  // bool? | Download as file (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpDumpGET();
+                OneOfarrayfile result = apiInstance.DumpDumpGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -298,11 +309,14 @@ namespace Example
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool?**| Download as file | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -312,6 +326,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -327,11 +342,11 @@ This endpoint does not need any parameter.
 
 ## DumpDumpPUT
 
-> System.IO.Stream DumpDumpPUT (Dictionary<string, Object> requestBody = null)
+> string DumpDumpPUT (List<Dictionary<string, Object>> requestBody = null)
 
 
 
-Upload field values
+Dump all users, email addresses, review statuses, review status groups, app vars, document types, fields, field detectors and document filters to json.
 
 ### Example
 
@@ -355,11 +370,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DumpApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var requestBody = new List<Dictionary<string, Object>>(); // List<Dictionary<string, Object>> |  (optional) 
 
             try
             {
-                System.IO.Stream result = apiInstance.DumpDumpPUT(requestBody);
+                string result = apiInstance.DumpDumpPUT(requestBody);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -378,11 +393,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **requestBody** | [**List&lt;Dictionary&lt;string, Object&gt;&gt;**](Dictionary.md)|  | [optional] 
 
 ### Return type
 
-**System.IO.Stream**
+**string**
 
 ### Authorization
 
@@ -390,13 +405,15 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -406,11 +423,11 @@ Name | Type | Description  | Notes
 
 ## DumpFieldValuesGET
 
-> Dictionary&lt;string, Object&gt; DumpFieldValuesGET ()
+> OneOfarrayfile DumpFieldValuesGET (bool? download = null)
 
 
 
-Download field values
+Dump field values to json.
 
 ### Example
 
@@ -434,10 +451,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DumpApi(Configuration.Default);
+            var download = true;  // bool? | Download as file (optional) 
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpFieldValuesGET();
+                OneOfarrayfile result = apiInstance.DumpFieldValuesGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -453,11 +471,14 @@ namespace Example
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **download** | **bool?**| Download as file | [optional] 
 
 ### Return type
 
-**Dictionary<string, Object>**
+[**OneOfarrayfile**](OneOfarrayfile.md)
 
 ### Authorization
 
@@ -467,6 +488,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -482,7 +504,7 @@ This endpoint does not need any parameter.
 
 ## DumpFieldValuesPUT
 
-> System.IO.Stream DumpFieldValuesPUT (Dictionary<string, Object> requestBody = null)
+> string DumpFieldValuesPUT (List<Dictionary<string, Object>> requestBody = null)
 
 
 
@@ -510,11 +532,11 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DumpApi(Configuration.Default);
-            var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
+            var requestBody = new List<Dictionary<string, Object>>(); // List<Dictionary<string, Object>> |  (optional) 
 
             try
             {
-                System.IO.Stream result = apiInstance.DumpFieldValuesPUT(requestBody);
+                string result = apiInstance.DumpFieldValuesPUT(requestBody);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -533,11 +555,11 @@ namespace Example
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **requestBody** | [**Dictionary&lt;string, Object&gt;**](Object.md)|  | [optional] 
+ **requestBody** | [**List&lt;Dictionary&lt;string, Object&gt;&gt;**](Dictionary.md)|  | [optional] 
 
 ### Return type
 
-**System.IO.Stream**
+**string**
 
 ### Authorization
 
@@ -545,13 +567,15 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Content-Type**: application/json
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -561,7 +585,7 @@ Name | Type | Description  | Notes
 
 ## DumpLoadFixturePOST
 
-> Dictionary&lt;string, Object&gt; DumpLoadFixturePOST (LoadFixture loadFixture = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; DumpLoadFixturePOST (LoadFixture loadFixture = null)
 
 
 
@@ -593,7 +617,7 @@ namespace Example
 
             try
             {
-                Dictionary<string, Object> result = apiInstance.DumpLoadFixturePOST(loadFixture);
+                List<Dictionary<string, Object>> result = apiInstance.DumpLoadFixturePOST(loadFixture);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -616,7 +640,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**Dictionary<string, Object>**
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -626,6 +650,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

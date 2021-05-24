@@ -1,9 +1,10 @@
 # DocumentTypeImportRequest
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**file** | **file** |  | 
+**file** | **file_type** |  | 
 **update_cache** | **bool** |  | [optional] 
 **action** | **str** |  | [optional] 
 **source_version** | **str** |  | [optional] 

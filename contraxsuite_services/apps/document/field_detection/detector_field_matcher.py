@@ -26,18 +26,19 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 from logging import Logger
-from apps.task.utils.logger import get_django_logger
 from typing import Optional, Tuple
 from lexnlp.extract.en.definitions \
     import get_definitions_in_sentence, get_definitions
+
+from apps.common.logger import CsLogger
 from apps.document.models import DocumentFieldDetector, TextParts
 
 
@@ -73,7 +74,7 @@ class DetectorFieldMatcher:
             raise
         if not terms:
             return False
-        terms = set([self._clean_def_words(t) for t in terms])
+        terms = {self._clean_def_words(t) for t in terms}
 
         for w in self.detector.detector_definition_words:
             if w in terms:
@@ -91,21 +92,17 @@ class DetectorFieldMatcher:
                 raise
 
         if not text:
-            return None
+            return
 
         text = text.replace('\n', ' ').replace('\t', ' ')
         if self.detector._matches_exclude_regexp(text):
-            return None
-        else:
-            if self.detector.detector_definition_words:
-                if not self._matches_definition_words(text, text_is_sentence):
-                    return None
-                if not self.detector.include_matchers:
-                    return text, 0, len(text)
-                else:
-                    return self._match_include_regexp_or_none(text, text)
-            else:
-                return self._match_include_regexp_or_none(text, text)
+            return
+        if self.detector.detector_definition_words:
+            if not self._matches_definition_words(text, text_is_sentence):
+                return None
+            if not self.detector.include_matchers:
+                return text, 0, len(text)
+        return self._match_include_regexp_or_none(text, text)
 
     def matching_string(self, text: str, text_is_sentence: bool = True) -> Optional[Tuple[str, int, int]]:
         # returns: string, begin, end
@@ -114,13 +111,11 @@ class DetectorFieldMatcher:
             matching_string, begin, end = match
             if self.detector.text_part == TextParts.BEFORE_REGEXP.value:
                 return matching_string[:begin], 0, begin
-            elif self.detector.text_part == TextParts.AFTER_REGEXP.value:
+            if self.detector.text_part == TextParts.AFTER_REGEXP.value:
                 return matching_string[end:], end, len(text)
-            elif self.detector.text_part == TextParts.INSIDE_REGEXP.value:
+            if self.detector.text_part == TextParts.INSIDE_REGEXP.value:
                 return matching_string[begin:end], begin, end
-            else:
-                return text, 0, len(text)
-        return None
+            return text, 0, len(text)
 
     def _match_include_regexp_or_none(self,
                                       sentence: str,
@@ -175,4 +170,4 @@ class DetectorFieldMatcher:
 
     @staticmethod
     def get_logger() -> Logger:
-        return get_django_logger()
+        return CsLogger.get_django_logger()

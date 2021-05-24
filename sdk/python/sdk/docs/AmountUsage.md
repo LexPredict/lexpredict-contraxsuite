@@ -1,10 +1,11 @@
 # AmountUsage
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**amount** | **float** |  | [optional] 
-**amount_str** | **str** |  | [optional] 
+**amount** | **float, none_type** |  | [optional] 
+**amount_str** | **str, none_type** |  | [optional] 
 **count** | **int** |  | [optional] 
 **pk** | **int** |  | [optional] [readonly] 
 **text_unit__pk** | **str** |  | [optional] [readonly] 

@@ -74,6 +74,7 @@ This endpoint does not need any parameter.
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -179,6 +180,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -260,6 +262,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -337,6 +340,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -350,7 +354,7 @@ Name | Type | Description  | Notes
 
 ## RawdbSocialAccountsGET
 
-> List&lt;AnyType&gt; RawdbSocialAccountsGET ()
+> SocialAccountsResponse RawdbSocialAccountsGET ()
 
 
 
@@ -379,7 +383,7 @@ namespace Example
 
             try
             {
-                List<AnyType> result = apiInstance.RawdbSocialAccountsGET();
+                SocialAccountsResponse result = apiInstance.RawdbSocialAccountsGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -399,7 +403,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 
@@ -409,6 +413,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

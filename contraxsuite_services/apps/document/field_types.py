@@ -33,9 +33,10 @@ from typing import List, Tuple, Optional, Any, Callable, Set
 
 import dateparser
 import pyap
+from lexnlp.extract.all_locales.languages import DEFAULT_LANGUAGE
 from lexnlp.extract.en.addresses.addresses import get_addresses
 from lexnlp.extract.en.amounts import get_amounts
-from lexnlp.extract.en.dates import get_dates_list
+from lexnlp.extract.en.dates import get_date_annotations
 from lexnlp.extract.en.durations import get_durations
 from lexnlp.extract.en.entities.nltk_maxent import get_persons
 from lexnlp.extract.en.geoentities import get_geoentities
@@ -46,15 +47,14 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from sklearn.pipeline import FeatureUnion, Pipeline
 
-from apps.companies_extractor import CompaniesExtractor
 from apps.document.field_processing import vectorizers
 from apps.document.models import DocumentField, Document
 from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -252,14 +252,13 @@ class TypedField:
         value = ValueExtractionHint.get_value(extracted, possible_hint)
         if value is not None:
             return value, possible_hint
-        else:
-            return ValueExtractionHint.get_value(extracted, self.default_hint), self.default_hint
+        return ValueExtractionHint.get_value(extracted, self.default_hint), self.default_hint
 
     def suggest_value(self,
                       document,
                       location_text: str):
-        value, hint = self.get_or_extract_value(document, location_text,
-                                                self.default_hint, location_text)
+        value, _ = self.get_or_extract_value(document, location_text,
+                                             self.default_hint, location_text)
         return value
 
     def example_python_value(self):
@@ -276,7 +275,7 @@ class TypedField:
         :param vectorizer_step:
         :return:
         """
-        return lambda: vectorizer_step.get_feature_names()
+        return vectorizer_step.get_feature_names
 
     def _build_stop_words(self) -> Set[str]:
         additional_stop_words = self.field.get_vectorizer_stop_words()
@@ -284,8 +283,7 @@ class TypedField:
             stop_words = set(ENGLISH_STOP_WORDS)
             stop_words.update(additional_stop_words)
             return stop_words
-        else:
-            return ENGLISH_STOP_WORDS
+        return ENGLISH_STOP_WORDS
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         """
@@ -519,8 +517,6 @@ class ChoiceField(TypedField):
     def extract_from_possible_value(self, possible_value):
         if self.field.is_choice_value(possible_value):
             return possible_value
-        else:
-            return None
 
     def _extract_variants_from_text(self, text: str,
                                     doc: Document) -> Optional[List]:
@@ -561,38 +557,6 @@ class ChoiceField(TypedField):
         return errors
 
 
-class BooleanField(TypedField):
-    type_code = 'boolean'
-    title = 'Boolean'
-    requires_value = True
-    allows_value = True
-    value_extracting = False
-
-    def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, bool) or val in {0, 1}
-
-    def extract_from_possible_value(self, possible_value):
-        if not possible_value:
-            return False
-        if type(possible_value) is bool:
-            return bool(possible_value)
-        elif type(possible_value) is str:
-            return str(possible_value).lower() in {'yes', 'on', 'true'}
-        else:
-            return bool(possible_value)
-
-    def _extract_variants_from_text(self, text: str,
-                                    doc: Document) -> Optional[List]:
-        return None
-
-    def example_python_value(self):
-        return False
-
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
-        vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
-
-
 class MultiChoiceField(ChoiceField, MultiValueSetField):
     type_code = 'multi_choice'
     title = 'Multi Choice'
@@ -614,7 +578,7 @@ class MultiChoiceField(ChoiceField, MultiValueSetField):
         if val is None:
             return True
         if not isinstance(val, list):
-            return False
+            val = [val]
         if self.field.allow_values_not_specified_in_choices:
             return all([isinstance(v, str) for v in val])
 
@@ -627,7 +591,7 @@ class MultiChoiceField(ChoiceField, MultiValueSetField):
         if val is None:
             return True
         if not isinstance(val, list) and not isinstance(val, set):
-            return False
+            val = [val]
         if self.field.allow_values_not_specified_in_choices:
             return all([isinstance(v, str) for v in val])
 
@@ -641,7 +605,7 @@ class MultiChoiceField(ChoiceField, MultiValueSetField):
         if not choice_values:
             return None
         res = set()
-        for i in range(randint(0, len(choice_values))):
+        for _ in range(randint(0, len(choice_values))):
             res.add(choice_values[randint(0, len(choice_values) - 1)])
         return res
 
@@ -670,14 +634,11 @@ class LinkedDocumentsField(MultiValueSetField):
             return False
         if not all(isinstance(v, int) for v in val):
             return False
-
-        from apps.document.models import Document
         return Document.objects.filter(pk__in=val).count() == len(val)
 
     def is_json_annotation_value_ok(self, val: Any):
         if not isinstance(val, int):
             return False
-        from apps.document.models import Document
         return Document.objects.filter(pk=val).exists()
 
     def is_python_field_value_ok(self, val: Any):
@@ -688,7 +649,6 @@ class LinkedDocumentsField(MultiValueSetField):
         if not all(isinstance(v, int) for v in val):
             return False
 
-        from apps.document.models import Document
         return Document.objects.filter(pk__in=val).count() == len(val)
 
     def extract_from_possible_value(self, possible_value):
@@ -701,7 +661,6 @@ class LinkedDocumentsField(MultiValueSetField):
             except ValueError:
                 return None
 
-        from apps.document.models import Document
         if not Document.objects.filter(pk=possible_value).exists():
             return None
 
@@ -713,7 +672,7 @@ class LinkedDocumentsField(MultiValueSetField):
 
     def example_python_value(self):
         res = set()
-        for i in range(randint(0, 10)):
+        for _ in range(randint(0, 10)):
             res.add(randint(0, 12345))
         return res
 
@@ -763,27 +722,34 @@ class DateTimeField(TypedField):
         return dateparser.parse(json_value)
 
     def extract_from_possible_value(self, possible_value):
-        if isinstance(possible_value, datetime) or isinstance(possible_value, date):
+        if isinstance(possible_value, (datetime, date)):
             return possible_value
-        else:
-            try:
-                return dateparser.parse(str(possible_value))
-            except:
-                return None
+        try:
+            return dateparser.parse(str(possible_value))
+        except:
+            return None
 
     def _extract_variants_from_text(self, text: str,
                                     doc: Document) -> Optional[List]:
-        dates = get_dates_list(text) or []
-        dates = [d if isinstance(d, datetime) else datetime(d.year, d.month, d.day)
-                 for d in dates if d.year < 3000]
-        return dates or None
+        from apps.document.app_vars import DOCUMENT_LOCALE
+        found = list(get_date_annotations(
+            text,
+            strict=None,
+            locale=DOCUMENT_LOCALE.val(project_id=doc.project_id) or doc.language or DEFAULT_LANGUAGE.code))
+        if found:
+            found.sort(key=lambda f: f.score, reverse=True)
+            _all = [d.date if isinstance(d.date, datetime)
+                    else datetime(d.date.year, d.date.month, d.date.day) for d in found
+                    if d.date.year < 3000]
+            return _all or None
+        return None
 
     def example_python_value(self):
         return datetime.now()
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.SerialDateVectorizer()
-        return [('vect', vect)], lambda: vect.get_feature_names()
+        return [('vect', vect)], vect.get_feature_names
 
 
 class DateField(TypedField):
@@ -804,10 +770,10 @@ class DateField(TypedField):
         return RE_DATE_TIME_ISO.fullmatch(val) is not None or RE_DATE_ISO.fullmatch(val) is not None
 
     def is_python_annotation_value_ok(self, val: Any):
-        return val is None or isinstance(val, datetime) or isinstance(val, date)
+        return val is None or isinstance(val, (datetime, date))
 
     def is_python_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, datetime) or isinstance(val, date)
+        return val is None or isinstance(val, (datetime, date))
 
     def field_value_python_to_json(self, python_value: Any) -> Any:
         if not python_value:
@@ -823,32 +789,40 @@ class DateField(TypedField):
             return json_value
         if isinstance(json_value, str) and not json_value:
             return None
-        return dateparser.parse(json_value).date()
+        try:
+            return dateparser.parse(json_value).date()
+        except AttributeError as e:
+            raise RuntimeError(f'Value json_value="{json_value}" throws dateparser error') from e
 
     def extract_from_possible_value(self, possible_value):
         if isinstance(possible_value, datetime):
             return possible_value.date()
-        elif isinstance(possible_value, date):
+        if isinstance(possible_value, date):
             return possible_value
-        else:
-            try:
-                return dateparser.parse(str(possible_value)).date()
-            except:
-                return None
+        try:
+            return dateparser.parse(str(possible_value)).date()
+        except:
+            return None
 
     def _extract_variants_from_text(self, text: str,
                                     doc: Document) -> Optional[List]:
-        dates = get_dates_list(text) or []
-        dates = [d.date() if isinstance(d, datetime) else d
-                 for d in dates if d.year < 3000]
-        return dates or None
+        from apps.document.app_vars import DOCUMENT_LOCALE
+        found = list(get_date_annotations(
+            text,
+            strict=None,
+            locale=DOCUMENT_LOCALE.val(project_id=doc.project_id) or doc.language or DEFAULT_LANGUAGE.code))
+        if found:
+            found.sort(key=lambda f: f.score, reverse=True)
+            _all = [i.date.date() if isinstance(i.date, datetime) else i.date for i in found]
+            return _all or None
+        return None
 
     def example_python_value(self):
         return datetime.now()
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.SerialDateVectorizer()
-        return [('vect', vect)], lambda: vect.get_feature_names()
+        return [('vect', vect)], vect.get_feature_names
 
 
 class RecurringDateField(DateField):
@@ -857,7 +831,7 @@ class RecurringDateField(DateField):
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.RecurringDateVectorizer()
-        return [('vect', vect)], lambda: vect.get_feature_names()
+        return [('vect', vect)], vect.get_feature_names
 
 
 class FloatField(TypedField):
@@ -961,10 +935,9 @@ class AddressField(TypedField):
         if possible_value is None:
             return None
 
-        if type(possible_value) is dict:
+        if isinstance(possible_value, dict):
             return possible_value
-        else:
-            return {'address': str(possible_value)}
+        return {'address': str(possible_value)}
 
     def _extract_variants_from_text(self, text: str,
                                     doc: Document) -> Optional[List]:
@@ -1016,12 +989,11 @@ class CompanyField(TypedField):
     def extract_from_possible_value(self, possible_value):
         if possible_value is not None:
             return str(possible_value)
-        else:
-            return None
 
     def _extract_variants_from_text(self, text: str,
                                     doc: Document) -> Optional[List]:
-        companies = list(CompaniesExtractor.get_companies(
+        from apps.extract.companies_extractor import CompaniesExtractor
+        companies = list(CompaniesExtractor.get_companies(doc.project.pk,
             text, detail_type=True, name_upper=True, strict=True))
         if not companies:
             return None
@@ -1260,36 +1232,6 @@ class PersonField(TypedField):
                 ('tfidf', TfidfTransformer())], self._wrap_get_feature_names(vect)
 
 
-class AmountField(FloatField):
-    type_code = 'amount'
-    title = 'Amount'
-    requires_value = True
-    allows_value = True
-    value_extracting = True
-    ordinal = True
-
-    def field_value_python_to_json(self, python_value: Any) -> Any:
-        return to_decimal(python_value)
-
-    def field_value_json_to_python(self, json_value: Any) -> Any:
-        return to_decimal(json_value)
-
-    def is_json_field_value_ok(self, val: Any):
-        return val is None or isinstance(val, (float, int, Decimal, str))
-
-    def _extract_variants_from_text(self, text: str,
-                                    doc: Document) -> Optional[List]:
-        amounts = get_amounts(text, return_sources=False)
-        return list(amounts) if amounts else None
-
-    def example_python_value(self):
-        return decimal.Decimal(25000.50)
-
-    def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
-        vect = vectorizers.NumberVectorizer()
-        return [('vect', vect)], self._wrap_get_feature_names(vect)
-
-
 class MoneyField(FloatField):
     type_code = 'money'
     title = 'Money'
@@ -1412,7 +1354,7 @@ class GeographyField(TypedField):
         geos = get_geoentities(text=text,
                                geo_config_list=geo_config,
                                text_languages=[doc.language],
-                               priority=True)
+                               conflict_resolving_field='priority')
         return [g[0].name for g in geos] or None
 
     def example_python_value(self):
@@ -1438,7 +1380,6 @@ FIELD_TYPES = (StringField,
                StringFieldWholeValueAsAToken,
                LongTextField,
                IntField,
-               BooleanField,
                FloatField,
                DateTimeField,
                DateField,
@@ -1452,7 +1393,6 @@ FIELD_TYPES = (StringField,
                ChoiceField,
                MultiChoiceField,
                PersonField,
-               AmountField,
                MoneyField,
                GeographyField,
                LinkedDocumentsField)

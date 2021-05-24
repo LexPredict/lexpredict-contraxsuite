@@ -39,9 +39,9 @@ from apps.document.models import Document, TextUnit
 from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, Document2VecFeatures, TextUnit2VecFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,7 +98,7 @@ class ClusterEngine:
         Checks if get_some_callable_option method exists and uses it instead of class attribute.
         :return: dict - engine options dictionary
         """
-        engine_options = dict()
+        engine_options = {}
         allowed_engine_option_names = list(inspect.signature(self.engine.__init__).parameters.keys())[1:]
         for option_name in allowed_engine_option_names:
 
@@ -122,7 +122,6 @@ class ClusterEngine:
         """
         Just a sample to show a signature of callable algorithm method
         """
-        pass
 
     def get_model(self):
         """
@@ -351,9 +350,9 @@ class ClusterDocuments:
             unit_type=self.unit_type,
             project_id=self.project_id,
             method_options=self.cluster_options,
-            clusters_data=dict(),
-            points_data=list(),
-            cluster_obj_ids=list(),
+            clusters_data={},
+            points_data=[],
+            cluster_obj_ids=[],
             unclustered_item_ids=feature_obj.unqualified_item_ids,
             unclustered_item_names=feature_obj.unqualified_item_names,
         )
@@ -365,7 +364,7 @@ class ClusterDocuments:
         # collect all points data to store in "global" metadata
         all_points_data = metadata['points_data']
         # collect per-cluster points data to store in Cluster db object
-        cluster_items_points_data = dict()
+        cluster_items_points_data = {}
         item_names = feature_obj.item_names
 
         if clustering.data2d is not None:
@@ -378,7 +377,7 @@ class ClusterDocuments:
                 item_data[self.point_item_id_name] = item_id
 
                 if cluster_label_id not in cluster_items_points_data:
-                    cluster_items_points_data[cluster_label_id] = list()
+                    cluster_items_points_data[cluster_label_id] = []
                 cluster_items_points_data[cluster_label_id].append(item_data)
 
                 all_points_data.append(item_data)

@@ -1,17 +1,18 @@
 # Action
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**pk** | **int** |  | [optional] [readonly] 
+**id** | **int** |  | [optional] [readonly] 
 **name** | **str** |  | [optional] 
-**user** | [**ProjectDetailOwnersData**](ProjectDetailOwnersData.md) |  | 
-**content_type** | **int** |  | 
-**object_pk** | **str** |  | [optional] 
+**message** | **str, none_type** |  | [optional] 
+**view_action** | **str, none_type** |  | [optional] 
+**object_pk** | **str, none_type** |  | [optional] 
+**model_name** | **str, none_type** |  | [optional] 
 **date** | **datetime** |  | [optional] [readonly] 
-**app_label** | **str** |  | [optional] 
-**model_name** | **str** |  | [optional] 
-**object_str** | **str** |  | [optional] 
+**user__name** | **str** |  | [optional] [readonly] 
+**request_data** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}, none_type** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

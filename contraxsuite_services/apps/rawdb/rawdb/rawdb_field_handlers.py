@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-from datetime import datetime, date
+import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import List, Optional, Any, Tuple, Dict, Set
@@ -39,9 +39,9 @@ from apps.document.models import Document
 from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -122,15 +122,14 @@ class TextSearchColumnDesc(ColumnDesc):
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         if not field_filter:
             return SQLClause('"{output_column}" is Null'.format(output_column=self.name), [])
-        elif field_filter == '*':
+        if field_filter == '*':
             return SQLClause('"{output_column}" is not Null'.format(output_column=self.name), [])
-        else:
-            # NOTE: to_tsquery works with single words, to search phrases use "<->" operator
-            # either "tsquery_phrase(to_tsquery('fat'), to_tsquery('cat'))"
-            field_filter = ' <-> '.join(field_filter.split())
-            return SQLClause('"{tsvector_column}" @@ to_tsquery(%s, %s)'
-                             .format(tsvector_column=self.tsvector_column),
-                             [PG_DEFAULT_LANGUAGE, field_filter])
+        # NOTE: to_tsquery works with single words, to search phrases use "<->" operator
+        # either "tsquery_phrase(to_tsquery('fat'), to_tsquery('cat'))"
+        field_filter = ' <-> '.join(field_filter.split())
+        return SQLClause('"{tsvector_column}" @@ to_tsquery(%s, %s)'
+                         .format(tsvector_column=self.tsvector_column),
+                         [PG_DEFAULT_LANGUAGE, field_filter])
 
     def get_field_filter_syntax_hint(self) -> List[Tuple[str, str]]:
         return [
@@ -151,11 +150,10 @@ class RelatedInfoColumnDesc(ColumnDesc):
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         if not field_filter or field_filter.lower() == 'false':
             return SQLClause('"{text_column}" is Null'.format(text_column=self.text_column), [])
-        elif field_filter == '*' or field_filter.lower() == 'true':
+        if field_filter == '*' or field_filter.lower() == 'true':
             return SQLClause('"{text_column}" is not Null'.format(text_column=self.text_column), [])
-        else:
-            return SQLClause('"{text_column}" ilike %s'.format(text_column=self.text_column),
-                             ['%' + field_filter + '%'])
+        return SQLClause('"{text_column}" ilike %s'.format(text_column=self.text_column),
+                         ['%' + field_filter + '%'])
 
     def get_field_filter_syntax_hint(self) -> List[Tuple[str, str]]:
         return [
@@ -187,12 +185,11 @@ class StringColumnDesc(ColumnDesc):
         column = f'"{self.name}"::text' if self.explicit_text_conversion is True else f'"{self.name}"'
         if not field_filter:
             return SQLClause('{column} is Null'.format(column=column), [])
-        elif field_filter == '*':
+        if field_filter == '*':
             return SQLClause('{column} is not Null'.format(column=column), [])
-        elif field_filter.startswith('!'):
+        if field_filter.startswith('!'):
             return SQLClause('{column} not ilike %s'.format(column=column), ['%' + field_filter[1:] + '%'])
-        else:
-            return SQLClause('{column} ilike %s'.format(column=column), ['%' + field_filter + '%'])
+        return SQLClause('{column} ilike %s'.format(column=column), ['%' + field_filter + '%'])
 
     def get_field_filter_syntax_hint(self) -> List[Tuple[str, str]]:
         return [
@@ -209,6 +206,8 @@ class ComparableColumnDesc(ColumnDesc):
         r'(?P<start_bracket>[[(])?(?P<start_operator>[><]=?)?(?P<start>[^,\[\]()]+),(?P<end_operator>[><]=?)?(?P<end>[^,\[\]()]+)(?P<end_bracket>[])])?')
 
     compare_re = re.compile(r'(?P<operator>[><]?=?)?(?P<value>[^,\[\]()]+)')
+
+    date_format_re = re.compile(r'\d{4}-\d{2}-\d{2}')
 
     brackets_to_operators = {
         '(': '>',
@@ -229,7 +228,7 @@ class ComparableColumnDesc(ColumnDesc):
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         if not field_filter:
             return SQLClause('"{output_column}" is Null'.format(output_column=self.name), [])
-        elif field_filter == '*':
+        if field_filter == '*':
             return SQLClause('"{output_column}" is not Null'.format(output_column=self.name), [])
 
         m = self.range_query_re.match(field_filter)
@@ -240,6 +239,12 @@ class ComparableColumnDesc(ColumnDesc):
             end_operator = m.group('end_operator')
             end_value = m.group('end')
             end_bracket = m.group('end_bracket')
+
+            # Add time to range date picker in order to include items of edge days
+            if self.date_format_re.match(start_value) and self.date_format_re.match(end_value) \
+                    and start_bracket == '[' and end_bracket == ']':
+                start_value += ' 00:00:00'
+                end_value += ' 23:59:59'
 
             start_operator = start_operator or self.brackets_to_operators.get(start_bracket) or '>='
             end_operator = end_operator or self.brackets_to_operators.get(end_bracket) or '<='
@@ -306,11 +311,29 @@ class DateColumnDesc(ComparableColumnDesc):
 
 
 class DateTimeColumnDesc(ComparableColumnDesc):
+    RE_DATE_FORMAT = re.compile(r'\d{4}-\d{2}-\d{2}')
+
     def __init__(self, field_code: str, name: str, title: str) -> None:
         super().__init__(field_code, name, title, ValueType.DATETIME, None)
 
     def convert_value_from_filter_to_db(self, filter_value: str) -> Any:
         return dateparser.parse(str(filter_value))
+
+    def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
+        # make range from field_filter if it's a date
+        # i.e. "2008-06-01,2008-06-02" from 2008-06-01
+        if not field_filter:
+            return super().get_where_sql_clause(field_filter)
+        if not self.RE_DATE_FORMAT.match(field_filter):
+            return super().get_where_sql_clause(field_filter)
+
+        try:
+            date_part = dateparser.parse(str(field_filter)).date()
+        except:
+            return super().get_where_sql_clause(field_filter)
+        next_date = date_part + datetime.timedelta(days=1)
+        filter_range = f"{date_part.strftime('%Y-%m-%d')},{next_date.strftime('%Y-%m-%d')}"
+        return super().get_where_sql_clause(filter_range)
 
 
 class BooleanColumnDesc(ColumnDesc):
@@ -320,10 +343,10 @@ class BooleanColumnDesc(ColumnDesc):
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         if not field_filter:
             return SQLClause('"{output_column}" is Null'.format(output_column=self.name), [])
-        elif field_filter == '*':
+        if field_filter == '*':
             return SQLClause('"{output_column}" is not Null'.format(output_column=self.name), [])
         filter_value = field_filter.strip().lower() if field_filter else None
-        db_value = False if not filter_value or filter_value in ('0', 'false') else True
+        db_value = bool(filter_value and filter_value not in ('0', 'false'))
         return SQLClause('"{column}" = %s'.format(column=self.name), [db_value])
 
     def get_field_filter_syntax_hint(self) -> List[Tuple[str, str]]:
@@ -575,7 +598,7 @@ class FloatFieldHandler(ComparableRawdbFieldHandler):
     def python_value_to_indexed_field_value(self, python_value) -> Any:
         if isinstance(python_value, Decimal):
             return python_value
-        elif isinstance(python_value, (str, int, float)):
+        if isinstance(python_value, (str, int, float)):
             try:
                 return Decimal(str(python_value))
             except (ValueError, TypeError):
@@ -606,8 +629,8 @@ class DateFieldHandler(ComparableRawdbFieldHandler):
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
         python_value = python_value or self.default_value
-        return python_value if type(python_value) is date \
-            else python_value.date() if type(python_value) is datetime \
+        return python_value if isinstance(python_value, datetime.date) \
+            else python_value.date() if isinstance(python_value, datetime.datetime) \
             else None
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
@@ -630,7 +653,7 @@ class DateTimeFieldHandler(ComparableRawdbFieldHandler):
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
         python_value = python_value or self.default_value
-        return python_value if type(python_value) is date or type(python_value) is datetime else None
+        return python_value if isinstance(python_value, (datetime.date, datetime.datetime)) else None
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
         return [DateTimeColumnDesc(self.field_code, self.column, self.field_title)]
@@ -677,11 +700,10 @@ class MoneyRawdbFieldHandler(RawdbFieldHandler):
         amount = columns.get(self.amount_column)
         if amount is None and currency is None:
             return None
-        else:
-            return {
-                'currency': currency,
-                'amount': amount
-            }
+        return {
+            'currency': currency,
+            'amount': amount
+        }
 
     def column_names_for_field_values(self) -> Set[str]:
         return {self.currency_column, self.amount_column}
@@ -731,11 +753,10 @@ class RatioRawdbFieldHandler(RawdbFieldHandler):
         denominator = columns.get(self.denominator)
         if denominator is None and numerator is None:
             return None
-        else:
-            return {
-                'numerator': numerator,
-                'denominator': denominator
-            }
+        return {
+            'numerator': numerator,
+            'denominator': denominator
+        }
 
     def column_names_for_field_values(self) -> Set[str]:
         return {self.numerator, self.denominator}
@@ -755,10 +776,9 @@ class AddressFieldHandler(StringRawdbFieldHandler):
         s = columns.get(self.column)
         if s is None:
             return None
-        else:
-            return {
-                'address': s
-            }
+        return {
+            'address': s
+        }
 
 
 class RelatedInfoRawdbFieldHandler(RawdbFieldHandler):
@@ -932,7 +952,7 @@ class LinkedDocumentsRawdbFieldHandler(RawdbFieldHandler):
         document_ids = python_values.get(self.field_code)
         document_ids = self.python_value_to_indexed_field_value(document_ids)  # type: Set[int]
 
-        links = list()  # List[Tuple[str, str]]
+        links = []  # List[Tuple[str, str]]
 
         if document_ids:
             for document_id, document_name, document_type_code, project_id \
@@ -981,12 +1001,11 @@ class ProxyColumnDesc(StringColumnDesc):
             else f'{self.proxy_sql_spec}'
         if not field_filter:
             return SQLClause('{column} is Null'.format(column=column), [])
-        elif field_filter == '*':
+        if field_filter == '*':
             return SQLClause('{column} is not Null'.format(column=column), [])
-        elif field_filter.startswith('!'):
+        if field_filter.startswith('!'):
             return SQLClause('{column} not ilike %s'.format(column=column), ['%' + field_filter[1:] + '%'])
-        else:
-            return SQLClause('{column} ilike %s'.format(column=column), ['%' + field_filter + '%'])
+        return SQLClause('{column} ilike %s'.format(column=column), ['%' + field_filter + '%'])
 
 
 class ProxyFieldHandler(StringRawdbFieldHandler):

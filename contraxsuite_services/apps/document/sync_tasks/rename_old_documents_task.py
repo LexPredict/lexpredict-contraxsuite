@@ -30,9 +30,9 @@ from typing import List, Set, Tuple, Callable
 from apps.document.models import Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -64,7 +64,7 @@ class RenameOldDocuments:
 
     def rename_old_document(self, doc_id) -> None:
         doc = Document.all_objects.get(pk=doc_id)  # type: Document
-        new_name, new_path = self.make_new_doc_name(doc)
+        _, new_path = self.make_new_doc_name(doc)
         # rename file and document itself
         from apps.common.file_storage import get_file_storage
         stor = get_file_storage()

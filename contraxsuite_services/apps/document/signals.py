@@ -26,6 +26,7 @@
 
 from typing import Set, List
 
+from django.db import transaction
 from django.db.models import QuerySet
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver, Signal
@@ -38,19 +39,19 @@ from apps.document.models import FieldValue, FieldAnnotation
 from apps.users.models import User, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 document_changed = Signal(providing_args=['changed_by_user', 'log', 'document', 'system_fields_changed',
-                                                          'generic_fields_changed', 'user_fields_changed',
-                                                          'document_initial_load'])
+                                          'generic_fields_changed', 'user_fields_changed',
+                                          'document_initial_load', 'skip_caching'])
 document_deleted = Signal(providing_args=['user', 'document'])
 
-doc_full_delete = Signal(providing_args=['document_ids'])
+doc_full_delete = Signal(providing_args=['user', 'document_type_code', 'document_ids'])
 
 document_field_changed = Signal(providing_args=['user', 'document_field'])
 document_field_deleted = Signal(providing_args=['user', 'document_field'])
@@ -77,7 +78,8 @@ def fire_document_changed(sender,
                           document_initial_load: bool = False,
                           system_fields_changed: FieldSpec = True,
                           generic_fields_changed: FieldSpec = True,
-                          user_fields_changed: bool = True):
+                          user_fields_changed: bool = True,
+                          skip_caching: bool = False):
     document_changed.send(sender,
                           log=log,
                           changed_by_user=changed_by_user,
@@ -85,7 +87,8 @@ def fire_document_changed(sender,
                           document=document,
                           system_fields_changed=system_fields_changed,
                           user_fields_changed=user_fields_changed,
-                          generic_fields_changed=generic_fields_changed)
+                          generic_fields_changed=generic_fields_changed,
+                          skip_caching=skip_caching)
 
 
 def fire_document_deleted(sender,
@@ -105,8 +108,12 @@ def fire_doc_soft_delete(sender,
 
 
 def fire_doc_full_delete(sender,
-                         document_ids):
+                         user: User,
+                         document_type_code: str,
+                         document_ids: List):
     doc_full_delete.send(sender,
+                         user=user,
+                         document_type_code=document_type_code,
                          document_ids=document_ids)
 
 
@@ -149,28 +156,24 @@ def fire_document_field_detection_failed(sender,
 @receiver(post_save, sender=FieldValue)
 def field_value_saved(sender, instance: FieldValue, created: bool = True, **kwargs):
     from apps.document.async_notifications import notify_field_value_saved
-    from django.db import transaction
     transaction.on_commit(lambda: notify_field_value_saved(instance))
 
 
 @receiver(post_delete, sender=FieldValue)
 def field_value_deleted(sender, instance: FieldValue, **kwargs):
     from apps.document.async_notifications import notify_field_value_deleted
-    from django.db import transaction
     transaction.on_commit(lambda: notify_field_value_deleted(instance))
 
 
 @receiver(post_save, sender=FieldAnnotation)
 def field_annotation_saved(sender, instance: FieldAnnotation, created: bool = True, **kwargs):
     from apps.document.async_notifications import notify_field_annotation_saved
-    from django.db import transaction
     transaction.on_commit(lambda: notify_field_annotation_saved(instance))
 
 
 @receiver(post_delete, sender=FieldAnnotation)
 def field_annotation_deleted(sender, instance: FieldAnnotation, **kwargs):
     from apps.document.async_notifications import notify_field_annotation_deleted
-    from django.db import transaction
     transaction.on_commit(lambda: notify_field_annotation_deleted(instance))
 
 

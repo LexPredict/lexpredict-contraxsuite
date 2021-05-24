@@ -1,12 +1,13 @@
 # MenuItem
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**pk** | **int** |  | [optional] [readonly] 
 **name** | **str** | Menu item name. | 
 **url** | **str** | Menu item name. | 
-**group** | **int** |  | [optional] 
+**pk** | **int** |  | [optional] [readonly] 
+**group** | **int, none_type** |  | [optional] 
 **public** | **bool** |  | [optional] 
 **order** | **int** |  | [optional] 
 **user** | **str** |  | [optional] [readonly] 

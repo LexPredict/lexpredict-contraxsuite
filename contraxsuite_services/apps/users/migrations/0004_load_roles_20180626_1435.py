@@ -3,14 +3,14 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-from django.core.management import call_command
+# from django.core.management import call_command
 
 
-def load_roles(apps, schema_editor):
-    try:
-        call_command('load_roles')
-    except:
-        pass
+# def load_roles(apps, schema_editor):
+#     try:
+#         call_command('load_roles')
+#     except:
+#         pass
 
 
 class Migration(migrations.Migration):
@@ -20,5 +20,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(load_roles),
+        # migrations.RunPython(load_roles),
     ]

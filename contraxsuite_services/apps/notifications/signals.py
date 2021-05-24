@@ -34,9 +34,9 @@ from apps.users.models import User
 # noinspection PyUnusedLocal
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,11 +60,11 @@ def document_fields_change_listener_impl(_sender,
         return
 
     from apps.notifications.app_vars import APP_VAR_DISABLE_EVENT_NOTIFICATIONS
-    if APP_VAR_DISABLE_EVENT_NOTIFICATIONS.val:
+    if APP_VAR_DISABLE_EVENT_NOTIFICATIONS.val():
         return
 
     process_notifications_on_document_change(
-        lambda m: log.info(m),
+        log.info,
         document_event, document_pk, fields_before, fields_after,
         changed_by_user.pk)
 

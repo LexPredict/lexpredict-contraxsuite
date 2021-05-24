@@ -2,6 +2,7 @@
 
 # TextUnitClassificationCreate
 
+
 ## Properties
 
 Name | Type | Description | Notes
@@ -10,7 +11,7 @@ Name | Type | Description | Notes
 **className** | **String** |  | 
 **classValue** | **String** |  | 
 **textUnitId** | **Integer** |  | 
-**userId** | **String** |  |  [optional] [readonly]
+**userId** | **Integer** |  |  [optional] [readonly]
 
 
 

@@ -51,9 +51,9 @@ from apps.users.user_utils import get_main_admin_user
 from task_names import TASK_NAME_IMANAGE_TRIGGER_SYNC
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -119,7 +119,7 @@ class IManageSynchronization(ExtendedTask):
 
                 pre_defined_fields = None
                 if imanage_doc.imanage_doc_data and imanage_config.imanage_to_contraxsuite_field_binding:
-                    pre_defined_fields = dict()
+                    pre_defined_fields = {}
                     for imanage_field_code, contraxsuite_field_code \
                             in dict(imanage_config.imanage_to_contraxsuite_field_binding).items():
                         imanage_field_value = imanage_doc.imanage_doc_data.get(imanage_field_code)
@@ -133,13 +133,12 @@ class IManageSynchronization(ExtendedTask):
                 else:
                     task.log_info('No binding of iManage fields to Contraxsuite fields.')
 
-                document_id = LoadDocuments \
-                    .create_document_local(task,
-                                           temp_fn,
-                                           rel_filepath,
-                                           kwargs,
-                                           return_doc_id=True,
-                                           pre_defined_doc_fields_code_to_val=pre_defined_fields)
+                document_id = LoadDocuments.create_document_local(
+                    task=task,
+                    file_path=temp_fn,
+                    file_name=rel_filepath,
+                    kwargs=kwargs,
+                    pre_defined_doc_fields_code_to_val=pre_defined_fields)
 
                 if document_id:
                     task.log_info('Created Contraxsuite document #{0}'.format(document_id))

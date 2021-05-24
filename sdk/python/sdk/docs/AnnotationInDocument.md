@@ -1,16 +1,17 @@
 # AnnotationInDocument
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**pk** | **int** |  | [optional] [readonly] 
 **document** | **int** |  | 
-**value** | **object** |  | 
+**value** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}, none_type** |  | 
 **field** | **str** |  | 
-**location_start** | **int** |  | 
-**location_end** | **int** |  | 
-**location_text** | **str** |  | [optional] 
-**modified_by** | **int** |  | [optional] 
+**location_start** | **int, none_type** |  | 
+**location_end** | **int, none_type** |  | 
+**pk** | **int** |  | [optional] [readonly] 
+**location_text** | **str, none_type** |  | [optional] 
+**modified_by** | **int, none_type** |  | [optional] 
 **modified_date** | **datetime** |  | [optional] [readonly] 
 **uid** | **str** |  | [optional] [readonly] 
 

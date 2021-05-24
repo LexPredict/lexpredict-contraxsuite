@@ -1,12 +1,13 @@
 # FieldAnnotationStatus
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**id** | **int** |  | [optional] [readonly] 
 **name** | **str** |  | 
-**code** | **str** |  | [optional] 
 **order** | **int** |  | 
+**id** | **int** |  | [optional] [readonly] 
+**code** | **str, none_type** |  | [optional] 
 **is_active** | **bool** |  | [optional] 
 **is_accepted** | **bool** |  | [optional] 
 **is_rejected** | **bool** |  | [optional] 

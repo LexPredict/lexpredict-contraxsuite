@@ -31,14 +31,14 @@ from apps.common.plugins import collect_plugins_in_apps
 from apps.document.field_types import TypedField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-FIELD_TYPE_REGISTRY = dict()  # type: Dict[str, Type[TypedField]]
+FIELD_TYPE_REGISTRY = {}  # type: Dict[str, Type[TypedField]]
 
 
 def init_field_type_registry():

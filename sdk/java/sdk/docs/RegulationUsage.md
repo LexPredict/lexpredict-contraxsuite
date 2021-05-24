@@ -2,6 +2,7 @@
 
 # RegulationUsage
 
+
 ## Properties
 
 Name | Type | Description | Notes

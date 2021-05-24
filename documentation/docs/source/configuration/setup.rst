@@ -61,3 +61,6 @@ Use your preferred Python virtual environment manager (`Python venv`_ or `Anacon
     Hyperlinks
         Python venv: https://docs.python.org/3.6/library/venv.html
         Anaconda: https://www.anaconda.com/
+
+.. _Python venv: https://docs.python.org/3.6/library/venv.html
+.. _Anaconda: https://www.anaconda.com/

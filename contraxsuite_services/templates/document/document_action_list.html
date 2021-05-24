@@ -1,0 +1,64 @@
+{% extends "base_list_ajax.html" %}
+{% load static %}
+
+{% block page_header %}
+  Document actions for {{ document }}
+{% endblock %}
+
+
+{% block js_extra %}
+  {{ block.super }}
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var datafields = [
+        { name: 'id', type: 'int' },
+        { name: 'name', type: 'string' },
+        { name: 'message', type: 'string' },
+        { name: 'view_action', type: 'string' },
+        { name: 'request_data', type: 'string' },
+        { name: 'user__name', type: 'string' },
+        { name: 'date', type: 'date' }
+      ];
+      var messageFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        if (value) {
+          value = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+        return renderCell(defaulthtml, value);
+      };
+      var requestDataFormatter = function (index, columnfield, value, defaulthtml, columnproperties, row) {
+        value = value && !$.isEmptyObject(value) ? JSON.stringify(value) : '';
+        $defaulthtml = $(defaulthtml)
+        $defaulthtml.prop('title', value)
+        return renderCell($defaulthtml, value);
+      };
+
+      var columns = [
+        { text: 'Name', datafield: 'name', width: 200,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Description', datafield: 'message', width: 'auto',
+          cellsrenderer: messageFormatter,
+          align: 'center', cellsalign: 'center' },
+        { text: 'View Action', datafield: 'view_action', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'User', datafield: 'user__name', width: 100,
+          align: 'center', cellsalign: 'center' },
+        { text: 'Date', datafield: 'date', width: 120,
+          filtertype: 'date',
+          format: 'MM-dd-yyyy HH:mm', cellsformat: 'MM-dd-yyyy HH:mm',
+          align: 'center', cellsalign: 'center' },
+        { text: 'Request Data', datafield: 'request_data', width: 'auto',
+          cellsrenderer: requestDataFormatter,
+          align: 'center', cellsalign: 'center' }
+      ];
+
+      var custom_grid_options = {
+        rowsheight: 60,
+      };
+      var custom_grid_source_data = {
+        url: "{% url "v1:document-actions" document.id %}"
+      };
+      draw_grid(".jqxgrid", datafields, columns, false, custom_grid_source_data);
+
+    })
+  </script>
+{% endblock %}

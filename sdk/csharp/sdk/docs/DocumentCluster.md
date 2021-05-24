@@ -13,7 +13,7 @@ Name | Type | Description | Notes
 **ClusterBy** | **string** |  | 
 **Using** | **string** |  | 
 **CreatedDate** | **DateTime** |  | [optional] 
-**DocumentsCount** | **string** |  | [optional] [readonly] 
+**DocumentsCount** | **int** |  | [optional] [readonly] 
 **DocumentData** | [**List&lt;DocumentClusterDocumentData&gt;**](DocumentClusterDocumentData.md) |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

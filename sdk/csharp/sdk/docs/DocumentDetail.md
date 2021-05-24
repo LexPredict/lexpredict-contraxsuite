@@ -10,25 +10,30 @@ Name | Type | Description | Notes
 **DocumentType** | **string** |  | [optional] 
 **FileSize** | **int** |  | [optional] 
 **Folder** | **string** |  | [optional] 
+**CreatedDate** | **DateTime?** |  | [optional] 
+**CreatedByName** | **string** |  | 
+**ModifiedDate** | **DateTime?** |  | [optional] 
+**ModifiedByName** | **string** |  | 
 **Status** | **int?** |  | [optional] 
 **StatusData** | [**DocumentDetailStatusData**](DocumentDetailStatusData.md) |  | 
-**AvailableStatusesData** | **string** |  | [optional] [readonly] 
+**AvailableStatusesData** | **List&lt;Object&gt;** |  | [optional] [readonly] 
 **Assignee** | **int?** |  | [optional] 
 **AssignDate** | **DateTime?** |  | [optional] 
 **AssigneeData** | [**DocumentDetailAssigneeData**](DocumentDetailAssigneeData.md) |  | 
-**AvailableAssigneesData** | **string** |  | [optional] [readonly] 
+**AvailableAssigneesData** | [**List&lt;DocumentDetailAvailableAssigneesData&gt;**](DocumentDetailAvailableAssigneesData.md) |  | 
 **Description** | **string** |  | [optional] 
 **Title** | **string** |  | [optional] 
 **InitialAnnotationId** | **string** |  | [optional] [readonly] 
-**PageLocations** | **string** |  | [optional] [readonly] 
+**PageLocations** | **List&lt;List&lt;int&gt;&gt;** |  | [optional] [readonly] 
+**PageBounds** | **List&lt;List&lt;decimal&gt;&gt;** |  | [optional] [readonly] 
 **Notes** | [**List&lt;DocumentDetailNotes&gt;**](DocumentDetailNotes.md) |  | 
-**FieldValues** | **string** |  | [optional] [readonly] 
-**FieldValueObjects** | **string** |  | [optional] [readonly] 
-**PrevId** | **string** |  | [optional] [readonly] 
-**NextId** | **string** |  | [optional] [readonly] 
-**Sections** | **string** |  | [optional] [readonly] 
+**FieldValues** | **Object** |  | [optional] [readonly] 
+**FieldValueObjects** | **Object** |  | [optional] [readonly] 
+**PrevId** | **int** |  | [optional] [readonly] 
+**NextId** | **int** |  | [optional] [readonly] 
+**Sections** | **List&lt;Object&gt;** |  | [optional] [readonly] 
 **ClusterId** | **string** |  | [optional] [readonly] 
-**UserPermissions** | **string** |  | [optional] [readonly] 
+**UserPermissions** | **Object** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

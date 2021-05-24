@@ -2,11 +2,12 @@
 
 # DocumentTypeImportRequest
 
+
 ## Properties
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**file** | [**File**](File.md) |  | 
+**file** | **File** |  | 
 **updateCache** | **Boolean** |  |  [optional]
 **action** | [**ActionEnum**](#ActionEnum) |  |  [optional]
 **sourceVersion** | **String** |  |  [optional]

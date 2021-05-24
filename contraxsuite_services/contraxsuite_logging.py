@@ -31,15 +31,15 @@ import os
 import sys
 from logging import LogRecord, Formatter
 from traceback import TracebackException, StackSummary, format_exc
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 import json_log_formatter
 import pytz
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -92,7 +92,7 @@ class HumanReadableTraceBackException(TracebackException):
             count += 1
             if count > cls._RECURSIVE_CUTOFF:
                 continue
-            row = list()
+            row = []
             row.append('  File "{}", line {}, in {}\n'.format(
                 frame.filename, frame.lineno, frame.name))
             result.append(''.join(row))
@@ -106,7 +106,7 @@ class HumanReadableTraceBackException(TracebackException):
 
     def human_readable_format(self, suppress_context_for_message: bool = True) -> str:
         message_lines, stack_lines = self.human_readable_format_msg_stack_lines()
-        total = list()
+        total = []
         if message_lines:
             total.extend(message_lines)
         if stack_lines:
@@ -117,14 +117,14 @@ class HumanReadableTraceBackException(TracebackException):
     def human_readable_format_msg_stack_lines(self,
                                               suppress_context_for_message: bool = True) -> Tuple[List[str], List[str]]:
 
-        error_message = list()
-        error_stack = list()
+        error_message = []
+        error_stack = []
 
         ex = self  # type: HumanReadableTraceBackException
         prefix = ''
 
         while True:
-            msg = ''.join([line for line in ex.format_exception_only()])
+            msg = ''.join(ex.format_exception_only())
             if hasattr(ex, 'detailed_error'):
                 msg += f'\nDetailed error: {ex.detailed_error}'
             msg = msg.strip('\n')
@@ -189,7 +189,7 @@ class ContraxsuiteJSONFormatter(json_log_formatter.JSONFormatter):
             exc_message, exc_stack = HumanReadableTraceBackException \
                 .from_exception(exception) \
                 .human_readable_format_msg_stack_lines()
-            message_lines = list()
+            message_lines = []
             if message:
                 message_lines.append(message)
             if exc_message:
@@ -260,6 +260,33 @@ def write_task_log(task_id, message, level='info',
         exception_str = '%s: %s' % (exc_class.__name__, str(exception))
 
         celery_task_logger.error(
-            'Exception caught while trying to log a message:\n{0}\n{1}'.format(exception_str,
-                                                                               trace),
+            f'Exception caught while trying to log a message:\n{exception_str}\n{trace}',
             extra=extra)
+
+
+class CausedException(Exception):
+    """
+    A base exception class for custom exceptions, allowing record of various exception triggers.
+
+    Example:
+        ```
+        class CustomException(CausedException):
+            def __init__(self, message: str, cause: Optional[Exception] = None):
+                self._explanation = f'Some custom message.'
+                super().__init__(message, cause)
+
+        try:
+            # do something
+        except Exception as exception:
+            raise CustomException('message', exception) from exception
+        ```
+    """
+    def __init__(self, message: str, cause: Optional[Exception] = None):
+        self._explanation: str
+        self.__cause__: Exception = cause
+        super().__init__(
+            f'{self._explanation}\n'
+            f'Cause: {self.__cause__.__class__.__name__}\n'
+            f'Reason: {self.__cause__}\n'
+            f'{message}\n'
+        )

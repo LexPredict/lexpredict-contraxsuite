@@ -26,18 +26,18 @@
 
 # Standard imports
 import pandas as pd
-from enum import Enum, unique
 from pandas import DataFrame, Series
-from typing import Callable, Tuple, Union
+from typing import Callable, Tuple, List, Optional, Dict, Any
 
 # Project imports
 import settings
-from apps.extract.models import GeoEntity, GeoAlias, Term, Court
+from apps.common.utils import GroupConcat
+from apps.extract.models import GeoEntity, GeoAlias, Term, Court, TermTag
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -71,7 +71,6 @@ DICTIONARY_DATA_URL_MAP = dict(
     courts_2='legal/us_courts.csv',
     geoentities_1='geopolitical/geopolitical_divisions.csv',
 )
-
 
 LOCALES_MAP = (
     ('German Name', 'de', 'German Name'),
@@ -147,94 +146,119 @@ def load_geo_entities(df: DataFrame, total_progress: Callable[[int], None] = Non
     return len(geo_aliases), geo_entities_count
 
 
-def load_terms(df: DataFrame, term_creation_mode: str = 'ignore') -> int:
+def load_terms(df: DataFrame,
+               existing_action: str = 'update',
+               tags: Optional[List[str]] = None) -> int:
     """Creates Term objects from an input Pandas DataFrame and adds the newly created Terms to the database.
-    
+
     Args:
         df (pandas.DataFrame): Input data. Contains columns:
 
-            * 'Term Locale'
-            * 'Term Category'
+            * 'Locale'
+            * 'Source'
             * 'Term'
-            * 'Case Sensitive'.
+            * ['Tags'] - optional column
+            * ['Case Sensitive'] - optional column
 
-        term_creation_mode (str): A logical flag for handling duplicate Term conflicts.
+        existing_action (str): A logical flag for handling duplicate Term conflicts.
             Can be 'add', 'ignore', or 'replace'. Defaults to 'ignore'.
             Only relevant if a Term already exists in the database.
 
-            * 'add': adds the new Terms while keeping the existing Terms.
-            * 'ignore': skips adding new Terms.
-            * 'replace': deletes the old Term(s) and then adds the new Term.
+            * 'delete': delete terms and add those we read from the file
+            * 'skip': skips the Term if it's already in the DB
+            * 'update': deletes the old Term(s) and then adds the new Term.
+
+        :param tags: Optional list of term tags to use when no tags are provided
+             in the source dataframe.
 
     Returns:
-        int: The number of Terms added to the database.
+        int: The number of Terms added / updated to the database.
 
     Raises:
         ValueError: invalid `term_creation_mode` argument.
     """
-    @unique
-    class _TermCreationMode(Enum):
-        ADD = 'add'
-        IGNORE = 'ignore'
-        REPLACE = 'replace'
-
-        @classmethod
-        def get_modes(self, *args) -> list:
-            def _ga(mode, *args) -> tuple:
-                return tuple([getattr(mode, arg) for arg in args])
-            if len(args) == 1:
-                return [getattr(mode, *args) for mode in self]
-            elif len(args) == 0:
-                args = ('name', 'value')
-            return [_ga(mode, args) for mode in self]
-
-    def _prepare_term(dataframe_row: Series, term_creation_mode: _TermCreationMode) -> Union[Term, None]:
-        """Instantiates and returns a new Term objects based on input data.
-
-        Args:
-            dataframe_row (pandas.Series): Input data for Term creation.
-            term_creation_mode (_TermCreationMode): A logical flag; determines return behavior.
-
-        Returns:
-            new_db_term (Term): A new Term object from the input row.
-            None: if term_creation_mode is IGNORE.
-        """
-        term = dataframe_row['Term'].strip()
-        qs_terms_of_this_term = Term.objects.filter(term=term)
-
-        # instantiate a new Term
-        new_db_term = Term(
-            term=term,
-            source=dataframe_row['Term Category'],
-            definition_url=dataframe_row['Term Locale']
-        )
-
-        # handle term creation modes
-        if qs_terms_of_this_term.exists():
-            if term_creation_mode == _TermCreationMode.REPLACE:
-                qs_terms_of_this_term.delete()
-            elif term_creation_mode == _TermCreationMode.IGNORE:
-                return None
-        return new_db_term
-
-    try:  # set term creation mode
-        term_creation_mode = _TermCreationMode(term_creation_mode)
-    except ValueError:  # raise custom argument error
-        raise ValueError(f"Argument `term_creation_mode` must be one of: {_TermCreationMode.get_modes('values')}")
-
     # preprocess DataFrame
     df.drop_duplicates(inplace=True)
-    df.loc[df['Case Sensitive'] == False, 'Term'] = df.loc[
-        df['Case Sensitive'] == False, 'Term'].str.lower()
-    df = df.drop_duplicates(subset='Term').dropna(subset=['Term'])
+    if 'Case Sensitive' in df:
+        df.loc[df['Case Sensitive'].eq(False), 'Term'] = df.loc[
+            df['Case Sensitive'].eq(False), 'Term'].str.lower()
+        df = df.drop_duplicates(subset='Term').dropna(subset=['Term'])
 
     # create new Terms. Filter: if _prepare_term() returns None, it is not added to this list
-    new_db_terms = list(filter(None, (_prepare_term(row, term_creation_mode) for _, row in df.iterrows())))
+    if tags:
+        tags = sorted(tags)
+    if existing_action == 'delete':
+        Term.objects.all().delete()
 
-    # cache "global" term stems step - should be cached here via model manager
-    Term.objects.bulk_create(new_db_terms)
+    existing_terms = {t.term: t for t in Term.objects.annotate(tag_list=GroupConcat('tags__name'))}
+    tag_by_name = {t.name: t for t in TermTag.objects.all()}
 
-    return len(new_db_terms)
+    count_updated = 0
+    for _, row in df.iterrows():
+        if 'Tags' not in row:
+            new_term_tags = tags
+        else:
+            tags_from_file = sorted(t.strip() for t in row.get('Tags', '').split(','))
+            new_term_tags = tags_from_file if tags_from_file else tags
+
+        term_data = deserialize_term_from_row(
+            row, existing_terms, new_term_tags, existing_action)
+        if not term_data:
+            continue
+        count_updated += 1
+
+        term, new_item = Term.objects.get_or_create(
+            term=term_data['term'], defaults=term_data)
+
+        if not new_item and term.tags is not None:
+            # remove tags that are no more associated with the term
+            extra_tags = [t for t in term.tags.all() if t.name not in new_term_tags]
+            for tag in extra_tags:
+                term.tags.remove(tag)
+
+        for tag in new_term_tags:
+            tag_obj = tag_by_name.get(tag)
+            if not tag_obj:
+                tag_obj = TermTag()
+                tag_obj.name = tag
+                tag_obj.save()
+            term.tags.add(tag_obj)
+        term.save()
+    # TODO: CS-4577: cache "global" term stems step - should be cached here via model manager ?
+
+    return count_updated
+
+
+def deserialize_term_from_row(
+        dataframe_row: Series,
+        existing_terms: Dict[str, Term],
+        new_term_tags: List[str],
+        on_exists: str) -> Optional[Dict[str, Any]]:
+    term = dataframe_row['Term'].strip()
+    existing_term = existing_terms.get(term)
+    if existing_term and on_exists == 'skip':
+        return None
+    # instantiate a new term prop dictionary
+    new_db_term = {
+        'term': term,
+        'source': dataframe_row.get('Source', dataframe_row.get('Term Category')),
+        'definition_url': dataframe_row.get('Locale', dataframe_row.get('Term Locale'))
+    }
+
+    # check the term differs from the one we stored
+    is_updated = existing_term is None
+    if not is_updated:
+        for key in new_db_term:
+            if new_db_term[key] != getattr(existing_term, key):
+                is_updated = True
+                break
+        if not is_updated:  # check referenced TermTags
+            ex_tags = sorted([t.strip() for t in existing_term.tag_list.split(',')])
+            is_updated = ex_tags != new_term_tags
+
+    if not is_updated:
+        return None
+    return new_db_term
 
 
 def load_courts(df: DataFrame) -> int:

@@ -25,7 +25,6 @@
 # -*- coding: utf-8 -*-
 
 import binascii
-import logging
 import os
 import re
 from typing import Tuple
@@ -44,18 +43,19 @@ from rest_framework import serializers
 from rest_framework.authentication import TokenAuthentication, exceptions
 
 from apps.common import redis
+from apps.common.logger import CsLogger
 from apps.common.models import AppVar
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-logger = logging.getLogger('django')
+logger = CsLogger.get_django_logger()
 
 
 class TokenCache:
@@ -248,16 +248,21 @@ class CookieAuthentication(TokenAuthentication):
 
     def authenticate(self, request):
         # Add urls that don't require authorization
-        token_exempt_urls = [reverse('rest_login'), reverse('rest_password_reset'), reverse('v1:app-variables')]
+        token_exempt_urls = [reverse('rest_login'),
+                             reverse('rest_password_reset'),
+                             reverse('rest_password_reset_confirm')]
 
-        # authenticate only if request path is not in excepted urls
+        # do not check token for these urls even in case if token passed in headers or cookies
+        if request.META['PATH_INFO'] in token_exempt_urls:
+            return
+
         # first check for existing AUTHORIZATION header
-        if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
+        if not request.META.get('HTTP_AUTHORIZATION'):
             # second check to fetch auth_token from query string (GET params)
             # token should be just key without "Token "
             from apps.common.app_vars import ENABLE_AUTH_TOKEN_IN_QUERY_STRING
 
-            if ENABLE_AUTH_TOKEN_IN_QUERY_STRING.val and request.GET.get('auth_token'):
+            if ENABLE_AUTH_TOKEN_IN_QUERY_STRING.val() and request.GET.get('auth_token'):
                 auth_token = request.GET.get('auth_token')
                 if auth_token:
                     auth_token = 'Token ' + request.GET.get('auth_token')
@@ -267,8 +272,7 @@ class CookieAuthentication(TokenAuthentication):
             # inject auth token into AUTHORIZATION header to authenticate via standard rest auth
             request.META['HTTP_AUTHORIZATION'] = auth_token
 
-        res = super().authenticate(request)
-        return res
+        return super().authenticate(request)
 
     def authenticate_credentials(self, key) -> Tuple[User, str]:
         user = token_cache.get_user(token=key)
@@ -278,89 +282,6 @@ class CookieAuthentication(TokenAuthentication):
             raise exceptions.AuthenticationFailed(ug(msg))
         _, token = token_cache.update(user)
         return user, token
-
-
-# FIXME: old impl.
-# class _CookieAuthentication(TokenAuthentication):
-#     """
-#     Authentication system for rest API requests
-#     1. check for auth token in request in `AUTHORIZATION` header
-#     2. if it doesn't exist and if request path is not in excepted urls:
-#     3. try to get auth token from query string (GET params)
-#     4. try to get auth token from cookies
-#     5. set AUTHORIZATION header to be equal to found token
-#     6. authenticate
-#
-#     See response middleware in common.middleware.CookieMiddleware -
-#     it sets cookie from existing AUTHORIZATION header into response
-#     """
-#
-#     def authenticate(self, request):
-#         # Add urls that don't require authorization
-#         token_exempt_urls = [reverse('rest_login'), reverse('rest_password_reset'), reverse('v1:app-variables')]
-#
-#         # authenticate only if request path is not in excepted urls
-#         # first check for existing AUTHORIZATION header
-#         if not request.META.get('HTTP_AUTHORIZATION') and request.META['PATH_INFO'] not in token_exempt_urls:
-#             # second check to fetch auth_token from query string (GET params)
-#             # token should be just key without "Token "
-#             from apps.common.app_vars import ENABLE_AUTH_TOKEN_IN_QUERY_STRING
-#
-#             if ENABLE_AUTH_TOKEN_IN_QUERY_STRING.val and request.GET.get('auth_token'):
-#                 auth_token = request.GET.get('auth_token')
-#                 if auth_token:
-#                     auth_token = 'Token ' + request.GET.get('auth_token')
-#             # either get auth token from cookies
-#             else:
-#                 auth_token = request.COOKIES.get('auth_token', '')
-#             # inject auth token into AUTHORIZATION header to authenticate via standard rest auth
-#             request.META['HTTP_AUTHORIZATION'] = auth_token
-#
-#         # force authentication if auto_login feature is enabled
-#         # if not res and config.auto_login:
-#         #     user = get_test_user()
-#         #     token, _ = TokenModel.objects.get_or_create(user=user)
-#         #     res = (user, token)
-#
-#         # res = (user, token) for authenticated user otherwise None
-#
-#         res = super().authenticate(request)
-#         return res
-#
-#     def authenticate_credentials(self, key) -> Tuple[User, str]:
-#         model = self.get_model()
-#         try:
-#             token = model.objects.select_related('user').get(key=key)
-#         except model.DoesNotExist:
-#             raise exceptions.AuthenticationFailed(_('Wrong authentication token. Please login.'))
-#
-#         if not token.user.is_active:
-#             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
-#
-#         if self.is_token_expired(token):
-#             raise exceptions.AuthenticationFailed('Your session has expired. Please login again')
-#
-#         self.update_token_date(token)
-#
-#         return token.user, token
-#
-#     @staticmethod
-#     def is_token_expired(token):
-#         """
-#         Check token expiration date
-#         """
-#         expires_in = timezone.timedelta(days=getattr(settings, 'REST_AUTH_TOKEN_EXPIRES_DAYS', 1))
-#         expiration_date = token.created + expires_in
-#         return timezone.now() > expiration_date
-#
-#     @staticmethod
-#     def update_token_date(token):
-#         """
-#         Update token expiration date
-#         """
-#         if getattr(settings, 'REST_AUTH_TOKEN_UPDATE_EXPIRATION_DATE', False):
-#             token.created = timezone.now()
-#             token.save()
 
 
 class TokenSerializer(serializers.ModelSerializer):
@@ -394,7 +315,6 @@ class TokenSerializer(serializers.ModelSerializer):
         """
         data = super().to_representation(obj)
         data['release_version'] = settings.VERSION_NUMBER
-        frontend_vars = {i: j for i, j in AppVar.objects.filter(
-            name__startswith='frontend_').values_list('name', 'value')}
+        frontend_vars = dict(AppVar.objects.filter(name__startswith='frontend_').values_list('name', 'value'))
         data.update(frontend_vars)
         return data

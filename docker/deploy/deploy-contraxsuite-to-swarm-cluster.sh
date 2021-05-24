@@ -24,7 +24,11 @@ fi
 
 popd  # /docker/deploy
 
-
+if [[ "${DEPLOY_BACKEND_DEV}" = "true" ]]; then
+  pushd ../../ > /dev/null
+  export PROJECT_ROOT=$(pwd)
+  popd > /dev/null
+fi
 
 source prepare_configs.sh
 
@@ -32,7 +36,6 @@ source prepare_configs.sh
 # Calculating md5 sums of the config files to use as their versions.
 # This is done for docker swarm to see the updated configs if their contents changed.
 export NGINX_CUSTOMER_CONF_VERSION=`md5sum ./temp/nginx-customer.conf | awk '{ print $1 }'`
-export FILEBEAT_CONFIG_VERSION=`md5sum ./temp/filebeat.yml | awk '{ print $1 }'`
 export METRICBEAT_CONFIG_VERSION=`md5sum ./temp/metricbeat.yml | awk '{ print $1 }'`
 export ELASTICSEARCH_CONFIG_VERSION=`md5sum ./temp/elasticsearch.yml | awk '{ print $1 }'`
 export KIBANA_CONFIG_VERSION=`md5sum ./temp/kibana.yml | awk '{ print $1 }'`
@@ -54,6 +57,18 @@ export PGBOUNCER_USERLIST_VERSION=`md5sum ./temp/pgbouncer.userlist.txt | awk '{
 export UWSGI_INI_CONFIG_VERSION=`md5sum ./temp/uwsgi.ini | awk '{ print $1 }'`
 export JUPYTER_CONFIG_VERSION=`md5sum ./temp/jupyter_notebook_config.py | awk '{ print $1 }'`
 
+
+if [[ "${DEPLOY_BACKEND_DEV}" = "true" ]]; then
+  # For local development we use the special compose file
+  export DOCKER_COMPOSE_FILE="docker-compose-backend-develop.yml"
+
+  # Overwrite the filebeat config with the one which
+  # fetches logs from the local dir
+  mv -f ./temp/filebeat-backend-dev.yml ./temp/filebeat.yml
+fi
+
+export FILEBEAT_CONFIG_VERSION=`md5sum ./temp/filebeat.yml | awk '{ print $1 }'`
+
 envsubst < ./docker-compose-templates/${DOCKER_COMPOSE_FILE} > ./temp/${DOCKER_COMPOSE_FILE}
 
 
@@ -62,6 +77,9 @@ cp -a ./config-templates/nginx/. ${VOLUME_NGINX_CONF}
 cp ./temp/nginx.conf ${VOLUME_NGINX_CONF}/nginx.conf
 cp ./temp/internal.conf ${VOLUME_NGINX_CONF}/conf.d/internal.conf
 cp ./temp/default.conf ${VOLUME_NGINX_CONF}/conf.d/default.conf
+
+echo "Updating frontend file permissions..."
+chown -R ${SHARED_USER_NAME}:${SHARED_USER_NAME} ${VOLUME_FRONTEND}
 
 if [ ! -f ${VOLUME_NGINX_CONF}/.kibana_htpasswd ]; then
     echo "Setting default password for HTTP basic auth for Kibana, Jupyter and other services..."

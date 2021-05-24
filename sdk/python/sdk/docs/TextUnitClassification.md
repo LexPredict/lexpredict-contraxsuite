@@ -1,8 +1,11 @@
 # TextUnitClassification
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**class_name** | **str** |  | 
+**class_value** | **str** |  | 
 **pk** | **int** |  | [optional] [readonly] 
 **text_unit__document__pk** | **str** |  | [optional] [readonly] 
 **text_unit__document__name** | **str** |  | [optional] [readonly] 
@@ -11,8 +14,6 @@ Name | Type | Description | Notes
 **text_unit__pk** | **str** |  | [optional] [readonly] 
 **text_unit__unit_type** | **str** |  | [optional] [readonly] 
 **text_unit__language** | **str** |  | [optional] [readonly] 
-**class_name** | **str** |  | 
-**class_value** | **str** |  | 
 **user__username** | **str** |  | [optional] [readonly] 
 **timestamp** | **datetime** |  | [optional] 
 

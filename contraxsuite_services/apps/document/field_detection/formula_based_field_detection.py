@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import time
 import traceback
 from typing import Optional, List, Dict, Any
 
@@ -33,16 +34,15 @@ from django.conf import settings
 from apps.common.log_utils import ProcessLogger
 from apps.common.script_utils import eval_script, ScriptError
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
-from apps.document.field_detection.stop_words import detect_with_stop_words_by_field_and_full_text
 from apps.document.field_types import TypedField
 from apps.document.models import ClassifierModel
 from apps.document.models import DocumentField, Document
 from apps.document.repository.dto import FieldValueDTO
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,7 +67,8 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
 
     @classmethod
     def has_problems_with_field(cls, field: DocumentField) -> Optional[str]:
-        return None if field.formula else 'Formula-based field detection strategy requires field to have the formula.'
+        return None if field.formula else 'Formula-based field detection strategy ' \
+                                          'requires Field to have a formula.'
 
     @classmethod
     def train_document_field_detector_model(cls,
@@ -93,7 +94,6 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
                 if depends_on_field_to_value else {}
         try:
             if settings.DEBUG_SLOW_DOWN_FIELD_FORMULAS_SEC:
-                import time
                 time.sleep(settings.DEBUG_SLOW_DOWN_FIELD_FORMULAS_SEC)
 
             return eval_script(script_title=f'{field_code} formula',
@@ -117,19 +117,8 @@ class FormulaBasedFieldDetectionStrategy(FieldDetectionStrategy):
 
         field_code_to_value = {c: v for c, v in field_code_to_value.items() if c in depends_on_field_codes}
 
-        if field.stop_words:
-            depends_on_full_text = '\n'.join([str(v) for v in field_code_to_value.values()])
-            log.debug('detect_field_value: formula_based_field_detection, checking stop words, ' +
-                      f'field {field.code}({field.pk}), document #{doc.pk}')
-            detected_with_stop_words, detected_values \
-                = detect_with_stop_words_by_field_and_full_text(field,
-                                                                doc,
-                                                                depends_on_full_text)
-            if detected_with_stop_words:
-                return detected_values or list()
-        else:
-            log.debug('detect_field_value: formula_based_field_detection, ' +
-                      f'field {field.code}({field.pk}), document #{doc.pk}')
+        log.debug('detect_field_value: formula_based_field_detection, ' +
+                  f'field {field.code}({field.pk}), document #{doc.pk}')
 
         v = cls.calc_formula(field_code=field.code,
                              formula=formula,

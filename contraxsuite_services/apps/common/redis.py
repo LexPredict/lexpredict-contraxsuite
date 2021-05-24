@@ -40,9 +40,9 @@ from django.utils.timezone import now
 from apps.common.utils import fast_uuid
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -212,3 +212,27 @@ def pop_exceeding(key,
             res = [unpickle(value) for value in res]
         return res
     return []
+
+
+class RedisCache:
+    def __init__(self,
+                 cache_key: str,
+                 cache_actual_seconds: int = 0):
+        self.cache_key = cache_key
+        self.cache_actual_seconds = cache_actual_seconds
+
+    def get_cached_response(self, *args) -> Any:
+        return pop(self.make_key(*args))
+
+    def cache_response(self, data: Any, *args) -> Any:
+        return push(self.make_key(*args),
+                          data,
+                          ex=self.cache_actual_seconds or None)
+
+    def invalidate_cache(self, *args):
+        popd(self.make_key(*args))
+
+    def make_key(self, *args) -> str:
+        args_str = '_'.join([str(a) for a in args])
+        key = self.cache_key if not args else f'{self.cache_key}_{args_str}'
+        return key

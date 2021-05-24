@@ -43,6 +43,7 @@ Method | HTTP request | Description
 [**ExtractRatioUsageTopGET**](ExtractApi.md#extractratiousagetopget) | **GET** /api/v1/extract/ratio-usage/top/ | 
 [**ExtractRegulationUsageGET**](ExtractApi.md#extractregulationusageget) | **GET** /api/v1/extract/regulation-usage/ | 
 [**ExtractRegulationUsageTopGET**](ExtractApi.md#extractregulationusagetopget) | **GET** /api/v1/extract/regulation-usage/top/ | 
+[**ExtractTermTagsGET**](ExtractApi.md#extracttermtagsget) | **GET** /api/v1/extract/term-tags/ | 
 [**ExtractTermUsageGET**](ExtractApi.md#extracttermusageget) | **GET** /api/v1/extract/term-usage/ | 
 [**ExtractTermUsageTopGET**](ExtractApi.md#extracttermusagetopget) | **GET** /api/v1/extract/term-usage/top/ | 
 [**ExtractTrademarkUsageGET**](ExtractApi.md#extracttrademarkusageget) | **GET** /api/v1/extract/trademark-usage/ | 
@@ -123,6 +124,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -136,7 +138,7 @@ Name | Type | Description  | Notes
 
 ## ExtractAmountUsageTopGET
 
-> List&lt;AnyType&gt; ExtractAmountUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractAmountUsageTopGET ()
 
 
 
@@ -164,11 +166,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractAmountUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractAmountUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -184,14 +185,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -201,6 +199,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -281,6 +280,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -294,7 +294,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCitationUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCitationUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCitationUsageTopGET ()
 
 
 
@@ -322,11 +322,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCitationUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCitationUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -342,14 +341,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -359,6 +355,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -439,6 +436,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -452,7 +450,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCopyrightUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCopyrightUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCopyrightUsageTopGET ()
 
 
 
@@ -480,11 +478,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCopyrightUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCopyrightUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -500,14 +497,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -517,6 +511,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -597,6 +592,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -610,7 +606,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCourtUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCourtUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCourtUsageTopGET ()
 
 
 
@@ -638,11 +634,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCourtUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCourtUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -658,14 +653,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -675,6 +667,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -755,6 +748,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -768,7 +762,7 @@ Name | Type | Description  | Notes
 
 ## ExtractCurrencyUsageTopGET
 
-> List&lt;AnyType&gt; ExtractCurrencyUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractCurrencyUsageTopGET ()
 
 
 
@@ -796,11 +790,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractCurrencyUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractCurrencyUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -816,14 +809,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -833,6 +823,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -913,6 +904,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -926,7 +918,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDateDurationUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDateDurationUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDateDurationUsageTopGET ()
 
 
 
@@ -954,11 +946,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDateDurationUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDateDurationUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -974,14 +965,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -991,6 +979,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1066,6 +1055,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1146,6 +1136,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1220,6 +1211,7 @@ This endpoint does not need any parameter.
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1300,6 +1292,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1313,7 +1306,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDateUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDateUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDateUsageTopGET ()
 
 
 
@@ -1341,11 +1334,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDateUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDateUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1361,14 +1353,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -1378,6 +1367,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1458,6 +1448,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1471,7 +1462,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDefinitionUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDefinitionUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDefinitionUsageTopGET ()
 
 
 
@@ -1499,11 +1490,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDefinitionUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDefinitionUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1519,14 +1509,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -1536,6 +1523,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1616,6 +1604,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1629,7 +1618,7 @@ Name | Type | Description  | Notes
 
 ## ExtractDistanceUsageTopGET
 
-> List&lt;AnyType&gt; ExtractDistanceUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractDistanceUsageTopGET ()
 
 
 
@@ -1657,11 +1646,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractDistanceUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractDistanceUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1677,14 +1665,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -1694,6 +1679,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1774,6 +1760,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -1787,7 +1774,7 @@ Name | Type | Description  | Notes
 
 ## ExtractGeoAliasUsageTopGET
 
-> List&lt;AnyType&gt; ExtractGeoAliasUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractGeoAliasUsageTopGET ()
 
 
 
@@ -1815,11 +1802,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractGeoAliasUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractGeoAliasUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1835,14 +1821,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -1852,6 +1835,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -1931,6 +1915,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2013,6 +1998,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2094,6 +2080,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2173,6 +2160,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2186,7 +2174,7 @@ Name | Type | Description  | Notes
 
 ## ExtractGeoEntityUsageTopGET
 
-> List&lt;AnyType&gt; ExtractGeoEntityUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractGeoEntityUsageTopGET ()
 
 
 
@@ -2214,11 +2202,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractGeoEntityUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractGeoEntityUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2234,14 +2221,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -2251,6 +2235,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2330,6 +2315,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2412,6 +2398,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2490,6 +2477,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2570,6 +2558,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2583,7 +2572,7 @@ Name | Type | Description  | Notes
 
 ## ExtractPartyUsageTopGET
 
-> List&lt;AnyType&gt; ExtractPartyUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractPartyUsageTopGET ()
 
 
 
@@ -2611,11 +2600,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractPartyUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractPartyUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2631,14 +2619,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -2648,6 +2633,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2728,6 +2714,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2741,7 +2728,7 @@ Name | Type | Description  | Notes
 
 ## ExtractPercentUsageTopGET
 
-> List&lt;AnyType&gt; ExtractPercentUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractPercentUsageTopGET ()
 
 
 
@@ -2769,11 +2756,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractPercentUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractPercentUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2789,14 +2775,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -2806,6 +2789,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -2886,6 +2870,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -2899,7 +2884,7 @@ Name | Type | Description  | Notes
 
 ## ExtractRatioUsageTopGET
 
-> List&lt;AnyType&gt; ExtractRatioUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractRatioUsageTopGET ()
 
 
 
@@ -2927,11 +2912,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractRatioUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractRatioUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2947,14 +2931,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -2964,6 +2945,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3044,6 +3026,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3057,7 +3040,7 @@ Name | Type | Description  | Notes
 
 ## ExtractRegulationUsageTopGET
 
-> List&lt;AnyType&gt; ExtractRegulationUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractRegulationUsageTopGET ()
 
 
 
@@ -3085,16 +3068,90 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractRegulationUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractRegulationUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
                 Debug.Print("Exception when calling ExtractApi.ExtractRegulationUsageTopGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**List<Dictionary<string, Object>>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ExtractTermTagsGET
+
+> List&lt;TermTag&gt; ExtractTermTagsGET (Dictionary<string, string> jqFilters = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ExtractTermTagsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ExtractApi(Configuration.Default);
+            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
+
+            try
+            {
+                List<TermTag> result = apiInstance.ExtractTermTagsGET(jqFilters);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ExtractApi.ExtractTermTagsGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -3112,7 +3169,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+[**List&lt;TermTag&gt;**](TermTag.md)
 
 ### Authorization
 
@@ -3122,6 +3179,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3202,6 +3260,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3215,7 +3274,7 @@ Name | Type | Description  | Notes
 
 ## ExtractTermUsageTopGET
 
-> List&lt;AnyType&gt; ExtractTermUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractTermUsageTopGET ()
 
 
 
@@ -3243,11 +3302,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractTermUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractTermUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -3263,14 +3321,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -3280,6 +3335,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3360,6 +3416,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3373,7 +3430,7 @@ Name | Type | Description  | Notes
 
 ## ExtractTrademarkUsageTopGET
 
-> List&lt;AnyType&gt; ExtractTrademarkUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractTrademarkUsageTopGET ()
 
 
 
@@ -3401,11 +3458,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractTrademarkUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractTrademarkUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -3421,14 +3477,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -3438,6 +3491,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3518,6 +3572,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3596,6 +3651,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -3676,6 +3732,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3755,6 +3812,7 @@ Name | Type | Description  | Notes
 - **Content-Type**: Not defined
 - **Accept**: application/json
 
+
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
@@ -3768,7 +3826,7 @@ Name | Type | Description  | Notes
 
 ## ExtractUrlUsageTopGET
 
-> List&lt;AnyType&gt; ExtractUrlUsageTopGET (Dictionary<string, string> jqFilters = null)
+> List&lt;Dictionary&lt;string, Object&gt;&gt; ExtractUrlUsageTopGET ()
 
 
 
@@ -3796,11 +3854,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
             {
-                List<AnyType> result = apiInstance.ExtractUrlUsageTopGET(jqFilters);
+                List<Dictionary<string, Object>> result = apiInstance.ExtractUrlUsageTopGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -3816,14 +3873,11 @@ namespace Example
 
 ### Parameters
 
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Dictionary&lt;string, string&gt;**](string.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] 
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**List&lt;AnyType&gt;**](AnyType.md)
+**List<Dictionary<string, Object>>**
 
 ### Authorization
 
@@ -3833,6 +3887,7 @@ Name | Type | Description  | Notes
 
 - **Content-Type**: Not defined
 - **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

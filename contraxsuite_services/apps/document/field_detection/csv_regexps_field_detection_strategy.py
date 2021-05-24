@@ -26,15 +26,15 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 import regex as re
-from typing import Optional, List, Iterable, Any, Dict, Tuple, Callable
+from typing import Optional, List, Any, Dict, Tuple, Callable
 
 from apps.common.log_utils import ProcessLogger
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
@@ -151,7 +151,7 @@ class CsvRegexpsDetectionCache:
 
 
 class CsvRegexpsFieldDetectionStrategy(FieldDetectionStrategy):
-    code = DocumentField.VD_REGEXP_TABLE
+    code = DocumentField.VD_USE_MULTILINE_ONLY
     detecting_cache = CsvRegexpsDetectionCache
 
     @classmethod
@@ -215,13 +215,11 @@ class CsvRegexpsFieldDetectionStrategy(FieldDetectionStrategy):
                                 extraction_hint_name='')
             if not is_multichoice:
                 return FieldValueDTO(field_value=found_item[0], annotations=[ant])
-            else:
-                annotations.append(ant)
+            annotations.append(ant)
 
         if annotations:
             f_val = [a.annotation_value for a in annotations]
             return FieldValueDTO(field_value=f_val, annotations=annotations)
-        return None
 
     @classmethod
     def get_document_text(cls, doc: Document) -> str:

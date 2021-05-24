@@ -8,7 +8,7 @@ Method | HTTP request | Description
 
 
 # **var_get**
-> object var_get(var)
+> bool, date, datetime, dict, float, int, list, str, none_type var_get(var)
 
 
 
@@ -16,10 +16,9 @@ Method | HTTP request | Description
 
 * Api Key Authentication (AuthToken):
 ```python
-from __future__ import print_function
 import time
 import openapi_client
-from openapi_client.rest import ApiException
+from openapi_client.api import var_api
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -33,37 +32,35 @@ configuration = openapi_client.Configuration(
 # satisfies your auth use case.
 
 # Configure API key authorization: AuthToken
-configuration = openapi_client.Configuration(
-    host = "http://localhost",
-    api_key = {
-        'AuthToken': 'YOUR_API_KEY'
-    }
-)
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
 # Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
 # configuration.api_key_prefix['AuthToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = openapi_client.VarApi(api_client)
-    var = 'var_example' # str | 
+    api_instance = var_api.VarApi(api_client)
+    var = "var_example" # str | 
 
+    # example passing only required values which don't have defaults set
     try:
         api_response = api_instance.var_get(var)
         pprint(api_response)
-    except ApiException as e:
+    except openapi_client.ApiException as e:
         print("Exception when calling VarApi->var_get: %s\n" % e)
 ```
+
 
 ### Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **var** | **str**|  | 
+ **var** | **str**|  |
 
 ### Return type
 
-**object**
+**bool, date, datetime, dict, float, int, list, str, none_type**
 
 ### Authorization
 
@@ -73,6 +70,7 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: Not defined
  - **Accept**: application/coreapi+json, application/openapi+json, text/html
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

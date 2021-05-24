@@ -1,5 +1,6 @@
 # ProjectStats
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
@@ -8,9 +9,7 @@ Name | Type | Description | Notes
 **type_title** | **str** |  | 
 **documents_total** | **int** |  | 
 **clauses_total** | **int** |  | 
-**avg_ocr_grade** | **int** |  | 
-**document_status_loaded** | **int** |  | 
-**document_status_loaded_pcnt** | **float** |  | 
+**avg_ocr_grade** | **int, none_type** |  | 
 **document_status_not_started** | **int** |  | 
 **document_status_not_started_pcnt** | **float** |  | 
 **document_status_in_review** | **int** |  | 

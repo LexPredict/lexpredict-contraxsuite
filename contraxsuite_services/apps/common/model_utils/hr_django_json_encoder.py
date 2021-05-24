@@ -36,9 +36,9 @@ from typing import Any
 from django.utils.timezone import is_aware
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2020, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/1.8.0/LICENSE"
-__version__ = "1.8.0"
+__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
+__version__ = "2.0.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,8 +69,7 @@ class HRDjangoJSONEncoder(JSONEncoder):
         if isinstance(o, str):
             if self.ensure_ascii:
                 return brief_encode_basestring_ascii(o)
-            else:
-                return brief_encode_basestring(o)
+            return brief_encode_basestring(o)
         # This doesn't pass the iterator directly to ''.join() because the
         # exceptions aren't as detailed.  The list call should be roughly
         # equivalent to the PySequence_Fast that ''.join() would do.
@@ -99,7 +98,7 @@ class HRDjangoJSONEncoder(JSONEncoder):
             _encoder = brief_encode_basestring
 
         def floatstr(o, allow_nan=self.allow_nan,
-                _repr=float.__repr__, _inf=INFINITY, _neginf=-INFINITY):
+                     _repr=float.__repr__, _inf=INFINITY, _neginf=-INFINITY):
             # Check for specials.  Note that this type of test is processor
             # and/or platform-specific, so do tests which don't depend on the
             # internals.
@@ -137,32 +136,31 @@ class HRDjangoJSONEncoder(JSONEncoder):
         # See "Date Time String Format" in the ECMA-262 specification.
         if isinstance(o, Set):
             return dict(_set_object=list(o))
-        elif isinstance(o, datetime.datetime):
+        if isinstance(o, datetime.datetime):
             r = o.isoformat(' ')
             if o.microsecond:
                 r = r[:23] + r[26:]
             if r.endswith('+00:00'):
                 r = r[:-6] + 'Z'
             return r
-        elif isinstance(o, datetime.date):
+        if isinstance(o, datetime.date):
             return o.isoformat()
-        elif isinstance(o, datetime.time):
+        if isinstance(o, datetime.time):
             if is_aware(o):
                 raise ValueError("JSON can't represent timezone-aware times.")
             r = o.isoformat()
             if o.microsecond:
                 r = r[:12]
             return r
-        elif isinstance(o, decimal.Decimal):
+        if isinstance(o, decimal.Decimal):
             return str(o)
-        elif inspect.isclass(type(o)):
+        if inspect.isclass(type(o)):
             # is class serializable?
             try:
                 json.dumps(o)
             except:
                 return type(o).__name__
-        else:
-            return super().default(o)
+        return super().default(o)
 
 
 def brief_encode_basestring_ascii(s):
