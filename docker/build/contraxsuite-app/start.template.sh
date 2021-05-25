@@ -58,6 +58,27 @@ elif [ "${DOLLAR}{ROLE}" == "unit_tests" ]; then
 
 elif [ "${DOLLAR}{ROLE}" == "daphne" ]; then
     wait_for_deps
+
+    if [[ -f "/static/vendor/jqwidgets/jqx-all.js" ]]; then
+        echo "JQWidgets are bundled within the Contraxsuite Docker image. Not running collectstatic."
+    else
+        echo "JQWidgets are not bundled within the Docker Image. Checking the volume..."
+
+        JQWIDGETS_ZIP="/third_party_dependencies/jqwidgets.zip"
+        if [[ -f "${JQWIDGETS_ZIP}" ]]; then
+            echo "Using jqwidgets: ${JQWIDGETS_ZIP}..."
+            VENDOR_DIR=/static/vendor
+            rm -rf ${VENDOR_DIR}/jqwidgets
+            unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
+
+            su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py collectstatic --noinput"
+        else
+            echo "Can't find JQWidgets neither in the Docker image nor at ${JQWIDGETS_ZIP}."
+            exit 1
+        fi
+    fi
+
+
     mkdir -p /contraxsuite_services/staticfiles
     cat /build.info > /contraxsuite_services/staticfiles/version.txt
     echo "" >> /contraxsuite_services/staticfiles/version.txt
