@@ -65,15 +65,15 @@ elif [ "${DOLLAR}{ROLE}" == "daphne" ]; then
         echo "JQWidgets are not bundled within the Docker Image. Checking the volume..."
 
         JQWIDGETS_ZIP="/third_party_dependencies/jqwidgets.zip"
-        if [[ -f "${JQWIDGETS_ZIP}" ]]; then
-            echo "Using jqwidgets: ${JQWIDGETS_ZIP}..."
+        if [[ -f "${DOLLAR}{JQWIDGETS_ZIP}" ]]; then
+            echo "Using jqwidgets: ${DOLLAR}{JQWIDGETS_ZIP}..."
             VENDOR_DIR=/static/vendor
-            rm -rf ${VENDOR_DIR}/jqwidgets
-            unzip ${JQWIDGETS_ZIP} "jqwidgets/*" -d ${VENDOR_DIR}
+            rm -rf ${DOLLAR}{VENDOR_DIR}/jqwidgets
+            unzip ${DOLLAR}{JQWIDGETS_ZIP} "jqwidgets/*" -d ${DOLLAR}{VENDOR_DIR}
 
-            su ${SHARED_USER_NAME} -c "${ACTIVATE_VENV} && python manage.py collectstatic --noinput"
+            python3 manage.py collectstatic --noinput
         else
-            echo "Can't find JQWidgets neither in the Docker image nor at ${JQWIDGETS_ZIP}."
+            echo "Can't find JQWidgets neither in the Docker image nor at ${DOLLAR}{JQWIDGETS_ZIP}."
             exit 1
         fi
     fi
