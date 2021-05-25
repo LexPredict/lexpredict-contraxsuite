@@ -77,6 +77,7 @@ RUN apt-get -y update --fix-missing && \
     mkdir -p /contraxsuite_frontend_nginx_volume && \
     if [ -d  /contraxsuite_frontend ]; then chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_frontend; fi && \
     chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /data && \
+    chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /static && \
     chown -R -v ${SHARED_USER_NAME}:${SHARED_USER_NAME} /contraxsuite_frontend_nginx_volume
 
 STOPSIGNAL SIGQUIT
