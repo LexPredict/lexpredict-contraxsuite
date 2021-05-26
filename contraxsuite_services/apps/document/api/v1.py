@@ -2146,6 +2146,7 @@ class DocumentFieldCategoryViewSet(DocumentFieldCategoryViewPermissionsMixin,
 class DocumentFieldDetectorDetailSerializer(SimpleRelationSerializer):
     include_regexps = serializers.SerializerMethodField()
     field = serializers.CharField()
+    detect_limit_count = serializers.SerializerMethodField()
 
     class Meta:
         model = DocumentFieldDetector
@@ -2162,6 +2163,11 @@ class DocumentFieldDetectorDetailSerializer(SimpleRelationSerializer):
     def get_include_regexps(self, obj):
         return obj.include_regexps.split('\n') if obj.include_regexps and obj.field else None
     get_include_regexps.output_field = serializers.ListField(allow_null=True, child=serializers.CharField())
+
+    def get_detect_limit_count(self, obj):
+        if obj.detect_limit_unit == DocumentFieldDetector.DETECT_LIMIT_NONE:
+            return None
+        return obj.detect_limit_count
 
 
 def check(func):

@@ -269,7 +269,7 @@ export DEBUG_SLOW_DOWN_HIDE_UNTIL_FORMULAS_SEC=0
 
 export PROXY_SERVER_HTTP=
 export PROXY_SERVER_HTTPS=
-export PROXY_NO_PROXY=localhost,127.0.0.1,contrax-webdav,contrax-minio,contrax-mlflow-tracking,contrax-redis,contrax-elasticsearch,contrax-daphne
+export PROXY_NO_PROXY=localhost,127.0.0.1,contrax-webdav,contrax-minio,contrax-mlflow-tracking,contrax-redis,contrax-elasticsearch,contrax-daphne,tes-web-api,tasks.contrax-webdav,tasks.contrax-minio,tasks.contrax-mlflow-tracking,tasks.contrax-redis,tasks.contrax-elasticsearch,tasks.contrax-daphne,tasks.tes-web-api
 
 # set to non-empty string to enable aioredis debug logging
 export AIOREDIS_DEBUG=
