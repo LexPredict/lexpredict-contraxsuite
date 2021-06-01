@@ -35,7 +35,7 @@ from apps.common.singleton import Singleton
 from apps.common.sql_commons import escape_column_name
 from apps.common.utils import dictfetchone
 from apps.document.constants import DocumentGenericField, FieldSpec
-from apps.document.models import Document
+from apps.document.models import Document, DocumentType
 from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_ASSIGNEE_ID, \
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, TABLE_NAME_PREFIX
 from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
@@ -144,6 +144,16 @@ class RawDbRepository(BaseRawDbRepository):
                 values['max_currency_amount'] = max_currency['amount'] if max_currency else None
 
         return values
+
+    def remove_user_references(self, assignee_id: int):
+        # set assignee_id and assignee_name to null for all documents where
+        # assignee_id equals to passed one
+        with connection.cursor() as cursor:
+            for doc_type in DocumentType.objects.all().values_list('code', flat=True):
+                table_name = doc_fields_table_name(doc_type)
+                query = f'''UPDATE "{table_name}" SET "{FIELD_CODE_ASSIGNEE_ID}" = null,
+                    "{FIELD_CODE_ASSIGNEE_NAME}" = null WHERE "{FIELD_CODE_ASSIGNEE_ID}" = %s;'''
+                cursor.execute(query, [assignee_id])
 
 
 def doc_fields_table_name(document_type_code: str) -> str:

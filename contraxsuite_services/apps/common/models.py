@@ -37,7 +37,7 @@ from django.contrib.postgres.search import SearchVectorField
 from django.db import models, transaction, connection
 from django.db.models import Count, Avg, Max, Case, When, IntegerField, UniqueConstraint
 from django.db.models.base import ModelBase
-from django.db.models.deletion import CASCADE, DO_NOTHING
+from django.db.models.deletion import CASCADE, DO_NOTHING, SET_NULL
 from django.db.models.lookups import IContains, Contains, Lookup
 from django.dispatch import receiver
 from django.urls import reverse
@@ -483,7 +483,7 @@ class AppVar(models.Model):
     date = models.DateTimeField(auto_now=True, db_index=True)
 
     # last modified user
-    user = models.ForeignKey(User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
+    user = models.ForeignKey(User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
 
     history = HistoricalRecords()
 

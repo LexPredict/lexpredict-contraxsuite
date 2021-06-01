@@ -49,3 +49,6 @@ class BaseRawDbRepository:
                                    doc_ids: Iterable[int],
                                    col_values: Dict[str, Any]) -> int:
         raise NotImplementedError()
+
+    def remove_user_references(self, assignee_id: int):
+        raise NotImplementedError()
