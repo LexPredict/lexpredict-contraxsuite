@@ -90,9 +90,9 @@ class TimeStampedModel(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
     created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
     modified_by = models.ForeignKey(
-        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True, on_delete=CASCADE)
+        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -538,7 +538,7 @@ def remove_document_field(sender, instance, **kwargs):
     CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=instance.pk).delete()
     # set modified_by for doc type
     doc_type = instance.document_type
-    doc_type.modified_by = instance.request_user
+    doc_type.modified_by = instance.modified_by
     doc_type.save()
 
 
@@ -640,6 +640,25 @@ only Latin letters, digits, and underscores.''')
         DocumentField.objects \
             .filter(document_type=self) \
             .update(long_code=Concat(Value(f'{self.code}: '), F('code')))
+
+
+@receiver(models.signals.pre_save, sender=DocumentType)
+def notify_category_updated(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    prev_instance_states = list(DocumentType.objects.filter(pk=instance.pk))
+    if not prev_instance_states:
+        return
+
+    changes = {}
+    for field in ['code', 'title']:
+        old_value = getattr(prev_instance_states[0], field)
+        new_value = getattr(instance, field)
+        if new_value != old_value:
+            changes[field] = {'from': old_value, 'to': new_value}
+    if changes:
+        from apps.document.notifications import notify_document_type_event
+        notify_document_type_event(instance, 'changed', changes)
 
 
 @receiver(models.signals.post_save, sender=DocumentType)
@@ -770,12 +789,12 @@ class Document(LazyTimeStampedModel):
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True, on_delete=CASCADE)
 
-    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=CASCADE)
+    assignee = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=SET_NULL)
 
     assign_date = models.DateTimeField(blank=True, null=True)
 
     upload_session = models.ForeignKey('project.UploadSession', blank=True, null=True,
-                                       db_index=True, on_delete=CASCADE)
+                                       db_index=True, on_delete=SET_NULL)
 
     processed = models.BooleanField(default=False, null=False)
 
@@ -1447,9 +1466,9 @@ class TextUnitProperty(TimeStampedModel):
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=False, on_delete=CASCADE)
+        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=False, on_delete=SET_NULL)
     modified_by = models.ForeignKey(
-        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=False, on_delete=CASCADE)
+        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=False, on_delete=SET_NULL)
 
     # Text unit
     text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
@@ -1941,7 +1960,7 @@ class ClassifierModel(models.Model):
 
 class FieldValue(models.Model):
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
-    modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=CASCADE)
+    modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=SET_NULL)
 
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE, related_name='field_values')
 
@@ -2046,7 +2065,7 @@ class FieldAnnotation(models.Model):
     uid = StringUUIDField(default=uuid.uuid4, editable=False)
 
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
-    modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=CASCADE)
+    modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=SET_NULL)
 
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE, related_name='annotations_matches')
 
