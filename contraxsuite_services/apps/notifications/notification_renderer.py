@@ -253,6 +253,8 @@ class NotificationRenderer:
                     'changed_by_user': msg_data.changed_by_user
                 }  # type: Dict[str, Any]
                 template_context['documents'].append(document_context)
+            if template_context['documents']:
+                template_context['document'] = template_context['documents'][0]['document']
 
             html = None
             subject_template = subscription.subject or event_info.default_bulk_subject
