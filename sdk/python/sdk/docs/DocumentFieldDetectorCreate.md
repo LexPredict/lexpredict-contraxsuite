@@ -4,6 +4,9 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**text_part** | **str** | Defines which part of the matched Text Unit  should be passed to the extraction function. Example: In the string \&quot;2019-01-23 is the start date and 2019-01-24 is the  end date,\&quot; if text part &#x3D; \&quot;Before matching substring\&quot; and Include regexp is \&quot;is.{0,100}start\&quot; then \&quot;2019-01-23\&quot; will be  parsed correctly as the start date. | 
+**detect_limit_unit** | **str** | Choose to add an upward limit to the amount of document text                                               ContraxSuite will search for this Document Field. For example, you can choose                                               to only search the first 10 paragraphs of text for the value required (this                                               often works best for values like “Company,” “Execution Date,” or “Parties,”                                              all of which typically appear in the first few paragraphs of a contract). | 
+**detect_limit_count** | **int** | Specify the maximum      range for a bounded search. Field detection begins at the top of the document and continues until this Nth      \&quot;Detect limit unit\&quot; element. | 
 **field** | **str** |  | 
 **uid** | **str** |  | [optional] [readonly] 
 **warning_message** | **str** |  | [optional] [readonly] 
@@ -14,9 +17,7 @@ Name | Type | Description | Notes
 **regexps_pre_process_lower** | **bool** | Set &#39;ignore case&#39; flag for both &#39;Include regexps&#39; and &#39;Exclude regexps&#39; options. | [optional] 
 **detected_value** | **str, none_type** | The string value written here  will be assigned to the field if the Field Detector positively matches a Text Unit. This is only applicable to Choice,  Multichoice, and String fields, as their respective Field Detectors do not extract and display values from the source  text. | [optional] 
 **extraction_hint** | **str, none_type** | Provide additional instruction on which  specific values should be prioritized for extraction, when multiple values of the same type  (e.g., Company, Person, Geography) are found within the relevant detected Text Unit. | [optional] 
-**text_part** | **str** | Defines which part of the matched Text Unit  should be passed to the extraction function. Example: In the string \&quot;2019-01-23 is the start date and 2019-01-24 is the  end date,\&quot; if text part &#x3D; \&quot;Before matching substring\&quot; and Include regexp is \&quot;is.{0,100}start\&quot; then \&quot;2019-01-23\&quot; will be  parsed correctly as the start date. | [optional] 
-**detect_limit_unit** | **str** | Choose to add an upward limit to the amount of document text                                               ContraxSuite will search for this Document Field. For example, you can choose                                               to only search the first 10 paragraphs of text for the value required (this                                               often works best for values like “Company,” “Execution Date,” or “Parties,”                                              all of which typically appear in the first few paragraphs of a contract). | [optional] 
-**detect_limit_count** | **int** | Specify the maximum      range for a bounded search. Field detection begins at the top of the document and continues until this Nth      \&quot;Detect limit unit\&quot; element. | [optional] 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

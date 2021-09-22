@@ -2,7 +2,7 @@ openapi: 3.0.2
 info:
   description: Contraxsuite API
   title: Contraxsuite API
-  version: 2.0.0
+  version: 2.1.0
 servers:
 - url: /
 security:
@@ -755,9 +755,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/ProjectDocumentSimilarity'
-                type: array
+                $ref: '#/components/schemas/ProjectDocumentSimilarityResponse'
       tags:
       - analyze
       - v1
@@ -1140,9 +1138,7 @@ paths:
             application/json:
               schema:
                 items:
-                  items:
-                    $ref: '#/components/schemas/Action'
-                  type: array
+                  $ref: '#/components/schemas/Action'
                 type: array
       tags:
       - common
@@ -1208,9 +1204,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/Action'
-                type: array
+                $ref: '#/components/schemas/Action'
       tags:
       - common
       - v1
@@ -2500,9 +2494,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/Action'
-                type: array
+                $ref: '#/components/schemas/DocumentsForUser'
       tags:
       - document
       - v1
@@ -5199,9 +5191,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/Action'
-                type: array
+                $ref: '#/components/schemas/DocumentsForUser'
       tags:
       - document
       - v1
@@ -7820,6 +7810,23 @@ paths:
       - extract
       - v1
       x-accepts: application/json
+  /api/v1/notifications/web-notifications/:
+    get:
+      description: Web Notification List
+      operationId: notifications-web-notifications:GET
+      parameters: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: object
+                type: object
+      tags:
+      - notifications
+      - v1
+      x-accepts: application/json
   /api/v1/project/task-queues/:
     get:
       description: Task Queue List
@@ -8442,9 +8449,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/Action'
-                type: array
+                $ref: '#/components/schemas/ProjectDetail'
       tags:
       - project
       - v1
@@ -8569,9 +8574,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/Action'
-                type: array
+                $ref: '#/components/schemas/ProjectDetail'
       tags:
       - project
       - v1
@@ -10035,6 +10038,20 @@ paths:
       - users
       - v1
       x-accepts: application/json
+  /api/v1/users/social_accounts/:
+    get:
+      operationId: users-social_accounts:GET
+      parameters: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialAccountsResponse'
+      tags:
+      - users
+      - v1
+      x-accepts: application/json
   /api/v1/similarity/similarity/:
     get:
       description: |-
@@ -11165,6 +11182,35 @@ paths:
       - v1
       x-contentType: application/json
       x-accepts: application/json
+  /api/v1/notifications/web-notifications/mark_seen/:
+    post:
+      description: |-
+        Method marks a number of web notifications for updating as seen/not seen.
+        :param request: provide a list of web notification message ids here:
+      operationId: notifications-web-notifications-mark_seen:POST
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkForSeenWebNotificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MarkForSeenWebNotificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MarkForSeenWebNotificationRequest'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkForSeenWebNotificationResponse'
+      tags:
+      - notifications
+      - v1
+      x-contentType: application/json
+      x-accepts: application/json
   /api/v1/project/projects/select_projects/:
     post:
       description: Select projects for review in Explorer UI
@@ -11332,6 +11378,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/inline_response_404_1'
+      tags:
+      - project
+      - v1
+      x-contentType: application/json
+      x-accepts: application/json
+  /api/v1/project/projects/{id}/check_similarity_process_allowed/:
+    post:
+      operationId: project-projects-id-check_similarity_process_allowed:POST
+      parameters:
+      - description: A unique integer value identifying this project.
+        explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectDetail'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
       tags:
       - project
       - v1
@@ -11748,6 +11828,7 @@ paths:
                 all: any value - update all documents if any value
                 no_document_ids: list[int] - exclude those docs from action (if "all" is set)
                 fields_data: - dict {field_code: [values]}
+                on_existing_value: "replace_all" | "add_new" (for multi-choice fields)
             Returns:
                 task_id
       operationId: project-projects-id-update_document_fields:POST
@@ -13087,6 +13168,42 @@ components:
       - document_b_text
       - similarity
       type: object
+    ProjectDocumentSimilarityResponse:
+      example:
+        data:
+        - document_b_name: document_b_name
+          run_id: run_id
+          document_a_id: document_a_id
+          document_b_id: document_b_id
+          similarity: similarity
+          document_a_name: document_a_name
+          document_b_text: document_b_text
+        - document_b_name: document_b_name
+          run_id: run_id
+          document_a_id: document_a_id
+          document_b_id: document_b_id
+          similarity: similarity
+          document_a_name: document_a_name
+          document_b_text: document_b_text
+        document_a_id: 0
+        document_a_name: document_a_name
+        total_records: 6
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ProjectDocumentSimilarityResponse_data'
+          type: array
+        document_a_id:
+          nullable: true
+          type: integer
+        document_a_name:
+          nullable: true
+          type: string
+        total_records:
+          type: integer
+      required:
+      - data
+      type: object
     TextUnitSimilarity:
       example:
         document_a__name: document_a__name
@@ -13328,18 +13445,20 @@ components:
       type: object
     MLModel:
       example:
-        text_unit_type: sentence
-        default: true
         is_active: true
-        name: name
-        apply_to: document
-        target_entity: transformer
         project: 6
         vector_name: vector_name
         language: language
-        id: 0
         version: version
         model_path: model_path
+        user_modified: true
+        text_unit_type: sentence
+        default: true
+        name: name
+        apply_to: document
+        target_entity: transformer
+        id: 0
+        codebase_version: codebase_version
       properties:
         id:
           readOnly: true
@@ -13380,6 +13499,7 @@ components:
           - transformer
           - classifier
           - contract_type_classifier
+          - is_contract
           nullable: true
           type: string
         language:
@@ -13394,6 +13514,14 @@ components:
           - paragraph
           nullable: true
           type: string
+        codebase_version:
+          description: ContraxSuite version in which the model was created
+          maxLength: 64
+          nullable: true
+          type: string
+        user_modified:
+          description: User modified models are not automatically updated
+          type: boolean
         project:
           description: Optional project reference
           nullable: true
@@ -13439,8 +13567,10 @@ components:
         name: name
         id: 0
         message: message
+        user__initials: user__initials
         request_data: '{}'
         object_pk: object_pk
+        user_photo_url: user_photo_url
       properties:
         id:
           readOnly: true
@@ -13468,6 +13598,12 @@ components:
           readOnly: true
           type: string
         user__name:
+          readOnly: true
+          type: string
+        user__initials:
+          readOnly: true
+          type: string
+        user_photo_url:
           readOnly: true
           type: string
         request_data:
@@ -13575,6 +13711,7 @@ components:
         is_superuser: true
         is_active: true
         is_staff: true
+        initials: initials
         last_name: last_name
         photo: photo
         groups:
@@ -13620,6 +13757,9 @@ components:
           type: boolean
         name:
           maxLength: 255
+          type: string
+        initials:
+          maxLength: 2
           type: string
         organization:
           maxLength: 100
@@ -13797,47 +13937,11 @@ components:
     DocumentDetail:
       example:
         assign_date: 2000-01-23T04:56:07.000+00:00
-        notes:
-        - field_id: field_id
-          note: note
-          selections:
-          - '{}'
-          - '{}'
-          location_start: -1707401670
-          location_end: -1507784385
-          pk: 7
-          field_value_id: 7
-          document_id: 6
-          user:
-            name: name
-            last_name: last_name
-            photo: photo
-            pk: 1
-            first_name: first_name
-            username: username
-          timestamp: 2000-01-23T04:56:07.000+00:00
-        - field_id: field_id
-          note: note
-          selections:
-          - '{}'
-          - '{}'
-          location_start: -1707401670
-          location_end: -1507784385
-          pk: 7
-          field_value_id: 7
-          document_id: 6
-          user:
-            name: name
-            last_name: last_name
-            photo: photo
-            pk: 1
-            first_name: first_name
-            username: username
-          timestamp: 2000-01-23T04:56:07.000+00:00
         user_permissions: '{}'
         description: description
         created_by_name: created_by_name
         title: title
+        created_by_photo: created_by_photo
         status_data:
           code: code
           is_active: true
@@ -13846,13 +13950,15 @@ components:
           order: 18471
           group: 2
         available_assignees_data:
-        - name: name
+        - initials: initials
+          name: name
           last_name: last_name
           photo: photo
           pk: 3
           first_name: first_name
           username: username
-        - name: name
+        - initials: initials
+          name: name
           last_name: last_name
           photo: photo
           pk: 3
@@ -13864,6 +13970,8 @@ components:
           - 4.145608029883936
         - - 4.145608029883936
           - 4.145608029883936
+        created_by_initials: created_by_initials
+        modified_by_photo: modified_by_photo
         document_type: document_type
         available_statuses_data:
         - '{}'
@@ -13874,6 +13982,7 @@ components:
         - - 2
           - 2
         assignee_data:
+          initials: initials
           name: name
           last_name: last_name
           photo: photo
@@ -13886,17 +13995,20 @@ components:
         - '{}'
         - '{}'
         field_value_objects: '{}'
-        prev_id: 1
+        prev_id: 7
         folder: folder
         name: name
         modified_by_name: modified_by_name
+        modified_by_initials: modified_by_initials
         pk: 0
         created_date: 2000-01-23T04:56:07.000+00:00
         assignee: 7
+        position: position
         initial_annotation_id: initial_annotation_id
+        documents_count: documents_count
         status: 1
         field_values: '{}'
-        next_id: 4
+        next_id: 1
       properties:
         pk:
           readOnly: true
@@ -13920,13 +14032,21 @@ components:
           format: date-time
           nullable: true
           type: string
-        created_by_name:
-          type: string
         modified_date:
           format: date-time
           nullable: true
           type: string
         modified_by_name:
+          type: string
+        created_by_name:
+          type: string
+        created_by_initials:
+          type: string
+        created_by_photo:
+          type: string
+        modified_by_initials:
+          type: string
+        modified_by_photo:
           type: string
         status:
           nullable: true
@@ -13976,10 +14096,6 @@ components:
             type: array
           readOnly: true
           type: array
-        notes:
-          items:
-            $ref: '#/components/schemas/DocumentDetail_notes'
-          type: array
         field_values:
           readOnly: true
           type: object
@@ -13992,6 +14108,12 @@ components:
         next_id:
           readOnly: true
           type: integer
+        position:
+          readOnly: true
+          type: string
+        documents_count:
+          readOnly: true
+          type: string
         sections:
           items:
             type: object
@@ -14006,9 +14128,12 @@ components:
       required:
       - assignee_data
       - available_assignees_data
+      - created_by_initials
       - created_by_name
+      - created_by_photo
+      - modified_by_initials
       - modified_by_name
-      - notes
+      - modified_by_photo
       - status_data
       type: object
     DocumentDefinitions:
@@ -14055,16 +14180,17 @@ components:
         selections:
         - '{}'
         - '{}'
-        location_start: 441289069
-        location_end: -1517921766
+        location_start: -1517921766
+        location_end: 413233370
         pk: 0
-        field_value_id: 5
+        field_value_id: 2
         document_id: 5
         user:
+          initials: initials
           name: name
           last_name: last_name
           photo: photo
-          pk: 1
+          pk: 6
           first_name: first_name
           username: username
         timestamp: 2000-01-23T04:56:07.000+00:00
@@ -14078,7 +14204,7 @@ components:
           format: date-time
           type: string
         user:
-          $ref: '#/components/schemas/DocumentDetail_user'
+          $ref: '#/components/schemas/DocumentNoteDetail_user'
         location_start:
           maximum: 2147483647
           minimum: -2147483648
@@ -14165,7 +14291,6 @@ components:
           readOnly: true
           type: string
         document_type:
-          nullable: true
           type: string
         code:
           description: "Field codes must be lowercase, should start with \na Latin\
@@ -14466,7 +14591,6 @@ components:
           readOnly: true
           type: string
         document_type:
-          nullable: true
           type: string
         code:
           description: "Field codes must be lowercase, should start with \na Latin\
@@ -14827,12 +14951,14 @@ components:
           - save_all_fields_at_once
           type: string
         created_by__name:
+          readOnly: true
           type: string
         created_date:
           format: date-time
           readOnly: true
           type: string
         modified_by__name:
+          readOnly: true
           type: string
         modified_date:
           format: date-time
@@ -14856,9 +14982,7 @@ components:
           type: array
       required:
       - code
-      - created_by__name
       - fields_number
-      - modified_by__name
       - title
       type: object
     DocumentTypeForStats:
@@ -15045,6 +15169,7 @@ components:
           format: uuid
           type: string
       required:
+      - document_type
       - document_type_title
       - fields
       - fields_number
@@ -16659,6 +16784,13 @@ components:
       required:
       - source_url
       type: object
+    WebNotificationDetail:
+      properties:
+        is_seen:
+          type: boolean
+        notification:
+          $ref: '#/components/schemas/WebNotificationDetail_notification'
+      type: object
     TaskQueue:
       example:
         completed_documents:
@@ -16882,6 +17014,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -16897,6 +17030,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -16914,6 +17048,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -16929,6 +17064,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -16948,6 +17084,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -16963,6 +17100,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -16992,6 +17130,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -17007,6 +17146,7 @@ components:
         - is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -17388,6 +17528,7 @@ components:
         created_date: 2000-01-23T04:56:07.000+00:00
         project_clusters_documents_count: 5
         status: status
+        project_clusters_actions_count: 2
       properties:
         pk:
           readOnly: true
@@ -17412,12 +17553,16 @@ components:
           type: string
         project_clusters_documents_count:
           type: integer
+        project_clusters_actions_count:
+          readOnly: true
+          type: integer
       required:
       - project_clusters_documents_count
       type: object
     UploadSessionDetail:
       example:
         uid: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        is_canceling: is_canceling
         project: 0
         progress: progress
         created_date: 2000-01-23T04:56:07.000+00:00
@@ -17449,6 +17594,9 @@ components:
         completed:
           nullable: true
           type: boolean
+        is_canceling:
+          readOnly: true
+          type: string
       required:
       - created_by
       type: object
@@ -17486,6 +17634,7 @@ components:
         - '{}'
         - '{}'
         project_clusters_documents_count: 0
+        project_clusters_actions_count: 6
         status: status
       properties:
         document_clusters:
@@ -17494,11 +17643,14 @@ components:
           type: array
         project_clusters_documents_count:
           type: integer
+        project_clusters_actions_count:
+          type: integer
         status:
           nullable: true
           type: string
       required:
       - document_clusters
+      - project_clusters_actions_count
       - project_clusters_documents_count
       - status
       type: object
@@ -17667,25 +17819,8 @@ components:
         project:
           enum:
           - ""
-          - 27
-          - 26
-          - 25
-          - 24
-          - 23
-          - 22
-          - 21
-          - 20
-          - 19
-          - 18
-          - 17
-          - 14
-          - 13
-          - 12
-          - 11
-          - 8
-          - 7
-          - 6
           - 5
+          - 4
           - 3
           - 2
           - 1
@@ -18304,10 +18439,11 @@ components:
         field_value_id: 5
         document_id: 5
         user:
+          initials: initials
           name: name
           last_name: last_name
           photo: photo
-          pk: 1
+          pk: 6
           first_name: first_name
           username: username
         timestamp: 2000-01-23T04:56:07.000+00:00
@@ -18346,7 +18482,7 @@ components:
           nullable: true
           type: string
         user:
-          $ref: '#/components/schemas/DocumentDetail_user'
+          $ref: '#/components/schemas/DocumentNoteDetail_user'
         selections:
           items:
             type: object
@@ -18398,7 +18534,6 @@ components:
         choices: choices
       properties:
         document_type:
-          nullable: true
           type: string
         code:
           description: "Field codes must be lowercase, should start with \na Latin\
@@ -18933,7 +19068,10 @@ components:
         field:
           type: string
       required:
+      - detect_limit_count
+      - detect_limit_unit
       - field
+      - text_part
       type: object
     AnnotationSuggestRequest:
       example:
@@ -19016,6 +19154,32 @@ components:
       required:
       - queryInfo
       - records
+      type: object
+    MarkForSeenWebNotificationRequest:
+      example:
+        notification_ids:
+        - 0
+        - 0
+        is_seen: true
+      properties:
+        notification_ids:
+          items:
+            type: integer
+          type: array
+        is_seen:
+          type: boolean
+      required:
+      - is_seen
+      - notification_ids
+      type: object
+    MarkForSeenWebNotificationResponse:
+      example:
+        count_processed: 0
+      properties:
+        count_processed:
+          type: integer
+      required:
+      - count_processed
       type: object
     ProjectCreate:
       example:
@@ -19434,6 +19598,7 @@ components:
         no_document_ids:
         - 6
         - 6
+        on_existing_value: on_existing_value
       properties:
         all:
           type: boolean
@@ -19447,6 +19612,8 @@ components:
           type: array
         fields_data:
           type: object
+        on_existing_value:
+          type: string
       required:
       - fields_data
       type: object
@@ -19647,9 +19814,11 @@ components:
       type: object
     UserProfile:
       example:
+        initials: initials
         organization: organization
         name: name
         last_name: last_name
+        photo: ""
         groups:
         - 0
         - 0
@@ -19670,6 +19839,13 @@ components:
           type: string
         name:
           maxLength: 255
+          type: string
+        initials:
+          readOnly: true
+          type: string
+        photo:
+          format: binary
+          nullable: true
           type: string
         email:
           format: email
@@ -19705,6 +19881,7 @@ components:
           is_superuser: true
           is_active: true
           is_staff: true
+          initials: initials
           last_name: last_name
           photo: photo
           groups:
@@ -20116,6 +20293,43 @@ components:
       required:
       - items_count
       type: object
+    ProjectDocumentSimilarityResponse_data:
+      example:
+        document_b_name: document_b_name
+        run_id: run_id
+        document_a_id: document_a_id
+        document_b_id: document_b_id
+        similarity: similarity
+        document_a_name: document_a_name
+        document_b_text: document_b_text
+      properties:
+        document_a_name:
+          type: string
+        document_a_id:
+          readOnly: true
+          type: string
+        document_b_name:
+          type: string
+        document_b_id:
+          readOnly: true
+          type: string
+        document_b_text:
+          type: string
+        similarity:
+          format: decimal
+          maximum: 1000
+          minimum: -1000
+          multipleOf: 0.01
+          type: string
+        run_id:
+          readOnly: true
+          type: string
+      required:
+      - document_a_name
+      - document_b_name
+      - document_b_text
+      - similarity
+      type: object
     ReviewStatusDetail_group_data:
       example:
         code: code
@@ -20204,6 +20418,7 @@ components:
       type: object
     DocumentDetail_assignee_data:
       example:
+        initials: initials
         name: name
         last_name: last_name
         photo: photo
@@ -20233,11 +20448,15 @@ components:
         name:
           maxLength: 255
           type: string
+        initials:
+          maxLength: 2
+          type: string
       required:
       - username
       type: object
     DocumentDetail_available_assignees_data:
       example:
+        initials: initials
         name: name
         last_name: last_name
         photo: photo
@@ -20266,15 +20485,19 @@ components:
         name:
           maxLength: 255
           type: string
+        initials:
+          maxLength: 2
+          type: string
       required:
       - username
       type: object
-    DocumentDetail_user:
+    DocumentNoteDetail_user:
       example:
+        initials: initials
         name: name
         last_name: last_name
         photo: photo
-        pk: 1
+        pk: 6
         first_name: first_name
         username: username
       properties:
@@ -20299,65 +20522,12 @@ components:
         name:
           maxLength: 255
           type: string
+        initials:
+          maxLength: 2
+          type: string
       readOnly: true
       required:
       - username
-      type: object
-    DocumentDetail_notes:
-      example:
-        field_id: field_id
-        note: note
-        selections:
-        - '{}'
-        - '{}'
-        location_start: -1707401670
-        location_end: -1507784385
-        pk: 7
-        field_value_id: 7
-        document_id: 6
-        user:
-          name: name
-          last_name: last_name
-          photo: photo
-          pk: 1
-          first_name: first_name
-          username: username
-        timestamp: 2000-01-23T04:56:07.000+00:00
-      properties:
-        pk:
-          readOnly: true
-          type: integer
-        note:
-          type: string
-        timestamp:
-          format: date-time
-          type: string
-        user:
-          $ref: '#/components/schemas/DocumentDetail_user'
-        location_start:
-          maximum: 2147483647
-          minimum: -2147483648
-          nullable: true
-          type: integer
-        location_end:
-          maximum: 2147483647
-          minimum: -2147483648
-          nullable: true
-          type: integer
-        document_id:
-          type: integer
-        field_value_id:
-          type: integer
-        field_id:
-          type: string
-        selections:
-          items:
-            type: object
-          readOnly: true
-          type: array
-      required:
-      - document_id
-      - note
       type: object
     DocumentFieldList_category:
       example:
@@ -20457,7 +20627,6 @@ components:
           readOnly: true
           type: string
         document_type:
-          nullable: true
           type: string
         code:
           description: "Field codes must be lowercase, should start with \na Latin\
@@ -20835,6 +21004,45 @@ components:
       - id
       - title
       type: object
+    WebNotificationDetail_notification:
+      properties:
+        id:
+          readOnly: true
+          type: integer
+        message_data:
+          nullable: true
+          type: object
+        message_template:
+          readOnly: true
+          type: string
+        created_date:
+          format: date-time
+          readOnly: true
+          type: string
+        notification_type:
+          description: Notification type
+          enum:
+          - DOCUMENT_ASSIGNED
+          - DOCUMENT_UNASSIGNED
+          - CLAUSES_ASSIGNED
+          - CLAUSES_UNASSIGNED
+          - DOCUMENTS_UPLOADED
+          - DOCUMENT_DELETED
+          - DOCUMENT_ADDED
+          - DOCUMENT_STATUS_CHANGED
+          - CLUSTER_IMPORTED
+          - FIELD_VALUE_DETECTION_COMPLETED
+          - CUSTOM_TERM_SET_SEARCH_FINISHED
+          - CUSTOM_COMPANY_TYPE_SEARCH_FINISHED
+          - DOCUMENT_SIMILARITY_SEARCH_FINISHED
+          - TEXT_UNIT_SIMILARITY_SEARCH_FINISHED
+          nullable: true
+          type: string
+        redirect_link:
+          nullable: true
+          type: object
+      readOnly: true
+      type: object
     TaskQueue_documents_data:
       example:
         name: name
@@ -20933,6 +21141,7 @@ components:
         is_superuser: true
         is_active: true
         is_staff: true
+        initials: initials
         last_name: last_name
         photo: photo
         groups:
@@ -20978,6 +21187,9 @@ components:
           type: boolean
         name:
           maxLength: 255
+          type: string
+        initials:
+          maxLength: 2
           type: string
         organization:
           maxLength: 100

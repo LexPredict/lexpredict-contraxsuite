@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**projectProjectsIdAssignDocumentPOST**](ProjectApi.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**projectProjectsIdAssignDocumentsPOST**](ProjectApi.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**projectProjectsIdAssigneesGET**](ProjectApi.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ | 
+[**projectProjectsIdCheckSimilarityProcessAllowedPOST**](ProjectApi.md#projectProjectsIdCheckSimilarityProcessAllowedPOST) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
 [**projectProjectsIdCleanupPOST**](ProjectApi.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
 [**projectProjectsIdClusterActionsGET**](ProjectApi.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**projectProjectsIdClusterPOST**](ProjectApi.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ | 
@@ -761,6 +762,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="projectProjectsIdCheckSimilarityProcessAllowedPOST"></a>
+# **projectProjectsIdCheckSimilarityProcessAllowedPOST**
+> ProjectDetail projectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.ProjectApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    ProjectApi apiInstance = new ProjectApi(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    ProjectDetail projectDetail = new ProjectDetail(); // ProjectDetail | 
+    try {
+      ProjectDetail result = apiInstance.projectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling ProjectApi#projectProjectsIdCheckSimilarityProcessAllowedPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+
+### Return type
+
+[**ProjectDetail**](ProjectDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="projectProjectsIdCleanupPOST"></a>
 # **projectProjectsIdCleanupPOST**
 > String projectProjectsIdCleanupPOST(id, cleanupProjectRequest)
@@ -835,7 +905,7 @@ Name | Type | Description  | Notes
 
 <a name="projectProjectsIdClusterActionsGET"></a>
 # **projectProjectsIdClusterActionsGET**
-> List&lt;Action&gt; projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
+> ProjectDetail projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -867,7 +937,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      ProjectDetail result = apiInstance.projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ProjectApi#projectProjectsIdClusterActionsGET");
@@ -892,7 +962,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -2167,7 +2237,7 @@ Name | Type | Description  | Notes
 
 <a name="projectProjectsIdSettingsActionsGET"></a>
 # **projectProjectsIdSettingsActionsGET**
-> List&lt;Action&gt; projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
+> ProjectDetail projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -2199,7 +2269,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      ProjectDetail result = apiInstance.projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ProjectApi#projectProjectsIdSettingsActionsGET");
@@ -2224,7 +2294,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -2459,7 +2529,7 @@ Name | Type | Description  | Notes
 
 
 
-Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \&quot;all\&quot; is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \&quot;all\&quot; is set)         fields_data: - dict {field_code: [values]}         on_existing_value: \&quot;replace_all\&quot; | \&quot;add_new\&quot; (for multi-choice fields)     Returns:         task_id
 
 ### Example
 ```java

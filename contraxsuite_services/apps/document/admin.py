@@ -72,6 +72,7 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 from apps.common.script_utils import ScriptError
 from apps.common.url_utils import as_bool
 from apps.common.utils import full_reverse
+from apps.common.validators import RegexPatternValidator
 from apps.common.widgets import EditableTableWidget
 from apps.document import signals
 from apps.document.constants import DOC_NUMBER_PER_MAIN_TASK
@@ -79,7 +80,7 @@ from apps.document.field_detection.detector_field_matcher import DetectorFieldMa
 from apps.document.field_detection.field_based_ml_field_detection import init_classifier_impl
 from apps.document.field_detection.formula_based_field_detection import FormulaBasedFieldDetectionStrategy
 from apps.document.field_processing.field_processing_utils import order_field_detection
-from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField
+from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField, MultiChoiceField
 from apps.document.models import Document, DocumentText, DocumentMetadata, DocumentField, DocumentType, FieldValue, \
     FieldAnnotationStatus, FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationSavedFilter, \
     DocumentProperty, DocumentRelation, DocumentNote, DocumentFieldDetector, ExternalFieldValue, ClassifierModel, \
@@ -94,8 +95,8 @@ from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -995,8 +996,14 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
             if type_code == RelatedInfoField.type_code:
                 self.add_error('default_value', 'Related info field can\'t have default value')
             elif typed_field.extract_from_possible_value(default_value) != default_value:
-                self.add_error('default_value', 'Wrong value for type {0}. Example: {1}'
-                               .format(type_code, json.dumps(typed_field.example_python_value())))
+                try:
+                    examp_value = typed_field.example_python_value()
+                    examp_json = typed_field.field_value_python_to_json(examp_value)
+                except Exception as e:
+                    raise RuntimeError(f"Can't make an example value (JSON) for field {document_field.code}, " 
+                                       f'type {type_code}') from e
+                self.add_error('default_value',
+                               f'Wrong value for type {type_code}. Correct examples: {examp_json}')
 
         value_detection_strategy = self.cleaned_data[VALUE_DETECTION_STRATEGY]
         from apps.document.field_detection.field_detection import FIELD_DETECTION_STRATEGY_REGISTRY
@@ -1022,6 +1029,7 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         mlflow_detect_on_document_level = self.cleaned_data.get(MLFLOW_DETECT_ON_DOCUMENT_LEVEL)
         category = self.cleaned_data.get('category')
         document_type = self.cleaned_data.get('document_type')
+        allow_values_not_specified_in_choices = self.cleaned_data.get('allow_values_not_specified_in_choices')
 
         if category and category.document_type != document_type:
             self.add_error('category',
@@ -1035,10 +1043,22 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
             for ch_err in choice_errors:
                 self.add_error('choices', ch_err)
 
+        if type_code in [ChoiceField.type_code, MultiChoiceField.type_code] \
+                and allow_values_not_specified_in_choices is not True:
+            # CS-4254: check that filed detectors has detected_values from choices only
+            # or allow_values_not_specified_in_choices is set to True
+            detected_values = set(self.instance.field_detectors.values_list('detected_value', flat=True))
+            if detected_values:
+                extra_choices = detected_values - set(choice_values)
+                if extra_choices:
+                    self.add_error(
+                        'choices',
+                        f'Field detectors have "Display Value" which is not specified in choices: {extra_choices}')
+
         try:
             DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
-        except Exception as exc:
-            self.add_error('value_regexp', exc)
+        except Exception:
+            self.add_error('value_regexp', RegexPatternValidator.message)
 
         self.validate_field_code()
 
@@ -1093,11 +1113,27 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         return self.cleaned_data
 
 
+class DocumentFieldTypeCodeFilter(admin.SimpleListFilter):
+    title = 'Type Code'
+    parameter_name = 'type'
+    default_value = None
+
+    def lookups(self, request, model_admin):
+        from apps.document.field_type_registry import FIELD_TYPE_REGISTRY
+        return [(k, v.title) for k, v in FIELD_TYPE_REGISTRY.items()]
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        return queryset.filter(type=self.value())
+
+
 class DocumentFieldAdmin(FieldValuesValidationAdmin):
     change_form_template = 'admin/document/documentfield/change_form.html'
     delete_confirmation_template = 'admin/document/documentfield/delete_confirmation.html'
     delete_selected_confirmation_template = 'admin/document/documentfield/delete_selected_confirmation.html'
     form = DocumentFieldForm
+    list_filter = [DocumentFieldTypeCodeFilter]
 
     list_display = (
         'document_type', 'code', 'category', 'order', 'title', 'description', 'type', 'formula', 'value_regexp', 'user',
@@ -1273,14 +1309,14 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
 
     def add_view(self, request, form_url='', extra_context=None):
         extra_context = extra_context or dict()
-        extra_context['fields_by_doctype'] = self.get_fields_by_doctype()
+        extra_context['fields_by_doctype'] = DocumentField.get_fields_by_doctype()
         extra_context['categories_by_doctype'] = self.get_categories_by_doctype()
         return super().add_view(request, form_url, extra_context=extra_context)
 
     def change_view(self, request, object_id, form_url='', extra_context=None, **kwargs):
         extra_context = extra_context or dict()
         extra_context.update(kwargs)
-        extra_context['fields_by_doctype'] = self.get_fields_by_doctype()
+        extra_context['fields_by_doctype'] = DocumentField.get_fields_by_doctype()
         extra_context['categories_by_doctype'] = self.get_categories_by_doctype()
 
         self.is_clone_view = 'clone' in kwargs
@@ -1379,16 +1415,6 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         return response
 
     @classmethod
-    def get_fields_by_doctype(cls) -> Dict[str, List[str]]:
-        fields_by_doctype: Dict[str, List[str]] = {}
-        for pk, tp_id in DocumentField.objects.values_list('pk', 'document_type_id'):
-            if tp_id in fields_by_doctype:
-                fields_by_doctype[tp_id].append(pk)
-            else:
-                fields_by_doctype[tp_id] = [pk]
-        return fields_by_doctype
-
-    @classmethod
     def get_categories_by_doctype(cls) -> Dict[str, List[str]]:
         categories_by_doctype: Dict[str, List[str]] = {}
         for pk, obj_id in DocumentFieldCategory.objects.values_list('pk', 'document_type_id'):
@@ -1472,6 +1498,11 @@ class FieldDetectorListFilter(admin.SimpleListFilter):
 
 
 class DocumentFieldDetectorForm(forms.ModelForm):
+
+    class Meta:
+        model = DocumentFieldDetector
+        fields = '__all__'
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['detect_limit_count'].required = True
@@ -1484,6 +1515,7 @@ class DocumentFieldDetectorForm(forms.ModelForm):
                                    or self.data.get('include_regexps')
         field = self.cleaned_data.get('field') \
                 or self.data.get('field')
+        detected_value = self.cleaned_data.get('detected_value')
 
         errors = []
         if field:
@@ -1495,6 +1527,16 @@ class DocumentFieldDetectorForm(forms.ModelForm):
             errors = detector.check_model()
         for error_msg, exc in errors:
             self.add_error(error_msg, exc)
+
+        if field and field.type in [ChoiceField.type_code, MultiChoiceField.type_code] \
+                and field.allow_values_not_specified_in_choices is not True and detected_value not in field.choices:
+            # CS-4254: check that filed detectors has detected_values from choices only
+            # or allow_values_not_specified_in_choices is set to True
+            choices = field.choices.splitlines() if field.choices else []
+            self.add_error(
+                'detected_value',
+                f'Field detector must have "Display Value" from field choices: {choices}')
+
         return self.cleaned_data
 
     def clean_detect_limit_count(self):

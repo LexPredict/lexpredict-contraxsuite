@@ -50,8 +50,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -475,10 +475,11 @@ class DocumentClusterListView(PermissionRequiredMixin, apps.common.mixins.JqPagi
         user_document_ids = self.request.user.user_document_ids
         qs = qs.filter(documents__pk__in=user_document_ids)
 
-        # qs = qs.filter(documents__project_id__in=self.request.user.userprojectssavedfilter.projects.all())
-
         if 'document_pk' in self.request.GET:
             qs = qs.filter(documents__pk=self.request.GET['document_pk'])
+        else:
+            projects = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
+            qs = qs.filter(documents__project_id__in=projects)
 
         qs = qs.values("pk", "cluster_id", "name", "self_name",
                        "description", "cluster_by", "using", "created_date") \

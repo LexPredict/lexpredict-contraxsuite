@@ -52,8 +52,10 @@ from apps.common.sql_commons import fetch_int, escape_column_name, sum_list, SQL
     SQLInsertClause, join_clauses, format_clause, fetch_dicts
 from apps.common.streaming_utils import csv_gen, GeneratorList
 from apps.document import field_types
-from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, DocumentSystemField, FieldSpec, \
-    DOC_METADATA_DOCUMENT_CLASS_PROB, DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR
+from apps.document.constants import DOCUMENT_FIELD_CODE_MAX_LEN, DocumentGenericField, \
+    DocumentSystemField, FieldSpec, \
+    DOC_METADATA_DOCUMENT_CLASS_PROB, DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR, \
+    DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.document_class import DocumentClass
 from apps.document.models import DocumentType, Document, DocumentField, FieldAnnotation
 from apps.document.repository.document_field_repository import DocumentFieldRepository
@@ -85,8 +87,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -418,7 +420,7 @@ def _build_system_field_handlers(
             StringRawdbFieldHandler(
                 FIELD_CODE_DOCUMENT_CONTRACT_CLASS_VECTOR,
                 field_types.StringField.type_code,
-                "Contract Type Top 3",
+                "Probable Contract Types",
                 table_name,
             ),
         ])
@@ -870,7 +872,7 @@ def _fill_system_fields_to_python_values(document: Document,
                 document.metadata.get(DOC_METADATA_DOCUMENT_CLASS_PROB) or [0]
             contract_vector = document.metadata.get(DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR) or []
             field_to_python_values[FIELD_CODE_DOCUMENT_CONTRACT_CLASS_VECTOR] = \
-                ', '.join([f'{nm}: {prob:.2f}' for nm, prob in contract_vector[:3]])
+                ';'.join([f'{nm}: {round(prob*100)}%' for nm, prob in contract_vector[:3]])
 
         field_to_python_values[FIELD_CODE_DEFINITIONS] = '; '.join(
             DefinitionUsage.objects.filter(text_unit__document=document)
@@ -971,19 +973,8 @@ def _build_insert_clause(log: ProcessLogger,
                          column_document_id=FIELD_CODE_DOC_ID)
 
 
-def _delete_document_from_cache(cursor, document_id):
-    sql = '''DO $$
-DECLARE
-    tables CURSOR FOR
-        SELECT tablename
-        FROM pg_tables
-        WHERE tablename LIKE %s;
-BEGIN
-    FOR table_record IN tables LOOP
-        EXECUTE 'DELETE FROM ' || table_record.tablename || ' WHERE document_id = %s';
-    END LOOP;
-END$$;'''
-    cursor.execute(sql, [TABLE_NAME_PREFIX + '%', document_id])
+def _delete_document_from_cache(cursor, table_name: str, document_id: int):
+    cursor.execute(f'''DELETE FROM "{table_name}" WHERE document_id = %s;''', [document_id])
 
 
 def delete_document_from_cache(user: User, document: Document):
@@ -995,7 +986,8 @@ def delete_document_from_cache(user: User, document: Document):
                                                       document_id=document.pk,
                                                       table_name=table_name,
                                                       handlers=handlers)
-        _delete_document_from_cache(cursor, document.pk)
+        table_name = doc_fields_table_name(document_type.code)
+        _delete_document_from_cache(cursor, table_name, document.pk)
         log = ProcessLogger()
         fire_document_fields_changed(cache_document_fields,
                                      log=log,
@@ -1016,7 +1008,8 @@ def delete_documents_from_cache_by_ids(user: User, document_type_code: str, docu
                                                           document_id=document_id,
                                                           table_name=table_name,
                                                           handlers=handlers)
-            _delete_document_from_cache(cursor, document_id)
+            table_name = doc_fields_table_name(document_type.code)
+            _delete_document_from_cache(cursor, table_name, document_id)
             log = ProcessLogger()
             fire_document_fields_changed(cache_document_fields,
                                          log=log,
@@ -1091,7 +1084,14 @@ def _get_document_fields(document_id,
     for h in handlers:  # type: FieldHandler
         columns = h.get_client_column_descriptions()  # type: List[ColumnDesc]
         for c in columns:  # type: ColumnDesc
-            column_names.append(c.name)
+            col_name = c.name
+            if not col_name.endswith("_num_den"):
+                column_names.append(col_name)
+            else:
+                # Separate Numerator and Denominator fields
+                col_name = col_name.replace("_num_den", "")
+                column_names.append(col_name + "_num")
+                column_names.append(col_name + "_den")
 
     sql_columns = ', \n'.join(['"{column}"'.format(column=column) for column in column_names])
 
@@ -1143,8 +1143,8 @@ def cache_document_fields(log: ProcessLogger,
                           cache_user_fields: FieldSpec = True,
                           document_initial_load: bool = False,
                           changed_by_user: User = None,
-                          old_field_values: Dict[str, Any] = None,
-                          disable_notifications: bool = False):
+                          old_field_values: Optional[Dict[str, Any]] = None,
+                          disable_notifications: bool = False,):
     document_type = document.document_type
     table_name = doc_fields_table_name(document_type.code)
 
@@ -1246,6 +1246,8 @@ def cache_document_fields(log: ProcessLogger,
                                                           document_id=document.pk,
                                                           table_name=table_name,
                                                           handlers=handlers_before)
+            # document may have not been cached
+            document_fields_before = document_fields_before or {}
             if old_field_values:
                 document_fields_before.update(old_field_values)
             try:
@@ -1390,7 +1392,7 @@ def query_documents(document_type: DocumentType,
         return
 
     # permission check - restrict to allowed projects and documents
-    allowed_document_ids = []
+    allowed_document_ids = None
     if requester:
         projects = get_objects_for_user(requester, 'project.view_project', Project)
         if project_ids:
@@ -1405,6 +1407,7 @@ def query_documents(document_type: DocumentType,
         has_per_document_perm = not all([requester.has_perm('project.view_documents', p) for p in projects])
         # restrict to allowed documents only
         if has_per_document_perm:
+            allowed_document_ids = []
             for project in projects:
                 # doc ids for projects with access to all documents
                 if requester.has_perm('project.view_documents', project):
@@ -1517,7 +1520,22 @@ def query_documents(document_type: DocumentType,
                     row[n] = 'N/A'
         return row[:-1]
 
+    def generate_column_sql_specs_with_single_ratio_column(columns_list: List[str]) -> List[str]:
+        ratio_num_sufix = '_num'
+        ratio_den_sufix = '_den'
+        ratio_sufix = ratio_num_sufix + ratio_den_sufix
+        for index, item in enumerate(columns_list):
+            if item.endswith(f'{ratio_sufix}"'):
+                item_base_name = item.replace('"', '')[:-len(ratio_sufix)]
+                columns_list[index] = f'concat_ws(\'/\', cast({item_base_name}{ratio_num_sufix} ' \
+                                      f'as bigint), cast({item_base_name}{ratio_den_sufix} ' \
+                                      f'as bigint)) as {item}'
+        return columns_list
+
     if return_documents:
+        # Join ratio fields into 1 field
+        column_sql_specs = generate_column_sql_specs_with_single_ratio_column(column_sql_specs)
+
         sql_columns = ', \n'.join(column_sql_specs)
 
         correct_order_by = []
@@ -1529,13 +1547,13 @@ def query_documents(document_type: DocumentType,
                     continue
                 correct_order_by.append((column, direction))
 
-        order_by = correct_order_by if correct_order_by else [DEFAULT_ORDER_BY]
+        order_by = correct_order_by or [DEFAULT_ORDER_BY]
         # If field IS in hidden list, "=ANY" returns 't' (true), that
         # goes after 'f' (false). Thus hidden values always go after visible ones.
         order_by_clause = SQLClause('order by ' +
                                     ', '.join(
                                         [
-                                            '\'{column}\' = ANY({hid_columns}), "{column}" {direction} nulls {nulls_prio}'.format(
+                                            '\'{column}\' = ANY({hid_columns}), "{column}" {direction} nulls {nulls_prio}, "document_id"'.format(
                                                 column=column,
                                                 hid_columns=FIELD_CODE_HIDDEN_COLUMNS,
                                                 direction=direction.value,
@@ -1566,6 +1584,7 @@ def query_documents(document_type: DocumentType,
                                 reviewed_sql=count_reviewed_clause,
                                 columns=requested_columns,
                                 items_sql=data_clause,
+                                unfiltered_count=len(allowed_document_ids) if allowed_document_ids is not None else None,
                                 row_processor=process_hidden_columns if return_documents else None)
 
 
@@ -1577,6 +1596,7 @@ def set_documents_delete_status(document_ids: List[int],
         'document_type__code', flat=True).distinct().order_by()
     total_checked = 0
     untracked_ids = []
+    from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
 
     try:
         with connection.cursor() as cursor:
@@ -1602,6 +1622,33 @@ def set_documents_delete_status(document_ids: List[int],
                     doc_type_untracked_ids = [i[0] for i in cursor.fetchall()]
                     untracked_ids += doc_type_untracked_ids
 
+        if delete_pending:
+            from django.contrib.contenttypes.models import ContentType
+            from apps.common.models import Action
+            notifications = []
+            for doc in Document.all_objects.filter(id__in=document_ids):
+                try:
+                    notification_type = WebNotificationTypes.DOCUMENT_DELETED
+                    redirect_link = {
+                        'type': notification_type.redirect_link_type(),
+                        'params': {
+                            'project_type': 'batch_analysis'
+                                if doc.document_type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                                else 'contract_analysis',
+                            'project_id': doc.project_id
+                        },
+                    }
+                    message_data = {
+                        'document': doc.name,
+                        'project': doc.project.name,
+                    }
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = list(doc.project.available_assignees.values_list('id', flat=True))
+                    notifications.append((message_data, redirect_link, notification_type,
+                                          recipients))
+                except Document.DoesNotExist:
+                    pass
+            WebNotificationMessage.bulk_create_notification_messages(notifications)
     except Exception as e:
         er_msg = format_error_msg(document_ids, delete_pending, total_checked)
         logger = CsLogger.get_django_logger()

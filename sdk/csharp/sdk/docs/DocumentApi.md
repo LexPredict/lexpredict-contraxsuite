@@ -5425,7 +5425,7 @@ Name | Type | Description  | Notes
 
 ## DocumentDocumentsIdActionsGET
 
-> List&lt;Action&gt; DocumentDocumentsIdActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> DocumentsForUser DocumentDocumentsIdActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -5459,7 +5459,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.DocumentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                DocumentsForUser result = apiInstance.DocumentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -5486,7 +5486,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -8661,7 +8661,7 @@ Name | Type | Description  | Notes
 
 ## DocumentProjectProjectPkDocumentsIdActionsGET
 
-> List&lt;Action&gt; DocumentProjectProjectPkDocumentsIdActionsGET (string projectPk, string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> DocumentsForUser DocumentProjectProjectPkDocumentsIdActionsGET (string projectPk, string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -8696,7 +8696,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.DocumentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+                DocumentsForUser result = apiInstance.DocumentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -8724,7 +8724,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 

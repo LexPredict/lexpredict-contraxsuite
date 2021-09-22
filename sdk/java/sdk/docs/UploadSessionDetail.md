@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **documentType** | **String** |  |  [optional] [readonly]
 **progress** | **String** |  |  [optional] [readonly]
 **completed** | **Boolean** |  |  [optional]
+**isCanceling** | **String** |  |  [optional] [readonly]
 
 
 

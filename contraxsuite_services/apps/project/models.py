@@ -46,6 +46,7 @@ from guardian.shortcuts import assign_perm, get_content_type
 # Project imports
 from apps.common.fields import StringUUIDField
 from apps.common.models import get_default_status
+from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.models import DocumentType, LazyTimeStampedModel
 from apps.project import signals
 from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
@@ -55,8 +56,8 @@ from apps.users.permissions import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -779,9 +780,11 @@ class UploadSession(models.Model):
         self.save()
 
     def notify_upload_completed(self):
+        data = self.document_tasks_progress().values()
         ctx = {'session': self,
-               'data': self.document_tasks_progress().values(),
-               'completed_at': self.session_tasks.values('date_done').aggregate(m=Max('date_done'))['m']}
+               'data': data,
+               'completed_at': self.session_tasks.values('date_done').aggregate(
+                   m=Max('date_done'))['m']}
         to = [self.created_by.email]
         subject = 'ContraxSuite: Batch upload job is completed'
         text_message = render_to_string("email/notify_upload_completed.txt", ctx)
@@ -789,7 +792,8 @@ class UploadSession(models.Model):
         from apps.notifications.mail_server_config import MailServerConfig
         backend = MailServerConfig.make_connection_config()
         from apps.common.app_vars import SUPPORT_EMAIL
-        send_mail(subject=subject, message=text_message, from_email=SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL,
+        send_mail(subject=subject, message=text_message,
+                  from_email=SUPPORT_EMAIL.val() or settings.DEFAULT_FROM_EMAIL,
                   recipient_list=to, html_message=html_message, connection=backend)
         self.notified_upload_completed = True
         self.save()
@@ -806,6 +810,45 @@ def save_upload(sender, instance, created, **kwargs):
             instance.created_by = instance.request_user
             instance.save()
         post_save.connect(save_upload, sender=sender)
+
+
+@receiver(pre_save, sender=UploadSession)
+def add_web_notification(sender, instance, **kwargs):
+    """
+    Create Web Notification when all documents are already uploaded
+    """
+    try:
+        prev_instance_state = UploadSession.objects.get(pk=instance.pk)
+    except UploadSession.DoesNotExist:
+        prev_instance_state = None
+    if (prev_instance_state and prev_instance_state.completed != instance.completed
+            and instance.completed) or (not prev_instance_state and instance.completed):
+        from apps.notifications.models import WebNotificationTypes, WebNotificationMessage
+        data = instance.document_tasks_progress().values()
+        notifications = []
+        project = instance.project
+        if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT:
+            project_type = 'batch_analysis'
+        else:
+            project_type = 'contract_analysis'
+        notification_type = WebNotificationTypes.DOCUMENTS_UPLOADED
+        redirect_link = {
+            'type': notification_type.redirect_link_type(),
+            'params': {
+                'project_type': project_type,
+                'project_id': project.pk
+            },
+        }
+        message_data = {
+            'count': len(data),
+            'plural': WebNotificationTypes.get_plural(len(data)),
+            'project': project.name
+        }
+        message_data = notification_type.check_message_data(message_data)
+        recipients = set(instance.project.get_team().values_list('id', flat=True))
+        recipients.add(instance.created_by_id)
+        notifications.append((message_data, redirect_link, notification_type, list(recipients)))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
 
 
 class ProjectClustering(models.Model):

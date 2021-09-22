@@ -49,8 +49,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -202,6 +202,11 @@ def token_creator(token_model, user, serializer):
 def delete_token_on_inactivate_user(instance, **kwargs):
     if not instance.is_active:
         token_cache.try_delete(instance)
+    # revalidate users in all cases if user saved
+    # TODO: make it for a concrete user only; optimize token_cache.cache_users params
+    if not kwargs['update_fields'] == {'last_login'}:
+        users = {str(i.pk): i for i in User.objects.all()}
+        token_cache.cache_users(users)
 
 
 @receiver(signal=post_delete, sender=User)

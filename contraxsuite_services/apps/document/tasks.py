@@ -40,22 +40,21 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.states import FAILURE
 from celery.utils.log import get_task_logger
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import DurationField, ExpressionWrapper, F, Q
 from django.db.models.functions import Now
 from django.urls import reverse
-from django.utils.timezone import now
 from lexnlp.extract.en.contracts.detector import is_contract
 from psycopg2 import InterfaceError, OperationalError
+from text_extraction_system_api.pdf_coordinates.pdf_coords_common import find_page_by_smb_index
 
 import task_names
 from apps.analyze.ml.contract_type_classifier import ContractTypeClassifier
 from apps.celery import app
 from apps.common.collection_utils import chunks
 from apps.common.db_cache.db_cache import DbCache
-from apps.common.file_storage import get_file_storage
+from apps.common.file_storage import get_file_storage, ContraxsuiteFileStorage
 from apps.common.models import ReviewStatus, ExportFile
 from apps.common.sql_commons import escape_column_name
 from apps.document import signals
@@ -92,8 +91,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -913,14 +912,16 @@ class ImportDocuments(ExtendedTask):
 
         doc_id_status = [(id, True,) for id in importer.initially_loaded_docs]
         doc_id_status += [(id, False,) for id in importer.updated_docs]
+
         self.log_info(f'{len(importer.initially_loaded_docs)} docs are loaded, ' +
                       f'{len(importer.updated_docs)} docs are updated')
 
         self.log_info(f'Locating values for {len(doc_id_status)} documents')
         for doc_id, init_loaded in doc_id_status:
             from apps.extract.app_vars import STANDARD_LOCATORS
+            project_id = importer.document_project[doc_id]
             self.run_sub_tasks_class_based('Locate', Locate, [{
-                'locate': list(set(STANDARD_LOCATORS.val(project_id=project_obj.id) + ['term'])),
+                'locate': list(set(STANDARD_LOCATORS.val(project_id=project_id) + ['term'])),
                 'parse': ['sentence'],
                 'do_delete': False,
                 'user_id': task_user,
@@ -1124,7 +1125,7 @@ def process_documents_status_changed(task: ExtendedTask, doc_ids: List, new_stat
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3,
-             priority=9)
+             priority=7)
 def _process_documents_assignee_changed(task: ExtendedTask,
                                         doc_ids: List[int],
                                         new_assignee_id: int,
@@ -1142,7 +1143,7 @@ def _process_documents_assignee_changed(task: ExtendedTask,
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
              max_retries=3,
-             priority=9)
+             priority=7)
 def process_documents_assignee_changed(task: ExtendedTask, doc_ids: List, new_assignee_id: int,
                                        changed_by_user_id: int):
     task.run_sub_tasks('Process doc assignee change',
@@ -1164,7 +1165,8 @@ def process_document_changed(task: ExtendedTask,
                              generic_fields_changed: FieldSpec = True,
                              user_fields_changed: bool = True,
                              changed_by_user_id: int = None,
-                             cache_values: bool = True):
+                             cache_values: bool = True,
+                             old_field_values: Optional[Dict[str, Any]] = None):
     from apps.document.repository.document_field_repository import DocumentFieldRepository
 
     dfr = DocumentFieldRepository()
@@ -1180,7 +1182,8 @@ def process_document_changed(task: ExtendedTask,
                               cache_generic_fields=bool(generic_fields_changed),
                               cache_user_fields=bool(user_fields_changed),
                               cache_system_fields=bool(system_fields_changed),
-                              disable_notifications=True)
+                              disable_notifications=True,
+                              old_field_values=old_field_values)
     fire_document_changed(sender=task,
                           log=log,
                           document=doc,
@@ -1188,7 +1191,8 @@ def process_document_changed(task: ExtendedTask,
                           document_initial_load=False,
                           system_fields_changed=system_fields_changed,
                           generic_fields_changed=generic_fields_changed,
-                          user_fields_changed=user_fields_changed)
+                          user_fields_changed=user_fields_changed,
+                          old_field_values=old_field_values)
 
 
 def plan_process_document_changed(doc_id: int,
@@ -1196,10 +1200,11 @@ def plan_process_document_changed(doc_id: int,
                                   generic_fields_changed: FieldSpec = True,
                                   user_fields_changed: bool = True,
                                   changed_by_user_id: int = None,
-                                  cache_values: bool = True):
+                                  cache_values: bool = True,
+                                  old_field_values: Optional[Dict[str, Any]] = None):
     call_task_func(process_document_changed,
                    (doc_id, system_fields_changed, generic_fields_changed,
-                    user_fields_changed, changed_by_user_id, cache_values),
+                    user_fields_changed, changed_by_user_id, cache_values, old_field_values),
                    changed_by_user_id)
 
 
@@ -1414,8 +1419,40 @@ class ExportDocumentFiles(ExtendedTask):
         project = Project.objects.get(pk=project_id)
 
         file_storage = get_file_storage()
+
+        from apps.document.app_vars import MAX_DOC_SIZE_IN_MAIL_ARCHIVE
+        max_package_size = MAX_DOC_SIZE_IN_MAIL_ARCHIVE.val(project_id) * 1024 * 1024  # bytes
+        dock_pack: List[Document] = []
+        package_size = 0
+        file_refs: List[ExportFile] = []
+        for doc in documents:
+            doc_file_path = doc.get_source_path(mode='alt_for_pdf')
+            if not file_storage.document_exists(doc_file_path):
+                continue
+            dock_pack.append(doc)
+            package_size += doc.file_size
+            if package_size > max_package_size:
+                file_refs.append(self.build_file_ref(dock_pack, file_storage, project, user))
+                dock_pack = []
+                package_size = 0
+        if dock_pack:
+            file_refs.append(self.build_file_ref(dock_pack, file_storage, project, user))
+        if not file_refs:
+            self.log_info(f'There are no files in the project or all files are empty')
+            return
+        ExportFile.send_multi_file_email(
+            file_refs, user, log=CeleryTaskLogger(self),
+            subject=f'Document Files from project "{project.name}" Ready to Download')
+        self.log_info(f'Email sent to user {user.name}')
+
+    def build_file_ref(self,
+                       documents: List[Document],
+                       file_storage: ContraxsuiteFileStorage,
+                       project: Project,
+                       user: User) -> ExportFile:
         from apps.document.views import ExportDocumentsView
-        file_ref = ExportDocumentsView.get_file_ref(document_ids, [project_id], user)
+        document_ids = [d.pk for d in documents]
+        file_ref = ExportDocumentsView.get_file_ref(document_ids, [project.pk], user)
         mem_stream = io.BytesIO()
 
         with zipfile.ZipFile(mem_stream, 'w', zipfile.ZIP_DEFLATED) as zip_archive:
@@ -1440,17 +1477,19 @@ class ExportDocumentFiles(ExtendedTask):
         nbytes = mem_stream.tell()
         mem_stream.seek(0)
         file_storage.write_file(file_ref.file_path, mem_stream, nbytes)
+        file_ref.file_created = True
 
         self.log_info('File is saved to the storage')
         self.log_info(f'ExportDocuments - path is "{file_ref.file_path}"')
         self.log_info(f'ExportDocuments - absolute path is "{file_ref.get_link(abs_path=True)}"')
-        file_ref.file_created = True
         file_ref.stored_time = datetime.datetime.utcnow()
+        doc_in_comment = 5
+        doc_ids = ', '.join([f'{d.pk}' for d in documents[:doc_in_comment]])
+        if len(documents) > doc_in_comment:
+            doc_ids += f' + {len(documents) - doc_in_comment} more'
+        file_ref.comment = doc_ids
         file_ref.save()
-        file_ref.send_email(
-            log=CeleryTaskLogger(self),
-            subject=f'Document Files from project "{project.name}" Ready to Download')
-        self.log_info(f'Email sent to user {user.name}')
+        return file_ref
 
 
 @app.task(name=task_names.TASK_NAME_TRACK_FAILED_DOCUMENT_LOADS, bind=True)
@@ -1521,7 +1560,7 @@ def filter_sections_inside_tables(metadata: Dict[str, Any],
             if char_page >= 0 and pages[char_page][0] <= i < pages[char_page][1]:
                 pass
             else:
-                char_page = DocumentPDFRepresentation.find_page_by_smb_index(pages, i)
+                char_page = find_page_by_smb_index(pages, i)
             if char_page < 0:
                 break
 

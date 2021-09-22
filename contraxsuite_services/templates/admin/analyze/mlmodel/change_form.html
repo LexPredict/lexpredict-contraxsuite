@@ -230,7 +230,7 @@
       if (window.FormData)
         var formdata = new FormData(form[0]);
       var postData = formdata ? formdata : form.serialize();
-      console.log(postData);
+      postData['csrfmiddlewaretoken'] = jQuery("[name=csrfmiddlewaretoken]").val();
       $.ajax({
                url: url,
                type: 'POST',

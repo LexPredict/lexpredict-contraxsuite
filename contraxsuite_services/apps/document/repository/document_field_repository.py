@@ -37,14 +37,14 @@ from django.db.models import QuerySet, Q, Subquery, F
 from django.utils.timezone import now
 from rest_framework.exceptions import APIException, NotFound
 
-from apps.common.collection_utils import chunks
+from apps.common.collection_utils import chunks, group_by
 from apps.common.contraxsuite_urls import doc_editor_url
 from apps.common.log_utils import ProcessLogger
 from apps.common.script_utils import eval_script
 from apps.common.singleton import Singleton
 from apps.common.sql_commons import sql_query
 from apps.document.constants import ALL_DOCUMENT_FIELD_CODES, DOCUMENT_FIELD_CODE_ASSIGN_DATE
-from apps.document.field_types import TypedField, MultiValueField
+from apps.document.field_types import TypedField, MultiValueField, RelatedInfoField
 from apps.document.models import Document
 from apps.document.models import DocumentType, DocumentField
 from apps.document.models import FieldValue, FieldAnnotation, FieldAnnotationFalseMatch
@@ -56,8 +56,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -271,6 +271,9 @@ class DocumentFieldRepository:
             fields = fields.filter(code__in=field_codes_only)
 
         field_code_to_field = {f.code: f for f in fields}  # type: Dict[str, DocumentField]
+        if not field_code_to_field:
+            # no fields are requested
+            return {}
 
         res = {}
 
@@ -720,15 +723,19 @@ class DocumentFieldRepository:
                     .exclude(pk__in={a.pk for a in good_annotations if a.pk is not None}) \
                     .delete()
 
-            if good_annotations:
-                if isinstance(typed_field, MultiValueField):
-                    actual_ant_values = {a.pk: a.value for a in good_annotations}
-                    field_value = typed_field \
-                        .build_json_field_value_from_json_ant_values(list(actual_ant_values.values()))
-                else:
-                    field_value = good_annotations[0].value
-            else:
+            if isinstance(typed_field, RelatedInfoField) and field_value_dto.field_value is not None:
                 field_value = field_value_dto.field_value
+            else:
+                if good_annotations:
+                    if isinstance(typed_field, MultiValueField):
+                        actual_ant_values = {a.pk: a.value for a in good_annotations}
+                        field_value = typed_field \
+                            .build_json_field_value_from_json_ant_values(
+                                list(actual_ant_values.values()), document.pk, field.pk)
+                    else:
+                        field_value = good_annotations[0].value
+                else:
+                    field_value = field_value_dto.field_value
 
             field_value_model, fv_created = FieldValue.objects \
                 .get_or_create(document=document,
@@ -780,6 +787,9 @@ class DocumentFieldRepository:
         with transaction.atomic():
             with connection.cursor() as cursor:
                 doc = ant_model.document
+                if not doc.status.is_active:
+                    raise RuntimeError(f'Deleting field values for completed documents is not permitted.\n'
+                                       f'Document: {doc.name} (#{doc.pk})')
                 self.lock_document(cursor, doc.pk)  # will unlock on transaction end
 
                 field = ant_model.field
@@ -938,7 +948,8 @@ class DocumentFieldRepository:
                                                           removed_ant_value: Any,
                                                           modified_by: User):
         # this field value makes sense only if there was no FieldValue object in the DB
-        field_value_from_ants = typed_field.build_json_field_value_from_json_ant_values(current_ant_values)
+        field_value_from_ants = typed_field.build_json_field_value_from_json_ant_values(
+            current_ant_values, doc.pk, typed_field.field.pk)
         field_value_model, fv_created = FieldValue.objects \
             .get_or_create(document=doc,
                            field=typed_field.field,
@@ -953,7 +964,9 @@ class DocumentFieldRepository:
                 .update_field_value_by_changing_annotations(current_ant_values=current_ant_values,
                                                             old_field_value=field_value_model.value,
                                                             added_ant_value=added_ant_value,
-                                                            removed_ant_value=removed_ant_value)
+                                                            removed_ant_value=removed_ant_value,
+                                                            document_id=doc.pk,
+                                                            field_id=typed_field.field.pk)
             field_value_model.value = merged_field_value
             field_value_model.modified_by = modified_by
             field_value_model.save(update_fields={'value', 'modified_date', 'modified_by'})
@@ -963,8 +976,14 @@ class DocumentFieldRepository:
                            field: DocumentField,
                            field_value: Any,
                            user: User,
-                           on_existing_value: str = 'replace_all') -> FieldValue:
+                           on_existing_value: str = 'replace_all') -> Optional[FieldValue]:
         typed_field = TypedField.by(field)
+        if on_existing_value == 'clear_all':
+            FieldValue.objects.filter(
+                document=doc,
+                field=field).delete()
+            return None
+
         if typed_field.is_choice_field and typed_field.multi_value and on_existing_value == 'add_new':
             # combine old value with the new one
             existing_field_value: FieldValue = FieldValue.objects.filter(
@@ -1325,6 +1344,51 @@ class DocumentFieldRepository:
         false_ants.delete()
         ants.delete()
         vals.delete()
+
+    def get_annotations_assignees(self,
+                                  document_id: int,
+                                  field_codes_to_skip: List[int] = None,
+                                  field_codes_to_include: List[int] = None) -> \
+            List[Tuple[str, int, int, int]]:
+        """
+        We read existing annotation assignees to restore the assignments after the redetect task completes
+        :return: [('field_id', 'location_start', 'location_end', 'assignee_id',), ... ]
+        """
+        ants = FieldAnnotation.objects.filter(document_id=document_id)
+        if field_codes_to_include:
+            ants = ants.filter(field__code__in=field_codes_to_skip)
+        if field_codes_to_skip:
+            ants = ants.exclude(field__code__in=field_codes_to_skip)
+        return list(ants.values_list('field_id', 'location_start', 'location_end', 'assignee_id'))
+
+    def restore_annotations_assignees(
+            self,
+            document_id: int,
+            assignments: List[Tuple[str, int, int, int]]) -> None:
+        """
+        We find assignments by "assignments" arg (
+        [('field_id', 'location_start', 'location_end', 'assignee_id',), ... ])
+        and set them assignee_id
+        """
+        new_ants = FieldAnnotation.objects.filter(document_id=document_id).values_list(
+            'pk', 'field_id', 'location_start', 'location_end', 'assignee_id')
+        # { ('field_id', 'location_start', 'location_end'):
+        #         [ ('pk', 'field_id', 'location_start', 'location_end', 'assignee_id'), ... ], ... }
+        new_ant_by_key = group_by(new_ants, lambda a: (a[1], a[2], a[3]))
+        new_assigns: Dict[int, List[int]] = {}
+        for field_id, location_start, location_end, assignee_id in assignments:
+            new_ant_records = new_ant_by_key.get((field_id, location_start, location_end))
+            if not new_ant_records:
+                # annotations are not there anymore or point to new text fragments
+                continue
+            for record in new_ant_records:
+                if record[4] != assignee_id:
+                    new_assigns[assignee_id] = new_assigns.get(assignee_id, []) + [record[0]]
+
+        # apply changes
+        for assignee_id in new_assigns:
+            ant_ids = new_assigns[assignee_id]
+            FieldAnnotation.objects.filter(pk__in=ant_ids).update(assignee_id=assignee_id)
 
     def get_user_document_fields(self,
                                  document_type: DocumentType,

@@ -47,6 +47,7 @@ from django.views.static import serve
 from django.urls import re_path
 
 # Project imports
+from apps.common.app_vars import init_app_vars
 from apps.common.debug_utils import listen
 from apps.common.decorators import init_decorators
 from apps.common.file_storage import get_filebrowser_site
@@ -58,8 +59,8 @@ from swagger_view import get_swagger_view, get_openapi_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -217,3 +218,5 @@ if settings.DEBUG:
 if not migrating() and not settings.TEST_RUN_MODE:
     init_decorators()
     init_field_type_registry()
+    if settings.FORCE_INIT_APP_VARS:
+        init_app_vars()

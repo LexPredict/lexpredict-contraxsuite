@@ -31,17 +31,19 @@ from enum import Enum
 from typing import List, Optional, Any, Tuple, Dict, Set
 
 import dateparser
+from django.utils.timezone import get_current_timezone
 
 from apps.common.contraxsuite_urls import doc_editor_url
 from apps.common.sql_commons import escape_column_name, SQLClause, SQLInsertClause
+from apps.common.utils import parse_date
 from apps.document.field_types import StringField
 from apps.document.models import Document
 from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -70,6 +72,7 @@ class PgTypes(Enum):
 class ValueType(Enum):
     INTEGER = 'integer'
     FLOAT = 'float'
+    RATIO = 'ratio'
     STRING = 'string'
     DATE = 'date'
     DATETIME = 'datetime'
@@ -302,12 +305,60 @@ class FloatColumnDesc(ComparableColumnDesc):
         return float(filter_value)
 
 
+class RatioColumnDesc(ComparableColumnDesc):
+    def __init__(self, field_code: str, name: str, title: str) -> None:
+        super().__init__(field_code, name, title, ValueType.RATIO, None)
+
+    def convert_value_from_filter_to_db(self, filter_value: str) -> Any:
+        return float(filter_value)
+
+    def convert_ratio_value_from_filter_to_db(self, filter_value: str) -> Any:
+        try:
+            values = [float(i) if i else i for i in filter_value.split('/')]
+            if not 0 < len(values) < 3:
+                raise Exception('Too much or not enough parsed values')
+            return values
+        except Exception as e:
+            raise FilterValueParsingError('Unable to parse value: ' + filter_value, caused_by=e)
+
+    def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
+        if not self.name.endswith('_num_den'):
+            return super().get_where_sql_clause(field_filter)
+        output_num_column = self.name[:-8] + '_num'
+        output_den_column = self.name[:-8] + '_den'
+        if not field_filter:
+            return SQLClause(f'"{output_num_column}" is Null OR "{output_den_column}" is Null', [])
+        if field_filter == '*':
+            return SQLClause(f'"{output_num_column}" is not Null '
+                             f'OR "{output_den_column}" is not Null', [])
+
+        m = self.compare_re.match(field_filter)
+        if m:
+            operator = m.group('operator') or '='
+            values = self.convert_ratio_value_from_filter_to_db(m.group('value'))
+            if len(values) == 1:
+                return SQLClause(f'"{output_num_column}" {operator} %s OR "{output_den_column}" '
+                                 f'{operator} %s', [values[0], values[0]])
+            if values[0] and values[1]:
+                return SQLClause(f'"{output_num_column}" {operator} %s AND "{output_den_column}" '
+                                 f'{operator} %s', [values[0], values[1]])
+            if values[0]:
+                return SQLClause(f'"{output_num_column}" {operator} %s', [values[0]])
+            if values[1]:
+                return SQLClause(f'"{output_den_column}" {operator} %s', [values[1]])
+
+        raise FilterSyntaxError('Filter syntax error: ' + field_filter)
+
+    def get_field_filter_syntax_hint(self) -> List[Tuple[str, str]]:
+        return super().get_field_filter_syntax_hint()[:-1]
+
+
 class DateColumnDesc(ComparableColumnDesc):
     def __init__(self, field_code: str, name: str, title: str) -> None:
         super().__init__(field_code, name, title, ValueType.DATE, None)
 
     def convert_value_from_filter_to_db(self, filter_value: str) -> Any:
-        return dateparser.parse(str(filter_value)).date()
+        return parse_date(str(filter_value)).date()
 
 
 class DateTimeColumnDesc(ComparableColumnDesc):
@@ -317,7 +368,7 @@ class DateTimeColumnDesc(ComparableColumnDesc):
         super().__init__(field_code, name, title, ValueType.DATETIME, None)
 
     def convert_value_from_filter_to_db(self, filter_value: str) -> Any:
-        return dateparser.parse(str(filter_value))
+        return parse_date(str(filter_value))
 
     def get_where_sql_clause(self, field_filter: str) -> Optional[SQLClause]:
         # make range from field_filter if it's a date
@@ -328,7 +379,7 @@ class DateTimeColumnDesc(ComparableColumnDesc):
             return super().get_where_sql_clause(field_filter)
 
         try:
-            date_part = dateparser.parse(str(field_filter)).date()
+            date_part = parse_date(str(field_filter)).date()
         except:
             return super().get_where_sql_clause(field_filter)
         next_date = date_part + datetime.timedelta(days=1)
@@ -624,7 +675,7 @@ class DateFieldHandler(ComparableRawdbFieldHandler):
                  default_value=None,
                  field_column_name_base: str = None) -> None:
         super().__init__(field_code, field_type, field_title, table_name,
-                         dateparser.parse(default_value) if default_value else None,
+                         parse_date(default_value) if default_value else None,
                          field_column_name_base)
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
@@ -648,7 +699,7 @@ class DateTimeFieldHandler(ComparableRawdbFieldHandler):
                  default_value=None,
                  field_column_name_base: str = None) -> None:
         super().__init__(field_code, field_type, field_title, table_name,
-                         dateparser.parse(default_value) if default_value else None,
+                         parse_date(default_value) if default_value else None,
                          field_column_name_base)
 
     def python_value_to_indexed_field_value(self, python_value) -> Any:
@@ -725,9 +776,8 @@ class RatioRawdbFieldHandler(RawdbFieldHandler):
         self.denominator = escape_column_name(self.field_column_name_base + '_den')
 
     def get_client_column_descriptions(self) -> List[ColumnDesc]:
-        return [
-            FloatColumnDesc(self.field_code, self.numerator, self.field_title + ': Numerator'),
-            FloatColumnDesc(self.field_code, self.denominator, self.field_title + ': Denominator')]
+        return [RatioColumnDesc(self.field_code, f'{self.field_column_name_base}_num_den',
+                                self.field_title + ': Numerator/Denominator')]
 
     def get_pg_column_definitions(self) -> Dict[str, PgTypes]:
         return {

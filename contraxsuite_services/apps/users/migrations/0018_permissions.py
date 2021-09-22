@@ -110,6 +110,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0002_remove_content_type_name'),
+        ('common', '0019_menugroup_menuitem'),
         ('auth', '0011_update_proxy_permissions'),
         ('document', '0218_permissions'),
         ('project', '0043_permissions'),

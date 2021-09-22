@@ -26,8 +26,7 @@
 
 import time
 from urllib.parse import quote
-from collections import defaultdict
-from typing import Dict, List, Set, Generator, Any
+from typing import Dict, List, Generator, Any
 
 import ast
 import pandas as pd
@@ -36,7 +35,6 @@ from allauth.socialaccount.models import SocialApp
 
 from django.conf.urls import url
 from django.db import transaction
-from django.db.models import Q, F
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -47,23 +45,20 @@ from apps.common.errors import APIRequestError
 from apps.common.schemas import ObjectResponseSchema
 from apps.common.url_utils import as_bool, as_int, as_int_list, as_str_list
 from apps.document.models import Document, DocumentType
-from apps.extract.models import TermTag, CompanyTypeTag
 from apps.project.models import Project
-from apps.rawdb.constants import FT_COMMON_FILTER, FT_USER_DOC_GRID_CONFIG, \
-    FIELD_CODES_SHOW_BY_DEFAULT_NON_GENERIC, FIELD_CODES_SHOW_BY_DEFAULT_GENERIC, \
-    FIELD_CODES_HIDE_FROM_CONFIG_API, FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODES_HIDE_BY_DEFAULT
-from apps.rawdb.field_value_tables import get_columns, get_annotation_columns, \
+from apps.rawdb.constants import FT_USER_DOC_GRID_CONFIG, \
+    FIELD_CODE_ANNOTATION_SUFFIX
+from apps.rawdb.field_value_tables import get_annotation_columns, \
     query_documents, DocumentQueryResults
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb.query_parsing import parse_order_by
-from apps.rawdb.rawdb.rawdb_field_handlers import ColumnDesc
 from apps.rawdb.rawdb.system_rawdb_config import SystemRawDBConfig
 from apps.rawdb.schemas import DocumentsAPIViewSchema, SocialAccountsAPISchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -267,7 +262,8 @@ class DocumentsAPIView(APIView):
                             df['assignee_id'] = df['assignee_id'].astype(int)
                             query_results.assignees = df.to_dict('records')
 
-            query_results.unfiltered_count = total_documents_of_type
+            if query_results.unfiltered_count is None:
+                query_results.unfiltered_count = total_documents_of_type
 
             if fmt in {self.FMT_XLSX, self.FMT_CSV} and not return_data:
                 raise APIRequestError('Export to csv/xlsx requested with return_data=false')

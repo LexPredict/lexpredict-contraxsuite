@@ -22,38 +22,22 @@
     provider, processing documents on the fly in a web application,
     or shipping ContraxSuite within a closed source product.
 """
+# -*- coding: utf-8 -*-
+
 from tests.django_test_case import *
 
 from apps.document.pdf_coordinates.text_coord_map import TextCoordMap
 # -*- coding: utf-8 -*-
 
-
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class TestCoordsLocation(TestCase):
-
-    def test_get_index_by_coords(self):
-        from apps.document.models import DocumentPDFRepresentation
-        pages = [(0, 1192), (1192, 2900), (2900, 5819)]
-        self.assertEqual(0, DocumentPDFRepresentation.find_page_by_smb_index(pages, 0))
-        self.assertEqual(0, DocumentPDFRepresentation.find_page_by_smb_index(pages, 1))
-        self.assertEqual(1, DocumentPDFRepresentation.find_page_by_smb_index(pages, 1192))
-        self.assertEqual(1, DocumentPDFRepresentation.find_page_by_smb_index(pages, 1700))
-        self.assertEqual(-1, DocumentPDFRepresentation.find_page_by_smb_index(pages, 5819))
-
-        pages = [(i * 100, i * 100 + 100) for i in range(40)]
-        self.assertEqual(0, DocumentPDFRepresentation.find_page_by_smb_index(pages, 0))
-        self.assertEqual(0, DocumentPDFRepresentation.find_page_by_smb_index(pages, 10))
-        self.assertEqual(-1, DocumentPDFRepresentation.find_page_by_smb_index(pages, pages[-1][1]))
-        self.assertEqual(3, DocumentPDFRepresentation.find_page_by_smb_index(pages, 300))
-        self.assertEqual(3, DocumentPDFRepresentation.find_page_by_smb_index(pages, 399))
-        self.assertEqual(4, DocumentPDFRepresentation.find_page_by_smb_index(pages, 400))
 
     def test_filter_sects_by_tables(self):
         from apps.document.models import DocumentTable

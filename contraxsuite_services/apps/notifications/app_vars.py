@@ -29,8 +29,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,6 +68,18 @@ APP_VAR_EMAIL_BACKEND = AppVar.set(
 
 APP_VAR_SKIP_MAIL_ERRORS = AppVar.set('Mail server', 'skip_mail_errors', False,
                                       "Don't stop execution on mail sending errors")
+
+NON_TRACKED_LINK_ATTR = AppVar.set(
+    'Mail server',
+    'non_tracked_link_attr',
+    'clicktracking=off',
+    '''Custom attribute used to prevent email's HTML hyperlinks from being tracked and "protected". 
+    Specific attribute value depends on mail sender:
+    <ul>
+      <li>Sendgrid: <code>clicktracking=off</code></li>
+    </ul>
+    ''',
+    system_only=True)
 
 
 def get_email_backend_class() -> str:

@@ -19,7 +19,7 @@ export DOCKER_ELASTALERT_IMAGE=bitsensor/elastalert:3.0.0-beta.1
 export DOCKER_KIBANA_IMAGE=lexpredict/lexpredict-kibana:7.5.0
 export DOCKER_FILEBEAT_IMAGE=docker.elastic.co/beats/filebeat-oss:7.5.2
 export DOCKER_METRICBEAT_IMAGE=docker.elastic.co/beats/metricbeat-oss:7.5.2
-export DOCKER_RABBITMQ_IMAGE=rabbitmq:3-management
+export DOCKER_RABBITMQ_IMAGE=rabbitmq:3.8-management
 export DOCKER_PGBOUNCER_IMAGE=edoburu/pgbouncer:1.15.0
 
 export MOCK_IMANAGE_REPLICAS=0
@@ -273,6 +273,8 @@ export PROXY_NO_PROXY=localhost,127.0.0.1,contrax-webdav,contrax-minio,contrax-m
 
 # set to non-empty string to enable aioredis debug logging
 export AIOREDIS_DEBUG=
+
+export MODEL_S3_SSL_VERIFY=True
 
 export DEPLOY_BACKEND_DEV=false
 

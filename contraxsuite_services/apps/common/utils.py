@@ -35,9 +35,11 @@ import uuid
 from typing import Union, Optional, Dict, Any
 
 # Third-party imports
+import dateparser
 import django_excel as excel
 import pandas as pd
 import pdfkit as pdf
+from django.utils.timezone import get_current_timezone
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
@@ -60,8 +62,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -556,3 +558,54 @@ def get_free_mem() -> str:
     if len(values) > 3:
         return f'Total={values[0]} MB. Used={values[1]} MB. Free={values[2]} MB.'
     return data
+
+
+def unpack_nested_dict(data: dict, to_level: Union[int, None] = 1, level_sep: str = '__',
+                       level: int = 1, parent: str = None):
+    """
+    Unpack nested dict
+    :param data: dict to unpack
+    :param parent: inner parent counter
+    :param to_level: max recursion level to unpack else None to unpack all
+    :param level: inner level counter
+    :param level_sep: str to join level names level1__level2__level3
+    :return:
+    Example:
+    a = [{'a':1, 'b': 'aaa', 'c': {'c1': 1, 'c2': {'cc1':1, 'cc2':2}}}, {'a':3, 'b': 'aaa111', 'c': {'c1': 2, 'c2': 'fff'}}]
+    In: [dict(unpack_nested_dict(i, to_level=None)) for i in a]
+    Out: [{'a': 1, 'b': 'aaa', 'c__c1': 1, 'c__c2__cc1': 1, 'c__c2__cc2': 2},
+          {'a': 3, 'b': 'aaa111', 'c__c1': 2, 'c__c2': 'fff'}]
+    """
+    for k, v in data.items():
+        k = k if parent is None else f'{parent}{level_sep}{k}'
+        if isinstance(v, dict) and (to_level is None or level <= to_level):
+            yield from unpack_nested_dict(v, parent=k, to_level=to_level, level=level + 1, level_sep=level_sep)
+        else:
+            yield k, v
+
+
+def unpack_dict_columns(data: dict, unpack_columns=None, unpack_columns_recursive=None, to_level=None, level_sep='__'):
+    """
+    Unpack nested dict if columns to unpack provided
+    :param data: dict
+    :param unpack_columns: unpack columns to 1st level only (non-recursive)
+    :param unpack_columns_recursive: unpack columns recursively
+    :param to_level: max recursion level to unpack else None to unpack all
+    :param level_sep: str to join level names level1__level2__level3
+    :return:
+    """
+    unpack_columns = unpack_columns or []
+    unpack_columns_recursive = unpack_columns_recursive or []
+    for k, v in data.items():
+        if (k not in unpack_columns and k not in unpack_columns_recursive) or not isinstance(v, dict):
+            yield k, v
+        else:
+            to_level = to_level if k in unpack_columns_recursive else 1
+            yield from unpack_nested_dict(v, parent=k, to_level=to_level, level=2, level_sep=level_sep)
+
+
+def parse_date(date_str: str) -> Optional[datetime.datetime]:
+    if not date_str:
+        return None
+    return dateparser.parse(date_str, settings={
+        'TIMEZONE': get_current_timezone().zone})

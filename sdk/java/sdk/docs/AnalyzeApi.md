@@ -594,7 +594,7 @@ Name | Type | Description  | Notes
 
 <a name="analyzeProjectDocumentSimilarityListGET"></a>
 # **analyzeProjectDocumentSimilarityListGET**
-> List&lt;ProjectDocumentSimilarity&gt; analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters)
+> ProjectDocumentSimilarityResponse analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters)
 
 
 
@@ -627,7 +627,7 @@ public class Example {
     Integer documentId = 56; // Integer | run id or document id required
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<ProjectDocumentSimilarity> result = apiInstance.analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+      ProjectDocumentSimilarityResponse result = apiInstance.analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling AnalyzeApi#analyzeProjectDocumentSimilarityListGET");
@@ -651,7 +651,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+[**ProjectDocumentSimilarityResponse**](ProjectDocumentSimilarityResponse.md)
 
 ### Authorization
 

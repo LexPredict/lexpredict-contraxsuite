@@ -1,0 +1,13 @@
+# Default values for ceph_cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+rookVersion: v1.5.11
+# ceph and rook image version
+cephVersion: v15.2.11
+
+# Monitoring pods
+mon:
+  allowMultiplePerNode: true
+
+# General size of starage
+storageSize: 240Gi

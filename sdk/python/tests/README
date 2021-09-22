@@ -1,0 +1,33 @@
+# local_config.py should be like this:
+
+HOST_NAME = 'feature.contraxsuite.com'
+ADMIN_USER_NAME = 'Administrator'
+ADMIN_USER_PASSWORD = 'Administrator'
+
+# Assume you're in lexpredict-contraxsuite-services/contraxsuite_services folder
+
+# generate openapi schema:
+1. start local Contraxsuite (daphne)
+2. replace username/password and output folder path in the command below
+3. cd .. && python3 manage.py get_openapi_schema --username=Administrator --password=Administrator --output_folder=sdk --file_name=openapi_schema.json
+
+# So Assume you're in lexpredict-contraxsuite-services folder
+
+# generate SDK:
+export JAVA_OPTS="-Dlog.level=error"
+openapi-generator-cli generate -g python -o sdk/python/sdk -i sdk/openapi_schema.json --skip-validate-spec
+
+# RUN TESTS:
+
+# CASE#1: copy openapi_client/ folder from sdk/ into tests/ folder (openapi_client folder is in .gitignore)
+# (works for tests from cmd line and pycharm both, for tests in pycharm set SOURCE dir to "tests")
+cp sdk/python/sdk/openapi_client sdk/python/tests
+python3 -W ignore -m unittest discover -s sdk/python/tests -t sdk/python/tests -v
+
+# CASE#2: create venv
+# (works for tests from cmd line and pycharm both, for tests in pycharm set SOURCE dir to "tests")
+virtualenv venv -p python3
+source venv/bin/activate
+pip install sdk/python/sdk
+# configure venv in pycharm if needed
+python3 -W ignore -m unittest discover -s sdk/python/tests -t sdk/python/tests -v

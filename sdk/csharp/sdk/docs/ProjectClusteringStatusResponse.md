@@ -7,6 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **DocumentClusters** | **List&lt;Object&gt;** |  | 
 **ProjectClustersDocumentsCount** | **int** |  | 
+**ProjectClustersActionsCount** | **int** |  | 
 **Status** | **string** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models)

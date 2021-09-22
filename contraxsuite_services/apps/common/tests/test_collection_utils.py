@@ -32,14 +32,14 @@ import time
 from collections import Iterable
 from typing import List, Iterator, Generator
 
-from apps.common.collection_utils import chunks, group_by
+from apps.common.collection_utils import chunks, group_by, sequence_chunks
 from apps.common.decorators import collect_stats
 from apps.common.models import MethodStats
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -125,6 +125,13 @@ class CollectionUtilsTest(TestCase):
         self.assertEqual(1, len(d['b']))
         self.assertTrue('3' in ''.join([str(i[1]) for i in d['a']]))
         self.assertTrue('2' not in ''.join([str(i[1]) for i in d['a']]))
+
+    def test_sequence_chunks(self):
+        lst = list(range(95))
+        uber_list = [c for c in sequence_chunks(lst, 10)]
+        self.assertEqual(10, len(uber_list))
+        self.assertEqual(10, len(uber_list[0]))
+        self.assertEqual(5, len(uber_list[-1]))
 
 
 @collect_stats(name='My Test for fn', comment='some long comment', log_sql=False)

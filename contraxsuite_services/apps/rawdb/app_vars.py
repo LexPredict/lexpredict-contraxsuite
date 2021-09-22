@@ -29,10 +29,15 @@ from apps.rawdb.constants import APP_VAR_DISABLE_RAW_DB_CACHING_NAME
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+def validate_priority(value):
+    if value < 0 or value > 9:
+        raise RuntimeError('Value should belong to [0..9]')
 
 
 APP_VAR_DISABLE_RAW_DB_CACHING = AppVar.set(
@@ -52,4 +57,5 @@ APP_VAR_RAW_DB_REINDEX_PRIORITY = AppVar.set(
     'Reindex Celery task priority from 1 (lowest) to 9 '
     '(highest). 0 means default priority (5). Setting priority above 7 is '
     'not recommended for the Reindex task, because the task would be routed '
-    'to a separate high-priority worker.')
+    'to a separate high-priority worker.',
+    validator=validate_priority)

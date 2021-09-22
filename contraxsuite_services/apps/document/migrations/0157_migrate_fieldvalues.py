@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Dict, Tuple
 
 import dateparser
 from django.db import migrations, transaction
+from django.utils.timezone import get_current_timezone
 
 
 class FieldValuePopulator:
@@ -87,9 +88,11 @@ class FieldValuePopulator:
         elif field_type == 'boolean':
             return bool(dfv_db_value)
         elif field_type == 'datetime':
-            return dateparser.parse(str(dfv_db_value)).isoformat() if dfv_db_value else None
+            return dateparser.parse(str(dfv_db_value), settings={
+                'TIMEZONE': get_current_timezone().zone}).isoformat() if dfv_db_value else None
         elif field_type in ('date', 'date_recurring'):
-            return dateparser.parse(str(dfv_db_value)).date().isoformat() if dfv_db_value else None
+            return dateparser.parse(str(dfv_db_value), settings={
+                'TIMEZONE': get_current_timezone().zone}).date().isoformat() if dfv_db_value else None
         elif field_type == 'float':
             return self.to_float(dfv_db_value) if dfv_db_value is not None else None
         elif field_type == 'int':

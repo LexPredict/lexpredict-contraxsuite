@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **documentIds** | **List&lt;Integer&gt;** |  |  [optional]
 **noDocumentIds** | **List&lt;Integer&gt;** |  |  [optional]
 **fieldsData** | **Object** |  | 
+**onExistingValue** | **String** |  |  [optional]
 
 
 

@@ -36,8 +36,8 @@ from apps.extract.models import GeoEntity, GeoAlias, Term, Court, TermTag
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -216,12 +216,14 @@ def load_terms(df: DataFrame,
             for tag in extra_tags:
                 term.tags.remove(tag)
 
+        new_term_tags = new_term_tags
         for tag in new_term_tags:
             tag_obj = tag_by_name.get(tag)
             if not tag_obj:
                 tag_obj = TermTag()
                 tag_obj.name = tag
                 tag_obj.save()
+                tag_by_name[tag] = tag_obj
             term.tags.add(tag_obj)
         term.save()
     # TODO: CS-4577: cache "global" term stems step - should be cached here via model manager ?

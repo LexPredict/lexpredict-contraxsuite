@@ -1,5 +1,4 @@
-from django.db import migrations
-
+from django.db import migrations, connection
 
 class Migration(migrations.Migration):
 
@@ -15,5 +14,16 @@ class Migration(migrations.Migration):
         migrations.RunSQL('''UPDATE common_appvar SET value = 'false'::jsonb WHERE name = 'force_rewrite_doc' AND value = 'true'::jsonb;'''),
         migrations.RunSQL('''UPDATE common_appvar SET value = 'true'::jsonb WHERE name = 'force_rewrite_doc' AND value = '"duplicates"'::jsonb;'''),
         # Rename appvar
-        migrations.RunSQL('''UPDATE common_appvar SET name = 'allow_duplicate_documents' WHERE name = 'force_rewrite_doc';'''),
+        migrations.RunSQL('''        
+            DO
+            $do$
+            BEGIN
+               IF NOT EXISTS (SELECT * FROM common_appvar WHERE name='allow_duplicate_documents') THEN
+                  UPDATE common_appvar SET name = 'allow_duplicate_documents' WHERE name = 'force_rewrite_doc';
+               ELSE
+                  DELETE FROM common_appvar WHERE name = 'force_rewrite_doc';
+               END IF;
+            END
+            $do$        
+        '''),
     ]

@@ -18,6 +18,8 @@ Name | Type | Description | Notes
 **targetEntity** | [**TargetEntityEnum**](#TargetEntityEnum) | The model class | 
 **language** | **String** | Language (ISO 693-1) code, may be omitted | 
 **textUnitType** | [**TextUnitTypeEnum**](#TextUnitTypeEnum) | Text unit type: sentence or paragraph |  [optional]
+**codebaseVersion** | **String** | ContraxSuite version in which the model was created |  [optional]
+**userModified** | **Boolean** | User modified models are not automatically updated |  [optional]
 **project** | **Integer** | Optional project reference |  [optional]
 
 
@@ -38,6 +40,7 @@ Name | Value
 TRANSFORMER | &quot;transformer&quot;
 CLASSIFIER | &quot;classifier&quot;
 CONTRACT_TYPE_CLASSIFIER | &quot;contract_type_classifier&quot;
+IS_CONTRACT | &quot;is_contract&quot;
 
 
 

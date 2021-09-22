@@ -39,8 +39,8 @@ from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, \
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -97,6 +97,7 @@ class DocumentSimilarityEngine:
         self.log_routine = log_routine
         self.feature_extractor = self.get_feature_extractor(feature_source)
         self.extra_kwargs = extra_kwargs
+        self.extra_kwargs['run_id'] = run_id
 
     def check_arguments(self):
         if self.distance_type not in _METRICS:

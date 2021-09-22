@@ -1,10 +1,9 @@
+
 provider "azurerm" {
-  version = "=2.36.0"
   features {}
 }
 
 provider "helm" {
-  version = "2.0.2"
   kubernetes {
     config_path = "~/.kube/config"
   }
@@ -50,7 +49,7 @@ module "aks_cluster" {
   environment         = var.environment
   vnet_subnet_id      = module.vnet.vnet_subnets[0]
   aks_dns_prefix      = var.aks_dns_prefix
-  kubernetes_version  = "1.19.7"
+  kubernetes_version  = var.k8s_version
   resource_group_name = azurerm_resource_group.default.name
   location            = azurerm_resource_group.default.location
   # Master Node Pool
@@ -106,21 +105,20 @@ module "postgresql" {
     backslash_quote = "on",
   }
 }
-
+# Install additional k8s resources required for app
 module "helm_charts" {
-  source     = "../modules/helm"
-  resource_group_name = azurerm_resource_group.default.name
-  install_cert_manager = var.helm_install_cert_manager
-  install_ingress = var.helm_install_ingress
-  install_keda = var.helm_install_keda
-  install_monitoring = var.helm_install_monitoring
-  install_rook_ceph = var.helm_install_rook_ceph
-  rook_ceph_values_file = "./rook-ceph-values.yaml"
+  source                = "../modules/helm"
+  resource_group_name   = azurerm_resource_group.default.name
+  install_cert_manager  = var.helm_install_cert_manager
+  install_ingress_nginx = var.helm_install_ingress
+  install_keda          = var.helm_install_keda
+  install_monitoring    = var.helm_install_monitoring
+  grafana_domain        = var.main_domain
+  install_rook_ceph     = var.helm_install_rook_ceph
+  # Ceph Cluster Section
+  # NOTE ceph_cluster_deploy should be false until rook ceph succesfully installed 
+  ceph_cluster_deploy = var.ceph_cluster_deploy
+  rook_version        = var.ceph_cluster_rook_version
+  ceph_version        = var.ceph_cluster_ceph_version
   #depends_on = [module.aks_cluster]
-}
-#TODO: Provoder is no well-supported need to rewrite to local exec
-module "ceph_storage_cluster" {
-  source     = "../modules/ceph_storage_cluster"
-  deploy_ceph_cluster = true
-  enable_rook_toolkit = true
 }

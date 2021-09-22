@@ -35,20 +35,23 @@ from apps.common.singleton import Singleton
 from apps.common.sql_commons import escape_column_name
 from apps.common.utils import dictfetchone
 from apps.document.constants import DocumentGenericField, FieldSpec
-from apps.document.models import Document
+from apps.document.models import Document, DocumentType
 from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_ASSIGNEE_ID, \
     FIELD_CODE_ASSIGNEE_NAME, FIELD_CODE_ASSIGN_DATE, FIELD_CODE_STATUS_NAME, TABLE_NAME_PREFIX
 from apps.rawdb.repository.base_raw_db_repository import BaseRawDbRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 # TODO: check exclude_hidden_always_fields in build_field_handlers()
+from apps.users.models import User
+
+
 @Singleton
 class RawDbRepository(BaseRawDbRepository):
     DEFAULT_FIELD_CODE_FILTER = {FIELD_CODE_DOC_ID}
@@ -65,17 +68,31 @@ class RawDbRepository(BaseRawDbRepository):
                       FIELD_CODE_ASSIGN_DATE: now(),
                       FIELD_CODE_ASSIGNEE_NAME: assignee_name}
 
-        return self.update_rawdb_column_values(doc_ids, col_values)
+        # actions and web notifications
+        docs_queryset = Document.all_objects.filter(pk__in=doc_ids).only('id', 'assignee')
+        prev_assignees = {i.id: i.assignee for i in docs_queryset}
+        new_assignee = User.objects.get(id=assignee_id) if assignee_id else None
+        new_assignees = {i['id']: new_assignee for i in docs_queryset.values('id')}
+        Document.update_assignee_actions(docs_queryset,
+                                         prev_assignees=prev_assignees,
+                                         new_assignees=new_assignees)
+
+        updated_documents_count = self.update_rawdb_column_values(doc_ids, col_values)
+        return updated_documents_count
 
     def update_documents_status(self,
                                 doc_ids: Iterable[int],
-                                status_id: int) -> int:
+                                status_id: int,
+                                changed_by_user: User = None) -> int:
         if not doc_ids:
             return 0
         from apps.common.models import ReviewStatus
         status = ReviewStatus.objects.get(pk=status_id)  # type: ReviewStatus
         col_values = {FIELD_CODE_STATUS_NAME: status.name}
-        return self.update_rawdb_column_values(doc_ids, col_values)
+        updated_documents_count = self.update_rawdb_column_values(doc_ids, col_values)
+        Document.update_status_actions(Document.all_objects.filter(pk__in=doc_ids),
+                                       request_user=changed_by_user)
+        return updated_documents_count
 
     def update_rawdb_column_values(self,
                                    doc_ids: Iterable[int],
@@ -144,6 +161,16 @@ class RawDbRepository(BaseRawDbRepository):
                 values['max_currency_amount'] = max_currency['amount'] if max_currency else None
 
         return values
+
+    def remove_user_references(self, assignee_id: int):
+        # set assignee_id and assignee_name to null for all documents where
+        # assignee_id equals to passed one
+        with connection.cursor() as cursor:
+            for doc_type in DocumentType.objects.all().values_list('code', flat=True):
+                table_name = doc_fields_table_name(doc_type)
+                query = f'''UPDATE "{table_name}" SET "{FIELD_CODE_ASSIGNEE_ID}" = null,
+                    "{FIELD_CODE_ASSIGNEE_NAME}" = null WHERE "{FIELD_CODE_ASSIGNEE_ID}" = %s;'''
+                cursor.execute(query, [assignee_id])
 
 
 def doc_fields_table_name(document_type_code: str) -> str:

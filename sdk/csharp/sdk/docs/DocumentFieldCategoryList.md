@@ -6,7 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Id** | **int** |  | [optional] [readonly] 
-**DocumentType** | **string** |  | [optional] 
+**DocumentType** | **string** |  | 
 **DocumentTypeTitle** | **string** |  | 
 **Name** | **string** |  | 
 **Order** | **int** |  | [optional] 

@@ -29,15 +29,27 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+def validate_group(user_group: str):
+    from django.contrib.auth.models import Group
+    if Group.objects.filter(name=user_group).exists():
+        return
+    group_names = list(Group.objects.values_list('name', flat=True))
+    group_names.sort()
+    group_names_str = ', '.join(group_names)
+    raise RuntimeError(
+        f'The group named "{user_group}" was not found among the following groups: {group_names_str}')
+
+
 DEFAULT_USER_GROUP = AppVar.set(
     'User', 'default_user_group', 'Reviewer',
-    '''The group name the new user is added to by default''')
+    '''The group name the new user is added to by default''',
+    validator=validate_group)
 
 ALLOWED_EMAIL_DOMAINS = AppVar.set(
     'User', 'allowed_email_domains', '*',

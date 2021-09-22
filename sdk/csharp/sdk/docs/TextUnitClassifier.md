@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Pk** | **int** |  | [optional] [readonly] 
 **Name** | **string** |  | 
-**Version** | **string** |  | 
+**_Version** | **string** |  | 
 **ClassName** | **string** |  | 
 **IsActive** | **bool** |  | [optional] 
 **Suggestions** | **int** |  | [optional] [readonly] 

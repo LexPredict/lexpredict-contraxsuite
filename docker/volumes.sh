@@ -9,6 +9,7 @@ fi
 DOCKER_VOLUME_DIR=${DOCKER_DIR}/volumes
 
 export VOLUME_NGINX_CONF=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_nginx_conf/_data/
+export VOLUME_NGINX_ERROR_PAGES=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_nginx_error_pages/_data/
 export VOLUME_NGINX_CERTS=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_nginx_certs/_data/
 export VOLUME_LOGS=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_logs/_data
 export VOLUME_INTERNAL_NGINX_LOGS=${DOCKER_VOLUME_DIR}/contraxsuite_contraxsuite_internal_nginx_logs/_data
@@ -26,6 +27,7 @@ export VOLUME_ELASTALERT_RULES=${DOCKER_VOLUME_DIR}/contraxsuite_elastalert_rule
 
 # Initialize volumes
 sudo mkdir -p ${VOLUME_NGINX_CONF}
+sudo mkdir -p ${VOLUME_NGINX_ERROR_PAGES}
 sudo mkdir -p ${VOLUME_NGINX_CERTS}
 sudo mkdir -p ${VOLUME_NGINX_CONF}/conf.d
 sudo mkdir -p ${VOLUME_FRONTEND}

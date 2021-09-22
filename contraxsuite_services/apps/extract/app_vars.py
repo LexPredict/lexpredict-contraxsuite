@@ -25,43 +25,55 @@
 # -*- coding: utf-8 -*-
 
 # Project imports
+from typing import List
+
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+STANDARD_LOCATORS_LIST = ['citation', 'currency', 'date', 'definition', 'duration', 'geoentity', 'party', 'term']
+OPTIONAL_LOCATORS_LIST = ['amount', 'copyright', 'court', 'distance', 'percent', 'ratio',
+                          'regulation', 'trademark', 'url']
+
+
+ALL_LOCATORS = set(STANDARD_LOCATORS_LIST + OPTIONAL_LOCATORS_LIST)
+
+
+def validate_locators(locators: List[str]):
+    errors = []
+    for l in locators:
+        if l not in ALL_LOCATORS:
+            errors.append(l)
+    if errors:
+        errors_str = ', '.join([f'"{er}"' for er in errors])
+        all_locators = STANDARD_LOCATORS_LIST + OPTIONAL_LOCATORS_LIST
+        enabled_locators = ', '.join([f'"{l}"' for l in sorted(all_locators)])
+        raise RuntimeError(f'''The following locators are unknown: {errors_str}. 
+            The locators should be on the following list: {enabled_locators}''')
+
+
 STANDARD_LOCATORS = AppVar.set(
     'Extract', 'standard_locators',
-    ['citation',
-     'currency',
-     'date',
-     'definition',
-     'duration',
-     'geoentity',
-     'party',
-     'term'],
+    STANDARD_LOCATORS_LIST,
     'List of standard (required) locators for use in "Load Documents" task.',
-    system_only=False)
+    system_only=False,
+    target_type=List[str],
+    validator=validate_locators)
 
 OPTIONAL_LOCATORS = AppVar.set(
     'Extract', 'optional_locators',
-    ['amount',
-     'copyright',
-     'court',
-     'distance',
-     'percent',
-     'ratio',
-     'regulation',
-     'trademark',
-     'url'],
+    OPTIONAL_LOCATORS_LIST,
     'List of optional locators for use additionally '
     'in "Locate" task if they have been chosen in "Locate" form.',
-    system_only=False)
+    system_only=False,
+    target_type=List[str],
+    validator=validate_locators)
 
 SIMPLE_LOCATOR_TOKENIZATION = AppVar.set(
     'Extract', 'simple_locator_tokenization', True,

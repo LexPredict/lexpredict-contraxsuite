@@ -67,6 +67,7 @@ envsubst < ./config-templates/local_settings_websrv.py.template > ./temp/local_s
 envsubst < ./config-templates/pgbouncer.websrv.template.ini > ./temp/pgbouncer.websrv.ini
 envsubst < ./config-templates/uwsgi.ini.template > ./temp/uwsgi.ini
 envsubst < ./config-templates/pgbouncer.userlist.template.txt > ./temp/pgbouncer.userlist.txt
+envsubst < ./config-templates/rabbitmq.template.conf > ./temp/rabbitmq.conf
 
 envsubst < ./config-templates/elastalert-examples/elastalert-disk-usage.yaml > ./temp/elastalert-disk-usage.yaml
 envsubst < ./config-templates/elastalert-examples/elastalert-task-failed.yaml > ./temp/elastalert-task-failed.yaml

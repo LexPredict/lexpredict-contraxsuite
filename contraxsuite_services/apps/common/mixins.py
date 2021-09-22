@@ -57,6 +57,7 @@ from django.http import JsonResponse
 from django.http.response import StreamingHttpResponse, HttpResponseForbidden
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils.timezone import now
 from django.views.generic import ListView
 from django.views.generic.base import View
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
@@ -66,6 +67,8 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.fields import empty as EMPTY
 from rest_framework.response import Response
+from rest_framework.utils.serializer_helpers import ReturnList
+from rest_framework_tracking.base_mixins import BaseLoggingMixin
 from rest_framework_tracking.mixins import LoggingMixin
 
 # Project imports
@@ -75,12 +78,12 @@ from apps.common.models import Action, CustomAPIRequestLog
 from apps.common.querysets import QuerySetWoCache
 from apps.common.schemas import JqFiltersListViewSchema, CustomAutoSchema, ObjectResponseSchema
 from apps.common.streaming_utils import csv_gen_from_dicts
-from apps.common.utils import cap_words, export_qs_to_file, download, full_reverse
+from apps.common.utils import cap_words, export_qs_to_file, download, full_reverse, unpack_dict_columns
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -204,6 +207,7 @@ class CustomDetailView(CustomUpdateView):
 
 class DocumentQsAccessMixin(MultipleObjectMixin):
     document_lookup = None
+    search_individual_documents = True
 
     def get_queryset(self):
         """
@@ -228,13 +232,18 @@ class DocumentQsAccessMixin(MultipleObjectMixin):
                          Q(**{f'{i}__in': assigned_documents_qs}) for i in self.document_lookup))
                     qs = qs.filter(query)
                 else:
-                    qs = qs.filter(
-                        Q(**{f'{self.document_lookup}__project__in': project_qs}) |
-                        Q(**{f'{self.document_lookup}__in': assigned_documents_qs}))
+                    filters = [Q(**{f'{self.document_lookup}__project__in': project_qs})]
+                    if self.search_individual_documents:
+                        filters.append(Q(**{f'{self.document_lookup}__in': assigned_documents_qs}))
+                    query = reduce(operator.or_, filters)
+                    qs = qs.filter(query)
             else:
                 # document_lookup == ""
-                qs = qs.filter(Q(project__in=project_qs) |
-                               Q(id__in=assigned_documents_qs.values_list('id', flat=True)))
+                filters = [Q(project__in=project_qs)]
+                if self.search_individual_documents:
+                    filters.append(Q(id__in=assigned_documents_qs.values_list('id', flat=True)))
+                query = reduce(operator.or_, filters)
+                qs = qs.filter(query)
         return qs.distinct()
 
 
@@ -538,21 +547,23 @@ class JqPaginatedListMixin:
                 q_curr = Q()
 
                 if field in self.complex_value_for_fields and cond == 'CONTAINS':
-                    if val.startswith("="):
-                        cond = "EQUAL"
-                        val = val[1:]
+                    if val.startswith("<="):
+                        cond = "LESS_THAN_OR_EQUAL"
+                        val = val[2:]
+                    elif val.startswith(">="):
+                        cond = "GREATER_THAN_OR_EQUAL"
+                        val = val[2:]
                     elif val.startswith("<"):
                         cond = "LESS_THAN"
                         val = val[1:]
                     elif val.startswith(">"):
                         cond = "GREATER_THAN"
                         val = val[1:]
-                    elif val.startswith("<="):
-                        cond = "LESS_THAN_OR_EQUAL"
-                        val = val[2:]
-                    elif val.startswith(">="):
-                        cond = "GREATER_THAN_OR_EQUAL"
-                        val = val[2:]
+                    elif val.startswith("="):
+                        cond = "EQUAL"
+                        val = val[1:]
+                    else:
+                        cond = "EQUAL"
 
                 # TODO: check if bool/null filter improved in new jqWidgets grid
                 # if vale is False filter None and False
@@ -613,7 +624,7 @@ class JqPaginatedListMixin:
     def sort(self, qs):
         # server-side sorting
         sortfield = self.request.GET.get('sortdatafield')
-        sortorder = self.request.GET.get('sortorder', 'asc')
+        sortorder = self.request.GET.get('sortorder', 'asc').lower()
         if sortfield:
             sortfield = sortfield.replace('-', '_')
             if sortorder == 'desc':
@@ -947,17 +958,26 @@ class JqListAPIMixin(JqPaginatedListMixin):
         # 2. filter and sort
         queryset = self.filter_queryset(initial_queryset)
         # 2.1 export in xlsx if needed
-        if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
+        request_data = self.request.GET or self.request.data
+        if request_data.get('export_to') in ['csv', 'xlsx', 'pdf']:
             serializer = self.get_serializer(queryset, many=True)
             data = serializer.data
 
-            if 'columns' in request.GET:
-                columns = request.GET['columns'].split(',')
+            if 'unpack_columns' in request_data or 'unpack_columns_recursive' in request_data:
+                # unwrap dict value in separate columns like {'a': {'b':1, 'c':2}} >> {'a__b':1, 'a__c':2}
+                # TODO: do it recursive for deeper levels too via additional param unwrap_columns_recursive=a,b,c?
+                unpack_columns = request_data.get('unpack_columns', '').split(',') or None
+                unpack_columns_recursive = request_data.get('unpack_columns_recursive', '').split(',') or None
+                # data = [{f'{k}__{k1}' if v != v1 else k: v1 for k, v in i.items() for k1, v1 in (v.items() if isinstance(v, dict) and k in unpack_columns else [(k, v)])} for i in data]
+                data = [dict(unpack_dict_columns(i, unpack_columns=unpack_columns,
+                                                 unpack_columns_recursive=unpack_columns_recursive)) for i in data]
+            if 'columns' in request_data:
+                columns = request_data['columns'].split(',')
                 data = [{k: v for k, v in i.items() if k in columns} for i in data]
             return self.export(data,
                                source_name=self.get_export_file_name() or
                                            queryset.model.__name__.lower(),
-                               fmt=request.GET.get('export_to'))
+                               fmt=request_data.get('export_to'))
         # 3. count total records !before queryset paginated
         # try:
         #     total_records = queryset.count()
@@ -970,6 +990,7 @@ class JqListAPIMixin(JqPaginatedListMixin):
         # 6. serialize
         serializer = self.get_serializer(queryset, many=True)
         data = serializer.data
+        self.add_extra_list_data(request, data)
         if isinstance(data, GeneratorType):
             # debugger
             try:
@@ -983,7 +1004,9 @@ class JqListAPIMixin(JqPaginatedListMixin):
         if 'columns' in request.GET:
             columns = request.GET['columns'].split(',')
             data = [{k: v for k, v in i.items() if k in columns} for i in data]
+
         # 7. compose returned data
+        data = self.post_process_data(data)
         show_total_records = json.loads(self.request.GET.get('total_records', 'false'))
         if show_total_records:
             # first try to use paginator to get total records
@@ -1001,6 +1024,12 @@ class JqListAPIMixin(JqPaginatedListMixin):
             data.update(extra_data)
 
         return rest_framework.response.Response(data)
+
+    def add_extra_list_data(self, request, data: ReturnList):
+        pass
+
+    def post_process_data(self, data: Dict) -> Dict:
+        return data
 
     def get_extra_data(self, queryset, initial_queryset):
         return self.extra_data or {}
@@ -1260,6 +1289,10 @@ class APIActionMixin:
 
 
 class APILoggingMixin(LoggingMixin):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log = {}
+
     def should_log(self, request, response):
         """
         Log only if enable logging via AppVar
@@ -1283,6 +1316,23 @@ class APILoggingMixin(LoggingMixin):
                 q.get('time') or q.get('duration', 0) / 1000, q.get('sql') or '')
                 for q in connection.queries])
         CustomAPIRequestLog(**self.log).save()
+
+    def initial(self, request, *args, **kwargs):
+        self.log['requested_at'] = now()
+        req_data = self.get_req_data(request)
+        self.log['data'] = self._clean_data(req_data)
+        super(BaseLoggingMixin, self).initial(request, *args, **kwargs)
+
+    def get_req_data(self, request) -> Any:
+        try:
+            # Accessing request.data *for the first time* parses the request body, which may raise
+            # ParseError and UnsupportedMediaType exceptions. It's important not to swallow these,
+            # as (depending on implementation details) they may only get raised this once, and
+            # DRF logic needs them to be raised by the view for error handling to work correctly.
+            data = self.request.data.dict()
+        except AttributeError:
+            data = self.request.data
+        return data
 
 
 class CustomCountQuerySet(QuerySet):

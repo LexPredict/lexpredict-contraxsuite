@@ -4,6 +4,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**usersSocialAccountsGET**](UsersApi.md#usersSocialAccountsGET) | **GET** /api/v1/users/social_accounts/ | 
 [**usersUsersFormFieldsGET**](UsersApi.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ | 
 [**usersUsersGET**](UsersApi.md#usersUsersGET) | **GET** /api/v1/users/users/ | 
 [**usersUsersIdFormFieldsGET**](UsersApi.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -14,6 +15,69 @@ Method | HTTP request | Description
 [**usersUsersUserStatsGET**](UsersApi.md#usersUsersUserStatsGET) | **GET** /api/v1/users/users/user_stats/ | 
 [**usersVerifyTokenPOST**](UsersApi.md#usersVerifyTokenPOST) | **POST** /api/v1/users/verify-token/ | 
 
+
+<a name="usersSocialAccountsGET"></a>
+# **usersSocialAccountsGET**
+> SocialAccountsResponse usersSocialAccountsGET()
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.UsersApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    UsersApi apiInstance = new UsersApi(defaultClient);
+    try {
+      SocialAccountsResponse result = apiInstance.usersSocialAccountsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling UsersApi#usersSocialAccountsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
 
 <a name="usersUsersFormFieldsGET"></a>
 # **usersUsersFormFieldsGET**

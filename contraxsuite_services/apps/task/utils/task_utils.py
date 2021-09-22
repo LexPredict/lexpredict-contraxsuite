@@ -42,8 +42,8 @@ from apps.common.db_cache.db_cache import DbCache
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -103,7 +103,12 @@ def normalize(task_id, key, value):
         if isinstance(value, models.Model):
             return SimpleObjectSerializer().serialize([value]).pop()
         if isinstance(value, QuerySet):
-            return SimpleObjectSerializer().serialize(value)
+            try:
+                return SimpleObjectSerializer().serialize(value)
+            except AttributeError:
+                # the above call may fail if the queryset (value) returns simple types
+                values = list(value)
+                return json.dumps(values)
         if isinstance(value, (dict, list, tuple, set)):
             return pre_serialize(task_id, key, value)
         if isinstance(value, UploadedFile):

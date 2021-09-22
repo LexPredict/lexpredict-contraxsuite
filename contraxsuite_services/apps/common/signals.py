@@ -29,10 +29,63 @@ import django.dispatch
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
+from django.db.models import QuerySet
+from django.db.models.signals import ModelSignal
+
 review_status_saved = django.dispatch.Signal(providing_args=['instance', 'old_instance'])
+
+# pylint: disable=invalid-name
+pre_create = ModelSignal(providing_args=["kwargs"], use_caching=True)
+post_create = ModelSignal(providing_args=["kwargs"], use_caching=True)
+pre_update = ModelSignal(providing_args=["queryset", "kwargs"], use_caching=True)
+post_update = ModelSignal(providing_args=["queryset", "kwargs"], use_caching=True)
+pre_bulk_create = ModelSignal(providing_args=["queryset", "kwargs"], use_caching=True)
+post_bulk_create = ModelSignal(providing_args=["queryset", "created", "kwargs"], use_caching=True)
+
+METHODS = {
+    'bulk_create': QuerySet.bulk_create,
+    'create': QuerySet.create,
+    'update': QuerySet.update
+}
+
+
+def _bulk_create(self, objs, batch_size=None, ignore_conflicts=False, **kwargs):
+    bulk_create_method = METHODS['bulk_create']
+    pre_bulk_create.send(sender=self.model, queryset=objs, kwargs=kwargs)
+    try:
+        instances = bulk_create_method(self, objs, batch_size, ignore_conflicts)
+    except ValueError:
+        instances = None
+    post_bulk_create.send(sender=self.model, queryset=instances,
+                          created=bool(instances), kwargs=kwargs)
+    return instances
+
+
+def _create(self, **kwargs):
+    create_method = METHODS['create']
+    pre_create.send(sender=self.model, kwargs=kwargs)
+    try:
+        instance = create_method(self, **kwargs)
+    except ValueError:
+        instance = None
+    post_create.send(sender=self.model, kwargs=kwargs)
+    return instance
+
+
+def _update(self, **kwargs):
+    update_method = METHODS['update']
+    pre_update.send(sender=self.model, queryset=self, kwargs=kwargs)
+    updated_rows_count = update_method(self, **kwargs)
+    post_update.send(sender=self.model, queryset=self, kwargs=kwargs)
+    return updated_rows_count
+
+
+QuerySet.bulk_create = _bulk_create
+QuerySet.create = _create
+QuerySet.update = _update

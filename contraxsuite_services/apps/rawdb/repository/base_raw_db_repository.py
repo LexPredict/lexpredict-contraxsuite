@@ -28,8 +28,8 @@ from typing import Dict, Any, Iterable
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,4 +48,7 @@ class BaseRawDbRepository:
     def update_rawdb_column_values(self,
                                    doc_ids: Iterable[int],
                                    col_values: Dict[str, Any]) -> int:
+        raise NotImplementedError()
+
+    def remove_user_references(self, assignee_id: int):
         raise NotImplementedError()

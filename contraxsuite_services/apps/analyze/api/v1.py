@@ -25,6 +25,8 @@
 # -*- coding: utf-8 -*-
 
 # Third-party imports
+from typing import Set, OrderedDict, Dict, Tuple, List, Any, Optional
+
 from guardian.shortcuts import get_objects_for_user
 from rest_framework import serializers, routers, viewsets
 from rest_framework.exceptions import APIException
@@ -36,6 +38,8 @@ from django.db.models import F, Count, Q
 from django.db.models.functions import Left
 
 # Project imports
+from rest_framework.utils.serializer_helpers import ReturnList
+
 import apps.common.mixins
 from apps.analyze.models import *
 from apps.common.schemas import JqFiltersListViewSchema
@@ -46,8 +50,8 @@ from apps.common.schemas import JqFiltersListViewSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,7 +59,8 @@ __email__ = "support@contraxsuite.com"
 # --------------------------------------------------------
 # TextUnitClassification Views
 # --------------------------------------------------------
-from apps.document.pdf_coordinates.coord_text_map import CoordTextMap
+from apps.document.models import DocumentPDFRepresentation
+from apps.document.pdf_coordinates.text_coord_map import TextCoordMap
 
 
 class TextUnitClassificationSerializer(apps.common.mixins.SimpleRelationSerializer):
@@ -382,6 +387,13 @@ class ProjectDocumentSimilaritySerializer(apps.common.mixins.SimpleRelationSeria
                   'similarity', 'run_id']
 
 
+class ProjectDocumentSimilarityResponseSerializer(serializers.Serializer):
+    data = serializers.ListSerializer(child=ProjectDocumentSimilaritySerializer())
+    document_a_id = serializers.IntegerField(required=False, allow_null=True)
+    document_a_name = serializers.CharField(required=False, allow_null=True)
+    total_records = serializers.IntegerField(required=False)
+
+
 class SimilarProjectDocumentsSchema(JqFiltersListViewSchema):
     parameters = [
         {'name': 'text_max_length',
@@ -400,7 +412,7 @@ class SimilarProjectDocumentsSchema(JqFiltersListViewSchema):
          'description': 'run id or document id required',
          'schema': {'type': 'integer'}}
     ]
-    response_serializer = ProjectDocumentSimilaritySerializer()
+    response_serializer = ProjectDocumentSimilarityResponseSerializer()
 
 
 class ProjectDocumentSimilarityListPermissionViewMixin:
@@ -422,8 +434,9 @@ class ProjectDocumentSimilarityListAPIView(ProjectDocumentSimilarityListPermissi
     queryset = DocumentSimilarity.objects.all()
     serializer_class = ProjectDocumentSimilaritySerializer
     schema = SimilarProjectDocumentsSchema()
-    complex_value_for_fields = ['similarity', ]
+    complex_value_for_fields = ['similarity']
     text_max_length = 300
+    action = '_list'
 
     def get_queryset(self):
         qs = super().get_queryset().order_by('-similarity', 'document_a_id')
@@ -453,6 +466,13 @@ class ProjectDocumentSimilarityListAPIView(ProjectDocumentSimilarityListPermissi
             document_b_name=F('document_b__name'),
             document_b_text=document_b_text_ann)
         return qs.select_related('document_a', 'document_b', 'document_b__documenttext', 'run')
+
+    def get_extra_data(self, queryset, initial_queryset):
+        extra_data = super().get_extra_data(queryset, initial_queryset)
+        document_id = self.request.GET.get('document_id')
+        extra_data['document_a_id'] = int(document_id) or None
+        extra_data['document_a_name'] = Document.objects.get(id=document_id).name if document_id else None
+        return extra_data
 
 
 # --------------------------------------------------------
@@ -515,6 +535,10 @@ class ProjectTextUnitSimilaritySerializer(apps.common.mixins.SimpleRelationSeria
                   'text_unit_b__location_start', 'text_unit_b__location_end',
                   'similarity', 'run_id']
 
+    def to_representation(self, instance):
+        res = super().to_representation(instance)
+        return res
+
 
 class SimilarProjectTextUnitsRequestSerializer(serializers.Serializer):
     text_max_length = serializers.IntegerField(required=False, help_text='text unit b text max length, 0 to get all text')
@@ -526,6 +550,13 @@ class SimilarProjectTextUnitsRequestSerializer(serializers.Serializer):
     location_end = serializers.IntegerField(required=False, help_text='end of chosen text block in a Document')
     selection = serializers.ListField(child=serializers.DictField(), required=False,
                                       help_text='selection coordinates')
+
+
+class ProjectTextUnitSimilarityResponseSerializer(serializers.Serializer):
+    data = serializers.ListSerializer(child=ProjectTextUnitSimilaritySerializer())
+    document_a_id = serializers.IntegerField(required=False, allow_null=True)
+    selected_text = serializers.CharField(required=False, allow_null=True)
+    total_records = serializers.IntegerField(required=False)
 
 
 class SimilarProjectTextUnitsSchema(JqFiltersListViewSchema):
@@ -569,8 +600,9 @@ class ProjectTextUnitSimilarityListAPIView(ProjectTextUnitSimilarityListPermissi
     queryset = TextUnitSimilarity.objects.all()
     serializer_class = ProjectTextUnitSimilaritySerializer
     schema = SimilarProjectTextUnitsSchema()
-    complex_value_for_fields = ['similarity', ]
+    complex_value_for_fields = ['similarity']
     text_max_length = 200
+    selected_text = None
 
     def post(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -587,11 +619,12 @@ class ProjectTextUnitSimilarityListAPIView(ProjectTextUnitSimilarityListPermissi
         if 'selection' in request_data:
             # we got location of the annotation as coordinates
             selection = request_data['selection']
-            location = CoordTextMap.get_text_location_by_coords(
-                document_id, selection)
+            location = DocumentPDFRepresentation.get_text_location_by_coords_for_doc(document_id, selection)
             location_start, location_end = location
             request_data['location_start'] = location_start
             request_data['location_end'] = location_end
+
+        self.selected_text = Document.objects.get(pk=document_id).text[location_start:location_end]
 
         if run_id:
             # choose ALL similar text units inside ONE run
@@ -648,6 +681,59 @@ class ProjectTextUnitSimilarityListAPIView(ProjectTextUnitSimilarityListPermissi
                     Q(location_start__lte=location_end, location_end__gte=location_end)) \
             .distinct()
         return list(text_unit_qs.values_list('pk', flat=True))
+
+    def get_extra_data(self, queryset, initial_queryset):
+        extra_data = super().get_extra_data(queryset, initial_queryset)
+        document_id = self.request.data.get('document_id')
+        extra_data['document_id'] = int(document_id) if document_id else None
+        extra_data['selected_text'] = self.selected_text
+        return extra_data
+
+    def add_extra_list_data(self, request, data: ReturnList):
+        document_ids: Set[int] = set()
+        item: OrderedDict
+        if not request.data.get('need_coordinates'):
+            return
+        for item in data:
+            document_ids.add(item['document_a_id'])
+            document_ids.add(item['document_b_id'])
+        # get PDF data for all documents
+        if not document_ids:
+            return
+        document_data: Dict[int, Tuple[List[List[float]], List[Dict[str, Any]]]] = {}
+        for doc_id in document_ids:
+            pdf_data = DocumentPDFRepresentation.objects.filter(document_id=doc_id).first()
+            if pdf_data:
+                document_data[doc_id] = pdf_data.char_bboxes_list, pdf_data.pages_list
+        # add coordinates to each text unit
+        for item in data:
+            item['selection_a'] = self.get_unit_location_coordinates(
+                item['document_a_id'], int(item['text_unit_a__location_start']),
+                int(item['text_unit_a__location_end']), document_data)
+            item['selection_b'] = self.get_unit_location_coordinates(
+                item['document_b_id'], int(item['text_unit_b__location_start']),
+                int(item['text_unit_b__location_end']), document_data)
+
+    @classmethod
+    def get_unit_location_coordinates(
+            cls,
+            document_id: int,
+            loc_start: int,
+            loc_end: int,
+            document_data: Dict[int, Tuple[List[List[float]], List[Dict[str, Any]]]]) -> Optional[List[Dict[str, Any]]]:
+        if loc_start == loc_end:
+            return None
+        doc_data = document_data.get(document_id)
+        if not doc_data:
+            return None
+        selections = TextCoordMap.get_line_areas(doc_data[0], doc_data[1], loc_start, loc_end)
+        if not selections:
+            return None
+        return [{'page': s.page, 'area': [
+            s.area[0], s.area[1], s.area[2], s.area[3]
+        ]} for s in selections]
+
+
 
 
 # --------------------------------------------------------

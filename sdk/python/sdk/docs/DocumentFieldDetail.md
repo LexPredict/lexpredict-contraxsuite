@@ -4,7 +4,7 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**document_type** | **str, none_type** |  | 
+**document_type** | **str** |  | 
 **code** | **str** | Field codes must be lowercase, should start with  a Latin letter, and contain only Latin letters, digits, underscores. Field codes must be unique to every Document Type. | 
 **title** | **str** |  | 
 **uid** | **str** |  | [optional] [readonly] 
@@ -47,6 +47,7 @@ Name | Type | Description | Notes
 **unsure_thresholds_by_value** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}, none_type** | Makes sense for machine learning      strategies with \&quot;Unsure\&quot; category. The strategy will return concrete result (one of choice values) only if      the probability of the detected value is greater than this threshold. Otherwise the strategy returns None      or the choice value specified in \&quot;Unsure choice value\&quot; field. Format: { \&quot;value1\&quot;: 0.9, \&quot;value2\&quot;: 0.5, ...}.      Default: 0.9 | [optional] 
 **mlflow_model_uri** | **str, none_type** | MLFlow model URI      understandable by the MLFlow artifact downloading routines. | [optional] 
 **mlflow_detect_on_document_level** | **bool** | If true - whole      document text will be sent to the MLFlow model and the field value will be returned for the whole text with no     annotations. If false - each text unit will be sent separately. | [optional] 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

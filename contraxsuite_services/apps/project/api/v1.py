@@ -33,7 +33,7 @@ import tarfile
 import zipfile
 from collections import OrderedDict
 from io import BytesIO
-from typing import BinaryIO, Union, Optional, List, Any, Dict
+from typing import BinaryIO, Union, Optional, List, Any, Dict, Tuple
 
 # Django imports
 from django.conf import settings
@@ -70,14 +70,14 @@ from apps.common.log_utils import render_error
 from apps.common.logger import CsLogger
 from apps.common.models import Action, ReviewStatus, AppVarStorage
 from apps.common.schemas import object_list_content
+from apps.common.sql_commons import dict_fetch_all
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module, safe_to_int, cap_words
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT
 from apps.document.models import Document, DocumentType, DocumentField, \
-    FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationStatus
+    FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationStatus, DocumentPDFRepresentation, TextUnit
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.document.pdf_coordinates.coord_text_map import CoordTextMap
 from apps.document.tasks import plan_process_documents_status_changed, plan_process_documents_assignee_changed
 from apps.extract.models import TermTag, CompanyTypeTag
 from apps.project.models import Project, TaskQueue, UploadSession, ProjectClustering, UserProjectsSavedFilter
@@ -86,6 +86,7 @@ from apps.project.signals import project_soft_deleted
 from apps.project.tasks import ReassignProjectClusterDocuments, ClusterProjectDocuments, CleanProject, CancelUpload, \
     LoadArchive, track_session_completed, SetAnnotationsStatus, UpdateProjectDocumentsFields
 from apps.rawdb.constants import FIELD_CODE_STATUS_ID, FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE
+from apps.similarity.tasks import DocumentSimilarityByFeatures
 from apps.task.models import Task
 from apps.task.tasks import call_task, purge_task, LoadDocuments, call_task_func
 from apps.task.schemas import ProjectTasksSchema, ProjectActiveTasksSchema, ProjectTaskLogSchema
@@ -93,8 +94,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -403,9 +404,9 @@ class CustomErrorMessageSerializer:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields:
-            self.fields[field].error_messages['required'] = '"{}" field is required.'.format(cap_words(field))
-            self.fields[field].error_messages['null'] = '"{}" field may not be null.'.format(cap_words(field))
-            self.fields[field].error_messages['blank'] = '"{}" field may not be blank.'.format(cap_words(field))
+            self.fields[field].error_messages['required'] = f'"{cap_words(field)}" field is required.'
+            self.fields[field].error_messages['null'] = f'"{cap_words(field)}" field may not be null.'
+            self.fields[field].error_messages['blank'] = f'"{cap_words(field)}" field may not be blank.'
 
 
 class ProjectCreateSerializer(CustomErrorMessageSerializer, serializers.ModelSerializer):
@@ -657,6 +658,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             app_vars = AppVarStorage.get_project_app_vars(instance.pk, request.user)
             app_var_json = ProjectAppVarSerializer(app_vars, many=True).data
             response.data['app_vars'] = app_var_json
+            response.data['updated_fields'] = self.action_message or {}
 
         return response
 
@@ -883,6 +885,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         project = getattr(self, 'object', None) or self.get_object()
         force = request.data.get('force') == 'true'
 
+        from apps.project.tasks import ClusterProjectDocuments
         task = Task.objects.filter(name=ClusterProjectDocuments.name,
                                    status=PENDING,
                                    kwargs__project_id=project.id).last()
@@ -911,21 +914,21 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                  'confirm': True})
 
         try:
-            n_clusters = int(request.data.get('n_clusters', 3))
+            n_clusters = int(request.data.get('n_clusters', ClusterProjectDocuments.default_n_clusters))
         except ValueError:
-            n_clusters = 3
+            n_clusters = ClusterProjectDocuments.default_n_clusters
 
         # json data is used when API is activated via swagger either by passing json directly
         if request.content_type == 'application/json':
-            cluster_by = request.data.get('cluster_by', ['term'])
+            cluster_by = request.data.get('cluster_by', ClusterProjectDocuments.default_cluster_by)
         # either use form data from UI
         else:
-            cluster_by = request.data.getlist('cluster_by', ['term'])
+            cluster_by = request.data.getlist('cluster_by', ClusterProjectDocuments.default_cluster_by)
 
         res = self._cluster(project,
                             user_id=request.user.id,
                             n_clusters=n_clusters,
-                            method=request.data.get('method', 'kmeans'),
+                            method=request.data.get('method', ClusterProjectDocuments.default_method),
                             cluster_by=cluster_by)
         return Response(res)
 
@@ -940,7 +943,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if 'selection' in data:
             # we got location of the annotation as coordinates
             selection = data['selection']
-            location = CoordTextMap.get_text_location_by_coords(
+            location = DocumentPDFRepresentation.get_text_location_by_coords_for_doc(
                 data['document_id'], selection)
             data['location_start'] = location[0]
             data['location_end'] = location[1]
@@ -971,7 +974,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
     def delete_similarity_task_results(self, request, task):
         project = self.get_object()
-        task_id = call_task(task, project_id=project.id, user_id=request.user.id)
+        task_id = call_task(task, project_id=project.id, user_id=request.user.id, purge_existing=True)
         return Response({'task_id': task_id})
 
     @action(detail=True, methods=['delete'])
@@ -1240,7 +1243,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             documents = self.get_document_queryset()
             if request.data.get('no_document_ids'):
                 documents = documents.exclude(pk__in=request.data.get('no_document_ids'))
-            return documents.values_list('pk', flat=True)
+            return list(documents.values_list('pk', flat=True))
         return request.data.get('document_ids')
 
     def save_mass_action(self, action_name, action_message, document_ids, request_data=None, cache_documents=False):
@@ -1344,21 +1347,28 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                   changed_by_id: int,
                                   document_ids: List[int]):
         assignee = User.objects.get(pk=assignee_id) if assignee_id is not None else None
-        if assignee is not None:
-            if not assignee.has_perm('view_project', project):
-                return Response(
-                    {'detail': f'This assignee #{assignee.pk} has no permission to view this project'},
-                    status=404)
+        if assignee is not None and not assignee.has_perm('view_project', project):
+            return Response({'detail': f'This assignee #{assignee.pk} has no permission to view '
+                                       f'this project'}, status=404)
         # FIXME: moved into Document model's pre_update
         # change perms for documents
+
+        # save actions
+        docs_queryset = Document.objects.filter(pk__in=document_ids).only('id', 'assignee')
+        prev_assignees = {i.id: i.assignee for i in docs_queryset}
+        new_assignee = User.objects.get(id=assignee_id) if assignee_id else None
+        new_assignees = {i['id']: new_assignee for i in docs_queryset.values('id')}
+        Document.update_assignee_actions(docs_queryset,
+                                         prev_assignees=prev_assignees,
+                                         new_assignees=new_assignees,
+                                         request_user=self.request.user,
+                                         request_data=self.request.data)
+
         plan_process_documents_assignee_changed(doc_ids=document_ids,
                                                 new_assignee_id=assignee_id,
                                                 changed_by_user_id=changed_by_id)
 
-        # TODO: move into task? OR just count an attempt?
-        self.save_mass_action(action_name='Assignee Changed',
-                              action_message=f'Document assignee bulk changed to "{assignee.name if assignee else None}"',
-                              document_ids=document_ids)
+        docs_queryset.update(modified_by=self.request.user, modified_date=now())
         return Response({'success': len(document_ids)})
 
     @action(detail=True, methods=['post'], schema=SetProjectDocumentsStatusSchema())
@@ -1469,6 +1479,15 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         # re-fetch annotations as initial values-qs doesn't allow update
         ant_uids = [i['uid'] for i in annotations]
         print(f'Updating {len(ant_uids)} annotations')
+
+        # Web notifications
+        queryset = FieldAnnotation.objects.filter(uid__in=ant_uids)
+        new_assignee = User.objects.get(id=assignee_id) if assignee_id else None
+        FieldAnnotation.update_assignee_actions(queryset,
+                                                new_assignee=new_assignee,
+                                                request_user=request.user,
+                                                request_data=request.data)
+
         field_repo = DocumentFieldRepository()
         field_repo.update_field_annotations_by_ant_ids(
             ant_uids, [(FIELD_CODE_ASSIGNEE_ID, assignee_id or 'null'),
@@ -1497,7 +1516,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 int (number of reassigned annotations)
         """
         MAX_ANTS_TO_RUN_SYNC = 20
-        self.get_object()    # noqa: permissions check
+        project = self.get_object()    # noqa: permissions check
         # "sync" - process request in foreground
         # "background" - process request in background as a separate Celery task
         # "smart" - process request in foreground if there are less than N annotations found
@@ -1506,14 +1525,19 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         annotations = self.get_annotations_queryset()
         # re-fetch annotations as initial values-qs doesn't allow update
         ant_uids = [i['uid'] for i in annotations]
+        if not ant_uids:
+            return Response({'success': 0})
 
         except_true_ann = FieldAnnotation.objects \
-            .filter(uid__in=ant_uids, document__status__code='completed') \
+            .filter(uid__in=ant_uids, document__status__group__is_active=False) \
             .values_list('uid', flat=True)
         except_false_ann = FieldAnnotationFalseMatch.objects \
-            .filter(uid__in=ant_uids, document__status__code='completed') \
+            .filter(uid__in=ant_uids, document__status__group__is_active=False) \
             .values_list('uid', flat=True)
         ant_uids = [i for i in ant_uids if i not in except_true_ann and i not in except_false_ann]
+        if not ant_uids:
+            # all documents with changed annotations are in completed status
+            return Response({'success': 0, 'message': 'The document(s) status does not allow changing annotations'})
 
         run_sync = run_mode == 'sync'
         if not run_sync:
@@ -1530,13 +1554,16 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if run_sync:
             sync_task = SetAnnotationsStatus()
             sync_task.process(ids=ant_uids,
+                              project_id=project.id,
                               status_id=status_id,
-                              user_id=request.user.pk)
+                              user_id=request.user.pk,
+                              skip_notification=True)
             return Response({'success': len(ant_uids)})
 
         task_id = call_task(
             SetAnnotationsStatus,
             ids=ant_uids,
+            project_id=project.id,
             status_id=status_id,
             user_id=request.user.pk)
 
@@ -1577,7 +1604,35 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                    AND d2.status_id IN (SELECT rs.id
                                         FROM common_reviewstatus rs INNER JOIN common_reviewstatusgroup rsg
                                             ON rs.group_id = rsg.id
-                                        WHERE rsg.is_active = FALSE)) reviewed_doc_count
+                                        WHERE rsg.is_active = FALSE)) reviewed_doc_count,
+              CASE
+                 WHEN p1.type_id = %s 
+                     THEN (SELECT COUNT(*) 
+                           FROM analyze_documentcluster adc 
+                           INNER JOIN project_projectclustering_document_clusters ppdc 
+                           ON (adc.id = ppdc.documentcluster_id) 
+                           WHERE ppdc.projectclustering_id = (SELECT id 
+                                                              FROM project_projectclustering 
+                                                              WHERE project_id=p1.id 
+                                                              ORDER BY id DESC
+                                                              LIMIT 1))
+                     ELSE NULL END AS clusters_count,
+              CASE
+                 WHEN p1.type_id = %s 
+                     THEN (SELECT array(SELECT COUNT(*)
+                           FROM analyze_documentcluster adc 
+                           INNER JOIN project_projectclustering_document_clusters ppdc
+                           ON (adc.id = ppdc.documentcluster_id) 
+                           LEFT OUTER JOIN analyze_documentcluster_documents add 
+                           ON (adc.id = add.documentcluster_id) 
+                           WHERE ppdc.projectclustering_id = (SELECT id 
+                                                              FROM project_projectclustering 
+                                                              WHERE project_id=p1.id 
+                                                              ORDER BY id DESC 
+                                                              LIMIT 1) 
+                           GROUP BY adc.id 
+                           ORDER BY adc.id ASC))
+                     ELSE NULL END AS clusters_documents_count
             FROM project_project p1
             INNER JOIN common_action ca
                 ON NOT p1.delete_pending AND ca.content_type_id = %s AND ca.user_id = %s AND ca.object_pk = p1.id :: VARCHAR
@@ -1589,16 +1644,29 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                    project_ids=','.join([str(i) for i in user_projects.values_list('pk', flat=True)]))
 
         result = []
+        query_params = [
+            DOCUMENT_TYPE_PK_GENERIC_DOCUMENT,
+            DOCUMENT_TYPE_PK_GENERIC_DOCUMENT,
+            DOCUMENT_TYPE_PK_GENERIC_DOCUMENT,
+            content_type_id,
+            user.id,
+            last_n
+        ]
         with connection.cursor() as cursor:
-            cursor.execute(sql, [DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, content_type_id, user.id, last_n])
-            for project_id, project_name, is_generic, extracted_doc_count, reviewed_doc_count in cursor.fetchall():
+            cursor.execute(sql, query_params)
+            for pk, name, is_generic, extracted, reviewed, clusters, clusters_documents in cursor.fetchall():
                 result.append({
-                    'name': project_name,
-                    'pk': project_id,
+                    'name': name,
+                    'pk': pk,
                     'is_generic': is_generic,
                     'progress': {
-                        'project_current_documents_count': extracted_doc_count,
-                        'project_reviewed_documents_count': reviewed_doc_count
+                        'project_current_documents_count': extracted,
+                        'project_reviewed_documents_count': reviewed
+                    },
+                    'clusters': None if clusters is None else {
+                        'clusters_count': clusters,
+                        'clusters_documents_count': sorted(clusters_documents, reverse=True)
+                                                    if clusters_documents else None
                     }
                 })
 
@@ -1649,6 +1717,29 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if self.action in ['settings_actions', 'cluster_actions', 'tasks']:
             self.skip_jq_filters = True
         return super().filter_queryset(queryset)
+
+    @action(detail=True, methods=['post'])
+    def check_similarity_process_allowed(self, request, **kwargs):
+        feature_source: str = request.data.get('feature_source')
+        threshold: int = request.data.get('threshold')
+        project_id = int(kwargs.get('pk'))
+        if feature_source == 'document':
+            feature_len = Document.objects.filter(project_id=project_id).count()
+        else:
+            feature_len = TextUnit.objects.filter(project_id=project_id).count()
+        flag, msg = self._get_similarity_process_allowed(feature_len, threshold)
+        return Response({'allowed': flag, 'message': msg})
+
+    @classmethod
+    def _get_similarity_process_allowed(cls, feature_src_len: int, threshold: int) -> Tuple[bool, str]:
+        from apps.analyze.app_vars import SIMILARITY_MAX_BASE, SIMILARITY_MAX_RECORDS
+        if feature_src_len < 2 or feature_src_len > SIMILARITY_MAX_BASE.val():
+            return False, f'Provided {feature_src_len} source records, but only {SIMILARITY_MAX_BASE.val()} are allowed'
+        estimation = DocumentSimilarityByFeatures.estimate_similarity_records_count(feature_src_len, threshold)
+        if estimation < SIMILARITY_MAX_RECORDS.val():
+            return True, ''
+        return False, f'Expected {estimation} similarity records but only {SIMILARITY_MAX_RECORDS.val()} ' + \
+                       'records are allowed'
 
     # actions
 
@@ -1727,6 +1818,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         view = ActionViewSet(request=self.request,
                              kwargs={'project_id': project.pk,
                                      'view_actions': view_action_names,
+                                     'get_document_actions': False
                                      # 'init_action': 'create'
                                      })
         view.action = 'list'
@@ -2473,12 +2565,13 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
     document_clusters = DocumentClusterSerializer(many=True, read_only=True)
     project_clusters_documents_count = serializers.IntegerField()
     status = serializers.SerializerMethodField()
+    project_clusters_actions_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectClustering
         fields = ['pk', 'document_clusters', 'metadata', 'created_date',
                   'status', 'reason',
-                  'project_clusters_documents_count']
+                  'project_clusters_documents_count', 'project_clusters_actions_count']
 
     def get_status(self, obj):
         # 1. task purged
@@ -2489,6 +2582,10 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
             return obj.task.status
         return obj.status
     get_status.output_field = serializers.CharField()
+
+    def get_project_clusters_actions_count(self, obj):
+        return Action.objects.filter(view_action='cluster', object_pk=obj.project_id).count()
+    get_project_clusters_actions_count.output_field = serializers.IntegerField()
 
 
 class ProjectClusteringViewSet(apps.common.mixins.JqListAPIMixin, viewsets.ReadOnlyModelViewSet):

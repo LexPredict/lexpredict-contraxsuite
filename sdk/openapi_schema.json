@@ -2,7 +2,7 @@
   "openapi": "3.0.2",
   "info": {
     "title": "Contraxsuite API",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "Contraxsuite API"
   },
   "paths": {
@@ -945,10 +945,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ProjectDocumentSimilarity"
-                  }
+                  "$ref": "#/components/schemas/ProjectDocumentSimilarityResponse"
                 }
               }
             },
@@ -1421,10 +1418,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/Action"
-                    }
+                    "$ref": "#/components/schemas/Action"
                   }
                 }
               }
@@ -1502,10 +1496,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Action"
-                  }
+                  "$ref": "#/components/schemas/Action"
                 }
               }
             },
@@ -3244,10 +3235,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Action"
-                  }
+                  "$ref": "#/components/schemas/DocumentsForUser"
                 }
               }
             },
@@ -6706,10 +6694,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Action"
-                  }
+                  "$ref": "#/components/schemas/DocumentsForUser"
                 }
               }
             },
@@ -10033,6 +10018,32 @@
         ]
       }
     },
+    "/api/v1/notifications/web-notifications/": {
+      "get": {
+        "operationId": "notifications-web-notifications:GET",
+        "description": "Web Notification List",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications",
+          "v1"
+        ]
+      }
+    },
     "/api/v1/project/task-queues/": {
       "get": {
         "operationId": "project-task-queues:GET",
@@ -10824,10 +10835,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Action"
-                  }
+                  "$ref": "#/components/schemas/ProjectDetail"
                 }
               }
             },
@@ -10973,10 +10981,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Action"
-                  }
+                  "$ref": "#/components/schemas/ProjectDetail"
                 }
               }
             },
@@ -12793,6 +12798,29 @@
         ]
       }
     },
+    "/api/v1/users/social_accounts/": {
+      "get": {
+        "operationId": "users-social_accounts:GET",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialAccountsResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users",
+          "v1"
+        ]
+      }
+    },
     "/api/v1/similarity/similarity/": {
       "get": {
         "operationId": "similarity-similarity:GET",
@@ -14241,6 +14269,48 @@
         ]
       }
     },
+    "/api/v1/notifications/web-notifications/mark_seen/": {
+      "post": {
+        "operationId": "notifications-web-notifications-mark_seen:POST",
+        "description": "Method marks a number of web notifications for updating as seen/not seen.\n:param request: provide a list of web notification message ids here:",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkForSeenWebNotificationRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkForSeenWebNotificationRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkForSeenWebNotificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkForSeenWebNotificationResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "notifications",
+          "v1"
+        ]
+      }
+    },
     "/api/v1/project/projects/select_projects/": {
       "post": {
         "operationId": "project-projects-select_projects:POST",
@@ -14481,6 +14551,58 @@
                   "required": [
                     "details"
                   ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "project",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/project/projects/{id}/check_similarity_process_allowed/": {
+      "post": {
+        "operationId": "project-projects-id-check_similarity_process_allowed:POST",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this project.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDetail"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDetail"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDetail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDetail"
                 }
               }
             },
@@ -15053,7 +15175,7 @@
     "/api/v1/project/projects/{id}/update_document_fields/": {
       "post": {
         "operationId": "project-projects-id-update_document_fields:POST",
-        "description": "Bulk update project documents field, similar to /fields/ API in document app\n\n    Params:\n        document_ids: list[int]\n        all: any value - update all documents if any value\n        no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)\n        fields_data: - dict {field_code: [values]}\n    Returns:\n        task_id",
+        "description": "Bulk update project documents field, similar to /fields/ API in document app\n\n    Params:\n        document_ids: list[int]\n        all: any value - update all documents if any value\n        no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)\n        fields_data: - dict {field_code: [values]}\n        on_existing_value: \"replace_all\" | \"add_new\" (for multi-choice fields)\n    Returns:\n        task_id",
         "parameters": [
           {
             "name": "id",
@@ -16800,6 +16922,67 @@
           "similarity"
         ]
       },
+      "ProjectDocumentSimilarityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_a_name": {
+                  "type": "string"
+                },
+                "document_a_id": {
+                  "type": "string",
+                  "readOnly": true
+                },
+                "document_b_name": {
+                  "type": "string"
+                },
+                "document_b_id": {
+                  "type": "string",
+                  "readOnly": true
+                },
+                "document_b_text": {
+                  "type": "string"
+                },
+                "similarity": {
+                  "type": "string",
+                  "format": "decimal",
+                  "multipleOf": 0.01,
+                  "maximum": 1000,
+                  "minimum": -1000
+                },
+                "run_id": {
+                  "type": "string",
+                  "readOnly": true
+                }
+              },
+              "required": [
+                "document_a_name",
+                "document_b_name",
+                "document_b_text",
+                "similarity"
+              ]
+            }
+          },
+          "document_a_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "document_a_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_records": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
       "TextUnitSimilarity": {
         "type": "object",
         "properties": {
@@ -17167,7 +17350,8 @@
             "enum": [
               "transformer",
               "classifier",
-              "contract_type_classifier"
+              "contract_type_classifier",
+              "is_contract"
             ],
             "type": "string",
             "nullable": true,
@@ -17187,6 +17371,16 @@
             "type": "string",
             "nullable": true,
             "description": "Text unit type: sentence or paragraph"
+          },
+          "codebase_version": {
+            "type": "string",
+            "nullable": true,
+            "description": "ContraxSuite version in which the model was created",
+            "maxLength": 64
+          },
+          "user_modified": {
+            "type": "boolean",
+            "description": "User modified models are not automatically updated"
           },
           "project": {
             "type": "integer",
@@ -17267,6 +17461,14 @@
             "readOnly": true
           },
           "user__name": {
+            "type": "string",
+            "readOnly": true
+          },
+          "user__initials": {
+            "type": "string",
+            "readOnly": true
+          },
+          "user_photo_url": {
             "type": "string",
             "readOnly": true
           },
@@ -17441,6 +17643,10 @@
           "name": {
             "type": "string",
             "maxLength": 255
+          },
+          "initials": {
+            "type": "string",
+            "maxLength": 2
           },
           "organization": {
             "type": "string",
@@ -17680,15 +17886,27 @@
             "format": "date-time",
             "nullable": true
           },
-          "created_by_name": {
-            "type": "string"
-          },
           "modified_date": {
             "type": "string",
             "format": "date-time",
             "nullable": true
           },
           "modified_by_name": {
+            "type": "string"
+          },
+          "created_by_name": {
+            "type": "string"
+          },
+          "created_by_initials": {
+            "type": "string"
+          },
+          "created_by_photo": {
+            "type": "string"
+          },
+          "modified_by_initials": {
+            "type": "string"
+          },
+          "modified_by_photo": {
             "type": "string"
           },
           "status": {
@@ -17773,6 +17991,10 @@
               "name": {
                 "type": "string",
                 "maxLength": 255
+              },
+              "initials": {
+                "type": "string",
+                "maxLength": 2
               }
             },
             "required": [
@@ -17810,6 +18032,10 @@
                 "name": {
                   "type": "string",
                   "maxLength": 255
+                },
+                "initials": {
+                  "type": "string",
+                  "maxLength": 2
                 }
               },
               "required": [
@@ -17851,92 +18077,6 @@
             },
             "readOnly": true
           },
-          "notes": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "pk": {
-                  "type": "integer",
-                  "readOnly": true
-                },
-                "note": {
-                  "type": "string"
-                },
-                "timestamp": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "user": {
-                  "type": "object",
-                  "properties": {
-                    "pk": {
-                      "type": "integer",
-                      "readOnly": true
-                    },
-                    "first_name": {
-                      "type": "string",
-                      "maxLength": 30
-                    },
-                    "last_name": {
-                      "type": "string",
-                      "maxLength": 150
-                    },
-                    "username": {
-                      "type": "string",
-                      "description": "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.",
-                      "pattern": "^[\\w.@+-]+$",
-                      "maxLength": 150
-                    },
-                    "photo": {
-                      "type": "string",
-                      "readOnly": true
-                    },
-                    "name": {
-                      "type": "string",
-                      "maxLength": 255
-                    }
-                  },
-                  "required": [
-                    "username"
-                  ],
-                  "readOnly": true
-                },
-                "location_start": {
-                  "type": "integer",
-                  "maximum": 2147483647,
-                  "minimum": -2147483648,
-                  "nullable": true
-                },
-                "location_end": {
-                  "type": "integer",
-                  "maximum": 2147483647,
-                  "minimum": -2147483648,
-                  "nullable": true
-                },
-                "document_id": {
-                  "type": "integer"
-                },
-                "field_value_id": {
-                  "type": "integer"
-                },
-                "field_id": {
-                  "type": "string"
-                },
-                "selections": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  },
-                  "readOnly": true
-                }
-              },
-              "required": [
-                "note",
-                "document_id"
-              ]
-            }
-          },
           "field_values": {
             "type": "object",
             "readOnly": true
@@ -17951,6 +18091,14 @@
           },
           "next_id": {
             "type": "integer",
+            "readOnly": true
+          },
+          "position": {
+            "type": "string",
+            "readOnly": true
+          },
+          "documents_count": {
+            "type": "string",
             "readOnly": true
           },
           "sections": {
@@ -17970,12 +18118,15 @@
           }
         },
         "required": [
-          "created_by_name",
           "modified_by_name",
+          "created_by_name",
+          "created_by_initials",
+          "created_by_photo",
+          "modified_by_initials",
+          "modified_by_photo",
           "status_data",
           "assignee_data",
-          "available_assignees_data",
-          "notes"
+          "available_assignees_data"
         ]
       },
       "DocumentDefinitions": {
@@ -18058,6 +18209,10 @@
               "name": {
                 "type": "string",
                 "maxLength": 255
+              },
+              "initials": {
+                "type": "string",
+                "maxLength": 2
               }
             },
             "required": [
@@ -18108,8 +18263,7 @@
             "readOnly": true
           },
           "document_type": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "code": {
             "type": "string",
@@ -18423,8 +18577,7 @@
             "readOnly": true
           },
           "document_type": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "code": {
             "type": "string",
@@ -18679,8 +18832,7 @@
                   "readOnly": true
                 },
                 "document_type": {
-                  "type": "string",
-                  "nullable": true
+                  "type": "string"
                 },
                 "code": {
                   "type": "string",
@@ -18941,7 +19093,8 @@
             "type": "string"
           },
           "created_by__name": {
-            "type": "string"
+            "type": "string",
+            "readOnly": true
           },
           "created_date": {
             "type": "string",
@@ -18949,7 +19102,8 @@
             "readOnly": true
           },
           "modified_by__name": {
-            "type": "string"
+            "type": "string",
+            "readOnly": true
           },
           "modified_date": {
             "type": "string",
@@ -18999,8 +19153,6 @@
         "required": [
           "title",
           "code",
-          "created_by__name",
-          "modified_by__name",
           "fields_number"
         ]
       },
@@ -19332,6 +19484,7 @@
           }
         },
         "required": [
+          "document_type",
           "document_type_title",
           "name",
           "fields",
@@ -20966,6 +21119,62 @@
           "source_url"
         ]
       },
+      "WebNotificationDetail": {
+        "type": "object",
+        "properties": {
+          "is_seen": {
+            "type": "boolean"
+          },
+          "notification": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "readOnly": true
+              },
+              "message_data": {
+                "type": "object",
+                "nullable": true
+              },
+              "message_template": {
+                "type": "string",
+                "readOnly": true
+              },
+              "created_date": {
+                "type": "string",
+                "format": "date-time",
+                "readOnly": true
+              },
+              "notification_type": {
+                "enum": [
+                  "DOCUMENT_ASSIGNED",
+                  "DOCUMENT_UNASSIGNED",
+                  "CLAUSES_ASSIGNED",
+                  "CLAUSES_UNASSIGNED",
+                  "DOCUMENTS_UPLOADED",
+                  "DOCUMENT_DELETED",
+                  "DOCUMENT_ADDED",
+                  "DOCUMENT_STATUS_CHANGED",
+                  "CLUSTER_IMPORTED",
+                  "FIELD_VALUE_DETECTION_COMPLETED",
+                  "CUSTOM_TERM_SET_SEARCH_FINISHED",
+                  "CUSTOM_COMPANY_TYPE_SEARCH_FINISHED",
+                  "DOCUMENT_SIMILARITY_SEARCH_FINISHED",
+                  "TEXT_UNIT_SIMILARITY_SEARCH_FINISHED"
+                ],
+                "type": "string",
+                "nullable": true,
+                "description": "Notification type"
+              },
+              "redirect_link": {
+                "type": "object",
+                "nullable": true
+              }
+            },
+            "readOnly": true
+          }
+        }
+      },
       "TaskQueue": {
         "type": "object",
         "properties": {
@@ -21385,6 +21594,10 @@
                   "type": "string",
                   "maxLength": 255
                 },
+                "initials": {
+                  "type": "string",
+                  "maxLength": 2
+                },
                 "organization": {
                   "type": "string",
                   "nullable": true,
@@ -21462,6 +21675,10 @@
                 "name": {
                   "type": "string",
                   "maxLength": 255
+                },
+                "initials": {
+                  "type": "string",
+                  "maxLength": 2
                 },
                 "organization": {
                   "type": "string",
@@ -21541,6 +21758,10 @@
                   "type": "string",
                   "maxLength": 255
                 },
+                "initials": {
+                  "type": "string",
+                  "maxLength": 2
+                },
                 "organization": {
                   "type": "string",
                   "nullable": true,
@@ -21618,6 +21839,10 @@
                 "name": {
                   "type": "string",
                   "maxLength": 255
+                },
+                "initials": {
+                  "type": "string",
+                  "maxLength": 2
                 },
                 "organization": {
                   "type": "string",
@@ -22083,6 +22308,10 @@
           },
           "project_clusters_documents_count": {
             "type": "integer"
+          },
+          "project_clusters_actions_count": {
+            "type": "integer",
+            "readOnly": true
           }
         },
         "required": [
@@ -22135,6 +22364,10 @@
           "completed": {
             "type": "boolean",
             "nullable": true
+          },
+          "is_canceling": {
+            "type": "string",
+            "readOnly": true
           }
         },
         "required": [
@@ -22183,6 +22416,9 @@
           "project_clusters_documents_count": {
             "type": "integer"
           },
+          "project_clusters_actions_count": {
+            "type": "integer"
+          },
           "status": {
             "type": "string",
             "nullable": true
@@ -22191,6 +22427,7 @@
         "required": [
           "document_clusters",
           "project_clusters_documents_count",
+          "project_clusters_actions_count",
           "status"
         ]
       },
@@ -22375,25 +22612,8 @@
           "project": {
             "enum": [
               "",
-              27,
-              26,
-              25,
-              24,
-              23,
-              22,
-              21,
-              20,
-              19,
-              18,
-              17,
-              14,
-              13,
-              12,
-              11,
-              8,
-              7,
-              6,
               5,
+              4,
               3,
               2,
               1
@@ -23112,6 +23332,10 @@
               "name": {
                 "type": "string",
                 "maxLength": 255
+              },
+              "initials": {
+                "type": "string",
+                "maxLength": 2
               }
             },
             "required": [
@@ -23136,8 +23360,7 @@
         "type": "object",
         "properties": {
           "document_type": {
-            "type": "string",
-            "nullable": true
+            "type": "string"
           },
           "code": {
             "type": "string",
@@ -23647,6 +23870,9 @@
           }
         },
         "required": [
+          "text_part",
+          "detect_limit_unit",
+          "detect_limit_count",
           "field"
         ]
       },
@@ -23738,6 +23964,35 @@
         "required": [
           "queryInfo",
           "records"
+        ]
+      },
+      "MarkForSeenWebNotificationRequest": {
+        "type": "object",
+        "properties": {
+          "notification_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "is_seen": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notification_ids",
+          "is_seen"
+        ]
+      },
+      "MarkForSeenWebNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "count_processed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count_processed"
         ]
       },
       "ProjectCreate": {
@@ -24183,6 +24438,9 @@
           },
           "fields_data": {
             "type": "object"
+          },
+          "on_existing_value": {
+            "type": "string"
           }
         },
         "required": [
@@ -24431,6 +24689,15 @@
             "type": "string",
             "maxLength": 255
           },
+          "initials": {
+            "type": "string",
+            "readOnly": true
+          },
+          "photo": {
+            "type": "string",
+            "format": "binary",
+            "nullable": true
+          },
           "email": {
             "type": "string",
             "format": "email",
@@ -24516,6 +24783,10 @@
               "name": {
                 "type": "string",
                 "maxLength": 255
+              },
+              "initials": {
+                "type": "string",
+                "maxLength": 2
               },
               "organization": {
                 "type": "string",

@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **status** | **String** |  |  [optional] [readonly]
 **reason** | **String** |  |  [optional]
 **projectClustersDocumentsCount** | **Integer** |  | 
+**projectClustersActionsCount** | **Integer** |  |  [optional] [readonly]
 
 
 

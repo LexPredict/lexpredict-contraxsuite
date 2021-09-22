@@ -683,7 +683,7 @@ Name | Type | Description  | Notes
 
 ## AnalyzeProjectDocumentSimilarityListGET
 
-> List&lt;ProjectDocumentSimilarity&gt; AnalyzeProjectDocumentSimilarityListGET (int? textMaxLength = null, int? runId = null, int? documentId = null, Dictionary<string, string> jqFilters = null)
+> ProjectDocumentSimilarityResponse AnalyzeProjectDocumentSimilarityListGET (int? textMaxLength = null, int? runId = null, int? documentId = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -718,7 +718,7 @@ namespace Example
 
             try
             {
-                List<ProjectDocumentSimilarity> result = apiInstance.AnalyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+                ProjectDocumentSimilarityResponse result = apiInstance.AnalyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -744,7 +744,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+[**ProjectDocumentSimilarityResponse**](ProjectDocumentSimilarityResponse.md)
 
 ### Authorization
 

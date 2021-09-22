@@ -15,7 +15,10 @@ Name | Type | Description | Notes
 **is_active** | **bool** | Inactive models are ignored | [optional] 
 **default** | **bool** | The default model is used unless another model is deliberately selected | [optional] 
 **text_unit_type** | **str, none_type** | Text unit type: sentence or paragraph | [optional] 
+**codebase_version** | **str, none_type** | ContraxSuite version in which the model was created | [optional] 
+**user_modified** | **bool** | User modified models are not automatically updated | [optional] 
 **project** | **int, none_type** | Optional project reference | [optional] 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

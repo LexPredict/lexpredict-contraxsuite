@@ -78,8 +78,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -255,6 +255,7 @@ class DocumentActionListView(TemplateView):
     template_name = 'document/document_action_list.html'
 
     def get_context_data(self, **kwargs):
+        # we don't filter document actions for deleted documents
         ctx = super().get_context_data(**kwargs)
         ctx['document'] = Document.objects.get(pk=self.kwargs['pk'])
         return ctx
@@ -313,6 +314,7 @@ class DocumentPropertyListView(apps.common.mixins.JqPaginatedListView):
 
         qs = qs.filter(document__project_id__in=list(
             self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+        qs = qs.filter(document__delete_pending=False)
 
         key_search = self.request.GET.get('key_search')
         if key_search:
@@ -374,6 +376,7 @@ class DocumentRelationListView(apps.common.mixins.JqPaginatedListView):
         qs = qs.filter(
             Q(document_a__project_id__in=project_ids) |
             Q(document_b__project_id__in=project_ids))
+        qs = qs.filter(document_a__delete_pending=False, document_b__delete_pending=False)
         qs = qs.select_related('document_a', 'document_b')
         return qs
 
@@ -533,6 +536,7 @@ class DocumentNoteListView(apps.common.mixins.JqPaginatedListView):
         qs = qs.filter(
             document__project_id__in=list(
                 self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+        qs = qs.filter(document__delete_pending=False)
 
         if "document_pk" in self.request.GET:
             qs = qs.filter(document__pk=self.request.GET['document_pk'])
@@ -608,6 +612,10 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
                 warning = f'Error. Check your syntax for errors. ERROR: "{str(e)}". QUERY: "{ql}"'
                 self.query_errors = warning
                 qs = TextUnit.objects.none()
+        else:
+            # we don't filter out soft deleted documents for DjangoQL query
+            # because the user can use this field (delete_pending) in the query itself
+            qs = qs.filter(document__delete_pending=False)
 
         if "document_pk" not in self.request.GET:
             # we don't filter by "projects" when QL is provided
@@ -683,13 +691,13 @@ class TextUnitByLangListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset().order_by('document_id', 'unit_type')
-        qs = qs.filter(
-            document__project_id__in=list(
-                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+        projects = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
+        qs = qs.filter(document__project_id__in=projects)
+        qs = qs.filter(document__delete_pending=False)
         return qs
 
     def get_json_data(self, **kwargs):
-        qs = super().get_queryset()
+        qs = self.get_queryset()
         qs = qs.filter(unit_type='paragraph')
         data = list(qs.values('language').order_by().annotate(count=Count('pk')).order_by('-count'))
         for item in data:
@@ -714,6 +722,7 @@ class TextUnitPropertyListView(apps.common.mixins.JqPaginatedListView):
             .select_related('text_unit__document__document_type') \
             .order_by('text_unit_id', 'key', 'value')
 
+        qs = qs.filter(text_unit__document__delete_pending=False)
         qs = qs.filter(
             text_unit__document__project_id__in=list(
                 self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
@@ -778,6 +787,7 @@ class TextUnitNoteListView(apps.common.mixins.JqPaginatedListView):
         qs = qs.filter(
             text_unit__document__project_id__in=list(
                 self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+        qs = qs.filter(text_unit__document__delete_pending=False)
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit__pk=self.request.GET['text_unit_pk'])
@@ -826,7 +836,7 @@ class DocumentTagListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
-
+        qs = qs.filter(document__delete_pending=False)
         qs = qs.filter(
             document__project_id__in=list(
                 self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
@@ -877,6 +887,7 @@ class TextUnitTagListView(apps.common.mixins.JqPaginatedListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.filter(text_unit__document__delete_pending=False)
 
         qs = qs.filter(
             text_unit__document__project_id__in=list(

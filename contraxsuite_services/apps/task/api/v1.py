@@ -53,8 +53,8 @@ from apps.task.views import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -448,7 +448,7 @@ class TaskLogAPIView(views.APIView):
             sort_field_name = request_data['sortdatafield']
             sort_field = fields[sort_field_name]
             es_sort_field = sort_field.source or sort_field_name
-            if request_data.get('sortorder') == 'desc':
+            if request_data.get('sortorder', '').lower() == 'desc':
                 es_sort_field = '-' + es_sort_field
         else:
             sort_field_name = TaskLogSerializer.default_sort_field

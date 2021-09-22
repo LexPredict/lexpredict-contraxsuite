@@ -29,10 +29,18 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
+
+def validate_table_parser(table_parser: str):
+    all_parsers = {'lattice', 'stream', 'area_lattice', 'area_stream'}
+    if table_parser not in all_parsers:
+        values = ', '.join(list(all_parsers))
+        raise RuntimeError(f'''Value should be one of the following: {values}.''')
+
 
 ADMIN_RUNNING_TASKS_VALIDATION_ENABLED = AppVar.set(
     'Document', 'admin_running_tasks_validation_enabled', True,
@@ -78,6 +86,19 @@ TABLE_DETECTION_ENABLE = AppVar.set(
     'Enables / disables table detection when loading documents',
     system_only=False)
 
+TABLE_DETECTION_METHOD = AppVar.set(
+    'Document', 'table_detection_method', 'area_stream',
+    '''<ul>
+       <li><code>area_stream</code> - first detect table areas using cv2, next detect tables in the areas 
+           with Camelot: stream detector. Can detect borderless tables.</li>
+       <li><code>area_lattice</code>first detect table areas using cv2, next detect tables in the areas 
+           with Camelot: lattice detector. Detects only tables with borders.</li>
+       <li><code>lattice</code> - detects only tables with border, decent detection quality.</li>
+       <li><code>stream</code> - detect tables with or without borders, may produce unexpected results.</li>
+    </ul>''',
+    system_only=False,
+    validator=validate_table_parser)
+
 DESKEW_ENABLE = AppVar.set(
     'Document', 'deskew_enable', True,
     'Enables / disables automatic correction of the rotated (skewed) pages when loading documents',
@@ -99,6 +120,16 @@ OCR_FILE_SIZE_LIMIT = AppVar.set(
     'Max file size enabled (MB) for OCR',
     system_only=False)
 
+OCR_PAGE_TIMEOUT = AppVar.set(
+    'Document', 'ocr_page_timeout', 60,
+    'Document per-page OCR timeout, seconds',
+    system_only=False)
+
+REMOVE_OCR_LAYERS = AppVar.set(
+    'Document', 'remove_ocr_layers', False,
+    'Remove OCR layers on PDF pages',
+    system_only=False)
+
 MIN_NOT_PLAIN_FILE_SIZE = AppVar.set(
     'Document', 'min_not_plain_file_size', 1024,
     'Mint file size (bytes) to try extracting text with Tika / Textract etc.',
@@ -114,7 +145,7 @@ ALLOW_DUPLICATE_DOCS = AppVar.set(
     "If True, additional uploads of the same file name and same content " +
     "will be allowed and copy 01, copy 02, etc will be added to the name. " +
     "If False, you will get an error rejecting the upload of duplicate documents.",
-    system_only=False)
+    system_only=False, target_type=bool)
 
 DETECT_CONTRACT = AppVar.set(
     'Document', 'detect_contract', True,
@@ -137,14 +168,17 @@ ENABLE_PROVISION_LEVEL_REVIEW = AppVar.set(
 CSV_DETECTOR_COMPANIES = AppVar.set(
     'Document', 'csv_detector_companies',
     'LLC,,Corp,,LP,,Inc,,Ltd,,Corporation,,Limited,,Co,,S.A',
-    'CSV Detector - company abbreviations. Use two commas to separate values',
+    '''CSV Detector - company abbreviations. Use two commas to separate values. Example:<br/>
+       <code>"LLC,,Corp,,LP,,Inc,,Ltd,,Corporation,,Limited,,Co,,S.A"</code>
+    ''',
     system_only=False
 )
 
 CSV_DETECTOR_CONJUNCTIONS = AppVar.set(
     'Document', 'csv_detector_conjunctions',
     'and,,the,,&',
-    'CSV Detector - conjunctions. Use two commas to separate values',
+    '''CSV Detector - conjunctions. Use two commas to separate values. Example:<br/>
+       <code>"and,,the,,&"</code>''',
     system_only=False
 )
 
@@ -157,9 +191,9 @@ MAX_DOCUMENTS_TO_EXPORT_SIZE_HTTP = AppVar.set(
     'Maximum total size of document files (Mb) to export as zip via http response.',
     system_only=False)
 
-DETECT_CONTRACT_TYPE = AppVar.set(
-    'Document', 'detect_contract_type', True,
-    "Enables detecting document's contract type",
+MAX_DOC_SIZE_IN_MAIL_ARCHIVE = AppVar.set(
+    'Document', 'max_doc_size_per_mail_archive', 50,
+    'Maximum total size of document files per one attached archive, MB.',
     system_only=False)
 
 CONTRACT_TYPE_FILTER = AppVar.set(

@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Id** | **int** |  | [optional] [readonly] 
 **Name** | **string** | Model name, may include module parameters | 
-**Version** | **string** | Model version | 
+**_Version** | **string** | Model version | 
 **VectorName** | **string** |  | [optional] 
 **ModelPath** | **string** | Model path, relative to WebDAV root folder | 
 **IsActive** | **bool** | Inactive models are ignored | [optional] 
@@ -16,6 +16,8 @@ Name | Type | Description | Notes
 **TargetEntity** | **string** | The model class | 
 **Language** | **string** | Language (ISO 693-1) code, may be omitted | 
 **TextUnitType** | **string** | Text unit type: sentence or paragraph | [optional] 
+**CodebaseVersion** | **string** | ContraxSuite version in which the model was created | [optional] 
+**UserModified** | **bool** | User modified models are not automatically updated | [optional] 
 **Project** | **int?** | Optional project reference | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

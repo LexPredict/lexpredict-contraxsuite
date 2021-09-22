@@ -36,8 +36,8 @@ from apps.users.authentication import TokenSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -65,8 +65,21 @@ class PasswordResetConfirmViewSchema(CustomAutoSchema):
     response_serializer = RestAuthCommonResponseSerializer()
 
 
+class CustomPasswordChangeSerializer(PasswordChangeSerializer):
+    def validate_old_password(self, value):
+        invalid_password_conditions = (
+            self.old_password_field_enabled,
+            self.user,
+            not self.user.check_password(value)
+        )
+
+        if all(invalid_password_conditions):
+            raise serializers.ValidationError('Invalid old password')
+        return value
+
+
 class PasswordChangeViewSchema(CustomAutoSchema):
-    request_serializer = PasswordChangeSerializer()
+    request_serializer = CustomPasswordChangeSerializer()
     response_serializer = RestAuthCommonResponseSerializer()
 
 
@@ -84,6 +97,6 @@ urlpatterns = [
         PasswordResetConfirmView.as_view(schema=PasswordResetConfirmViewSchema()),
         name='rest_password_reset_confirm'),
     url(r'^password/change/$',
-        PasswordChangeView.as_view(schema=PasswordChangeViewSchema()),
+        PasswordChangeView.as_view(schema=PasswordChangeViewSchema(), serializer_class=CustomPasswordChangeSerializer),
         name='rest_password_change'),
 ]

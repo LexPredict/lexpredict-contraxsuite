@@ -8,7 +8,7 @@ Name | Type | Description | Notes
 **Pk** | **int** |  | [optional] [readonly] 
 **Note** | **string** |  | 
 **Timestamp** | **DateTime** |  | [optional] 
-**User** | [**DocumentDetailUser**](DocumentDetailUser.md) |  | [optional] 
+**User** | [**DocumentNoteDetailUser**](DocumentNoteDetailUser.md) |  | [optional] 
 **LocationStart** | **int?** |  | [optional] 
 **LocationEnd** | **int?** |  | [optional] 
 **DocumentId** | **int** |  | 

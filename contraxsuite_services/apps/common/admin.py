@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Django imports
+import json
 import os
 
 from django import forms
@@ -41,13 +42,13 @@ from apps.common.decorators import get_function_from_str
 from apps.common.file_storage import get_file_storage
 from apps.common.models import AppVar, ReviewStatusGroup, ReviewStatus, Action, \
     CustomAPIRequestLog, APIRequestLog, MethodStats, MethodStatsCollectorPlugin, \
-    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage, ExportFile, AppVarStorage
+    MenuGroup, MenuItem, ThreadDumpRecord, ObjectStorage, ExportFile, AppVarStorage, KnownAppVars
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -153,6 +154,19 @@ class AppVarAdminForm(forms.ModelForm):
 
         self.fields['project'] = AppVarProjectChoiceField(queryset=qs, required=False)
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # {'value': 12, 'project': None, 'id': <AppVar: App Variable
+        #  (category=Document name=allow_duplicate_documents project=None)>}
+        app_var: AppVar = cleaned_data['id']
+        if 'value' not in cleaned_data:
+            return
+        value = cleaned_data['value']
+        try:
+            AppVar.check_is_value_ok(app_var.category, app_var.name, value)
+        except RuntimeError as e:
+            self.add_error('value', e.args[0])
+
 
 class AppVarAdmin(admin.ModelAdmin):
     actions = None
@@ -173,6 +187,7 @@ class AppVarAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj: AppVar, form, change: bool):
         # super().save_model(request, obj, form, change)
+        
         AppVarStorage.set(obj.category, obj.name, obj.value,
                           obj.description, obj.access_type, obj.project_id, overwrite=True)
 

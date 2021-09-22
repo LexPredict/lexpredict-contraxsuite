@@ -11,9 +11,13 @@ Name | Type | Description | Notes
 **FileSize** | **int** |  | [optional] 
 **Folder** | **string** |  | [optional] 
 **CreatedDate** | **DateTime?** |  | [optional] 
-**CreatedByName** | **string** |  | 
 **ModifiedDate** | **DateTime?** |  | [optional] 
 **ModifiedByName** | **string** |  | 
+**CreatedByName** | **string** |  | 
+**CreatedByInitials** | **string** |  | 
+**CreatedByPhoto** | **string** |  | 
+**ModifiedByInitials** | **string** |  | 
+**ModifiedByPhoto** | **string** |  | 
 **Status** | **int?** |  | [optional] 
 **StatusData** | [**DocumentDetailStatusData**](DocumentDetailStatusData.md) |  | 
 **AvailableStatusesData** | **List&lt;Object&gt;** |  | [optional] [readonly] 
@@ -26,11 +30,12 @@ Name | Type | Description | Notes
 **InitialAnnotationId** | **string** |  | [optional] [readonly] 
 **PageLocations** | **List&lt;List&lt;int&gt;&gt;** |  | [optional] [readonly] 
 **PageBounds** | **List&lt;List&lt;decimal&gt;&gt;** |  | [optional] [readonly] 
-**Notes** | [**List&lt;DocumentDetailNotes&gt;**](DocumentDetailNotes.md) |  | 
 **FieldValues** | **Object** |  | [optional] [readonly] 
 **FieldValueObjects** | **Object** |  | [optional] [readonly] 
 **PrevId** | **int** |  | [optional] [readonly] 
 **NextId** | **int** |  | [optional] [readonly] 
+**Position** | **string** |  | [optional] [readonly] 
+**DocumentsCount** | **string** |  | [optional] [readonly] 
 **Sections** | **List&lt;Object&gt;** |  | [optional] [readonly] 
 **ClusterId** | **string** |  | [optional] [readonly] 
 **UserPermissions** | **Object** |  | [optional] [readonly] 

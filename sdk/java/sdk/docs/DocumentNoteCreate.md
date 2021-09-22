@@ -17,7 +17,7 @@ Name | Type | Description | Notes
 **fieldId** | **String** |  |  [optional]
 **userId** | **String** |  |  [optional] [readonly]
 **username** | **String** |  |  [optional]
-**user** | [**DocumentDetailUser**](DocumentDetailUser.md) |  |  [optional]
+**user** | [**DocumentNoteDetailUser**](DocumentNoteDetailUser.md) |  |  [optional]
 **selections** | **List&lt;Object&gt;** |  |  [optional] [readonly]
 
 

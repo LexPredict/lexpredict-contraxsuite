@@ -16,6 +16,7 @@ Name | Type | Description | Notes
 **isStaff** | **Boolean** | Designates whether the user can log into this admin site. |  [optional]
 **isActive** | **Boolean** | Designates whether this user should be treated as active. Unselect this instead of deleting accounts. |  [optional]
 **name** | **String** |  |  [optional]
+**initials** | **String** |  |  [optional]
 **organization** | **String** |  |  [optional]
 **photo** | **String** |  |  [optional] [readonly]
 **permissions** | **Object** |  |  [optional] [readonly]

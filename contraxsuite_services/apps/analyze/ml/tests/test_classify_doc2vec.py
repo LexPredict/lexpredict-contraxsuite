@@ -23,6 +23,7 @@
     or shipping ContraxSuite within a closed source product.
 """
 # -*- coding: utf-8 -*-
+
 from tests.django_test_case import *
 import pathlib
 from apps.common.file_storage.local_file_storage import ContraxsuiteInstanceLocalFileStorage
@@ -32,7 +33,7 @@ from tests.django_db_mock import MockObjectManager, MockQuerySet
 from django.db.models import QuerySet
 from apps.analyze.ml.classifier_repository import ClassifierRepository, ClassifierRepositoryBuilder
 from typing import List, Any, Optional, Dict, Iterable, Union, Tuple
-from django.test import TestCase
+from apps.analyze.ml.tests.base_transformer_test import BaseTransformerTest
 from apps.analyze.models import DocumentClassification, DocumentVector, \
     DocumentClassifierAssessment, TextUnitClassifierAssessment, DocumentClassifier, \
     TextUnitClassifier, MLModel
@@ -41,8 +42,8 @@ from apps.document.models import Document, DocumentText
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -105,7 +106,7 @@ class Document2VecFeaturesMock(Document2VecFeatures):
         self.transformer.pk = 1
         self.transformer.name = 'test'
         self.doc_by_id: Dict[int, Document] = {}
-        self.file_storage = kwargs.get('file_storage')
+        self.file_storage = file_storage
 
     def get_document_data(self, qs: Union[QuerySet, Iterable[Document]]):
         self.doc_by_id = {d.pk: d for d in qs}
@@ -126,14 +127,16 @@ class MockClassifyDocuments(ClassifyDocuments):
         return Document2VecFeaturesMock
 
 
-class TestClassifyDoc2Vec(TestCase):
+class TestClassifyDoc2Vec(BaseTransformerTest):
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         builder = ClassifierRepositoryBuilder()
         builder._repository = MockClassifierRepository()
 
     @classmethod
     def tearDownClass(cls):
+        super().tearDownClass()
         builder = ClassifierRepositoryBuilder()
         builder._repository = ClassifierRepository()
 

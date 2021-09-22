@@ -15,6 +15,8 @@ Name | Type | Description | Notes
 **modelName** | **String** |  |  [optional]
 **date** | **OffsetDateTime** |  |  [optional] [readonly]
 **userName** | **String** |  |  [optional] [readonly]
+**userInitials** | **String** |  |  [optional] [readonly]
+**userPhotoUrl** | **String** |  |  [optional] [readonly]
 **requestData** | **Object** |  |  [optional]
 
 

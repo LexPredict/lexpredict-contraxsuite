@@ -40,8 +40,8 @@ from apps.common.s3.s3_browser import S3ResourceBrowser, S3Resource
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -120,7 +120,9 @@ class Command(MigrateCommand):
         self.models: List[MLModel] = []
 
     def handle(self, *args, **options):
-        self.client = S3ResourceBrowser(settings.MODEL_S3_BUCKET, region=settings.MODEL_S3_REGION)
+        self.client = S3ResourceBrowser(settings.MODEL_S3_BUCKET,
+                                        region=settings.MODEL_S3_REGION,
+                                        ssl_verify=settings.MODEL_S3_SSL_VERIFY)
         self.s3_keys = self.client.list_folder(self.S3_FOLDER)
         self.read_versioned_folders()
         self.models: List[MLModel] = list(MLModel.objects.all())

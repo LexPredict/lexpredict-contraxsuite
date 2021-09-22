@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -66,8 +66,10 @@ class DocumentImporter:
         self.field_types = {}  # type: Dict[str, str]
         self.project_ids = {}  # type: Dict[int, int]
         self.document_ids = {}  # type: Dict[int, int]
+        self.document_project = {}  # type: Dict[int, int]
         self.document_src_paths = {}  # type: Dict[int, str]
         self.text_unit_ids = {}  # type: Dict[int, int]
+        self.text_unit_doc_by_id = {}  # type: Dict[int, int]
         self.field_value_ids = {}  # type: Dict[int, int]
 
         self.initially_loaded_docs = []  # type: List[int]
@@ -475,6 +477,7 @@ class DocumentImporter:
     def import_text_units(self):
         def build_text_unit_record(values: Dict[str, Any]) -> Optional[TextUnit]:
             doc_id = self.document_ids[values['document_id']]
+            self.text_unit_doc_by_id[values['id']] = doc_id
             ex_unit_ids = list(TextUnit.objects.filter(
                 document_id=doc_id,
                 unit_type=values['unit_type'],
@@ -509,8 +512,12 @@ class DocumentImporter:
             unit_id = self.text_unit_ids[values['text_unit_id']]
             if TextUnitText.objects.filter(text_unit_id=unit_id).count():
                 return None
+            doc_id = self.text_unit_doc_by_id.get(values['text_unit_id'])
+            if not doc_id:
+                return None
             record = TextUnitText()
             record.text_unit_id = unit_id
+            record.document_id = doc_id
             record.text = values['text']
             record.text_tsvector = values['text_tsvector']
             return record
@@ -737,6 +744,7 @@ class DocumentImporter:
         self.document_ids[values['id']] = doc.pk
         self.document_src_paths[doc.pk] = doc.source_path
         self.initially_loaded_docs.append(doc.pk)
+        self.document_project[doc.pk] = doc.project_id
 
     def read_dataframe(self, file_name: str):
         file_path = os.path.join(self.source_path, file_name)

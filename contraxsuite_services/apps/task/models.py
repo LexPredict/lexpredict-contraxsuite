@@ -56,8 +56,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -188,6 +188,8 @@ class Task(models.Model):
     bad_health_check_num = models.IntegerField(null=False, blank=False, default=0)
 
     objects = TaskManager()
+
+    weight = models.PositiveIntegerField(default=100, null=True, blank=True)
 
     def __str__(self):
         return "Task (name={}, celery_id={})" \

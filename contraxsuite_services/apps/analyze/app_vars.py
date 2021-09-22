@@ -29,8 +29,8 @@ from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,4 +58,9 @@ TEXT_UNIT_SIMILARITY_OBJECTS_EXPIRE_IN = AppVar.set(
 SIMILARITY_MAX_BASE = AppVar.set(
     'Analyze', 'similarity_max_base', 50000,
     'Maximum allowed number of items to start similarity process'
+)
+
+SIMILARITY_MAX_RECORDS = AppVar.set(
+    'Analyze', 'similarity_max_records', 5*1000*1000,
+    'Maximum allowed number of expected similarity records found'
 )

@@ -26,6 +26,7 @@
 
 # Standard imports
 import datetime
+import os
 import pickle
 from typing import Tuple, Iterable, Any, List, Union, Optional, Callable, Generator
 
@@ -45,8 +46,8 @@ from apps.document.models import DocumentText, TextUnit, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -161,13 +162,18 @@ class Doc2VecTransformer:
             transformer_object_kwargs['name'] = vector_name
         transformer_name = transformer_object_kwargs['name']
 
-        stor_folder = f'models/{MLModel.DEFAULT_LANGUAGE}/transformer/{source_name}'
+        subfolder = self.file_storage.normalize_folder_name(source_name)
+        stor_folder = f'models/{MLModel.DEFAULT_LANGUAGE}/transformer/{subfolder}'
         if transformer_name:
-            stor_folder += f'/{transformer_name}'
+            trans_folder = self.file_storage.normalize_folder_name(transformer_name)
+            stor_folder += f'/{trans_folder}'
         stor_path = f'{stor_folder}/model.pickle'
         model_bytes = pickle.dumps(doc2vec_model)
-        self.file_storage.ensure_folder_exists(stor_folder)
-        self.file_storage.write_file(stor_path, model_bytes)
+
+        stor_folder = os.path.dirname(stor_path)
+        file_storage = self.file_storage or get_file_storage()
+        file_storage.ensure_folder_exists(stor_folder)
+        file_storage.write_file(stor_path, model_bytes, skip_existing=True)
 
         obj = ClassifierRepositoryBuilder().repository.save_transformer(
             MLModel,
@@ -294,7 +300,12 @@ class Doc2VecTransformer:
                             f'"{transformer_obj.model_path}" contains no model.json file or file is empty')
 
         vector_list = []
-        for target_id, text in data:
+        for row in data:
+            document_id = None
+            if len(row) == 2:
+                target_id, text = row
+            else:
+                target_id, document_id, text = row
 
             # Get tokens with LexNLP
             text = text or ''    # prevent from exception with None (like case with unprocessed document)
@@ -309,6 +320,8 @@ class Doc2VecTransformer:
             # these values are tested and optimal for data size about 5'000-40'000 records
             # default are None, in this case alpha should be taken from model itself, it's usually = 0.025
             vector.vector_value = doc2vec_model.infer_vector(text_tokens, alpha=alpha, epochs=epochs)
+            if document_id:
+                vector.document_id = document_id
             vector_list.append(vector)
 
         if save:

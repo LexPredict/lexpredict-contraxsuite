@@ -9,5 +9,5 @@ keywords:
 maintainers:
 - email: support@lexpredict.com
   name: LexPredict
-name: contraxsuite-develop
+name: contraxsuite
 version: ${HELM_CHART_VERSION}

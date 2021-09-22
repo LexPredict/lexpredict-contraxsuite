@@ -54,8 +54,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -572,7 +572,7 @@ class PartyNetworkChartView(PartyUsageListAPIView):
         if 'party_name_iexact' in self.request.GET:
             party_name = self.request.GET.get('party_name_iexact', chart_nodes[0]['id'])
             members = {party_name}
-            while 1:
+            while True:
                 members1 = {i["source"] for i in chart_links
                             if i["target"] in members and i["source"] not in members}
                 members2 = {i["target"] for i in chart_links

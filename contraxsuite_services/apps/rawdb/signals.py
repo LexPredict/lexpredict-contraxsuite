@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 from enum import Enum
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 
 import django.dispatch
 from django.conf import settings
@@ -45,8 +45,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -161,7 +161,8 @@ def document_change_listener_impl(sender,
                                   user_fields_changed: bool = True,
                                   changed_by_user: User = None,
                                   document_initial_load: bool = False,
-                                  skip_caching: bool = False):
+                                  skip_caching: bool = False,
+                                  old_field_values: Optional[Dict[str, Any]] = None):
     # this listener only cares of caching
     if skip_caching:
         return
@@ -177,7 +178,8 @@ def document_change_listener_impl(sender,
                           cache_generic_fields=generic_fields_changed,
                           cache_user_fields=user_fields_changed,
                           changed_by_user=changed_by_user,
-                          document_initial_load=document_initial_load)
+                          document_initial_load=document_initial_load,
+                          old_field_values=old_field_values)
 
 
 @receiver(signals.document_changed)
@@ -240,7 +242,7 @@ def update_documents_assignee_impl(sender,
                                  cache_system_fields=[DocumentSystemField.assignee.value],
                                  cache_generic_fields=False,
                                  cache_user_fields=False,
-                                 priority=9)
+                                 priority=7)
 
 
 @receiver(signals.documents_assignee_changed)
@@ -258,7 +260,7 @@ def update_documents_status_impl(sender,
     from apps.rawdb.tasks import plan_reindex_tasks_in_chunks
     repo = RawDbRepository()
     doc_ids = set(documents.values_list('pk', flat=True))
-    repo.update_documents_status(doc_ids, new_status_id)
+    repo.update_documents_status(doc_ids, new_status_id, changed_by_user)
     plan_reindex_tasks_in_chunks(doc_ids, changed_by_user.pk,
                                  cache_system_fields=[DocumentSystemField.status.value],
                                  cache_generic_fields=False,

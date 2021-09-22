@@ -27,7 +27,7 @@
 # Django imports
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.db.models import Count, Q, F, Case, When, BooleanField, IntegerField
+from django.db.models import Count, Q, F, Case, When, BooleanField, IntegerField, Value
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -46,8 +46,8 @@ from apps.project.forms import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,6 +62,9 @@ class ProjectListView(JqPaginatedListView):
         for item in data['data']:
             item['url'] = self.full_reverse('project:project-update', args=[item['pk']])
             item['actions_url'] = self.full_reverse('project:project-actions', args=[item['pk']])
+            total_docs, reviewed_docs = item['total_documents_count'], item['reviewed_documents_count']
+            item['progress'] = 0 if not total_docs else round(100 * reviewed_docs / total_docs)
+            item['completed'] = True if item['progress'] == 100 else False
         return data
 
     def get_queryset(self):
@@ -69,14 +72,13 @@ class ProjectListView(JqPaginatedListView):
         qs = SelectProjectsView.get_user_projects(self.request.user)
         qs = qs.filter(delete_pending=False).annotate(
             total_documents_count=Count('document', filter=Q(document__delete_pending=False)),
-            reviewed_documents_count=Count('document', filter=Q(document__delete_pending=False, status__group__is_active=False))
+            reviewed_documents_count=Count('document', filter=Q(document__delete_pending=False,
+                                                                document__status__group__is_active=False))
         )
-        qs = qs.annotate(progress=Case(
-            When(total_documents_count__gt=0, then=F('reviewed_documents_count') / F('total_documents_count') * 100),
-            default=0, output_field=IntegerField()))
-        qs = qs.annotate(completed=Case(
-            When(progress=100, then=True),
-            default=False, output_field=BooleanField()))
+        # the calculated field (qs.annotate) can't be calculated on other calculated field values
+        # so we set these values in get_json_data()
+        qs = qs.annotate(progress=Value(0, output_field=IntegerField()))
+        qs = qs.annotate(completed=Value(False, output_field=BooleanField()))
         return qs
 
     def get_context_data(self, **kwargs):

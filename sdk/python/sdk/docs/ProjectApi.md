@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**project_projects_id_assign_document_post**](ProjectApi.md#project_projects_id_assign_document_post) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**project_projects_id_assign_documents_post**](ProjectApi.md#project_projects_id_assign_documents_post) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**project_projects_id_assignees_get**](ProjectApi.md#project_projects_id_assignees_get) | **GET** /api/v1/project/projects/{id}/assignees/ | 
+[**project_projects_id_check_similarity_process_allowed_post**](ProjectApi.md#project_projects_id_check_similarity_process_allowed_post) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
 [**project_projects_id_cleanup_post**](ProjectApi.md#project_projects_id_cleanup_post) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
 [**project_projects_id_cluster_actions_get**](ProjectApi.md#project_projects_id_cluster_actions_get) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**project_projects_id_cluster_post**](ProjectApi.md#project_projects_id_cluster_post) | **POST** /api/v1/project/projects/{id}/cluster/ | 
@@ -583,7 +584,9 @@ with openapi_client.ApiClient(configuration) as api_client:
         annotation_ids=[
             1,
         ],
-        no_annotation_ids=[],
+        no_annotation_ids=[
+            1,
+        ],
     ) # AssignProjectAnnotationsRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -769,7 +772,9 @@ with openapi_client.ApiClient(configuration) as api_client:
         document_ids=[
             1,
         ],
-        no_document_ids=[],
+        no_document_ids=[
+            1,
+        ],
     ) # AssignProjectDocumentsRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -893,6 +898,124 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **project_projects_id_check_similarity_process_allowed_post**
+> ProjectDetail project_projects_id_check_similarity_process_allowed_post(id)
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import project_api
+from openapi_client.model.project_detail import ProjectDetail
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = project_api.ProjectApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this project.
+    project_detail = ProjectDetail(
+        name="name_example",
+        description="description_example",
+        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
+        created_by_name="created_by_name_example",
+        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
+        modified_by_name="modified_by_name_example",
+        send_email_notification=True,
+        hide_clause_review=True,
+        status=1,
+        owners=[
+            1,
+        ],
+        reviewers=[
+            1,
+        ],
+        super_reviewers=[
+            1,
+        ],
+        junior_reviewers=[
+            1,
+        ],
+        type="type_example",
+        type_data=ProjectListTypeData(
+            code="code_example",
+            title="title_example",
+        ),
+        term_tags=[
+            1,
+        ],
+        document_transformer=1,
+        text_unit_transformer=1,
+        companytype_tags=[
+            1,
+        ],
+    ) # ProjectDetail |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.project_projects_id_check_similarity_process_allowed_post(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling ProjectApi->project_projects_id_check_similarity_process_allowed_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.project_projects_id_check_similarity_process_allowed_post(id, project_detail=project_detail)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling ProjectApi->project_projects_id_check_similarity_process_allowed_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **str**| A unique integer value identifying this project. |
+ **project_detail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+
+### Return type
+
+[**ProjectDetail**](ProjectDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **project_projects_id_cleanup_post**
 > str project_projects_id_cleanup_post(id)
 
@@ -983,7 +1106,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_cluster_actions_get**
-> [Action] project_projects_id_cluster_actions_get(id)
+> ProjectDetail project_projects_id_cluster_actions_get(id)
 
 
 
@@ -994,7 +1117,7 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import project_api
-from openapi_client.model.action import Action
+from openapi_client.model.project_detail import ProjectDetail
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1056,7 +1179,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -1758,7 +1881,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     id = "id_example" # str | A unique integer value identifying this project.
     project_detail = ProjectDetail(
-        pk=1,
         name="name_example",
         description="description_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
@@ -1768,104 +1890,23 @@ with openapi_client.ApiClient(configuration) as api_client:
         send_email_notification=True,
         hide_clause_review=True,
         status=1,
-        status_data=ProjectListStatusData(
-            id=1,
-            name="name_example",
-            code="code_example",
-            order=0,
-            is_active=True,
-            group=1,
-        ),
         owners=[
             1,
-        ],
-        owners_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[
-                    1,
-                ],
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[],
-            ),
-        ],
         super_reviewers=[
             1,
-        ],
-        super_reviewers_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[],
-            ),
         ],
         junior_reviewers=[
             1,
         ],
-        junior_reviewers_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[],
-            ),
-        ],
         type="type_example",
         type_data=ProjectListTypeData(
-            uid="uid_example",
             code="code_example",
             title="title_example",
         ),
-        progress="progress_example",
-        user_permissions="user_permissions_example",
         term_tags=[
             1,
         ],
@@ -1874,11 +1915,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         companytype_tags=[
             1,
         ],
-        app_vars="app_vars_example",
-        document_similarity_run_params="document_similarity_run_params_example",
-        text_unit_similarity_run_params="text_unit_similarity_run_params_example",
-        document_similarity_process_allowed="document_similarity_process_allowed_example",
-        text_unit_similarity_process_allowed="text_unit_similarity_process_allowed_example",
     ) # ProjectDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -2057,7 +2093,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     id = "id_example" # str | A unique integer value identifying this project.
     project_update = ProjectUpdate(
-        pk=1,
         name="name_example",
         description="description_example",
         status=1,
@@ -2245,7 +2280,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     id = "id_example" # str | A unique integer value identifying this project.
     project_update = ProjectUpdate(
-        pk=1,
         name="name_example",
         description="description_example",
         status=1,
@@ -2601,7 +2635,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_set_annotation_status_post**
-> object project_projects_id_set_annotation_status_post(id)
+> dict project_projects_id_set_annotation_status_post(id)
 
 
 
@@ -2644,7 +2678,9 @@ with openapi_client.ApiClient(configuration) as api_client:
         annotation_ids=[
             1,
         ],
-        no_annotation_ids=[],
+        no_annotation_ids=[
+            1,
+        ],
     ) # SetProjectAnnotationsStatusRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -2673,7 +2709,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+**dict**
 
 ### Authorization
 
@@ -2737,7 +2773,9 @@ with openapi_client.ApiClient(configuration) as api_client:
         document_ids=[
             1,
         ],
-        no_document_ids=[],
+        no_document_ids=[
+            1,
+        ],
     ) # SetProjectDocumentsStatusRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -2786,7 +2824,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_settings_actions_get**
-> [Action] project_projects_id_settings_actions_get(id)
+> ProjectDetail project_projects_id_settings_actions_get(id)
 
 
 
@@ -2797,7 +2835,7 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import project_api
-from openapi_client.model.action import Action
+from openapi_client.model.project_detail import ProjectDetail
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2859,7 +2897,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -3149,7 +3187,7 @@ Name | Type | Description  | Notes
 
 
 
-Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}         on_existing_value: \"replace_all\" | \"add_new\" (for multi-choice fields)     Returns:         task_id
 
 ### Example
 
@@ -3189,8 +3227,11 @@ with openapi_client.ApiClient(configuration) as api_client:
         document_ids=[
             1,
         ],
-        no_document_ids=[],
+        no_document_ids=[
+            1,
+        ],
         fields_data={},
+        on_existing_value="on_existing_value_example",
     ) # UpdateProjectDocumentsFieldsRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -3277,7 +3318,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = project_api.ProjectApi(api_client)
     project_create = ProjectCreate(
-        pk=1,
         name="name_example",
         description="description_example",
         type="type_example",
@@ -3836,41 +3876,16 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     id = "id_example" # str | A unique integer value identifying this task queue.
     task_queue = TaskQueue(
-        pk=1,
         description="description_example",
         documents=[
             1,
         ],
-        documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
-        ],
         completed_documents=[
             1,
-        ],
-        completed_documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            TaskQueueReviewersData(
-                pk=1,
-                username="A",
-            ),
-        ],
-        progress="progress_example",
-        data="data_example",
     ) # TaskQueue |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -3957,41 +3972,16 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     id = "id_example" # str | A unique integer value identifying this task queue.
     task_queue = TaskQueue(
-        pk=1,
         description="description_example",
         documents=[
             1,
         ],
-        documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
-        ],
         completed_documents=[
             1,
-        ],
-        completed_documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            TaskQueueReviewersData(
-                pk=1,
-                username="A",
-            ),
-        ],
-        progress="progress_example",
-        data="data_example",
     ) # TaskQueue |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4077,41 +4067,16 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = project_api.ProjectApi(api_client)
     task_queue = TaskQueue(
-        pk=1,
         description="description_example",
         documents=[
             1,
         ],
-        documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
-        ],
         completed_documents=[
             1,
-        ],
-        completed_documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            TaskQueueReviewersData(
-                pk=1,
-                username="A",
-            ),
-        ],
-        progress="progress_example",
-        data="data_example",
     ) # TaskQueue |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4267,12 +4232,8 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = project_api.ProjectApi(api_client)
     upload_session_create = UploadSessionCreate(
-        uid="uid_example",
         project=1,
         created_by=1,
-        upload_files={},
-        review_files=True,
-        force=True,
     ) # UploadSessionCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4426,15 +4387,10 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     uid = "uid_example" # str | A UUID string identifying this upload session.
     upload_session_detail = UploadSessionDetail(
-        uid="uid_example",
         project=1,
         created_by=TaskQueueReviewersData(
-            pk=1,
             username="A",
         ),
-        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        document_type="document_type_example",
-        progress="progress_example",
         completed=True,
     ) # UploadSessionDetail |  (optional)
 
@@ -5029,10 +4985,8 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = project_api.ProjectApi(api_client)
     uid = "uid_example" # str | A UUID string identifying this upload session.
     upload_session_update = UploadSessionUpdate(
-        pk="pk_example",
         project=1,
         created_by=1,
-        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         completed=True,
     ) # UploadSessionUpdate |  (optional)
 

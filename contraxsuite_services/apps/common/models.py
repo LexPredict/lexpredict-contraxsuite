@@ -26,7 +26,7 @@
 
 # Standard imports
 import pickle
-from typing import Any, Optional, Tuple, Dict, List
+from typing import Any, Optional, Tuple, Dict, List, Callable
 
 # Django imports
 from django.conf import settings
@@ -52,6 +52,8 @@ from rest_framework_tracking.models import APIRequestLog
 from simple_history.models import HistoricalRecords
 
 # Project imports
+from typeguard import check_type
+
 from apps.common import redis, signals
 from apps.common.log_utils import ProcessLogger
 from apps.common.logger import CsLogger
@@ -62,8 +64,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -118,30 +120,32 @@ class AppVarsCollection:
                       value: Any,
                       description: str,
                       access_type: str,
-                      system_only: bool):
+                      system_only: bool,
+                      target_type: Any = None,
+                      parser: Callable[[str], Any] = None,
+                      validator: Callable[[Any], None] = None):
         default_app_var = AppVar()
         default_app_var.category = category
         default_app_var.name = name
         default_app_var.description = description
         default_app_var.value = value
         default_app_var.access_type = access_type
+        default_app_var.target_type = target_type
+        default_app_var.parser = parser
+        default_app_var.validator = validator
         cls.APP_VARS[(category, name)] = default_app_var
 
         if system_only:
             cls.SYSTEM_ONLY_APP_VARS[(category, name)] = default_app_var
 
 
-@Singleton
 class KnownAppVars:
-    # The class ensures all app vars are initialized before we read them
-    def __init__(self):
-        from apps.common.app_vars import init_app_vars
-        init_app_vars()
-
-    def get_system_only_app_vars(self) -> Dict[Tuple[str, str], 'AppVar']:
+    @classmethod
+    def get_system_only_app_vars(cls) -> Dict[Tuple[str, str], 'AppVar']:
         return AppVarsCollection.SYSTEM_ONLY_APP_VARS
 
-    def find_app_var(self, category: str, name: str) -> Optional['AppVar']:
+    @classmethod
+    def find_app_var(cls, category: str, name: str) -> Optional['AppVar']:
         return AppVarsCollection.APP_VARS.get((category, name,))
 
 
@@ -215,6 +219,8 @@ class AppVarStorage:
             mock.access_type = access_type
             return mock
 
+        AppVar.check_is_value_ok(category, name, value)
+
         obj: AppVar  # IDE can't defer the type of the unpacked variable
         created: bool
         obj, created = cls._check_app_var_in_db(
@@ -239,11 +245,13 @@ class AppVarStorage:
         # - and those defined for this particular project
         # we can't be sure all these values are cached so we just query the DB
         # TODO: the question is: what if an app var is not stored in the DB?
+        if cls._should_return_mock():
+            return []
         a_vars = cls._get_project_db_app_vars(project_id, user)
         var_by_name: Dict[Tuple[str, str], ProjectAppVar] = {}
         system_vars = None
         if exclude_system_only:
-            system_vars = KnownAppVars().get_system_only_app_vars()
+            system_vars = KnownAppVars.get_system_only_app_vars()
 
         for v in a_vars:  # type: AppVar
             is_system_var = v.project_id is None
@@ -282,7 +290,6 @@ class AppVarStorage:
         # TODO: add a check that passed project app var has corresponding system app var to forbid hacker actions + admin access?
 
         # store per project app vars
-        known_vars = KnownAppVars()
         project_vars = [v for v in p_vars if not v.use_system]
         for v in project_vars:
             # cached_value = cls._read_cached(v.category, v.name, project_id)
@@ -295,7 +302,7 @@ class AppVarStorage:
             db_var.access_type = v.access_type
             db_var.description = v.description
             if not db_var.description:
-                default_appvar = known_vars.find_app_var(v.category, v.name)
+                default_appvar = KnownAppVars.find_app_var(v.category, v.name)
                 if default_appvar:
                     db_var.description = db_var.description or default_appvar.description or ''
             db_var.value = v.value
@@ -489,6 +496,15 @@ class AppVar(models.Model):
 
     objects = AppVarQuerySet.as_manager()
 
+    # we use this field to test the provided value. We don't store "target_type" field in the DB
+    target_type = None
+
+    # parsing function: string -> target_type
+    parser: Callable[[str], Any] = None
+
+    # validating function: value -> None. Raises RuntimeError
+    validator: Callable[[Any], None] = None
+
     def __str__(self):
         return f'App Variable (category={self.category} name={self.name} project={self.project})'
 
@@ -505,13 +521,72 @@ class AppVar(models.Model):
             access_type: str = 'auth',
             project_id: Optional[int] = None,
             system_only: bool = True,
-            overwrite: bool = False) -> 'AppVar':
-        AppVarsCollection.store_app_var(category, name, value, description, access_type, system_only)
+            overwrite: bool = False,
+            target_type: Any = None,
+            parser: Callable[[str], Any] = None,
+            validator: Callable[[Any], None] = None) -> 'AppVar':
+        if target_type is None and value is not None:
+            # infer target type from the app var default value
+            target_type = type(value)
+        AppVarsCollection.store_app_var(category, name, value, description,
+                                        access_type, system_only,
+                                        target_type, parser, validator)
         return AppVarStorage.set(category, name, value, description, access_type, project_id, overwrite)
 
     def delete(self, **kwargs):
         AppVarStorage.clear_key(self.category, self.name, self.access_type, self.project_id)
         return super().delete(**kwargs)
+
+    def is_optional_value(self):
+        if self.target_type is None:
+            return False
+        return hasattr(self.target_type, "__args__") and self.target_type.__args__[-1] is type(None)
+
+    @classmethod
+    def check_is_value_ok(cls, category: str, name: str, value: Any) -> None:
+        app_var: Optional[AppVar] = KnownAppVars.find_app_var(category, name)
+        if app_var:
+            app_var._check_is_value_ok(value)
+
+    def _check_is_value_ok(self, value: Any) -> None:
+        if self.target_type is None:
+            return
+
+        if value is None:
+            if not self.is_optional_value():
+                raise RuntimeError(f'Null value is not allowed')
+        try:
+            check_type('value', value, self.target_type)
+        except TypeError:
+            val_type = 'None'
+            if value is not None:
+                val_type = type(value).__name__
+
+            expected_type = self.target_type.__name__ if hasattr(self.target_type, '__name__') \
+                else str(self.target_type)
+            if 'typing.' in expected_type:
+                expected_type = expected_type[len('typing.')]
+            expected_type.strip('`')
+            raise RuntimeError(f'Value provided is of type "{val_type}", expected type "{expected_type}"')
+
+        if self.validator:
+            self.validator(value)
+
+    def try_cast_string(self, value_str: str) -> Any:
+        """
+        This method tries to cast passed string to the target type.
+        The method may throw errors.
+        """
+        value = None
+        if self.parser:
+            value = self.parser(value_str)
+        elif self.target_type is not None:
+            value = self.target_type(value_str)
+
+        if value is None and self.target_type is None:
+            if not self.is_optional_value():
+                raise RuntimeError(f'Null value is not allowed')
+        return value
 
 
 @receiver(models.signals.post_save, sender=AppVar)
@@ -675,13 +750,6 @@ class Action(models.Model):
                f'{self.name} - ' \
                f'{self.model_name}#{self.object_pk} - ' \
                f'{self.date}'
-
-    def save(self, **kwargs):
-        # TODO: disable as it should produce extra DB calls
-        # self.object_str = None
-        # if self.object_pk:
-        #     self.object_str = str(self.object)
-        return super().save(**kwargs)
 
 
 class SQCount(models.Subquery):
@@ -1066,9 +1134,39 @@ class ExportFile(models.Model):
             dst_user=self.user,
             subject=subject or default_subject,
             txt=text or default_text,
-            html=html or default_html)
+            html=html or default_html,
+            prevent_link_tracking=True)
         self.email_sent = True
         self.save()
+
+    @classmethod
+    def send_multi_file_email(cls,
+                              file_refs: List['ExportFile'],
+                              user: User,
+                              log: ProcessLogger = None,
+                              subject: str = None,
+                              text: str = None,
+                              html: str = None):
+        from apps.notifications.notifications import send_email
+        links = {d.file_path: d.get_link(abs_path=True, as_html=False) for d in file_refs}
+        default_subject = 'Document Files Ready to Download'
+        default_msg_template = 'Here you can download your documents:<br/>\n{}'
+
+        links_text = '\n'.join([f'{links[r.file_path]}' for r in file_refs])
+        links_markup = '<br/>\n'.join([f'<a href="{links[r.file_path]}">{r.comment}</a>' for r in file_refs])
+
+        default_text = default_msg_template.format(links_text)
+        default_html = default_msg_template.format(links_markup)
+        send_email(
+            log=log or ProcessLogger(),
+            dst_user=user,
+            subject=subject or default_subject,
+            txt=text or default_text,
+            html=html or default_html,
+            prevent_link_tracking=True)
+        for link in file_refs:
+            link.email_sent = True
+            link.save()
 
 
 class IContainsOrFullTextSearch(ContainsOrFullTextSearch):

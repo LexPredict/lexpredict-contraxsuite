@@ -1959,7 +1959,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = extract_api.ExtractApi(api_client)
     id = "id_example" # str | A unique integer value identifying this geo entity.
     geo_entity_update = GeoEntityUpdate(
-        pk=1,
         priority=-2147483648,
     ) # GeoEntityUpdate |  (optional)
 
