@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 **pk** | **Integer** |  |  [optional] [readonly]
 **note** | **String** |  | 
 **timestamp** | **OffsetDateTime** |  |  [optional]
-**user** | [**DocumentDetailUser**](DocumentDetailUser.md) |  |  [optional]
+**user** | [**DocumentNoteDetailUser**](DocumentNoteDetailUser.md) |  |  [optional]
 **locationStart** | **Integer** |  |  [optional]
 **locationEnd** | **Integer** |  |  [optional]
 **documentId** | **Integer** |  | 

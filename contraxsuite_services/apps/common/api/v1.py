@@ -52,8 +52,8 @@ from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, JqFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -338,17 +338,24 @@ class ReviewStatusViewSet(JqListAPIMixin, viewsets.ModelViewSet):
 # --------------------------------------------------------
 
 class ActionSerializer(SimpleRelationSerializer):
+    user_photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Action
         fields = ['id', 'name', 'message', 'view_action',
                   'object_pk', 'model_name',
                   # 'content_type', 'object_str', 'app_label',
-                  'date', 'user__name', 'request_data']
+                  'date', 'user__name', 'user__initials', 'user_photo_url', 'request_data']
+
+    def get_user_photo_url(self, obj):
+        return obj.user.photo.url if obj.user and obj.user.photo else None
+    get_user_photo_url.output_field = serializers.CharField()
 
 
-class ActionViewSchema(ObjectToItemResponseMixin, JqFiltersListViewSchema):
-    response_serializer = ActionSerializer()
+class ActionViewSchema(JqFiltersListViewSchema):
+    data = ActionSerializer(many=True)
+    count_of_items = serializers.IntegerField()
+    count_of_filtered_items = serializers.IntegerField()
 
     parameters = [
         {'name': 'project_id',
@@ -390,12 +397,26 @@ class ActionViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
         qs = super().get_queryset()
         self.kwargs.update(self.request.GET.dict())
         if 'project_id' in self.kwargs:
-            qs = qs.filter(object_pk=self.kwargs['project_id'], model_name='Project')
+            from apps.document.models import Document
+            filter_cond = Q(object_pk=self.kwargs['project_id'], model_name='Project')
+            if self.kwargs.get('get_document_actions', False):
+                # Filter project documents actions too
+                related_documents_id = list(map(str, Document.objects.filter(
+                    project_id=self.kwargs['project_id']).values_list('id', flat=True)))
+                if related_documents_id:
+                    filter_cond |= Q(object_pk__in=related_documents_id, model_name='Document')
+            qs = qs.filter(filter_cond)
         elif 'document_id' in self.kwargs:
             qs = qs.filter(object_pk=self.kwargs['document_id'], model_name='Document')
         if 'view_actions' in self.kwargs:
             qs = qs.filter(view_action__in=self.kwargs['view_actions'])
         return qs.order_by('-date')
+
+    def get_extra_data(self, queryset, initial_queryset):
+        data = super().get_extra_data(queryset, initial_queryset)
+        data['count_of_filtered_items'] = queryset.count()
+        data['count_of_items'] = initial_queryset.count()
+        return data
 
     # def get_extra_data(self, queryset, initial_queryset):
     #     init_action_name = self.kwargs.get('init_action')
@@ -529,10 +550,26 @@ class MediaFilesAPIViewSchema(ObjectResponseSchema):
         return res
 
 
+class MediaFilesPermission(SuperuserRequiredPermission):
+    """
+    Allows access only to superusers except user photos
+    """
+    def has_permission(self, request, view):
+        try:
+            path = view.kwargs['path']
+            media_dir = os.path.normpath(path).lstrip(os.path.sep).split(os.path.sep)[1]
+            if media_dir in view.free_media_folders:
+                return True
+        except:
+            pass
+        return request.user and request.user.is_superuser
+
+
 class MediaFilesAPIView(APIView):
-    permission_classes = [SuperuserRequiredPermission]
+    permission_classes = [MediaFilesPermission]
     http_method_names = ['get']
     schema = MediaFilesAPIViewSchema()
+    free_media_folders = ['photo']
 
     def get(self, request, path):
         """

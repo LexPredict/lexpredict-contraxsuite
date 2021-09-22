@@ -56,6 +56,7 @@ export PGBOUNCER_CELERY_CONFIG_VERSION=`md5sum ./temp/pgbouncer.celery.ini | awk
 export PGBOUNCER_USERLIST_VERSION=`md5sum ./temp/pgbouncer.userlist.txt | awk '{ print $1 }'`
 export UWSGI_INI_CONFIG_VERSION=`md5sum ./temp/uwsgi.ini | awk '{ print $1 }'`
 export JUPYTER_CONFIG_VERSION=`md5sum ./temp/jupyter_notebook_config.py | awk '{ print $1 }'`
+export RABBITMQ_CONFIG_VERSION=`md5sum ./temp/rabbitmq.conf | awk '{ print $1 }'`
 
 
 if [[ "${DEPLOY_BACKEND_DEV}" = "true" ]]; then
@@ -71,6 +72,8 @@ export FILEBEAT_CONFIG_VERSION=`md5sum ./temp/filebeat.yml | awk '{ print $1 }'`
 
 envsubst < ./docker-compose-templates/${DOCKER_COMPOSE_FILE} > ./temp/${DOCKER_COMPOSE_FILE}
 
+echo "Copying Nginx error pages to its volume..."
+cp -a ./nginx-error-pages/. ${VOLUME_NGINX_ERROR_PAGES}
 
 echo "Copying Nginx configs to its volume..."
 cp -a ./config-templates/nginx/. ${VOLUME_NGINX_CONF}
@@ -134,6 +137,9 @@ echo "Starting with image: ${CONTRAXSUITE_IMAGE}"
 echo "Starting with docker-compose config: ${DOCKER_COMPOSE_FILE}"
 
 docker stack deploy --compose-file ./temp/${DOCKER_COMPOSE_FILE} contraxsuite --with-registry-auth
+
+echo "Checking RabbitMQ queues"
+source ../util/check_rabbit_queues.sh || true
 
 echo "Restarting Nginx if container exists"
 for i in {1..30}

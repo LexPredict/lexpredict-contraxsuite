@@ -55,8 +55,8 @@ from apps.users import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -121,6 +121,10 @@ class User(AbstractUser):
         self.name = self.get_full_name()
         self.initials = self.get_initials()
         old_instance = User.objects.filter(pk=self.pk).first()
+        # this is made on FE side to use custom fonts via css
+        # if not self.photo:
+        #     from apps.users.user_utils import save_default_avatar
+        #     save_default_avatar(self)
         super().save(*args, **kwargs)
         with transaction.atomic():
             transaction.on_commit(lambda: self._fire_saved(old_instance))
@@ -150,7 +154,7 @@ class User(AbstractUser):
     @property
     def user_documents(self, as_qs=False):
         from apps.document.models import Document
-        return Document.objects.filter(pk__in=self.user_doc_ids)
+        return Document.objects.filter(pk__in=self.user_document_ids)
 
     @staticmethod
     def get_users_for_object(object_pk, object_model, perm_name: str) -> Union[QuerySet, List['User']]:
@@ -186,22 +190,29 @@ class User(AbstractUser):
         return self.username
 
     @classmethod
-    def _get_initials(cls, name: str):
+    def _get_initials(cls, name: str = "", first_name: str = "", last_name: str = ""):
         """
         Class method to use in migrations, Convert self.name into initials
         """
-        if not name:
-            # currently it's unreachable
-            return 'XX'
-        name_parts = name.split()
-        initials = name[:2] if len(name_parts) == 1 else name_parts[0][0] + name_parts[1][0]
-        return initials.upper()
+        name, first_name, last_name = name.strip(), first_name.strip(), last_name.strip()
+        if first_name and last_name:
+            return "".join([first_name[0].upper(), last_name[0].upper()])
+        if len(first_name) > 1:
+            # Remove spaces
+            return first_name.replace(" ", "")[:1].upper()
+        if name:
+            name_parts = name.split()
+            initials = name[:2] if len(name_parts) == 1 else name_parts[0][0] + name_parts[1][0]
+            return initials.upper()
+        return 'XX'
 
     def get_initials(self):
         """
         Object method, Convert self.name into initials
         """
-        return self._get_initials(self.name)
+        return self._get_initials(name=self.name,
+                                  first_name=self.first_name,
+                                  last_name=self.last_name)
 
     def get_time_zone(self):
         return self.timezone or tzlocal.get_localzone()

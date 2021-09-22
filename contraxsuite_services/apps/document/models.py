@@ -43,6 +43,7 @@ import pandas as pd
 # Django imports
 from ckeditor.fields import RichTextField
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
@@ -51,33 +52,41 @@ from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.db.models.deletion import CASCADE, SET_NULL
 from django.db.models.functions import Concat
-from django.db.models import F, Value, QuerySet, Q, Index
+from django.db.models import F, Value, QuerySet, Q, Index, Count
 from django.dispatch import receiver
 from django.utils.html import format_html
 from django.utils.timezone import now
 from djangoql.queryset import DjangoQLQuerySet
 from guardian.shortcuts import assign_perm, get_content_type
 from picklefield import PickledObjectField
+from rest_framework.test import APIRequestFactory
+from rest_framework.request import Request
 from simple_history.models import HistoricalRecords
+from text_extraction_system_api.pdf_coordinates.coord_text_map import CoordTextMap
+from text_extraction_system_api.pdf_coordinates.pdf_coords_common import PdfMarkup
 
 from apps.common.fields import StringUUIDField, CustomJSONField
 from apps.common.file_storage import get_file_storage
 from apps.common.managers import BulkSignalsManager
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
-from apps.common.models import get_default_status
+from apps.common.models import get_default_status, Action
+from apps.common import signals as custom_signals
 from apps.common.validators import RegexPatternValidator
 from apps.document import constants
+from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.value_extraction_hints import ValueExtractionHint, ORDINAL_EXTRACTION_HINTS
 from apps.users.models import User, CustomUserObjectPermission
-from apps.users.permissions import remove_perm, document_type_manager_permissions, document_permissions
+from apps.users.permissions import remove_perm, document_type_manager_permissions, \
+    document_permissions
 
-# WARNING: Do not import from field_types.py here to avoid cyclic dependencies and unpredictable behavior.
+# WARNING: Do not import from field_types.py here to avoid cyclic dependencies and unpredictable
+# behavior.
 # When RawdbFieldHandler of a field is required - use RawdbFieldHandler.of() in the client code.
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,10 +98,10 @@ file_storage = get_file_storage()
 class TimeStampedModel(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
-    created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
-    modified_by = models.ForeignKey(
-        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
+    created_by = models.ForeignKey(User, related_name="created_%(class)s_set", null=True,
+                                   blank=True, db_index=True, on_delete=SET_NULL)
+    modified_by = models.ForeignKey(User, related_name="modified_%(class)s_set", null=True,
+                                    blank=True, db_index=True, on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -111,10 +120,10 @@ class TimeStampedModel(models.Model):
 class LazyTimeStampedModel(models.Model):
     created_date = models.DateTimeField(null=True, blank=True, db_index=True)
     modified_date = models.DateTimeField(null=True, blank=True, db_index=True)
-    created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
-    modified_by = models.ForeignKey(
-        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=True, on_delete=SET_NULL)
+    created_by = models.ForeignKey(User, related_name="created_%(class)s_set", null=True,
+                                   blank=True, db_index=True, on_delete=SET_NULL)
+    modified_by = models.ForeignKey(User, related_name="modified_%(class)s_set", null=True,
+                                    blank=True, db_index=True, on_delete=SET_NULL)
 
     class Meta:
         abstract = True
@@ -133,6 +142,7 @@ class DocumentFieldCategory(models.Model):
     class Meta:
         verbose_name_plural = 'Document Field Categories'
         ordering = ('order', 'name')
+        unique_together = ['document_type', 'name']
 
     def __str__(self):
         return "{}: type={} (#{})".format(self.name,
@@ -141,6 +151,12 @@ class DocumentFieldCategory(models.Model):
 
     def __repr__(self):
         return self.__str__()
+
+    def clean(self):
+        _ = super().clean()
+        if DocumentFieldCategory.objects.filter(name=self.name, document_type=self.document_type).exclude(pk=self.pk).exists():
+            msg = 'Category with the same name and document type already exists'
+            raise ValidationError({'name': msg, 'document_type': msg})
 
 
 @receiver(models.signals.pre_delete, sender=DocumentFieldCategory)
@@ -153,7 +169,17 @@ def notify_category_deleted(sender, instance, **kwargs):
 def notify_category_created(sender, instance, created, **kwargs):
     if created:
         from apps.document.notifications import notify_document_field_category_event
-        notify_document_field_category_event(instance, 'created')
+        from apps.document.api.v1 import DocumentFieldCategoryViewSet
+        request = APIRequestFactory().request()
+        request = Request(request=request)
+        request.user = instance.request_user
+        api_view = DocumentFieldCategoryViewSet(
+            request=request,
+            kwargs={'pk': instance.pk},
+            action='retrieve',
+            format_kwarg='pk')
+        data = api_view.retrieve(request=request).data
+        notify_document_field_category_event(instance, 'created', changes=data)
 
 
 @receiver(models.signals.pre_save, sender=DocumentFieldCategory)
@@ -200,7 +226,8 @@ class DocumentFieldFamily(models.Model):
     def save(self, **kwargs):
         if not self.code:
             self.code = self.make_unique_code(self.title)
-        elif self.pk and DocumentFieldFamily.objects.exclude(pk=self.pk).filter(code=self.code).exists():
+        elif self.pk and DocumentFieldFamily.objects.exclude(pk=self.pk).filter(
+                code=self.code).exists():
             self.code = self.make_unique_code(self.code)
         elif self.pk is None:
             self.code = self.make_unique_code(self.code)
@@ -222,11 +249,12 @@ class DocumentField(TimeStampedModel):
     DocumentField describes manually created custom field for a document.
     """
 
-    # WARNING: Do not add proxy methods to RawdbFieldHandler into the model class to avoid cyclic references and
-    # unpredictable behavior.
+    # WARNING: Do not add proxy methods to RawdbFieldHandler into the model class to avoid cyclic
+    # references and unpredictable behavior.
     # When RawdbFieldHandler of a field is required - use RawdbFieldHandler.of() in the client code.
-    # Let the model class be lightweight and the handlers of additional logic such as field_types.py/RawdbFieldHandler
-    # or field handlers in rawdb plugged in as external components without straightforward referencing from the model.
+    # Let the model class be lightweight and the handlers of additional logic such as
+    # field_types.py/RawdbFieldHandler or field handlers in rawdb plugged in as external
+    # components without straightforward referencing from the model.
 
     UNIT_TYPES = ((i, i) for i in ('sentence', 'paragraph', 'section'))
     CONFIDENCE = ('High', 'Medium', 'Low')
@@ -235,7 +263,7 @@ class DocumentField(TimeStampedModel):
     # Make pk field unique
     uid = StringUUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    document_type = models.ForeignKey('document.DocumentType', null=True, blank=False,
+    document_type = models.ForeignKey('document.DocumentType', null=False, blank=False,
                                       related_name='fields', on_delete=CASCADE)
 
     # Short name for field.
@@ -252,9 +280,11 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
     # Verbose description - information which does not fit into title
     description = models.TextField(null=True, blank=True)
 
-    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True, on_delete=SET_NULL)
+    category = models.ForeignKey(DocumentFieldCategory, blank=True, null=True, db_index=True,
+                                 on_delete=SET_NULL)
 
-    family = models.ForeignKey(DocumentFieldFamily, blank=True, null=True, db_index=True, on_delete=SET_NULL)
+    family = models.ForeignKey(DocumentFieldFamily, blank=True, null=True, db_index=True,
+                               on_delete=SET_NULL)
 
     # Type of the field.
     # Choices are lazy-set on app init. See field_type_registry.py
@@ -299,7 +329,8 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
         (VD_USE_MULTILINE_ONLY, 'Use Multi-Line Field Detectors'),
         (VD_TEXT_BASED_ML_ONLY, 'Use pre-trained text-based ML only'),
         (VD_FIELD_BASED_ML_ONLY, 'Use pre-trained field-based ML only'),
-        (VD_FIELD_BASED_WITH_UNSURE_ML_ONLY, 'Use pre-trained field-based ML with "Unsure" category'),
+        (VD_FIELD_BASED_WITH_UNSURE_ML_ONLY, 'Use pre-trained field-based ML with "Unsure" '
+                                             'category'),
         (VD_FIELD_BASED_REGEXPS, 'Apply regexp Field Detectors to depends-on field values'),
         (VD_MLFLOW_MODEL, 'Use pre-trained MLflow model to find matching text units')
     ]
@@ -346,7 +377,8 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
     value_regexp = models.TextField(null=True, blank=True, validators=[RegexPatternValidator()], help_text='''This regular expression is run on the sentence 
     found by a Field Detector and extracts a specific string value from a Text Unit. If the regular expression returns multiple matching groups, then the first matching group will be used by the Field. This is only applicable to String Fields.''')
 
-    depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields', symmetrical=False)
+    depends_on_fields = models.ManyToManyField('self', blank=True, related_name='affects_fields',
+                                               symmetrical=False)
 
     confidence = models.CharField(max_length=100, choices=CONFIDENCE_CHOICES, default=None,
                                   blank=True, null=True)
@@ -370,7 +402,8 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
     admin_unit_details.allow_tags = True
     admin_unit_details.short_description = "Unit Details"
 
-    allow_values_not_specified_in_choices = models.BooleanField(blank=False, null=False, default=False)
+    allow_values_not_specified_in_choices = models.BooleanField(blank=False, null=False,
+                                                                default=False)
 
     metadata = CustomJSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
@@ -380,8 +413,9 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
 
     order = models.PositiveSmallIntegerField(default=0)
 
-    trained_after_documents_number = models.PositiveIntegerField(default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER,
-                                                                 null=False, validators=[MinValueValidator(1)])
+    trained_after_documents_number = models.PositiveIntegerField(
+        default=settings.TRAINED_AFTER_DOCUMENTS_NUMBER, null=False,
+        validators=[MinValueValidator(1)])
 
     hidden_always = models.BooleanField(default=False, null=False, blank=False)
 
@@ -421,7 +455,10 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
         return self.depends_on_fields.values_list('code', flat=True)
 
     class Meta:
-        unique_together = (('code', 'document_type'), ('code', 'document_type', 'modified_by', 'modified_date'),)
+        unique_together = (
+            ('code', 'document_type'),
+            ('code', 'document_type', 'modified_by', 'modified_date'),
+        )
         ordering = ('long_code',)
         indexes = [
             Index(fields=['dirty']),
@@ -460,7 +497,8 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
 
     def is_choice_value(self, possible_value):
         # update get_invalid_choice_values function if this logic will be changed
-        return self.allow_values_not_specified_in_choices or possible_value in self.get_choice_values()
+        return self.allow_values_not_specified_in_choices or possible_value \
+               in self.get_choice_values()
 
     def get_invalid_choice_annotations(self) -> 'Union[QuerySet, List[FieldAnnotation]]':
         if not self.allow_values_not_specified_in_choices:
@@ -493,20 +531,23 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
                 if f_type != own_doc_code:
                     wrong_fields.append(f'{f_code} ({f_type})')
             if wrong_fields:
-                raise ValidationError('Following fields listed in "depends on fields" have different '
-                                      'document type: ' + ', '.join(wrong_fields),
+                raise ValidationError('Following fields listed in "depends on fields" have '
+                                      'different document type: ' + ', '.join(wrong_fields),
                                       'depends_on_field')
 
         self.hide_until_python = self.hide_until_python.strip() if self.hide_until_python else ''
-        self.hide_until_js = jiphy.to.javascript(self.hide_until_python) if self.hide_until_python else ''
+        self.hide_until_js = jiphy.to.javascript(self.hide_until_python) \
+            if self.hide_until_python else ''
 
         document_type = None
         if self.document_type is not None:
             document_type = DocumentType.objects.get(pk=self.document_type.pk)
 
         with transaction.atomic():
-            for values in DocumentField.objects.filter(pk=self.pk).values('document_type__pk', 'type'):
-                if values['document_type__pk'] != self.document_type.pk or values['type'] != self.type:
+            for values in DocumentField.objects.filter(pk=self.pk).values('document_type__pk',
+                                                                          'type'):
+                if values['document_type__pk'] != self.document_type.pk \
+                        or values['type'] != self.type:
                     # DocumentFieldValue.objects.filter(field=self).delete()
                     FieldAnnotation.objects.filter(field=self).delete()
                     break
@@ -516,7 +557,7 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
     @classmethod
     def get_long_code(cls, field, document_type=None):
         document_type = field.document_type if document_type is None else document_type
-        return '{0}: {1}'.format(document_type.code, field.code) if document_type is not None else field.code
+        return f'{document_type.code}: {field.code}' if document_type is not None else field.code
 
     @classmethod
     def compile_value_regexp(cls, value_regexp: str):
@@ -530,6 +571,16 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
                 msg = 'Unable to compile value regexp for field {0}. Regexp:\n{1}\nReason: {2}'
                 raise SyntaxError(msg.format(self.code, self.value_regexp, exc))
         return self._compiled_value_regexp
+
+    @classmethod
+    def get_fields_by_doctype(cls) -> Dict[str, List[str]]:
+        fields_by_doctype: Dict[str, List[str]] = {}
+        for pk, tp_id in DocumentField.objects.values_list('pk', 'document_type_id'):
+            if tp_id in fields_by_doctype:
+                fields_by_doctype[tp_id].append(pk)
+            else:
+                fields_by_doctype[tp_id] = [pk]
+        return fields_by_doctype
 
 
 @receiver(models.signals.pre_delete, sender=DocumentField)
@@ -665,6 +716,21 @@ def notify_category_updated(sender, instance, **kwargs):
 def save_document_type(sender, instance, created, **kwargs):
     sender.save_timestamp(sender, instance, created, save_document_type)
 
+    if created:
+        from apps.document.notifications import notify_document_type_event
+        from apps.document.api.v1 import DocumentTypeViewSet
+        request = APIRequestFactory().request()
+        request = Request(request=request)
+        request.user = instance.request_user
+        api_view = DocumentTypeViewSet(
+            request=request,
+            kwargs={'pk': instance.pk},
+            action='retrieve',
+            format_kwarg='pk')
+        data = api_view.retrieve(request=request).data
+
+        notify_document_type_event(instance, 'created', changes=data)
+
 
 @receiver(models.signals.m2m_changed, sender=DocumentType.managers.through)
 def grant_manager_perms(instance, action, pk_set, **kwargs):
@@ -686,6 +752,9 @@ def remove_document_type_perms(sender, instance, **kwargs):
     CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk__in=field_ids).delete()
     ctype = get_content_type(DocumentType)
     CustomUserObjectPermission.objects.filter(content_type=ctype, object_pk=instance.pk).delete()
+
+    from apps.document.notifications import notify_document_type_event
+    notify_document_type_event(instance, 'deleted')
 
 
 class DocumentQuerySet(models.QuerySet):
@@ -719,8 +788,9 @@ class DocumentAllObjectsManager(models.Manager.from_queryset(DocumentQuerySet)):
 class Document(LazyTimeStampedModel):
     """Document object model
 
-    Document is the root class for the :mod:`apps.document` app model.  Each :class:`Document<apps.document.models.Document>`
-    can contain zero or more :class:`TextUnit<apps.document.models.TextUnit>`, as well as its own set of fixed and
+    Document is the root class for the :mod:`apps.document` app model.
+    Each :class:`Document<apps.document.models.Document>` can contain zero or more
+    :class:`TextUnit<apps.document.models.TextUnit>`, as well as its own set of fixed and
     flexible metadata about the document per se.
 
     """
@@ -782,9 +852,11 @@ class Document(LazyTimeStampedModel):
 
     all_objects = models.Manager.from_queryset(DocumentQuerySet)()
 
-    document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True, on_delete=CASCADE)
+    document_type = models.ForeignKey(DocumentType, blank=True, null=True, db_index=True,
+                                      on_delete=CASCADE)
 
-    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True, on_delete=CASCADE)
+    project = models.ForeignKey('project.Project', blank=True, null=True, db_index=True,
+                                on_delete=CASCADE)
 
     status = models.ForeignKey('common.ReviewStatus', default=get_default_status,
                                blank=True, null=True, on_delete=CASCADE)
@@ -873,7 +945,8 @@ class Document(LazyTimeStampedModel):
         """
         fval, f_exists = self.try_get_field_by_code(field_code)
         if not f_exists:
-            raise RuntimeError(f'get_field_by_code("{field_code}") - attribute "{field_code}" was not found')
+            raise RuntimeError(f'get_field_by_code("{field_code}") - attribute "{field_code}" '
+                               f'was not found')
         return fval
 
     def try_get_field_by_code(self, field_code: str) -> Tuple[Any, bool]:
@@ -901,13 +974,17 @@ class Document(LazyTimeStampedModel):
         from guardian.shortcuts import get_objects_for_user
         from apps.project.models import Project
         user = User.objects.get(pk=user_id)
-        document_ids = list(get_objects_for_user(user, 'document.view_document', Document).values_list('pk', flat=True))
-        project_ids = get_objects_for_user(user, 'project.view_documents', Project).values_list('pk', flat=True)
-        document_ids += list(cls.objects.filter(project_id__in=project_ids).values_list('pk', flat=True))
+        document_ids = list(get_objects_for_user(user, 'document.view_document',
+                                                 Document).values_list('pk', flat=True))
+        project_ids = get_objects_for_user(user, 'project.view_documents',
+                                           Project).values_list('pk', flat=True)
+        document_ids += list(
+            cls.objects.filter(project_id__in=project_ids).values_list('pk', flat=True))
         return set(document_ids)
 
     def get_alt_source_path_or(self, another):
-        return self.alt_source_path if self.alt_source_path and file_storage.document_exists(self.alt_source_path) \
+        return self.alt_source_path \
+            if self.alt_source_path and file_storage.document_exists(self.alt_source_path) \
             else another
 
     class SourceMode:
@@ -937,7 +1014,8 @@ class Document(LazyTimeStampedModel):
             return self.get_alt_source_path_or(self.source_path)
         if mode == self.SourceMode.strict_alt:
             return self.get_alt_source_path_or(None)
-        if mode == self.SourceMode.alt_for_pdf:    # TODO: may be make more complex based on content type using "magic"
+        if mode == self.SourceMode.alt_for_pdf:
+            # TODO: may be make more complex based on content type using "magic"
             file_desc = self.name or self.source_path or ''
             if os.path.splitext(os.path.basename(file_desc))[-1].lower() == '.pdf':
                 return self.get_alt_source_path_or(self.source_path)
@@ -947,7 +1025,8 @@ class Document(LazyTimeStampedModel):
     def reset_status_from_annotations(cls, ann_status, project=None, document_ids=None):
         """
         Reset Document's status if all its annotations are accepted or rejected
-        OR if a Document status is Awaiting_QA but some annotation is unset from accepted or rejected
+        OR if a Document status is Awaiting_QA but some annotation is unset from
+        accepted or rejected
         :param ann_status: ReviewStatus instance
         :param project: Project instance
         :param document_ids: Document ids
@@ -997,6 +1076,122 @@ class Document(LazyTimeStampedModel):
                                   cache_generic_fields=False,
                                   cache_user_fields=False)
 
+    @staticmethod
+    def update_assignee_actions(queryset, prev_assignees: dict = None, new_assignees: dict = None,
+                                request_user: User = None, request_data: dict = None):
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        actions = []
+        notifications = []
+        request_user = request_user or getattr(queryset, 'request_user', None)
+        request_data = request_data or getattr(queryset, 'request_data', None)
+        action_params = {
+            'view_action': 'partial_update',
+            'user': request_user,
+            'date': now(),
+            'content_type': ContentType.objects.get_for_model(Document),
+            'model_name': 'Document',
+            'app_label': 'document',
+            'request_data': request_data
+        }
+        if not isinstance(queryset, QuerySet):
+            queryset = [queryset, ]
+        for item in queryset:
+            action_params['object_pk'] = item.pk
+            prev_assignee = prev_assignees.get(item.pk, None)
+            new_assignee = new_assignees.get(item.pk, None)
+            document_name = item.name
+            if getattr(new_assignee, 'id', None) == getattr(prev_assignee, 'id', None):
+                continue
+            message_data = {
+                'document': document_name,
+                'action_creator': str(request_user) if request_user else "someone"
+            }
+            if prev_assignee:
+                notification_type = WebNotificationTypes.DOCUMENT_UNASSIGNED
+                redirect_link = {
+                    'type': notification_type.redirect_link_type(),
+                    'params': {
+                        'project_type': 'batch_analysis'
+                            if item.document_type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                            else 'contract_analysis',
+                        'project_id': item.project_id
+                    },
+                }
+                message_data['assignee'] = prev_assignee.name
+                message_data = notification_type.check_message_data(message_data)
+                actions.append(Action(name='Document Unassigned',
+                                      message=notification_type.message_template().format(
+                                          **message_data),
+                                      **action_params))
+                # Web Notification
+                message_data['assignee'] = 'you'
+                message_data = notification_type.check_message_data(message_data)
+                recipients = [prev_assignee.id]
+                notifications.append((message_data, redirect_link, notification_type,
+                                      recipients))
+            if new_assignee:
+                message_data = message_data.copy()
+                notification_type = WebNotificationTypes.DOCUMENT_ASSIGNED
+                redirect_link = {
+                    'type': notification_type.redirect_link_type(),
+                    'params': {
+                        'document_id': item.id,
+                        'project_type': 'batch_analysis'
+                            if item.document_type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                            else 'contract_analysis',
+                        'project_id': item.project_id
+                    },
+                }
+                message_data['assignee'] = new_assignee.name
+                message_data = notification_type.check_message_data(message_data)
+                actions.append(Action(name='Document Assigned',
+                                      message=notification_type.message_template().format(
+                                          **message_data),
+                                      **action_params))
+                # Web Notification
+                message_data['assignee'] = 'you'
+                message_data = notification_type.check_message_data(message_data)
+                recipients = [new_assignee.id]
+                notifications.append((message_data, redirect_link, notification_type,
+                                      recipients))
+        if actions:
+            Action.objects.bulk_create(actions)
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
+
+    @staticmethod
+    def update_status_actions(queryset, request_user=None):
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        request_user = request_user or getattr(queryset, 'request_user', None)
+        if not isinstance(queryset, QuerySet):
+            queryset = [queryset, ]
+        notifications = []
+        for item in queryset:
+            if hasattr(request_user, 'id') and request_user.id != item.assignee_id:
+                try:
+                    notification_type = WebNotificationTypes.DOCUMENT_STATUS_CHANGED
+                    redirect_link = {
+                        'type': notification_type.redirect_link_type(),
+                        'params': {
+                            'document_id': item.id,
+                            'project_type': 'batch_analysis'
+                                if item.document_type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                                else 'contract_analysis',
+                            'project_id': item.project_id
+                        },
+                    }
+                    message_data = {
+                        'document': item.name,
+                        'status': getattr(item.status, 'name', ""),
+                        'action_creator': str(request_user) if request_user else "someone"
+                    }
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [item.assignee_id]
+                    notifications.append((message_data, redirect_link, notification_type,
+                                          recipients))
+                except Document.DoesNotExist:
+                    pass
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
+
     def save(self, **kwargs):
         cache_modified_date = kwargs.pop('cache_modified_date', False)
         super().save(**kwargs)
@@ -1007,7 +1202,8 @@ class Document(LazyTimeStampedModel):
                                           system_fields_changed=['modified_by', 'modified_date'],
                                           generic_fields_changed=False,
                                           user_fields_changed=False,
-                                          changed_by_user_id=self.modified_by.id if self.modified_by else None)
+                                          changed_by_user_id=self.modified_by.id
+                                          if self.modified_by else None)
 
 
 @receiver(models.signals.post_delete, sender=Document)
@@ -1030,6 +1226,41 @@ def update_permissions(sender, instance, **kwargs):
             if instance.assignee is not None:
                 for perm_name in document_permissions:
                     assign_perm(perm_name, instance.assignee, instance)
+
+
+@receiver(models.signals.pre_save, sender=Document)
+def save_document_assignee_actions(sender, instance, *args, **kwargs):
+    new_assignee = instance.assignee
+    new_as_id = new_assignee.pk if new_assignee else None
+
+    if instance.pk:
+        prev_assignee = Document.objects.get(pk=instance.pk).assignee
+        pre_as_id = prev_assignee.pk if prev_assignee else None
+    else:
+        prev_assignee = None
+        pre_as_id = None
+
+    if new_as_id is None and pre_as_id is None:
+        return
+
+    if new_as_id != pre_as_id:
+        Document.update_assignee_actions(instance,
+                                         prev_assignees={instance.pk: prev_assignee},
+                                         new_assignees={instance.pk: new_assignee},
+                                         request_user=getattr(instance, 'request_user', None),
+                                         request_data=getattr(instance, 'request_data', None))
+
+
+@receiver(models.signals.pre_save, sender=Document)
+def save_document_status_actions(sender, instance, *args, **kwargs):
+    if instance.id and Document.objects.get(pk=instance.id).status != instance.status:
+        Document.update_status_actions(instance)
+
+
+@receiver(custom_signals.post_update, sender=Document)
+def update_document_status_actions(sender, queryset, *args, **kwargs):
+    if 'status' in kwargs:
+        Document.update_status_actions(queryset)
 
 
 class DocumentText(models.Model):
@@ -1055,7 +1286,8 @@ class DocumentPDFRepresentation(models.Model):
     """
 
     # Document FK
-    document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE, related_name='document_pdf_repr')
+    document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE,
+                                    related_name='document_pdf_repr')
 
     char_bboxes = models.BinaryField(null=True, blank=True,
                                      help_text='''Bounding boxes of all characters of the document text in 
@@ -1099,39 +1331,22 @@ class DocumentPDFRepresentation(models.Model):
             return []
         return msgpack.unpackb(pages, raw=False)
 
+    def get_text_location_by_coords(
+            self,
+            selections: List[Dict[str, Any]]) -> Tuple[int, int]:
+        return CoordTextMap.get_text_location_by_coords(PdfMarkup(
+            self.char_bboxes_list, self.pages_list),
+            selections)
+
     @classmethod
-    def find_page_by_smb_index(cls, pages: List[Tuple[int, int]], char_index: int) -> int:
-        # finds page with start_index <= char_index < end_index
-        # where each page is a tuple of (start_index, end_index)
-        # returns -1 if such page is not found
-        if not pages:
-            return -1
-        if char_index == 0:
-            return 0
-        if len(pages) < 10:
-            for i in range(len(pages)):
-                if pages[i][0] <= char_index < pages[i][1]:
-                    return i
-            return -1
-
-        a, b = 0, len(pages) - 1
-        while b > a:
-            if b - a == 1:
-                if pages[a][0] <= char_index < pages[a][1]:
-                    return a
-                if pages[b][0] <= char_index < pages[b][1]:
-                    return b
-                return -1
-
-            o = a + round((b - a) / 1.41)
-            if char_index < pages[o][0]:
-                b = o
-                continue
-            if char_index > pages[o][1]:
-                a = o
-                continue
-            return o
-        return -1
+    def get_text_location_by_coords_for_doc(
+            cls,
+            document_id: int,
+            selections: List[Dict[str, Any]]) -> Tuple[int, int]:
+        pdf_records = list(DocumentPDFRepresentation.objects.filter(document_id=document_id))
+        if not pdf_records:
+            raise RuntimeError(f'Document #{document_id} contains no PDF markup')
+        return pdf_records[0].get_text_location_by_coords(selections)
 
 
 class DocumentMetadata(models.Model):
@@ -1145,7 +1360,8 @@ class DocumentMetadata(models.Model):
 class DocumentTag(models.Model):
     """DocumentTag object model
 
-    DocumentTag is a flexible class for applying labels or tags to a :class:`Document<apps.document.models.Document>`.
+    DocumentTag is a flexible class for applying labels or tags to
+    a :class:`Document<apps.document.models.Document>`.
     Each Document can have zero or more DocumentTag records, which can be subsequently used for
     unsupervised task accuracy assessment, semi-supervised tasks, and supervised tasks, as well
     as reporting.
@@ -1172,9 +1388,9 @@ class DocumentProperty(TimeStampedModel):
     """DocumentProperty object model
 
     DocumentProperty is a flexible class for creating key-value properties for a
-    :class:`Document<apps.document.models.Document>`.  Each Document can have zero or more DocumentProperty records,
-    which may be used either at document ingestion to store metadata or subsequently to store
-    any information that may be relevant.
+    :class:`Document<apps.document.models.Document>`.  Each Document can have zero or more
+    DocumentProperty records, which may be used either at document ingestion to store metadata or
+    subsequently to store any information that may be relevant.
 
     Unlike DocumentTag and DocumentClassification objects, DocumentProperty objects are not
     used in user-trained algorithm development.
@@ -1234,7 +1450,8 @@ def save_document_property(sender, instance, created, **kwargs):
 class DocumentRelation(models.Model):
     """DocumentRelation object model
 
-    DocumentRelation is a flexible class for linking two :class:`Document<apps.document.models.Document>` objects.
+    DocumentRelation is a flexible class for linking two
+    :class:`Document<apps.document.models.Document>` objects.
     These records can be used to define a many-to-many network or graph, where each relationship
     or "edge" can have a specific `relation_type`.
 
@@ -1243,10 +1460,12 @@ class DocumentRelation(models.Model):
     """
 
     # "Left" or "source" document
-    document_a = models.ForeignKey(Document, db_index=True, related_name="document_a_set", on_delete=CASCADE)
+    document_a = models.ForeignKey(Document, db_index=True, related_name="document_a_set",
+                                   on_delete=CASCADE)
 
     # "Right" or "target" document
-    document_b = models.ForeignKey(Document, db_index=True, related_name="document_b_set", on_delete=CASCADE)
+    document_b = models.ForeignKey(Document, db_index=True, related_name="document_b_set",
+                                   on_delete=CASCADE)
 
     # Relation type, e.g., amendment or negotiated_copy
     relation_type = models.CharField(max_length=128)
@@ -1280,7 +1499,8 @@ class DocumentNote(models.Model):
                                     null=True, db_index=True, on_delete=CASCADE)
 
     # Document Field Value
-    field = models.ForeignKey('document.DocumentField', blank=True, null=True, db_index=True, on_delete=CASCADE)
+    field = models.ForeignKey('document.DocumentField', blank=True, null=True, db_index=True,
+                              on_delete=CASCADE)
 
     user = models.ForeignKey(User, db_index=True, null=True, on_delete=SET_NULL, default=None)
 
@@ -1311,7 +1531,8 @@ class DocumentNote(models.Model):
             .format(self.document.id, self.id)
 
     def update_document_cache(self):
-        user = getattr(self, 'request_user', self.history.last().history_user if self.history.exists() else None)
+        user = getattr(self, 'request_user',
+                       self.history.last().history_user if self.history.exists() else None)
         from apps.document.tasks import plan_process_document_changed
         from apps.document.constants import DocumentSystemField
 
@@ -1411,6 +1632,8 @@ class TextUnitText(models.Model):
 
     text_tsvector = SearchVectorField(null=True)
 
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
+
     def __str__(self):
         return "TextUnitText (id={}, text_unit={})".format(self.pk, str(self.text_unit))
 
@@ -1425,7 +1648,8 @@ class TextUnitText(models.Model):
 class TextUnitTag(models.Model):
     """TextUnitTag object model
 
-    TextUnitTag is a flexible class for applying labels or tags to a :class:`TextUnit<apps.document.models.TextUnit>`.
+    TextUnitTag is a flexible class for applying labels or tags to
+    a :class:`TextUnit<apps.document.models.TextUnit>`.
     Each TextUnit can have zero or more TextUnitTag records, which can be subsequently used for
     unsupervised task accuracy assessment, semi-supervised tasks, and supervised tasks, as well
     as reporting.
@@ -1459,16 +1683,17 @@ class TextUnitProperty(TimeStampedModel):
     """TextUnitProperty object model
 
     TextUnitProperty is a flexible class for creating key-value properties for a
-    :class:`TextUnit<apps.document.models.TextUnit>`.  Each TextUnit can have zero or more TextUnitProperty records,
+    :class:`TextUnit<apps.document.models.TextUnit>`.  Each TextUnit can have zero or more
+    TextUnitProperty records,
     which may be used either at document ingestion to store metadata, such as Track Changes or
     annotations, or subsequently to store relevant information.
     """
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        User, related_name="created_%(class)s_set", null=True, blank=True, db_index=False, on_delete=SET_NULL)
-    modified_by = models.ForeignKey(
-        User, related_name="modified_%(class)s_set", null=True, blank=True, db_index=False, on_delete=SET_NULL)
+    created_by = models.ForeignKey(User, related_name="created_%(class)s_set", null=True,
+                                   blank=True, db_index=False, on_delete=SET_NULL)
+    modified_by = models.ForeignKey(User, related_name="modified_%(class)s_set", null=True,
+                                    blank=True, db_index=False, on_delete=SET_NULL)
 
     # Text unit
     text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
@@ -1500,7 +1725,8 @@ def save_text_unit_property(sender, instance, created, **kwargs):
 class TextUnitRelation(models.Model):
     """DocumentRelation object model
 
-    DocumentRelation is a flexible class for linking two :class:`Document<apps.document.models.Document>` objects.
+    DocumentRelation is a flexible class for linking two
+    :class:`Document<apps.document.models.Document>` objects.
     These records can be used to define a many-to-many network or graph, where each relationship
     or "edge" can have a specific `relation_type`.
 
@@ -1625,12 +1851,15 @@ class DocumentFieldDetector(models.Model):
 
     CAT_SIMPLE_CONFIG = 'simple_config'
 
-    CATEGORY_CHOICES = [(CAT_SIMPLE_CONFIG, 'Simple field detectors loaded and managed via '
-                                            '"Documents: Import CSV Field Detection Config" admin task.')]
+    CATEGORY_CHOICES = [
+        (CAT_SIMPLE_CONFIG, 'Simple field detectors loaded and managed via "Documents: Import CSV '
+                            'Field Detection Config" admin task.')
+    ]
 
     # Field detector category which can be used for finding some special field detectors
     # from the set of all available.
-    category = models.CharField(max_length=64, db_index=True, blank=True, null=True, choices=CATEGORY_CHOICES,
+    category = models.CharField(max_length=64, db_index=True, blank=True, null=True,
+                                choices=CATEGORY_CHOICES,
                                 help_text='''Field detector category used for technical needs e.g. for determining 
 which field detectors were created automatically during import process.''')
 
@@ -1649,7 +1878,8 @@ definitions, then the Field Detector skips and moves to the next Text Unit. If t
 Field Detector checks against those requirements. The Field Detector marks the entire Text Unit as a match. Note that 
 the Field Detector checks for definition words after filtering using the Exclude regexps.''')
 
-    include_regexps = models.TextField(blank=True, null=True, validators=[RegexPatternValidator()], help_text='''Enter regular expressions, each on a new 
+    include_regexps = models.TextField(blank=True, null=True, validators=[RegexPatternValidator()],
+                                       help_text='''Enter regular expressions, each on a new 
 line, for text patterns you want INCLUDED. The Field Detector will attempt to match each of these regular expressions 
 within a given Text Unit. Avoid using “.*” and similar unlimited multipliers, as they can crash or slow ContraxSuite. 
 Use bounded multipliers for variable length matching, like “.{0,100}” or similar. Note that Include regexps are checked 
@@ -1661,7 +1891,8 @@ after both Exclude regexps and Definition words.''')
         help_text='''Set 'ignore case' flag for both 'Include regexps' and 'Exclude regexps' options.''')
 
     # For choice fields - the value which should be set if a sentence matches this detector
-    detected_value = models.CharField(max_length=256, blank=True, null=True, help_text='''The string value written here 
+    detected_value = models.CharField(verbose_name='Display Value', max_length=256, blank=True, null=True,
+                                      help_text='''The string value written here 
 will be assigned to the field if the Field Detector positively matches a Text Unit. This is only applicable to Choice, 
 Multichoice, and String fields, as their respective Field Detectors do not extract and display values from the source 
 text.''')
@@ -1702,6 +1933,10 @@ parsed correctly as the start date.''')
     "Detect limit unit" element.''')
 
     @property
+    def display_value(self):
+        return self.detected_value
+
+    @property
     def include_matchers(self):
         return self._include_matchers
 
@@ -1726,10 +1961,10 @@ parsed correctly as the start date.''')
 
         if not typed_field.ordinal \
                 and self.extraction_hint in ORDINAL_EXTRACTION_HINTS:
-            raise ValidationError({'field': ['Cannot take min or max of <Field> because its type is not '
-                                             'amount, money, int, float, date, or duration. Please select '
-                                             'TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, or change the field '
-                                             'type.']})
+            raise ValidationError({'field': [
+                'Cannot take min or max of <Field> because its type is not amount, money, int, '
+                'float, date, or duration. Please select TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, '
+                'or change the field type.']})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1762,16 +1997,16 @@ parsed correctly as the start date.''')
         try:
             self._include_matchers = self.compile_regexps_string(self.include_regexps)
         except Exception as exc:
-            raise SyntaxError('Unable to compile include regexp for field detector #{1} and field {2}. Regexp:\n{0}\n'
-                              'Reason: {3}'
-                              .format(self.include_regexps, self.pk, self.field.code, exc))
+            raise SyntaxError(f'Unable to compile include regexp for field detector #{self.pk} '
+                              f'and field {self.field.code}. Regexp:\n{self.include_regexps}\n'
+                              f'Reason: {exc}')
 
         try:
             self._exclude_matchers = self.compile_regexps_string(self.exclude_regexps)
         except Exception as exc:
-            raise SyntaxError('Unable to compile exclude regexp for field detector #{1} and field {2}. Regexp:\n{0}\n'
-                              'Reason: {3}'
-                              .format(self.exclude_regexps, self.pk, self.field.code, exc))
+            raise SyntaxError(f'Unable to compile exclude regexp for field detector #{self.pk} '
+                              f'and field {self.field.code}. Regexp:\n{self.exclude_regexps}\n'
+                              f'Reason: {exc}')
 
     def _matches_exclude_regexp(self, sentence: str) -> bool:
         if self._exclude_matchers:
@@ -1795,17 +2030,24 @@ parsed correctly as the start date.''')
         return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
                + " (#{0})".format(self.uid)
 
+    def save(self, *args, **kwargs):
+        # Update detect_limit_count when detecting field value has no restriction
+        if self.detect_limit_unit == DocumentFieldDetector.DETECT_LIMIT_NONE \
+                and self.detect_limit_count:
+            self.detect_limit_count = 0
+        super().save(*args, **kwargs)
+
     def check_model(self) -> List[Tuple[str, Any]]:
         errors = []  # type: List[Tuple[str, Any]]
         try:
             self.compile_regexps_string(self.exclude_regexps)
-        except Exception as exc:
-            errors.append(('exclude_regexps', exc,))
+        except Exception:
+            errors.append(('exclude_regexps', RegexPatternValidator.message,))
 
         try:
             self.compile_regexps_string(self.include_regexps)
-        except Exception as exc:
-            errors.append(('include_regexps', exc,))
+        except Exception:
+            errors.append(('include_regexps', RegexPatternValidator.message,))
 
         try:
             from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
@@ -1935,7 +2177,8 @@ class ClassifierModel(models.Model):
 
     classifier_accuracy_report_in_sample = models.CharField(max_length=1024, null=True, blank=True)
 
-    classifier_accuracy_report_out_of_sample = models.CharField(max_length=1024, null=True, blank=True)
+    classifier_accuracy_report_out_of_sample = models.CharField(max_length=1024, null=True,
+                                                                blank=True)
 
     store_suggestion = models.BooleanField(default=False)
 
@@ -1962,7 +2205,8 @@ class FieldValue(models.Model):
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
     modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=SET_NULL)
 
-    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE, related_name='field_values')
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE,
+                                 related_name='field_values')
 
     field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE)
 
@@ -1995,6 +2239,115 @@ class FieldValue(models.Model):
             return typed_field.field_value_json_to_python(self.value)
         except:
             pass
+
+    @staticmethod
+    def update_assignee_actions(queryset, prev_assignee: User = None, new_assignee: User = None,
+                                request_user: User = None, request_data: dict = None):
+        from django.contrib.contenttypes.models import ContentType
+        from apps.common.models import Action
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        from apps.project.models import Project
+        notifications = []
+        actions = []
+        action_params = {
+            'view_action': 'partial_update',
+            'user': request_user,
+            'date': now(),
+            'content_type': ContentType.objects.get_for_model(Project),
+            'model_name': 'Project',
+            'app_label': 'project',
+            'request_data': request_data
+        }
+        new_assignee_id = new_assignee.id if new_assignee else None
+        new_assignee_name = new_assignee.name if new_assignee else None
+        queryset = queryset.select_related('document').values(
+            'assignee__id', 'assignee__name', 'document__project').annotate(items_count=Count('id'))
+        if not isinstance(queryset, QuerySet):
+            queryset = [queryset, ]
+        for item in queryset:
+            prev_assignee_id = item['assignee__id'] if not prev_assignee else prev_assignee.id
+            prev_assignee_name = item['assignee__name'] if not prev_assignee else prev_assignee.name
+            project_id = item['document__project']
+            items_count = item['items_count']
+            if prev_assignee_id == new_assignee_id:
+                continue
+            project = Project.objects.get(id=project_id)
+            action_params['object_pk'] = project_id
+            message_data = {
+                'count': items_count,
+                'plural': "s were" if items_count > 1 else " was",
+                'action_creator': str(request_user) if request_user else "someone",
+                'project': project.name
+            }
+            if prev_assignee_id:
+                notification_type = WebNotificationTypes.CLAUSES_UNASSIGNED
+                redirect_link = {
+                    'type': notification_type.redirect_link_type(),
+                    'params': {
+                        'project_type': 'batch_analysis'
+                            if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                            else 'contract_analysis',
+                        'project_id': project_id
+                    },
+                }
+                message_data['assignee'] = prev_assignee_name
+                message_data = notification_type.check_message_data(message_data)
+                actions.append(
+                    Action(name='Clause Unassigned',
+                           message=notification_type.message_template().format(**message_data),
+                           **action_params)
+                )
+                # Web Notification
+                message_data['assignee'] = 'you'
+                message_data = notification_type.check_message_data(message_data)
+                recipients = [prev_assignee_id]
+                notifications.append((message_data, redirect_link, notification_type, recipients))
+            if new_assignee_id:
+                message_data = message_data.copy()
+                notification_type = WebNotificationTypes.CLAUSES_ASSIGNED
+                redirect_link = {
+                    'type': notification_type.redirect_link_type(),
+                    'params': {
+                        'project_id': project_id,
+                        'assignee_name': new_assignee_name or ""
+                    },
+                }
+                message_data['assignee'] = new_assignee_name
+                message_data = notification_type.check_message_data(message_data)
+                actions.append(
+                    Action(name='Clause Assigned',
+                           message=notification_type.message_template().format(**message_data),
+                           **action_params)
+                )
+                # Web Notification
+                message_data['assignee'] = 'you'
+                message_data = notification_type.check_message_data(message_data)
+                recipients = [new_assignee_id]
+                notifications.append((message_data, redirect_link, notification_type, recipients))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
+        if actions:
+            Action.objects.bulk_create(actions)
+
+
+@receiver([models.signals.pre_save, custom_signals.pre_update], sender=FieldValue)
+def update_document_assignee_actions(signal, sender, instance, *args, **kwargs):
+    new_assignee = instance.assignee
+    prev_assignee = Document.objects.get(pk=instance.pk).assignee if instance.pk else None
+    FieldValue.update_assignee_actions(
+        instance, prev_assignee=prev_assignee, new_assignee=new_assignee,
+        request_user=getattr(instance, 'request_user', None),
+        request_data=getattr(instance, 'request_data', None))
+
+
+@receiver([custom_signals.pre_update], sender=FieldValue)
+def update_document_assignee_actions(signal, sender, queryset, *args, **kwargs):
+    new_assignee = queryset.first().assignee
+    request_user = getattr(queryset, 'request_user', None)
+    request_data = getattr(queryset, 'request_data', None)
+    queryset = FieldValue.objects.filter(id__in=queryset.values_list('id', flat=True))
+    FieldValue.update_assignee_actions(
+        FieldValue.objects.filter(id__in=queryset.values_list('id', flat=True)),
+        new_assignee=new_assignee, request_user=request_user, request_data=request_data)
 
 
 class FieldAnnotationStatus(models.Model):
@@ -2067,9 +2420,11 @@ class FieldAnnotation(models.Model):
     modified_date = models.DateTimeField(auto_now=True, db_index=True)
     modified_by = models.ForeignKey(User, null=True, blank=True, db_index=True, on_delete=SET_NULL)
 
-    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE, related_name='annotations_matches')
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE,
+                                 related_name='annotations_matches')
 
-    field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE, related_name='annotations_matches')
+    field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE,
+                              related_name='annotations_matches')
 
     value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
@@ -2091,7 +2446,8 @@ class FieldAnnotation(models.Model):
 
     assign_date = models.DateTimeField(blank=True, null=True)
 
-    status = models.ForeignKey(FieldAnnotationStatus, default=FieldAnnotationStatus.initial_status_pk,
+    status = models.ForeignKey(FieldAnnotationStatus,
+                               default=FieldAnnotationStatus.initial_status_pk,
                                blank=True, null=True, db_index=True, on_delete=SET_NULL)
 
     history = HistoricalRecords()
@@ -2131,6 +2487,115 @@ class FieldAnnotation(models.Model):
         except:
             pass
 
+    @staticmethod
+    def update_assignee_actions(queryset, prev_assignee: User = None, new_assignee: User = None,
+                                request_user: User = None, request_data: dict = None):
+        from django.contrib.contenttypes.models import ContentType
+        from apps.common.models import Action
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        from apps.project.models import Project
+        notifications = []
+        actions = []
+        action_params = {
+            'view_action': 'partial_update',
+            'user': request_user,
+            'date': now(),
+            'content_type': ContentType.objects.get_for_model(Project),
+            'model_name': 'Project',
+            'app_label': 'project',
+            'request_data': request_data
+        }
+        new_assignee_id = new_assignee.id if new_assignee else None
+        new_assignee_name = new_assignee.name if new_assignee else None
+        queryset = queryset.select_related('document').values(
+            'assignee__id', 'assignee__name', 'document__project').annotate(items_count=Count('id'))
+        if not isinstance(queryset, QuerySet):
+            queryset = [queryset, ]
+        for item in queryset:
+            prev_assignee_id = item['assignee__id'] if not prev_assignee else prev_assignee.id
+            prev_assignee_name = item['assignee__name'] if not prev_assignee else prev_assignee.name
+            project_id = item['document__project']
+            items_count = item['items_count']
+            if prev_assignee_id == new_assignee_id:
+                continue
+            project = Project.objects.get(id=project_id)
+            action_params['object_pk'] = project_id
+            message_data = {
+                'count': items_count,
+                'plural': "s were" if items_count > 1 else " was",
+                'action_creator': str(request_user) if request_user else "someone",
+                'project': project.name
+            }
+            if prev_assignee_id:
+                notification_type = WebNotificationTypes.CLAUSES_UNASSIGNED
+                redirect_link = {
+                    'type': notification_type.redirect_link_type(),
+                    'params': {
+                        'project_type': 'batch_analysis'
+                            if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                            else 'contract_analysis',
+                        'project_id': project_id
+                    },
+                }
+                message_data['assignee'] = prev_assignee_name
+                message_data = notification_type.check_message_data(message_data)
+                actions.append(
+                    Action(name='Clause Unassigned',
+                           message=notification_type.message_template().format(**message_data),
+                           **action_params)
+                )
+                # Web Notification
+                message_data['assignee'] = 'you'
+                message_data = notification_type.check_message_data(message_data)
+                recipients = [prev_assignee_id]
+                notifications.append((message_data, redirect_link, notification_type, recipients))
+            if new_assignee_id:
+                message_data = message_data.copy()
+                notification_type = WebNotificationTypes.CLAUSES_ASSIGNED
+                redirect_link = {
+                    'type': notification_type.redirect_link_type(),
+                    'params': {
+                        'project_id': project_id,
+                        'assignee_name': new_assignee_name or ""
+                    },
+                }
+                message_data['assignee'] = new_assignee_name
+                message_data = notification_type.check_message_data(message_data)
+                actions.append(
+                    Action(name='Clause Assigned',
+                           message=notification_type.message_template().format(**message_data),
+                           **action_params)
+                )
+                # Web Notification
+                message_data['assignee'] = 'you'
+                message_data = notification_type.check_message_data(message_data)
+                recipients = [new_assignee_id]
+                notifications.append((message_data, redirect_link, notification_type, recipients))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
+        if actions:
+            Action.objects.bulk_create(actions)
+
+
+@receiver([models.signals.pre_save, custom_signals.pre_update], sender=FieldAnnotation)
+def update_document_assignee_actions(signal, sender, instance, *args, **kwargs):
+    new_assignee = instance.assignee
+    prev_assignee = Document.objects.get(pk=instance.pk).assignee if instance.pk else None
+    FieldAnnotation.update_assignee_actions(
+        instance, prev_assignee=prev_assignee, new_assignee=new_assignee,
+        request_user=getattr(instance, 'request_user', None),
+        request_data=getattr(instance, 'request_data', None))
+
+
+@receiver([custom_signals.pre_update], sender=FieldAnnotation)
+def update_document_assignee_actions(signal, sender, queryset, *args, **kwargs):
+    new_assignee = queryset.first().assignee
+    request_user = getattr(queryset, 'request_user', None)
+    request_data = getattr(queryset, 'request_data', None)
+    queryset = FieldAnnotation.objects.filter(id__in=queryset.values_list('id', flat=True))
+    FieldAnnotation.update_assignee_actions(
+        FieldAnnotation.objects.filter(id__in=queryset.values_list('id', flat=True)),
+        new_assignee=new_assignee, request_user=request_user, request_data=request_data)
+
 
 class FieldAnnotationFalseMatch(models.Model):
     # INFO: added to make unique field among FieldAnnotation and FieldAnnotationFalseMatch
@@ -2138,9 +2603,11 @@ class FieldAnnotationFalseMatch(models.Model):
     # TODO: make it primary_key? - had issues with updating pk for history objects
     uid = StringUUIDField(default=uuid.uuid4, editable=False)
 
-    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE, related_name='annotation_false_matches')
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE,
+                                 related_name='annotation_false_matches')
 
-    field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE, related_name='annotation_false_matches')
+    field = models.ForeignKey(DocumentField, db_index=True, on_delete=CASCADE,
+                              related_name='annotation_false_matches')
 
     value = JSONField(blank=True, null=True, encoder=ImprovedDjangoJSONEncoder)
 
@@ -2192,9 +2659,11 @@ class FieldAnnotationSavedFilter(models.Model):
 
     display_order = models.PositiveSmallIntegerField(default=0)
 
-    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True, on_delete=CASCADE)
+    project = models.ForeignKey('project.Project', null=True, blank=True, db_index=True,
+                                on_delete=CASCADE)
 
-    document_type = models.ForeignKey(DocumentType, null=False, blank=False, db_index=True, on_delete=CASCADE)
+    document_type = models.ForeignKey(DocumentType, null=False, blank=False, db_index=True,
+                                      on_delete=CASCADE)
 
     user = models.ForeignKey(User, blank=True, null=True, db_index=True, on_delete=CASCADE)
 

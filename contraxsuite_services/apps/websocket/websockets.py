@@ -39,11 +39,12 @@ from apps.common.singleton import Singleton
 from apps.users.models import User
 from apps.users.authentication import token_cache
 from apps.websocket.channel_message import ChannelMessage
+from apps.websocket import channel_message_types as message_types
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,9 +70,9 @@ class Websockets:
     def user_id_to_group_name(self, user_id: int) -> str:
         """
         Convert user id to django-channels 2 group name.
-        Django channels operates on the "groups" concept. To manage connected users and not groups the
-        connected channels are added to the groups named in a specific format based on the user id.
-        This way we cen get user id by group name and vice versa.
+        Django channels operates on the "groups" concept. To manage connected users and not groups
+        the connected channels are added to the groups named in a specific format based on the user
+        id. This way we cen get user id by group name and vice versa.
 
         :param user_id:
         :return:
@@ -81,9 +82,9 @@ class Websockets:
     def group_name_to_user_id(self, group_name: str) -> Optional[int]:
         """
         Convert django-channels 2 group name to user id.
-        Django channels operates on the "groups" concept. To manage connected users and not groups the
-        connected channels are added to the groups named in a specific format based on the user id.
-        This way we cen get user id by group name and vice versa.
+        Django channels operates on the "groups" concept. To manage connected users and not groups
+        the connected channels are added to the groups named in a specific format based on the user
+        id. This way we cen get user id by group name and vice versa.
 
         :param group_name:
         :return:
@@ -99,18 +100,21 @@ class Websockets:
     def send_to_all_users(self, message_obj: ChannelMessage):
         """
         Send the message to all connected users.
-        Each authenticated user is added to a special ALL group and this method sends the message into this group.
+        Each authenticated user is added to a special ALL group and this method sends the message
+        into this group.
         :param message_obj:
         :return:
         """
         layer = get_channel_layer()  # type: RedisChannelLayer
-        async_to_sync(layer.group_send)(ALL, {'type': 'send_to_client', 'message': message_obj.to_dict()})
+        async_to_sync(layer.group_send)(
+            ALL, {'type': 'send_to_client', 'message': message_obj.to_dict()})
 
     def send_to_users(self, qs_users: QuerySet, message_obj: ChannelMessage):
         """
         Send the message to the users returned by the specified Django query set.
 
-        :param qs_users: Django query set returning User models. Pk field will be requested via values_list(..).
+        :param qs_users: Django query set returning User models. Pk field will be requested
+        via values_list(..).
         :param message_obj: Message to send.
         :return:
         """
@@ -118,7 +122,8 @@ class Websockets:
         connected_user_ids = self.get_connected_users()
         if not connected_user_ids:
             return
-        user_ids: Set[int] = set(qs_users.filter(pk__in=connected_user_ids).values_list('pk', flat=True))
+        user_ids: Set[int] = set(qs_users.filter(
+            pk__in=connected_user_ids).values_list('pk', flat=True))
 
         layer = get_channel_layer()  # type: RedisChannelLayer
         async_to_sync(layer.group_send)(ALL, {'type': 'send_to_client',
@@ -150,8 +155,9 @@ class Websockets:
         :return:
         """
         layer = get_channel_layer()  # type: RedisChannelLayer
-        async_to_sync(layer.group_send)(self.user_id_to_group_name(user_id),
-                                        {'type': 'send_to_client', 'message': message_obj.to_dict()})
+        async_to_sync(layer.group_send)(
+            self.user_id_to_group_name(user_id),
+            {'type': 'send_to_client', 'message': message_obj.to_dict()})
 
     def _list_groups(self) -> Iterable[str]:
         """
@@ -169,8 +175,9 @@ class Websockets:
         On each websocket connect and user authentication its channel is added to the user's group.
         On each disconnect - the channel is removed.
         Django channels 2 adds/removes the corresponding keys in Redis.
-        As tested - when two users are connected from different browsers and next one of them disconnects the
-        corresponding group is still present. Next when the last user disconnects the group is removed.
+        As tested - when two users are connected from different browsers and next one of them
+        disconnects the corresponding group is still present. Next when the last user disconnects
+        the group is removed.
         :return:
         """
         res = set()
@@ -210,17 +217,19 @@ class ContraxsuiteWSConsumer(AsyncJsonWebsocketConsumer):
             user = await self.authenticate(content.get('token'))
             self.logger.info(f'{self.scope.get("client")} | Authenticated as: {user}')
             if not user:
-                self.logger.info(f'{self.scope.get("client")} | User not authenticated. Closing connection.')
+                self.logger.info(f'{self.scope.get("client")} | User not authenticated. '
+                                 f'Closing connection.')
                 await self.close()
                 return
 
     async def _add_to_groups(self, user: User):
         channel_layer = self.channel_layer  # type: RedisChannelLayer
         user_group_name = self.ws.user_id_to_group_name(user.pk)
-        self.logger.info(
-            f'{self.scope.get("client")} | Adding channel {self.channel_name} to groups: {ALL}, {user_group_name}')
+        self.logger.info(f'{self.scope.get("client")} | Adding channel {self.channel_name} '
+                         f'to groups: {ALL}, {user_group_name}')
         await channel_layer.group_add(user_group_name, self.channel_name)
         await channel_layer.group_add(ALL, self.channel_name)
+        await self._send_web_notifications(user, channel_layer)
 
     async def authenticate(self, token_key: str) -> Optional[User]:
         """
@@ -234,15 +243,34 @@ class ContraxsuiteWSConsumer(AsyncJsonWebsocketConsumer):
         try:
             user = token_cache.get_user(token=token_key)
             if not user or user.is_anonymous:
-                self.logger.error(
-                    f'{self.scope.get("client")} | User of token {token_key} is not specified or anonymous')
+                self.logger.error(f'{self.scope.get("client")} | User of token {token_key} is '
+                                  f'not specified or anonymous')
                 return None
             self.scope[USER] = user
             await self._add_to_groups(user)
             return user
         except Exception as e:
-            self.logger.error(f'{self.scope.get("client")} | Could not find token by key ({token_key})', exc_info=e)
+            self.logger.error(f'{self.scope.get("client")} | Could not find token by '
+                              f'key ({token_key})', exc_info=e)
             return None
+
+    async def _send_web_notifications(self, user: User, channel_layer: RedisChannelLayer):
+        from apps.notifications.models import WebNotification, WebNotificationTypes
+        notifications = WebNotification.objects.filter(recipient=user).order_by(
+            '-id')[:WebNotification.LAST_NOTIFICATIONS_COUNT]
+        data = {'notifications': [{
+            'id': item.notification.id,
+            'is_seen': item.is_seen,
+            'message_data': item.notification.message_data,
+            'message_template': WebNotificationTypes.get_type_by_value(
+                item.notification.notification_type).message_template(),
+            'notification_type': item.notification.notification_type,
+            'redirect_link': item.notification.redirect_link,
+            'created_date': item.notification.created_date,
+        } for item in notifications]}
+        message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_LAST_WEB_NOTIFICATIONS, data)
+        await channel_layer.group_send(self.ws.user_id_to_group_name(user.id),
+                                       {'type': 'send_to_client', 'message': message.to_dict()})
 
     async def send_to_client(self, message: Dict):
         """
@@ -268,6 +296,7 @@ class ContraxsuiteWSConsumer(AsyncJsonWebsocketConsumer):
         self.logger.info(f'{self.scope.get("client")} | User disconnected: {user}')
         if user and not user.is_anonymous:
             channel_layer = self.channel_layer  # type: RedisChannelLayer
-            await channel_layer.group_discard(self.ws.user_id_to_group_name(user.pk), self.channel_name)
+            await channel_layer.group_discard(self.ws.user_id_to_group_name(user.pk),
+                                              self.channel_name)
             await channel_layer.group_discard(ALL, self.channel_name)
         return await super().disconnect(code)

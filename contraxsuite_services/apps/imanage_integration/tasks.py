@@ -36,6 +36,7 @@ from celery.states import UNREADY_STATES
 from django.db import connection
 from django.utils import timezone
 from django.utils.text import get_valid_filename
+from django.utils.timezone import now
 from psycopg2 import InterfaceError, OperationalError
 
 from apps.celery import app
@@ -43,7 +44,9 @@ from apps.common.collection_utils import chunks
 from apps.common.file_storage import get_file_storage
 from apps.common.sql_commons import fetch_int, SQLClause
 from apps.common.streaming_utils import buffer_contents_into_temp_file
+from apps.document.tasks import plan_process_document_changed
 from apps.imanage_integration.models import IManageConfig, IManageDocument
+from apps.rawdb.signals import fire_document_fields_changed, DocumentEvent
 from apps.task.models import Task
 from apps.task.tasks import ExtendedTask, LoadDocuments, call_task
 from apps.task.tasks import CeleryTaskLogger
@@ -52,8 +55,8 @@ from task_names import TASK_NAME_IMANAGE_TRIGGER_SYNC
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -116,6 +119,8 @@ class IManageSynchronization(ExtendedTask):
                     'metadata': {},
                     'do_not_check_exists': True
                 }
+                if assignee_id:
+                    kwargs['assign_date'] = now()
 
                 pre_defined_fields = None
                 if imanage_doc.imanage_doc_data and imanage_config.imanage_to_contraxsuite_field_binding:
@@ -145,6 +150,21 @@ class IManageSynchronization(ExtendedTask):
                     imanage_doc.document_id = document_id
                     imanage_doc.last_sync_date = timezone.now()
                     imanage_doc.save(update_fields=['document_id', 'last_sync_date'])
+                    # process document fields are changed event
+                    if assignee_id:
+                        old_field_values = {'assignee_id': None, 'assignee_name': None, 'assign_date': None}
+                        new_field_values = {'assignee_id': assignee_id, 'assignee_name': assignee.name,
+                                            'assign_date': kwargs.get('assign_date')}
+
+                        fire_document_fields_changed(None,
+                                                     log=log,
+                                                     document_event=DocumentEvent.CHANGED.value,
+                                                     document_pk=document_id,
+                                                     field_handlers={},
+                                                     fields_before=old_field_values,
+                                                     fields_after=new_field_values,
+                                                     changed_by_user=assignee)
+
                 else:
                     task.log_error('Unable to create Contraxsuite document for '
                                    'iManage document #{0}'.format(imanage_doc_id))

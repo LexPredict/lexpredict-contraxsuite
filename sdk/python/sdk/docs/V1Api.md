@@ -255,6 +255,8 @@ Method | HTTP request | Description
 [**extract_url_usage_top_get**](V1Api.md#extract_url_usage_top_get) | **GET** /api/v1/extract/url-usage/top/ | 
 [**logging_log_message_post**](V1Api.md#logging_log_message_post) | **POST** /api/v1/logging/log_message/ | 
 [**media_data_path_get**](V1Api.md#media_data_path_get) | **GET** /api/media-data/{path}/ | 
+[**notifications_web_notifications_get**](V1Api.md#notifications_web_notifications_get) | **GET** /api/v1/notifications/web-notifications/ | 
+[**notifications_web_notifications_mark_seen_post**](V1Api.md#notifications_web_notifications_mark_seen_post) | **POST** /api/v1/notifications/web-notifications/mark_seen/ | 
 [**project_project_clustering_get**](V1Api.md#project_project_clustering_get) | **GET** /api/v1/project/project-clustering/ | 
 [**project_project_clustering_id_get**](V1Api.md#project_project_clustering_id_get) | **GET** /api/v1/project/project-clustering/{id}/ | 
 [**project_projects_form_fields_get**](V1Api.md#project_projects_form_fields_get) | **GET** /api/v1/project/projects/form-fields/ | 
@@ -265,6 +267,7 @@ Method | HTTP request | Description
 [**project_projects_id_assign_document_post**](V1Api.md#project_projects_id_assign_document_post) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**project_projects_id_assign_documents_post**](V1Api.md#project_projects_id_assign_documents_post) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**project_projects_id_assignees_get**](V1Api.md#project_projects_id_assignees_get) | **GET** /api/v1/project/projects/{id}/assignees/ | 
+[**project_projects_id_check_similarity_process_allowed_post**](V1Api.md#project_projects_id_check_similarity_process_allowed_post) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
 [**project_projects_id_cleanup_post**](V1Api.md#project_projects_id_cleanup_post) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
 [**project_projects_id_cluster_actions_get**](V1Api.md#project_projects_id_cluster_actions_get) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**project_projects_id_cluster_post**](V1Api.md#project_projects_id_cluster_post) | **POST** /api/v1/project/projects/{id}/cluster/ | 
@@ -359,6 +362,7 @@ Method | HTTP request | Description
 [**task_update_elastic_index_post**](V1Api.md#task_update_elastic_index_post) | **POST** /api/v1/task/update-elastic-index/ | 
 [**tus_upload_session_upload_session_id_upload_guid_patch**](V1Api.md#tus_upload_session_upload_session_id_upload_guid_patch) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**tus_upload_session_upload_session_id_upload_post**](V1Api.md#tus_upload_session_upload_session_id_upload_post) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
+[**users_social_accounts_get**](V1Api.md#users_social_accounts_get) | **GET** /api/v1/users/social_accounts/ | 
 [**users_users_form_fields_get**](V1Api.md#users_users_form_fields_get) | **GET** /api/v1/users/users/form-fields/ | 
 [**users_users_get**](V1Api.md#users_users_get) | **GET** /api/v1/users/users/ | 
 [**users_users_id_form_fields_get**](V1Api.md#users_users_id_form_fields_get) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -575,7 +579,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document cluster.
     document_cluster_update = DocumentClusterUpdate(
-        pk=1,
         name="name_example",
     ) # DocumentClusterUpdate |  (optional)
 
@@ -663,7 +666,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document cluster.
     document_cluster_update = DocumentClusterUpdate(
-        pk=1,
         name="name_example",
     ) # DocumentClusterUpdate |  (optional)
 
@@ -1025,7 +1027,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **analyze_project_document_similarity_list_get**
-> [ProjectDocumentSimilarity] analyze_project_document_similarity_list_get()
+> ProjectDocumentSimilarityResponse analyze_project_document_similarity_list_get()
 
 
 
@@ -1038,7 +1040,7 @@ Project Document Similarity List for ONE document
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.project_document_similarity import ProjectDocumentSimilarity
+from openapi_client.model.project_document_similarity_response import ProjectDocumentSimilarityResponse
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1089,7 +1091,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[ProjectDocumentSimilarity]**](ProjectDocumentSimilarity.md)
+[**ProjectDocumentSimilarityResponse**](ProjectDocumentSimilarityResponse.md)
 
 ### Authorization
 
@@ -1825,11 +1827,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     text_unit_classification_create = TextUnitClassificationCreate(
-        pk=1,
         class_name="class_name_example",
         class_value="class_value_example",
         text_unit_id=1,
-        user_id=1,
     ) # TextUnitClassificationCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -2653,7 +2653,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_actions_get**
-> [[Action]] common_actions_get()
+> [Action] common_actions_get()
 
 
 
@@ -2719,7 +2719,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**[[Action]]**
+[**[Action]**](Action.md)
 
 ### Authorization
 
@@ -2739,7 +2739,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_actions_id_get**
-> [Action] common_actions_id_get(id)
+> Action common_actions_id_get(id)
 
 
 
@@ -2814,7 +2814,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**Action**](Action.md)
 
 ### Authorization
 
@@ -3640,11 +3640,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | 
     menu_group = MenuGroup(
-        pk=1,
         name="name_example",
         public=True,
         order=0,
-        user="user_example",
     ) # MenuGroup |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -3731,11 +3729,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | 
     menu_group = MenuGroup(
-        pk=1,
         name="name_example",
         public=True,
         order=0,
-        user="user_example",
     ) # MenuGroup |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -3821,11 +3817,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     menu_group = MenuGroup(
-        pk=1,
         name="name_example",
         public=True,
         order=0,
-        user="user_example",
     ) # MenuGroup |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4267,13 +4261,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | 
     menu_item = MenuItem(
-        pk=1,
         name="name_example",
         url="url_example",
         group=1,
         public=True,
         order=0,
-        user="user_example",
     ) # MenuItem |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4360,13 +4352,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | 
     menu_item = MenuItem(
-        pk=1,
         name="name_example",
         url="url_example",
         group=1,
         public=True,
         order=0,
-        user="user_example",
     ) # MenuItem |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4452,13 +4442,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     menu_item = MenuItem(
-        pk=1,
         name="name_example",
         url="url_example",
         group=1,
         public=True,
         order=0,
-        user="user_example",
     ) # MenuItem |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -4775,7 +4763,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status Group.
     review_status_group = ReviewStatusGroup(
-        pk=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -4866,7 +4853,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status Group.
     review_status_group = ReviewStatusGroup(
-        pk=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -4956,7 +4942,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     review_status_group = ReviewStatusGroup(
-        pk=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -5277,7 +5262,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status.
     review_status = ReviewStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -5369,7 +5353,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status.
     review_status = ReviewStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -5460,7 +5443,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     review_status = ReviewStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -5542,7 +5524,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     annotation = Annotation(
-        pk=1,
         document=1,
         field="field_example",
         value={},
@@ -5550,7 +5531,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         location_end=0,
         location_text="location_text_example",
         modified_by=1,
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
     ) # Annotation |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -5932,7 +5912,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this field annotation.
     annotation = Annotation(
-        pk=1,
         document=1,
         field="field_example",
         value={},
@@ -5940,7 +5919,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         location_end=0,
         location_text="location_text_example",
         modified_by=1,
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
     ) # Annotation |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -6026,7 +6004,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     annotation = Annotation(
-        pk=1,
         document=1,
         field="field_example",
         value={},
@@ -6034,7 +6011,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         location_end=0,
         location_text="location_text_example",
         modified_by=1,
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
     ) # Annotation |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -6817,14 +6793,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document field category.
     document_field_category_create = DocumentFieldCategoryCreate(
-        id=1,
         document_type="document_type_example",
         name="name_example",
         order=-2147483648,
-        fields=[
-            "fields_example",
-        ],
-        fields_number=1,
     ) # DocumentFieldCategoryCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -6911,14 +6882,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document field category.
     document_field_category_create = DocumentFieldCategoryCreate(
-        id=1,
         document_type="document_type_example",
         name="name_example",
         order=-2147483648,
-        fields=[
-            "fields_example",
-        ],
-        fields_number=1,
     ) # DocumentFieldCategoryCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -7004,14 +6970,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     document_field_category_create = DocumentFieldCategoryCreate(
-        id=1,
         document_type="document_type_example",
         name="name_example",
         order=-2147483648,
-        fields=[
-            "fields_example",
-        ],
-        fields_number=1,
     ) # DocumentFieldCategoryCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -7237,8 +7198,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     document_field_detector_create = DocumentFieldDetectorCreate(
-        uid="uid_example",
-        warning_message="warning_message_example",
         category="simple_config",
         exclude_regexps="exclude_regexps_example",
         definition_words="definition_words_example",
@@ -7562,8 +7521,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this document field detector.
     document_field_detector_create = DocumentFieldDetectorCreate(
-        uid="uid_example",
-        warning_message="warning_message_example",
         category="simple_config",
         exclude_regexps="exclude_regexps_example",
         definition_words="definition_words_example",
@@ -7661,8 +7618,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this document field detector.
     document_field_detector_create = DocumentFieldDetectorCreate(
-        uid="uid_example",
-        warning_message="warning_message_example",
         category="simple_config",
         exclude_regexps="exclude_regexps_example",
         definition_words="definition_words_example",
@@ -8159,7 +8114,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     document_field_create = DocumentFieldCreate(
         document_type="document_type_example",
         code="code_example",
-        long_code="long_code_example",
         title="title_example",
         description="description_example",
         type="address",
@@ -8187,14 +8141,12 @@ with openapi_client.ApiClient(configuration) as api_client:
         trained_after_documents_number=1,
         hidden_always=True,
         hide_until_python="hide_until_python_example",
-        hide_until_js="hide_until_js_example",
         display_yes_no=True,
         vectorizer_stop_words="vectorizer_stop_words_example",
         unsure_choice_value="unsure_choice_value_example",
         unsure_thresholds_by_value={},
         mlflow_model_uri="mlflow_model_uri_example",
         mlflow_detect_on_document_level=True,
-        warning_message="warning_message_example",
     ) # DocumentFieldCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -8760,7 +8712,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     document_field_create = DocumentFieldCreate(
         document_type="document_type_example",
         code="code_example",
-        long_code="long_code_example",
         title="title_example",
         description="description_example",
         type="address",
@@ -8788,14 +8739,12 @@ with openapi_client.ApiClient(configuration) as api_client:
         trained_after_documents_number=1,
         hidden_always=True,
         hide_until_python="hide_until_python_example",
-        hide_until_js="hide_until_js_example",
         display_yes_no=True,
         vectorizer_stop_words="vectorizer_stop_words_example",
         unsure_choice_value="unsure_choice_value_example",
         unsure_thresholds_by_value={},
         mlflow_model_uri="mlflow_model_uri_example",
         mlflow_detect_on_document_level=True,
-        warning_message="warning_message_example",
     ) # DocumentFieldCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -8882,7 +8831,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this document field.
     document_field_detail = DocumentFieldDetail(
-        uid="uid_example",
         document_type="document_type_example",
         code="code_example",
         long_code="long_code_example",
@@ -8895,19 +8843,11 @@ with openapi_client.ApiClient(configuration) as api_client:
         formula="formula_example",
         convert_decimals_to_floats_in_formula_args=True,
         value_regexp="value_regexp_example",
-        depends_on_fields=[
-            "depends_on_fields_example",
-        ],
-        value_detection_strategy_name="value_detection_strategy_name_example",
         confidence="High",
         requires_text_annotations=True,
         read_only=True,
-        category="category_example",
         family=1,
         default_value={},
-        choices=[
-            "choices_example",
-        ],
         allow_values_not_specified_in_choices=True,
         metadata={},
         training_finished=True,
@@ -8917,13 +8857,7 @@ with openapi_client.ApiClient(configuration) as api_client:
         hidden_always=True,
         hide_until_python="hide_until_python_example",
         hide_until_js="hide_until_js_example",
-        is_value_detection_strategy_disabled=True,
         display_yes_no=True,
-        value_aware=True,
-        created_by__name="created_by__name_example",
-        modified_by__name="modified_by__name_example",
-        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         vectorizer_stop_words="vectorizer_stop_words_example",
         unsure_choice_value="unsure_choice_value_example",
         unsure_thresholds_by_value={},
@@ -9017,7 +8951,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     document_field_create = DocumentFieldCreate(
         document_type="document_type_example",
         code="code_example",
-        long_code="long_code_example",
         title="title_example",
         description="description_example",
         type="address",
@@ -9045,14 +8978,12 @@ with openapi_client.ApiClient(configuration) as api_client:
         trained_after_documents_number=1,
         hidden_always=True,
         hide_until_python="hide_until_python_example",
-        hide_until_js="hide_until_js_example",
         display_yes_no=True,
         vectorizer_stop_words="vectorizer_stop_words_example",
         unsure_choice_value="unsure_choice_value_example",
         unsure_thresholds_by_value={},
         mlflow_model_uri="mlflow_model_uri_example",
         mlflow_detect_on_document_level=True,
-        warning_message="warning_message_example",
     ) # DocumentFieldCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -9385,25 +9316,13 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document note.
     document_note_detail = DocumentNoteDetail(
-        pk=1,
         note="note_example",
         timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        user=DocumentDetailUser(
-            pk=1,
-            first_name="first_name_example",
-            last_name="last_name_example",
-            username="A",
-            photo="photo_example",
-            name="name_example",
-        ),
         location_start=-2147483648,
         location_end=-2147483648,
         document_id=1,
         field_value_id=1,
         field_id="field_id_example",
-        selections=[
-            {},
-        ],
     ) # DocumentNoteDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -9491,9 +9410,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     id = "id_example" # str | A unique integer value identifying this document note.
     document_note_update = DocumentNoteUpdate(
         note="note_example",
-        selections=[
-            {},
-        ],
     ) # DocumentNoteUpdate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -9579,27 +9495,13 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     document_note_create = DocumentNoteCreate(
-        pk=1,
         note="note_example",
-        timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
         location_start=-2147483648,
         location_end=-2147483648,
         document_id=1,
         field_value_id=1,
         field_id="field_id_example",
-        user_id="user_id_example",
         username="username_example",
-        user=DocumentDetailUser(
-            pk=1,
-            first_name="first_name_example",
-            last_name="last_name_example",
-            username="A",
-            photo="photo_example",
-            name="name_example",
-        ),
-        selections=[
-            {},
-        ],
     ) # DocumentNoteCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -9905,27 +9807,10 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     document_type_create = DocumentTypeCreate(
-        uid="uid_example",
         title="title_example",
         code="code_example",
-        categories=[
-            DocumentTypeDetailCategories(
-                id=1,
-                name="name_example",
-                order=-2147483648,
-            ),
-        ],
         managers=[
             1,
-        ],
-        fields=[
-            DocumentFieldCategoryListFields(
-                id="id_example",
-                category=1,
-                code="code_example",
-                title="title_example",
-                order=0,
-            ),
         ],
         search_fields=[
             "search_fields_example",
@@ -9933,7 +9818,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         editor_type="save_by_field",
         field_code_aliases={},
         metadata={},
-        warning_message="warning_message_example",
     ) # DocumentTypeCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -10556,27 +10440,10 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this document type.
     document_type_create = DocumentTypeCreate(
-        uid="uid_example",
         title="title_example",
         code="code_example",
-        categories=[
-            DocumentTypeDetailCategories(
-                id=1,
-                name="name_example",
-                order=-2147483648,
-            ),
-        ],
         managers=[
             1,
-        ],
-        fields=[
-            DocumentFieldCategoryListFields(
-                id="id_example",
-                category=1,
-                code="code_example",
-                title="title_example",
-                order=0,
-            ),
         ],
         search_fields=[
             "search_fields_example",
@@ -10584,7 +10451,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         editor_type="save_by_field",
         field_code_aliases={},
         metadata={},
-        warning_message="warning_message_example",
     ) # DocumentTypeCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -10671,81 +10537,14 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this document type.
     document_type_detail = DocumentTypeDetail(
-        uid="uid_example",
         title="title_example",
         code="code_example",
-        fields_data=[
-            DocumentTypeDetailFieldsData(
-                uid="uid_example",
-                document_type="document_type_example",
-                code="code_example",
-                long_code="long_code_example",
-                title="title_example",
-                description="description_example",
-                type="address",
-                text_unit_type="sentence",
-                value_detection_strategy="disabled",
-                classifier_init_script="classifier_init_script_example",
-                formula="formula_example",
-                convert_decimals_to_floats_in_formula_args=True,
-                value_regexp="value_regexp_example",
-                depends_on_fields=[
-                    "depends_on_fields_example",
-                ],
-                value_detection_strategy_name="value_detection_strategy_name_example",
-                confidence="High",
-                requires_text_annotations=True,
-                read_only=True,
-                category=DocumentFieldListCategory(
-                    id=1,
-                    name="name_example",
-                    order=-2147483648,
-                ),
-                family=1,
-                default_value={},
-                choices=[
-                    "choices_example",
-                ],
-                allow_values_not_specified_in_choices=True,
-                metadata={},
-                training_finished=True,
-                dirty=True,
-                order=0,
-                trained_after_documents_number=1,
-                hidden_always=True,
-                hide_until_python="hide_until_python_example",
-                hide_until_js="hide_until_js_example",
-                is_value_detection_strategy_disabled=True,
-                display_yes_no=True,
-                value_aware=True,
-                created_by__name="created_by__name_example",
-                modified_by__name="modified_by__name_example",
-                created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                vectorizer_stop_words="vectorizer_stop_words_example",
-                unsure_choice_value="unsure_choice_value_example",
-                unsure_thresholds_by_value={},
-                mlflow_model_uri="mlflow_model_uri_example",
-                mlflow_detect_on_document_level=True,
-            ),
-        ],
         search_fields=[
             "search_fields_example",
         ],
         editor_type="save_by_field",
-        created_by__name="created_by__name_example",
-        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        modified_by__name="modified_by__name_example",
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         metadata={},
         fields_number=1,
-        categories=[
-            DocumentTypeDetailCategories(
-                id=1,
-                name="name_example",
-                order=-2147483648,
-            ),
-        ],
         managers=[
             1,
         ],
@@ -10835,27 +10634,10 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this document type.
     document_type_create = DocumentTypeCreate(
-        uid="uid_example",
         title="title_example",
         code="code_example",
-        categories=[
-            DocumentTypeDetailCategories(
-                id=1,
-                name="name_example",
-                order=-2147483648,
-            ),
-        ],
         managers=[
             1,
-        ],
-        fields=[
-            DocumentFieldCategoryListFields(
-                id="id_example",
-                category=1,
-                code="code_example",
-                title="title_example",
-                order=0,
-            ),
         ],
         search_fields=[
             "search_fields_example",
@@ -10863,7 +10645,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         editor_type="save_by_field",
         field_code_aliases={},
         metadata={},
-        warning_message="warning_message_example",
     ) # DocumentTypeCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -11217,7 +10998,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **document_documents_id_actions_get**
-> [Action] document_documents_id_actions_get(id)
+> DocumentsForUser document_documents_id_actions_get(id)
 
 
 
@@ -11228,7 +11009,7 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.action import Action
+from openapi_client.model.documents_for_user import DocumentsForUser
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -11290,7 +11071,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -11723,92 +11504,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -11893,92 +11628,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -12063,92 +11752,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -12464,92 +12107,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -12709,7 +12306,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this document.
     documents_for_user = DocumentsForUser(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         project=1,
@@ -13051,7 +12647,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     documents_for_user = DocumentsForUser(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         project=1,
@@ -13453,7 +13048,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this field annotation status.
     field_annotation_status = FieldAnnotationStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -13546,7 +13140,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this field annotation status.
     field_annotation_status = FieldAnnotationStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -13638,7 +13231,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     field_annotation_status = FieldAnnotationStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -14387,7 +13979,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     document_pk = "document_pk_example" # str | 
     id = "id_example" # str | 
     annotation_in_document = AnnotationInDocument(
-        pk=1,
         document=1,
         value={},
         field="field_example",
@@ -14395,8 +13986,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         location_end=0,
         location_text="location_text_example",
         modified_by=1,
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        uid="uid_example",
     ) # AnnotationInDocument |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -14485,7 +14074,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     document_pk = "document_pk_example" # str | 
     id = "id_example" # str | 
     annotation_in_document = AnnotationInDocument(
-        pk=1,
         document=1,
         value={},
         field="field_example",
@@ -14493,8 +14081,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         location_end=0,
         location_text="location_text_example",
         modified_by=1,
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        uid="uid_example",
     ) # AnnotationInDocument |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -14582,7 +14168,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     project_pk = "project_pk_example" # str | 
     document_pk = "document_pk_example" # str | 
     annotation_in_document = AnnotationInDocument(
-        pk=1,
         document=1,
         value={},
         field="field_example",
@@ -14590,8 +14175,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         location_end=0,
         location_text="location_text_example",
         modified_by=1,
-        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        uid="uid_example",
     ) # AnnotationInDocument |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -14892,7 +14475,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **document_project_project_pk_documents_id_actions_get**
-> [Action] document_project_project_pk_documents_id_actions_get(project_pk, id)
+> DocumentsForUser document_project_project_pk_documents_id_actions_get(project_pk, id)
 
 
 
@@ -14903,7 +14486,7 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.action import Action
+from openapi_client.model.documents_for_user import DocumentsForUser
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -14967,7 +14550,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -15411,92 +14994,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     project_pk = "project_pk_example" # str | 
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -15583,92 +15120,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     project_pk = "project_pk_example" # str | 
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -15755,92 +15246,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     project_pk = "project_pk_example" # str | 
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -16164,92 +15609,46 @@ with openapi_client.ApiClient(configuration) as api_client:
     project_pk = "project_pk_example" # str | 
     id = "id_example" # str | A unique integer value identifying this document.
     document_detail = DocumentDetail(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         file_size=0,
         folder="folder_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        created_by_name="created_by_name_example",
         modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         modified_by_name="modified_by_name_example",
+        created_by_name="created_by_name_example",
+        created_by_initials="created_by_initials_example",
+        created_by_photo="created_by_photo_example",
+        modified_by_initials="modified_by_initials_example",
+        modified_by_photo="modified_by_photo_example",
         status=1,
         status_data=DocumentDetailStatusData(
-            id=1,
             name="name_example",
             code="code_example",
             order=0,
             is_active=True,
             group=1,
         ),
-        available_statuses_data=[
-            {},
-        ],
         assignee=1,
         assign_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         assignee_data=DocumentDetailAssigneeData(
-            pk=1,
             first_name="first_name_example",
             last_name="last_name_example",
             username="A",
-            photo="photo_example",
             name="name_example",
+            initials="initials_example",
         ),
         available_assignees_data=[
             DocumentDetailAvailableAssigneesData(
-                pk=1,
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
-                photo="photo_example",
                 name="name_example",
+                initials="initials_example",
             ),
         ],
         description="description_example",
         title="title_example",
-        initial_annotation_id="initial_annotation_id_example",
-        page_locations=[
-            [
-                1,
-            ],
-        ],
-        page_bounds=[
-            [
-                3.14,
-            ],
-        ],
-        notes=[
-            DocumentDetailNotes(
-                pk=1,
-                note="note_example",
-                timestamp=dateutil_parser('1970-01-01T00:00:00.00Z'),
-                user=DocumentDetailUser(
-                    pk=1,
-                    first_name="first_name_example",
-                    last_name="last_name_example",
-                    username="A",
-                    photo="photo_example",
-                    name="name_example",
-                ),
-                location_start=-2147483648,
-                location_end=-2147483648,
-                document_id=1,
-                field_value_id=1,
-                field_id="field_id_example",
-                selections=[
-                    {},
-                ],
-            ),
-        ],
-        field_values={},
-        field_value_objects={},
-        prev_id=1,
-        next_id=1,
-        sections=[
-            {},
-        ],
-        cluster_id="cluster_id_example",
-        user_permissions={},
     ) # DocumentDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -16413,7 +15812,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     project_pk = "project_pk_example" # str | 
     id = "id_example" # str | A unique integer value identifying this document.
     documents_for_user = DocumentsForUser(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         project=1,
@@ -16770,7 +16168,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     project_pk = "project_pk_example" # str | 
     documents_for_user = DocumentsForUser(
-        pk=1,
         name="name_example",
         document_type="document_type_example",
         project=1,
@@ -17144,7 +16541,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_document_config_get**
-> object dump_document_config_get()
+> dict dump_document_config_get()
 
 
 
@@ -17201,7 +16598,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+**dict**
 
 ### Authorization
 
@@ -17383,7 +16780,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_get**
-> object dump_dump_get()
+> dict dump_dump_get()
 
 
 
@@ -17438,7 +16835,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+**dict**
 
 ### Authorization
 
@@ -17538,7 +16935,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_field_values_get**
-> object dump_field_values_get()
+> dict dump_field_values_get()
 
 
 
@@ -17593,7 +16990,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+**dict**
 
 ### Authorization
 
@@ -19677,7 +19074,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this geo entity.
     geo_entity_update = GeoEntityUpdate(
-        pk=1,
         priority=-2147483648,
     ) # GeoEntityUpdate |  (optional)
 
@@ -21621,6 +21017,158 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **notifications_web_notifications_get**
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} notifications_web_notifications_get()
+
+
+
+Web Notification List
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+
+    # example, this endpoint has no required or optional parameters
+    try:
+        api_response = api_instance.notifications_web_notifications_get()
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->notifications_web_notifications_get: %s\n" % e)
+```
+
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **notifications_web_notifications_mark_seen_post**
+> MarkForSeenWebNotificationResponse notifications_web_notifications_mark_seen_post()
+
+
+
+Method marks a number of web notifications for updating as seen/not seen. :param request: provide a list of web notification message ids here:
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.mark_for_seen_web_notification_request import MarkForSeenWebNotificationRequest
+from openapi_client.model.mark_for_seen_web_notification_response import MarkForSeenWebNotificationResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    mark_for_seen_web_notification_request = MarkForSeenWebNotificationRequest(
+        notification_ids=[
+            1,
+        ],
+        is_seen=True,
+    ) # MarkForSeenWebNotificationRequest |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.notifications_web_notifications_mark_seen_post(mark_for_seen_web_notification_request=mark_for_seen_web_notification_request)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->notifications_web_notifications_mark_seen_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **mark_for_seen_web_notification_request** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional]
+
+### Return type
+
+[**MarkForSeenWebNotificationResponse**](MarkForSeenWebNotificationResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **project_project_clustering_get**
 > [ProjectClustering] project_project_clustering_get()
 
@@ -22454,6 +22002,124 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **project_projects_id_check_similarity_process_allowed_post**
+> ProjectDetail project_projects_id_check_similarity_process_allowed_post(id)
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.project_detail import ProjectDetail
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    id = "id_example" # str | A unique integer value identifying this project.
+    project_detail = ProjectDetail(
+        name="name_example",
+        description="description_example",
+        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
+        created_by_name="created_by_name_example",
+        modified_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
+        modified_by_name="modified_by_name_example",
+        send_email_notification=True,
+        hide_clause_review=True,
+        status=1,
+        owners=[
+            1,
+        ],
+        reviewers=[
+            1,
+        ],
+        super_reviewers=[
+            1,
+        ],
+        junior_reviewers=[
+            1,
+        ],
+        type="type_example",
+        type_data=ProjectListTypeData(
+            code="code_example",
+            title="title_example",
+        ),
+        term_tags=[
+            1,
+        ],
+        document_transformer=1,
+        text_unit_transformer=1,
+        companytype_tags=[
+            1,
+        ],
+    ) # ProjectDetail |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.project_projects_id_check_similarity_process_allowed_post(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->project_projects_id_check_similarity_process_allowed_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.project_projects_id_check_similarity_process_allowed_post(id, project_detail=project_detail)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->project_projects_id_check_similarity_process_allowed_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **str**| A unique integer value identifying this project. |
+ **project_detail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+
+### Return type
+
+[**ProjectDetail**](ProjectDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **project_projects_id_cleanup_post**
 > str project_projects_id_cleanup_post(id)
 
@@ -22544,7 +22210,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_cluster_actions_get**
-> [Action] project_projects_id_cluster_actions_get(id)
+> ProjectDetail project_projects_id_cluster_actions_get(id)
 
 
 
@@ -22555,7 +22221,7 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.action import Action
+from openapi_client.model.project_detail import ProjectDetail
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -22617,7 +22283,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -23319,7 +22985,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this project.
     project_detail = ProjectDetail(
-        pk=1,
         name="name_example",
         description="description_example",
         created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
@@ -23329,104 +22994,23 @@ with openapi_client.ApiClient(configuration) as api_client:
         send_email_notification=True,
         hide_clause_review=True,
         status=1,
-        status_data=ProjectListStatusData(
-            id=1,
-            name="name_example",
-            code="code_example",
-            order=0,
-            is_active=True,
-            group=1,
-        ),
         owners=[
             1,
-        ],
-        owners_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[
-                    1,
-                ],
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[],
-            ),
-        ],
         super_reviewers=[
             1,
-        ],
-        super_reviewers_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[],
-            ),
         ],
         junior_reviewers=[
             1,
         ],
-        junior_reviewers_data=[
-            ProjectDetailOwnersData(
-                id=1,
-                username="A",
-                last_name="last_name_example",
-                first_name="first_name_example",
-                email="email_example",
-                is_superuser=True,
-                is_staff=True,
-                is_active=True,
-                name="name_example",
-                organization="organization_example",
-                photo="photo_example",
-                permissions={},
-                groups=[],
-            ),
-        ],
         type="type_example",
         type_data=ProjectListTypeData(
-            uid="uid_example",
             code="code_example",
             title="title_example",
         ),
-        progress="progress_example",
-        user_permissions="user_permissions_example",
         term_tags=[
             1,
         ],
@@ -23435,11 +23019,6 @@ with openapi_client.ApiClient(configuration) as api_client:
         companytype_tags=[
             1,
         ],
-        app_vars="app_vars_example",
-        document_similarity_run_params="document_similarity_run_params_example",
-        text_unit_similarity_run_params="text_unit_similarity_run_params_example",
-        document_similarity_process_allowed="document_similarity_process_allowed_example",
-        text_unit_similarity_process_allowed="text_unit_similarity_process_allowed_example",
     ) # ProjectDetail |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -23618,7 +23197,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this project.
     project_update = ProjectUpdate(
-        pk=1,
         name="name_example",
         description="description_example",
         status=1,
@@ -23806,7 +23384,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this project.
     project_update = ProjectUpdate(
-        pk=1,
         name="name_example",
         description="description_example",
         status=1,
@@ -24162,7 +23739,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_set_annotation_status_post**
-> object project_projects_id_set_annotation_status_post(id)
+> dict project_projects_id_set_annotation_status_post(id)
 
 
 
@@ -24236,7 +23813,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**object**
+**dict**
 
 ### Authorization
 
@@ -24351,7 +23928,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_settings_actions_get**
-> [Action] project_projects_id_settings_actions_get(id)
+> ProjectDetail project_projects_id_settings_actions_get(id)
 
 
 
@@ -24362,7 +23939,7 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.action import Action
+from openapi_client.model.project_detail import ProjectDetail
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -24424,7 +24001,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -24714,7 +24291,7 @@ Name | Type | Description  | Notes
 
 
 
-Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}         on_existing_value: \"replace_all\" | \"add_new\" (for multi-choice fields)     Returns:         task_id
 
 ### Example
 
@@ -24758,6 +24335,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             1,
         ],
         fields_data={},
+        on_existing_value="on_existing_value_example",
     ) # UpdateProjectDocumentsFieldsRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -24844,7 +24422,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     project_create = ProjectCreate(
-        pk=1,
         name="name_example",
         description="description_example",
         type="type_example",
@@ -25403,41 +24980,16 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this task queue.
     task_queue = TaskQueue(
-        pk=1,
         description="description_example",
         documents=[
             1,
         ],
-        documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
-        ],
         completed_documents=[
             1,
-        ],
-        completed_documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            TaskQueueReviewersData(
-                pk=1,
-                username="A",
-            ),
-        ],
-        progress="progress_example",
-        data="data_example",
     ) # TaskQueue |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -25524,41 +25076,16 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this task queue.
     task_queue = TaskQueue(
-        pk=1,
         description="description_example",
         documents=[
             1,
         ],
-        documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
-        ],
         completed_documents=[
             1,
-        ],
-        completed_documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            TaskQueueReviewersData(
-                pk=1,
-                username="A",
-            ),
-        ],
-        progress="progress_example",
-        data="data_example",
     ) # TaskQueue |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -25644,41 +25171,16 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     task_queue = TaskQueue(
-        pk=1,
         description="description_example",
         documents=[
             1,
         ],
-        documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
-        ],
         completed_documents=[
             1,
-        ],
-        completed_documents_data=[
-            TaskQueueDocumentsData(
-                pk=1,
-                name="name_example",
-                description="description_example",
-                document_type="document_type_example",
-            ),
         ],
         reviewers=[
             1,
         ],
-        reviewers_data=[
-            TaskQueueReviewersData(
-                pk=1,
-                username="A",
-            ),
-        ],
-        progress="progress_example",
-        data="data_example",
     ) # TaskQueue |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -25834,12 +25336,8 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     upload_session_create = UploadSessionCreate(
-        uid="uid_example",
         project=1,
         created_by=1,
-        upload_files={},
-        review_files=True,
-        force=True,
     ) # UploadSessionCreate |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -25993,15 +25491,10 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this upload session.
     upload_session_detail = UploadSessionDetail(
-        uid="uid_example",
         project=1,
         created_by=TaskQueueReviewersData(
-            pk=1,
             username="A",
         ),
-        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
-        document_type="document_type_example",
-        progress="progress_example",
         completed=True,
     ) # UploadSessionDetail |  (optional)
 
@@ -26596,10 +26089,8 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     uid = "uid_example" # str | A UUID string identifying this upload session.
     upload_session_update = UploadSessionUpdate(
-        pk="pk_example",
         project=1,
         created_by=1,
-        created_date=dateutil_parser('1970-01-01T00:00:00.00Z'),
         completed=True,
     ) # UploadSessionUpdate |  (optional)
 
@@ -30474,6 +29965,75 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **users_social_accounts_get**
+> SocialAccountsResponse users_social_accounts_get()
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.social_accounts_response import SocialAccountsResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+
+    # example, this endpoint has no required or optional parameters
+    try:
+        api_response = api_instance.users_social_accounts_get()
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->users_social_accounts_get: %s\n" % e)
+```
+
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **users_users_form_fields_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} users_users_form_fields_get()
 
@@ -30822,15 +30382,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this user.
     user_profile = UserProfile(
-        username="username_example",
         last_name="last_name_example",
         first_name="first_name_example",
         name="name_example",
-        email="email_example",
+        photo=open('/path/to/file', 'rb'),
         organization="organization_example",
-        groups=[
-            1,
-        ],
     ) # UserProfile |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -30917,15 +30473,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = v1_api.V1Api(api_client)
     id = "id_example" # str | A unique integer value identifying this user.
     user_profile = UserProfile(
-        username="username_example",
         last_name="last_name_example",
         first_name="first_name_example",
         name="name_example",
-        email="email_example",
+        photo=open('/path/to/file', 'rb'),
         organization="organization_example",
-        groups=[
-            1,
-        ],
     ) # UserProfile |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -31011,15 +30563,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = v1_api.V1Api(api_client)
     user_profile = UserProfile(
-        username="username_example",
         last_name="last_name_example",
         first_name="first_name_example",
         name="name_example",
-        email="email_example",
+        photo=open('/path/to/file', 'rb'),
         organization="organization_example",
-        groups=[
-            1,
-        ],
     ) # UserProfile |  (optional)
 
     # example passing only required values which don't have defaults set

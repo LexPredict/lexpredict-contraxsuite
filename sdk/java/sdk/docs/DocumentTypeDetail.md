@@ -13,9 +13,9 @@ Name | Type | Description | Notes
 **fieldsData** | [**List&lt;DocumentTypeDetailFieldsData&gt;**](DocumentTypeDetailFieldsData.md) |  |  [optional] [readonly]
 **searchFields** | **List&lt;String&gt;** |  |  [optional]
 **editorType** | [**EditorTypeEnum**](#EditorTypeEnum) |  |  [optional]
-**createdByName** | **String** |  | 
+**createdByName** | **String** |  |  [optional] [readonly]
 **createdDate** | **OffsetDateTime** |  |  [optional] [readonly]
-**modifiedByName** | **String** |  | 
+**modifiedByName** | **String** |  |  [optional] [readonly]
 **modifiedDate** | **OffsetDateTime** |  |  [optional] [readonly]
 **metadata** | **Object** |  |  [optional]
 **fieldsNumber** | **Integer** |  | 

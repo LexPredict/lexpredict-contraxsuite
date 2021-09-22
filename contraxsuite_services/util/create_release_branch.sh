@@ -6,9 +6,6 @@
 
 
 # local paths
-#PRIVATE_REPO_PATH="/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite-services"
-#PUBLIC_REPO_PATH="/home/alex/dev/michael/contraxsuite/lexpredict-contraxsuite"
-
 CURR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PRIVATE_REPO_PATH="$(readlink -f "$CURR_DIR/../../")"
 PUBLIC_REPO_PATH="$(readlink -f "$CURR_DIR/../../../lexpredict-contraxsuite")"

@@ -27,10 +27,11 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
+
 
 import os.path
 from io import BytesIO
@@ -252,8 +253,6 @@ class MLModelChangeForm(forms.ModelForm):
 
 
 class MLModelAdmin(admin.ModelAdmin):
-    RE_VALID_SUBFOLDER = re.compile(r'[\da-z\._\-]+', re.IGNORECASE)
-
     list_display = ('name', 'version', 'target_entity', 'apply_to', 'language', 'project', 'default')
     search_fields = ('name', 'version', 'target_entity', 'apply_to', 'language', 'project')
 
@@ -354,10 +353,17 @@ class MLModelAdmin(admin.ModelAdmin):
         folders = [f.strip() for f in webdav_path.strip('/').split('/')]
         if not all(folders):
             return JsonResponse({'success': False, 'errors': ['There are empty path parts between "/" symbols']})
-        for folder in folders:
-            if not self.RE_VALID_SUBFOLDER.fullmatch(folder):
+        for i, folder in enumerate(folders):
+            if not file_storage.RE_VALID_SUBFOLDER.fullmatch(folder):
+                normalized_folder = file_storage.normalize_folder_name(folder)
+                if not normalized_folder:
+                    return JsonResponse({'success': False,
+                                         'errors': [f'Path part "{folder}" is not a valid folder name']})
+                folders[i] = normalized_folder
+                norm_path = os.path.join(*folders)
                 return JsonResponse({'success': False,
-                                     'errors': [f'Path part "{folder}" is not a valid folder name']})
+                                     'errors': [f'Path part "{folder}" is not a valid folder name. \n' +
+                                                f'Suggested folder name is "{norm_path}"']})
 
         for i in range(len(folders)):
             sub_path = '/'.join(folders[:i + 1])

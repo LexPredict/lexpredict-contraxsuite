@@ -4698,7 +4698,7 @@ Name | Type | Description  | Notes
 
 <a name="documentDocumentsIdActionsGET"></a>
 # **documentDocumentsIdActionsGET**
-> List&lt;Action&gt; documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
+> DocumentsForUser documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -4730,7 +4730,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      DocumentsForUser result = apiInstance.documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DocumentApi#documentDocumentsIdActionsGET");
@@ -4755,7 +4755,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -7494,7 +7494,7 @@ Name | Type | Description  | Notes
 
 <a name="documentProjectProjectPkDocumentsIdActionsGET"></a>
 # **documentProjectProjectPkDocumentsIdActionsGET**
-> List&lt;Action&gt; documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
+> DocumentsForUser documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -7527,7 +7527,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+      DocumentsForUser result = apiInstance.documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DocumentApi#documentProjectProjectPkDocumentsIdActionsGET");
@@ -7553,7 +7553,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 

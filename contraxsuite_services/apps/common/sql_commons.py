@@ -25,15 +25,15 @@
 # -*- coding: utf-8 -*-
 
 import re
-from typing import Dict, List, Optional, Tuple, Generator, Set, Callable
+from typing import Dict, List, Optional, Tuple, Generator, Set, Callable, Union
 
 from django.db import connection
 from pydash.strings import snake_case
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -41,7 +41,9 @@ __email__ = "support@contraxsuite.com"
 SORT_DIRECTIONS = {'asc', 'desc'}
 
 
-def dict_fetch_all(columns: List[str], cursor) -> List[Dict]:
+def dict_fetch_all(columns: Union[List[str], None], cursor) -> List[Dict]:
+    if columns is None:
+        columns = [col[0] for col in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 

@@ -16,10 +16,7 @@ def make_trans_name_unique(apps, schema_editor):
             if obj.name not in name_count:
                 name_count[obj.name] = 1
                 continue
-            while True:
-                new_name = f'{obj.name} copy {name_count[obj.name]}'
-                if new_name not in name_count:
-                    break
+            while new_name := f'{obj.name} copy {name_count[obj.name]}' in name_count:
                 name_count[obj.name] = name_count[obj.name] + 1
             name_count[obj.name] = name_count[obj.name] + 1
             obj.name = new_name

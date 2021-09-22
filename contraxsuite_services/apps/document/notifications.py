@@ -32,8 +32,8 @@ from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,6 +55,28 @@ def notify_document_field_category_event(category: DocumentFieldCategory, event_
 
     users = User.get_users_for_object(
         object_pk=category.document_type.pk,
+        object_model=DocumentType,
+        perm_name='view_documenttype').values_list('pk', flat=True)
+
+    Websockets().send_to_users(qs_users=users, message_obj=message)
+
+
+def notify_document_type_event(document_type: DocumentType, event_name: str, changes: dict = None):
+    """
+    Notify any change in doc type
+    """
+    data = dict(
+        id=str(document_type.pk),
+        code=document_type.code,
+        title=document_type.title,
+        event=event_name,
+        changes=changes
+    )
+    message = ChannelMessage(
+        message_types.CHANNEL_MSG_TYPE_DOCUMENT_TYPE_EVENT, data)
+
+    users = User.get_users_for_object(
+        object_pk=document_type.pk,
         object_model=DocumentType,
         perm_name='view_documenttype').values_list('pk', flat=True)
 

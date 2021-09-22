@@ -4,6 +4,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**users_social_accounts_get**](UsersApi.md#users_social_accounts_get) | **GET** /api/v1/users/social_accounts/ | 
 [**users_users_form_fields_get**](UsersApi.md#users_users_form_fields_get) | **GET** /api/v1/users/users/form-fields/ | 
 [**users_users_get**](UsersApi.md#users_users_get) | **GET** /api/v1/users/users/ | 
 [**users_users_id_form_fields_get**](UsersApi.md#users_users_id_form_fields_get) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -14,6 +15,75 @@ Method | HTTP request | Description
 [**users_users_user_stats_get**](UsersApi.md#users_users_user_stats_get) | **GET** /api/v1/users/users/user_stats/ | 
 [**users_verify_token_post**](UsersApi.md#users_verify_token_post) | **POST** /api/v1/users/verify-token/ | 
 
+
+# **users_social_accounts_get**
+> SocialAccountsResponse users_social_accounts_get()
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+```python
+import time
+import openapi_client
+from openapi_client.api import users_api
+from openapi_client.model.social_accounts_response import SocialAccountsResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = users_api.UsersApi(api_client)
+
+    # example, this endpoint has no required or optional parameters
+    try:
+        api_response = api_instance.users_social_accounts_get()
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling UsersApi->users_social_accounts_get: %s\n" % e)
+```
+
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **users_users_form_fields_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} users_users_form_fields_get()
@@ -363,15 +433,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = users_api.UsersApi(api_client)
     id = "id_example" # str | A unique integer value identifying this user.
     user_profile = UserProfile(
-        username="username_example",
         last_name="last_name_example",
         first_name="first_name_example",
         name="name_example",
-        email="email_example",
+        photo=open('/path/to/file', 'rb'),
         organization="organization_example",
-        groups=[
-            1,
-        ],
     ) # UserProfile |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -458,15 +524,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = users_api.UsersApi(api_client)
     id = "id_example" # str | A unique integer value identifying this user.
     user_profile = UserProfile(
-        username="username_example",
         last_name="last_name_example",
         first_name="first_name_example",
         name="name_example",
-        email="email_example",
+        photo=open('/path/to/file', 'rb'),
         organization="organization_example",
-        groups=[
-            1,
-        ],
     ) # UserProfile |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -552,15 +614,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = users_api.UsersApi(api_client)
     user_profile = UserProfile(
-        username="username_example",
         last_name="last_name_example",
         first_name="first_name_example",
         name="name_example",
-        email="email_example",
+        photo=open('/path/to/file', 'rb'),
         organization="organization_example",
-        groups=[
-            1,
-        ],
     ) # UserProfile |  (optional)
 
     # example passing only required values which don't have defaults set

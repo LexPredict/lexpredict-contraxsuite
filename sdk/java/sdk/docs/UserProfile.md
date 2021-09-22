@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **lastName** | **String** |  |  [optional]
 **firstName** | **String** |  |  [optional]
 **name** | **String** |  |  [optional]
+**initials** | **String** |  |  [optional] [readonly]
+**photo** | **File** |  |  [optional]
 **email** | **String** |  |  [optional] [readonly]
 **organization** | **String** |  |  [optional]
 **groups** | **List&lt;Integer&gt;** | The groups this user belongs to. A user will get all permissions granted to each of their groups. |  [optional] [readonly]

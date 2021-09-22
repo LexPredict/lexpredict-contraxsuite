@@ -255,6 +255,8 @@ Method | HTTP request | Description
 [**ExtractUrlUsageTopGET**](V1Api.md#extracturlusagetopget) | **GET** /api/v1/extract/url-usage/top/ | 
 [**LoggingLogMessagePOST**](V1Api.md#logginglogmessagepost) | **POST** /api/v1/logging/log_message/ | 
 [**MediaDataPathGET**](V1Api.md#mediadatapathget) | **GET** /api/media-data/{path}/ | 
+[**NotificationsWebNotificationsGET**](V1Api.md#notificationswebnotificationsget) | **GET** /api/v1/notifications/web-notifications/ | 
+[**NotificationsWebNotificationsMarkSeenPOST**](V1Api.md#notificationswebnotificationsmarkseenpost) | **POST** /api/v1/notifications/web-notifications/mark_seen/ | 
 [**ProjectProjectClusteringGET**](V1Api.md#projectprojectclusteringget) | **GET** /api/v1/project/project-clustering/ | 
 [**ProjectProjectClusteringIdGET**](V1Api.md#projectprojectclusteringidget) | **GET** /api/v1/project/project-clustering/{id}/ | 
 [**ProjectProjectsFormFieldsGET**](V1Api.md#projectprojectsformfieldsget) | **GET** /api/v1/project/projects/form-fields/ | 
@@ -265,6 +267,7 @@ Method | HTTP request | Description
 [**ProjectProjectsIdAssignDocumentPOST**](V1Api.md#projectprojectsidassigndocumentpost) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**ProjectProjectsIdAssignDocumentsPOST**](V1Api.md#projectprojectsidassigndocumentspost) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**ProjectProjectsIdAssigneesGET**](V1Api.md#projectprojectsidassigneesget) | **GET** /api/v1/project/projects/{id}/assignees/ | 
+[**ProjectProjectsIdCheckSimilarityProcessAllowedPOST**](V1Api.md#projectprojectsidchecksimilarityprocessallowedpost) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
 [**ProjectProjectsIdCleanupPOST**](V1Api.md#projectprojectsidcleanuppost) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
 [**ProjectProjectsIdClusterActionsGET**](V1Api.md#projectprojectsidclusteractionsget) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**ProjectProjectsIdClusterPOST**](V1Api.md#projectprojectsidclusterpost) | **POST** /api/v1/project/projects/{id}/cluster/ | 
@@ -359,6 +362,7 @@ Method | HTTP request | Description
 [**TaskUpdateElasticIndexPOST**](V1Api.md#taskupdateelasticindexpost) | **POST** /api/v1/task/update-elastic-index/ | 
 [**TusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusuploadsessionuploadsessioniduploadguidpatch) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**TusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusuploadsessionuploadsessioniduploadpost) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
+[**UsersSocialAccountsGET**](V1Api.md#userssocialaccountsget) | **GET** /api/v1/users/social_accounts/ | 
 [**UsersUsersFormFieldsGET**](V1Api.md#usersusersformfieldsget) | **GET** /api/v1/users/users/form-fields/ | 
 [**UsersUsersGET**](V1Api.md#usersusersget) | **GET** /api/v1/users/users/ | 
 [**UsersUsersIdFormFieldsGET**](V1Api.md#usersusersidformfieldsget) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -1020,7 +1024,7 @@ Name | Type | Description  | Notes
 
 ## AnalyzeProjectDocumentSimilarityListGET
 
-> List&lt;ProjectDocumentSimilarity&gt; AnalyzeProjectDocumentSimilarityListGET (int? textMaxLength = null, int? runId = null, int? documentId = null, Dictionary<string, string> jqFilters = null)
+> ProjectDocumentSimilarityResponse AnalyzeProjectDocumentSimilarityListGET (int? textMaxLength = null, int? runId = null, int? documentId = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -1055,7 +1059,7 @@ namespace Example
 
             try
             {
-                List<ProjectDocumentSimilarity> result = apiInstance.AnalyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+                ProjectDocumentSimilarityResponse result = apiInstance.AnalyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1081,7 +1085,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+[**ProjectDocumentSimilarityResponse**](ProjectDocumentSimilarityResponse.md)
 
 ### Authorization
 
@@ -2656,7 +2660,7 @@ Name | Type | Description  | Notes
 
 ## CommonActionsGET
 
-> List&lt;List&lt;Action&gt;&gt; CommonActionsGET (int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> List&lt;Action&gt; CommonActionsGET (int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -2691,7 +2695,7 @@ namespace Example
 
             try
             {
-                List<List<Action>> result = apiInstance.CommonActionsGET(projectId, documentId, viewActions, jqFilters);
+                List<Action> result = apiInstance.CommonActionsGET(projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2717,7 +2721,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**List<List<Action>>**
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -2742,7 +2746,7 @@ Name | Type | Description  | Notes
 
 ## CommonActionsIdGET
 
-> List&lt;Action&gt; CommonActionsIdGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> Action CommonActionsIdGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -2778,7 +2782,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.CommonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
+                Action result = apiInstance.CommonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2805,7 +2809,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**Action**](Action.md)
 
 ### Authorization
 
@@ -10759,7 +10763,7 @@ Name | Type | Description  | Notes
 
 ## DocumentDocumentsIdActionsGET
 
-> List&lt;Action&gt; DocumentDocumentsIdActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> DocumentsForUser DocumentDocumentsIdActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -10793,7 +10797,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.DocumentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                DocumentsForUser result = apiInstance.DocumentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -10820,7 +10824,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -13995,7 +13999,7 @@ Name | Type | Description  | Notes
 
 ## DocumentProjectProjectPkDocumentsIdActionsGET
 
-> List&lt;Action&gt; DocumentProjectProjectPkDocumentsIdActionsGET (string projectPk, string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> DocumentsForUser DocumentProjectProjectPkDocumentsIdActionsGET (string projectPk, string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -14030,7 +14034,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.DocumentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+                DocumentsForUser result = apiInstance.DocumentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -14058,7 +14062,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -20527,6 +20531,162 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## NotificationsWebNotificationsGET
+
+> Dictionary&lt;string, Object&gt; NotificationsWebNotificationsGET ()
+
+
+
+Web Notification List
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class NotificationsWebNotificationsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.NotificationsWebNotificationsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.NotificationsWebNotificationsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## NotificationsWebNotificationsMarkSeenPOST
+
+> MarkForSeenWebNotificationResponse NotificationsWebNotificationsMarkSeenPOST (MarkForSeenWebNotificationRequest markForSeenWebNotificationRequest = null)
+
+
+
+Method marks a number of web notifications for updating as seen/not seen. :param request: provide a list of web notification message ids here:
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class NotificationsWebNotificationsMarkSeenPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var markForSeenWebNotificationRequest = new MarkForSeenWebNotificationRequest(); // MarkForSeenWebNotificationRequest |  (optional) 
+
+            try
+            {
+                MarkForSeenWebNotificationResponse result = apiInstance.NotificationsWebNotificationsMarkSeenPOST(markForSeenWebNotificationRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.NotificationsWebNotificationsMarkSeenPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **markForSeenWebNotificationRequest** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional] 
+
+### Return type
+
+[**MarkForSeenWebNotificationResponse**](MarkForSeenWebNotificationResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## ProjectProjectClusteringGET
 
 > List&lt;ProjectClustering&gt; ProjectProjectClusteringGET (Dictionary<string, string> jqFilters = null)
@@ -21334,6 +21494,86 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## ProjectProjectsIdCheckSimilarityProcessAllowedPOST
+
+> ProjectDetail ProjectProjectsIdCheckSimilarityProcessAllowedPOST (string id, ProjectDetail projectDetail = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdCheckSimilarityProcessAllowedPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
+
+            try
+            {
+                ProjectDetail result = apiInstance.ProjectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.ProjectProjectsIdCheckSimilarityProcessAllowedPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] 
+
+### Return type
+
+[**ProjectDetail**](ProjectDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## ProjectProjectsIdCleanupPOST
 
 > string ProjectProjectsIdCleanupPOST (string id, CleanupProjectRequest cleanupProjectRequest = null)
@@ -21419,7 +21659,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdClusterActionsGET
 
-> List&lt;Action&gt; ProjectProjectsIdClusterActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> ProjectDetail ProjectProjectsIdClusterActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -21453,7 +21693,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.ProjectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                ProjectDetail result = apiInstance.ProjectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -21480,7 +21720,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -22960,7 +23200,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdSettingsActionsGET
 
-> List&lt;Action&gt; ProjectProjectsIdSettingsActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> ProjectDetail ProjectProjectsIdSettingsActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -22994,7 +23234,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.ProjectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                ProjectDetail result = apiInstance.ProjectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -23021,7 +23261,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -23296,7 +23536,7 @@ Name | Type | Description  | Notes
 
 
 
-Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}         on_existing_value: \"replace_all\" | \"add_new\" (for multi-choice fields)     Returns:         task_id
 
 ### Example
 
@@ -28923,6 +29163,80 @@ void (empty response body)
 |-------------|-------------|------------------|
 | **201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
 | **400** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersSocialAccountsGET
+
+> SocialAccountsResponse UsersSocialAccountsGET ()
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersSocialAccountsGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+
+            try
+            {
+                SocialAccountsResponse result = apiInstance.UsersSocialAccountsGET();
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.UsersSocialAccountsGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

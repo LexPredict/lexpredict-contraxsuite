@@ -28,19 +28,22 @@ from typing import Dict, Any
 
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
+from django.contrib.contenttypes.models import ContentType
 from psycopg2._psycopg import InterfaceError, OperationalError
 
 from django.conf import settings
 
+from apps.common.models import Action
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.detect_field_values_params import DocDetectFieldValuesParams
 from apps.document.models import DocumentType, Document
+from apps.project.models import Project
 from apps.task.tasks import ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -104,12 +107,12 @@ class DetectFieldValues(ExtendedTask):
             qs = qs.filter(name=document_name)
         elif document_id:
             qs = qs.filter(pk=document_id)
+        elif document_ids:
+            qs = qs.filter(pk__in=document_ids)
         elif project_ids:
             qs = qs.filter(project_id__in=project_ids)
         elif document_type_pks:
             qs = qs.filter(document_type_id__in=document_type_pks)
-        elif document_ids:
-            qs = qs.filter(pk__in=document_ids)
 
         for doc_id, source, name in qs.values_list('id', 'source', 'name'):
             dcptrs = DocDetectFieldValuesParams(doc_id,
@@ -123,9 +126,21 @@ class DetectFieldValues(ExtendedTask):
                 source_data.append(name)
             task_count += 1
 
+        for project_id in set(qs.values_list('project_id', flat=True)):
+            Action.objects.create(name='Detected Field Values',
+                                  message=f'Detect Field Values task started for project '
+                                          f'"{Project.objects.get(id=project_id).name}"',
+                                  user_id=self.task.user_id,
+                                  view_action='update',
+                                  content_type=ContentType.objects.get_for_model(Project),
+                                  model_name='Project',
+                                  app_label='project',
+                                  object_pk=project_id)
+
         self.run_sub_tasks('Detect Field Values For Each Document',
                            DetectFieldValues.detect_field_values_for_document,
                            detect_field_values_for_document_args, source_data)
+
         if task_count > 0:
             self.log_info('Found {0} documents'.format(task_count))
         else:
@@ -163,3 +178,15 @@ class DetectFieldValues(ExtendedTask):
                       f'#{detect_ptrs.document_id} ({doc.name})',
                       extra={Document.LOG_FIELD_DOC_ID: str(doc.pk),
                              Document.LOG_FIELD_DOC_NAME: doc.name})
+        action_user_id = getattr(task.task.user, 'id', None) \
+            or getattr(task.task.main_task.user, 'id', None)
+        Action.objects.create(name='Detected Field Values',
+                              message=f'Detect Field Values task is finished for project '
+                                      f'"{doc.project.name}" with the result of {len(dfvs)} field '
+                                      f'values',
+                              user_id=action_user_id,
+                              view_action='update',
+                              content_type=ContentType.objects.get_for_model(Project),
+                              model_name='Project',
+                              app_label='project',
+                              object_pk=doc.project_id)

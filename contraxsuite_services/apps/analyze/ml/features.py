@@ -32,8 +32,9 @@ import pandas as pd
 import psutil
 import numpy as np
 import scipy.sparse as scp
+from django.db import connection
 
-from django.db.models import Sum, QuerySet
+from django.db.models import Sum, QuerySet, F
 from pandas import CategoricalDtype
 
 from apps.analyze.ml.sparse_matrix import SparseAllFeaturesTable, SparseSingleFeatureTable
@@ -43,12 +44,11 @@ from apps.analyze.models import DocumentVector, TextUnitVector, MLModel
 from apps.document.models import Document, TextUnit, DocumentText, TextUnitText
 import apps.extract.models as models
 from apps.project.models import Project
-from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -138,7 +138,7 @@ class DocumentFeatures:
         geoentity='entity__name')
 
     def __init__(self,
-                 queryset=None,
+                 queryset: Optional[Union[QuerySet, Iterable[Document]]] = None,
                  project_id: Optional[Union[int, List[int]]] = None,
                  project_name_filter: Optional[str] = None,
                  unit_type='sentence',
@@ -149,7 +149,7 @@ class DocumentFeatures:
                  log_message: Callable[[str, str], None] = None,
                  **extra_kwargs):
         """
-        :param queryset: Document/TextUnit queryset
+        :param queryset: Document queryset
         :param project_id: int
         :param project_name_filter: str - alternative to project_id
         :param unit_type: str - one of "sentence", "paragraph"
@@ -292,6 +292,12 @@ class DocumentFeatures:
                 # TODO: fix for date features: pandas can't compare dates, but datetimes only
                 if terms and isinstance(terms[0], datetime.date):
                     terms = [datetime.datetime.combine(d, datetime.datetime.min.time()) for d in terms]
+
+                if not chunk_df[source_field].empty and isinstance(chunk_df[source_field][0], datetime.date):
+                    chunk_df[source_field] = \
+                        [datetime.datetime.combine(d, datetime.datetime.min.time())
+                         for d in chunk_df[source_field]]
+
                 term_cat = CategoricalDtype(terms, ordered=True)
 
                 row = [] if chunk_df.empty else chunk_df[self.target_id_field].astype(doc_cat).cat.codes
@@ -302,13 +308,16 @@ class DocumentFeatures:
                     shape=(len(sample_ids), term_cat.categories.size),
                     dtype=np.uint16)
                 single_feature_table.join(sparse_matrix)
+
                 del chunk_df
                 gc.collect()  # try to free up memory
+
                 mem = psutil.virtual_memory()
                 self.log_message(f'......available memory: {get_mb(mem.available)}M ({mem.percent}%)')
 
             # join feature_source_item-specific dataframe into results dataframe
             gc.collect()    # try to free up memory
+
             single_feature_df_src = SparseAllFeaturesTable(ids)
             single_feature_df_src.add_feature_table(single_feature_table, terms)
 
@@ -316,23 +325,24 @@ class DocumentFeatures:
                 feature_table = single_feature_df_src.to_dataframe()
             else:
                 feature_table = feature_table.join(single_feature_df_src.to_dataframe(), how='outer')
+
             del single_feature_table
             del single_feature_df_src
             gc.collect()    # try to free up memory
             # end of "for feature_source_item in self.feature_source"
 
         df = feature_table
-        if self.drop_empty_columns:
+
+        if df is not None and self.drop_empty_columns:
             df.dropna(axis=1, how='all', inplace=True)
+
+        if df is None or df.empty:
+            no_features_msg = f'No features of chosen "feature_source" options {self.feature_source} detected.'
+            raise EmptyDataSetError(no_features_msg, feature_source=self.feature_source)
 
         self.log_message(f'df: {get_df_info(df)}')
         mem = psutil.virtual_memory()
         self.log_message(f'available memory: {get_mb(mem.available)}M ({mem.percent}%)')
-
-        if df.empty:
-            msg = 'No features of chosen "feature_source" options {} detected. ' \
-                  'Empty Data Set.'.format(str(self.feature_source))
-            raise EmptyDataSetError(msg, feature_source=self.feature_source)
 
         # item ids not included in feature df which don't have features at all
         initial_id_set = set(target_qs.values_list('id', flat=True))
@@ -364,13 +374,10 @@ class DocumentFeatures:
             feature_df = self.force_use_external_feature_names(feature_df)
 
         feature_df = feature_df.reindex(sorted(feature_df.columns), axis=1).fillna(0)
-
         item_index = feature_df.index.tolist()
         item_names = self.get_item_names(item_index)
         unqualified_item_names = self.get_item_names(unqualified_item_ids)
-
         res = Features(feature_df, item_names, unqualified_item_ids, unqualified_item_names)
-
         return res
 
     def force_use_external_feature_names(self, feature_df):
@@ -398,7 +405,10 @@ class DocumentFeatures:
 
     def log_message(self, msg: str, msg_key='') -> None:
         if self.log_message_routine:
-            self.log_message_routine(msg, msg_key)
+            try:
+                self.log_message_routine(msg, msg_key)
+            except TypeError:
+                self.log_message_routine(msg)
 
 
 class TextUnitFeatures(DocumentFeatures):
@@ -514,7 +524,8 @@ class Document2VecFeatures(DocumentFeatures):
         # self.feature_source == 'text'
         transformer = self.build_doc2vec_model()
         data = self.get_document_data(qs)
-        return Doc2VecTransformer.create_vectors(transformer, data, DocumentVector, 'document_id')
+        return Doc2VecTransformer.create_vectors(transformer, data, DocumentVector,
+                                                 'document_id', file_storage=self.file_storage)
 
     def get_document_data(self, qs: Union[QuerySet, Iterable[Document]]):
         return DocumentText.objects.filter(document__in=qs).values_list('document_id', 'full_text')
@@ -545,25 +556,30 @@ class TextUnit2VecFeatures(Document2VecFeatures):
         if self.unit_type not in ('sentence', 'paragraph'):
             raise RuntimeError('The "unit_type" argument should be one of "sentence", "paragraph".')
 
-    def get_queryset(self) -> TextUnit.objects:
-        qs = super().get_queryset()
-        qs = qs.filter(unit_type=self.unit_type)
-        return qs
+    def get_document_queryset(self) -> Union[QuerySet, Iterable[Document]]:
+        target_qs: Union[QuerySet, Iterable[Document]] = self.queryset or Document.all_objects  #.none
+        target_qs = target_qs.filter()
+        target_qs = self.filter_document_queryset(target_qs)
 
-    def filter_queryset(self, queryset) -> Any:
-        # TODO: this is copied from TextUnitFeatures, consider to inherit from 2 parents?
-        queryset = queryset.filter(document__processed=True, document__delete_pending=False)
+        if not target_qs.exists():
+            msg = 'Initial queryset {}is empty.'.format(
+                'of chosen project_id={} '.format(self.project_id) if self.project_id else '')
+            raise EmptyDataSetError(msg, feature_source=self.feature_source)
+        target_qs = target_qs.distinct()
+        return target_qs
 
+    def filter_document_queryset(self, queryset) -> Union[QuerySet, Iterable[Document]]:
+        queryset = queryset.filter(processed=True, delete_pending=False)
         # perm check - use only allowed docs
         user_id = self.extra_kwargs.get('user_id')
         if user_id:
             allowed_document_ids = Document.get_allowed_document_ids(user_id)
-            queryset = queryset.filter(document_id__in=allowed_document_ids)
+            queryset = queryset.filter(pk__in=allowed_document_ids)
 
         if not self.project_id:
             return queryset
         project_ids = [self.project_id] if isinstance(self.project_id, (int, str)) else self.project_id or []
-        return queryset.filter(document__project_id__in=project_ids)
+        return queryset.filter(project_id__in=project_ids)
 
     def build_doc2vec_model(self) -> MLModel:
         transformer = Doc2VecTransformer(vector_size=100, window=10, min_count=10, dm=1)
@@ -572,27 +588,46 @@ class TextUnit2VecFeatures(Document2VecFeatures):
         return trans_obj
 
     def get_vectors(self) -> List[TextUnitVector]:
-        qs = self.get_queryset()    # type: TextUnit.objects
+        qs = self.get_document_queryset()    # type: Union[QuerySet, Iterable[Document]]
+        document_ids = list(qs.values_list('pk', flat=True))
 
         if self.feature_source == 'vector':
-            # this hangs forever
-            # tu_wo_vectors = qs.exclude(textunitvector__transformer=self.transformer)
-            tu_with_vectors = TextUnitVector.objects \
-                .filter(transformer=self.transformer, text_unit__in=qs) \
-                .values_list('text_unit_id', flat=True)
-            tu_wo_vectors = qs.exclude(id__in=tu_with_vectors)
-            if tu_wo_vectors.exists():
-                data = TextUnitText.objects \
-                    .filter(text_unit__in=tu_wo_vectors) \
-                    .values_list('text_unit_id', 'text')
-                Doc2VecTransformer.create_vectors(
-                    self.transformer, data, TextUnitVector, 'text_unit_id', save=True)
-            return list(TextUnitVector.objects.filter(text_unit__in=qs))
+            with connection.cursor() as cursor:
+                self._ensure_text_unit_vectors(cursor, document_ids)
+            return list(TextUnitVector.objects.filter(document_id__in=document_ids,
+                                                      text_unit__unit_type=self.unit_type,
+                                                      transformer_id=self.transformer.pk).
+                        annotate(location_start=F('text_unit__location_start')).
+                        annotate(location_end=F('text_unit__location_end')))
 
         # self.feature_source == 'text'
         transformer = self.build_doc2vec_model()
-        data = TextUnitText.objects.filter(text_unit__in=qs).values_list('text_unit_id', 'text')
+        data = TextUnitText.objects.filter(document_id__in=document_ids,
+                                           text_unit__unit_type=self.unit_type).values_list('text_unit_id', 'text')
         return Doc2VecTransformer.create_vectors(transformer, data, TextUnitVector, 'text_unit_id')
+
+    def _ensure_text_unit_vectors(self, cursor, document_ids: List[int]):
+        # find text units that don't have vectors and create vectors for these units
+        cursor.execute('''
+            SELECT A.id FROM document_textunit A 
+            WHERE A.id NOT IN 
+              (SELECT text_unit_id FROM analyze_textunitvector B WHERE B.text_unit_id = A.id 
+                   AND B.transformer_id = %s)
+              AND A.unit_type = %s
+              AND A.document_id in %s;''', [self.transformer.pk, self.unit_type, tuple(document_ids)])
+        tu_wo_vector_ids = []
+        for row in cursor.fetchall():
+            tu_wo_vector_ids.append(row[0])
+        if not tu_wo_vector_ids:
+            return
+
+        self.log_message(f'{tu_wo_vector_ids} text unit vectors are missing')
+        data = TextUnitText.objects \
+            .filter(text_unit__in=tu_wo_vector_ids) \
+            .values_list('text_unit_id', 'document_id', 'text')
+        Doc2VecTransformer.create_vectors(
+            self.transformer, data, TextUnitVector, 'text_unit_id', save=True)
+        self.log_message(f'{len(tu_wo_vector_ids)} text unit vectors have been created')
 
     def get_features(self) -> Features:
         """
@@ -600,7 +635,7 @@ class TextUnit2VecFeatures(Document2VecFeatures):
         """
         vectors = self.get_vectors()
         self.log_message(f'get_features() got {len(vectors or [])} vectors')
-        item_names = [f'[{v.text_unit.location_start}:{v.text_unit.location_end}]' for v in vectors]
+        item_names = [f'[{v.location_start}:{v.location_end}]' for v in vectors]
         columns = ['id'] + [f'f{i}' for i in range(len(vectors[0].vector_value))]
         vectors_indexed = [[v.text_unit_id] + list(v.vector_value) for v in vectors]
         feature_df = pd.DataFrame(vectors_indexed, columns=columns)

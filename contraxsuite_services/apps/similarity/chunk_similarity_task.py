@@ -29,6 +29,7 @@ import math
 from typing import List, Set, Tuple, Optional, Dict, Generator, Iterable
 
 import regex as re
+from django.contrib.contenttypes.models import ContentType
 from nltk import ngrams
 from scipy import sparse
 from scipy.sparse import csr_matrix
@@ -38,14 +39,16 @@ from django.db.models import Q
 
 from apps.analyze.ml.similarity import TextUnitSimilarityEngine
 from apps.analyze.models import DocumentSimilarity, TextUnitSimilarity, SimilarityRun
+from apps.common.models import Action
 from apps.document.models import Document
+from apps.project.models import Project
 from apps.task.tasks import ExtendedTask
 from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -87,6 +90,15 @@ class ChunkSimilarity(ExtendedTask):
             search_similar_documents, search_similar_text_units,
             similarity_threshold, use_idf, term_type, ngram_len, ignore_case)
         proc.process_pack()
+        Action.objects.create(name='Processed Similarity Tasks',
+                              message=f'Chunk Similarity task finished for project '
+                                      f'"{Project.all_objects.get(id=proj_id).name}"',
+                              user_id=kwargs.get('user_id'),
+                              view_action='update',
+                              content_type=ContentType.objects.get_for_model(Project),
+                              model_name='Project',
+                              app_label='project',
+                              object_pk=proj_id)
 
     def estimate_time(self, **kwargs) -> float:
         project = kwargs.get('project')

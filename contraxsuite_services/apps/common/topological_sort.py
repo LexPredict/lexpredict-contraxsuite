@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,8 +61,7 @@ class TopologicalGraph:
             if item[0] in self.graph:
                 node = self.graph[item[0]]
                 node.is_hidden = False
-                for dp in item[1]:
-                    node.dependencies.update(dp)
+                node.dependencies.update(item[1])
             else:
                 node = TopologicalNode(item[0], set(item[1] or []))
                 self.graph[item[0]] = node

@@ -436,7 +436,11 @@ CELERY_RESULT_BACKEND = 'apps.task.celery_backend.database:DatabaseBackend'
 CELERY_RESULT_EXPIRES = 0
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
+
+CELERY_QUEUE_DEFAULT = 'default'
+CELERY_QUEUE_HIGH_PRIO = 'high_priority'
 CELERY_QUEUE_SERIAL = 'serial'
+CELERY_QUEUE_BEAT_DB = 'beat-db'
 # message targeted to this queue will be processed on all workers
 
 from apps.task.celery_backend.constants import ENV_VAR_CELERY_SHUTDOWN_WHEN_NO_TASKS_LONGER_THAN_SEC
@@ -477,7 +481,7 @@ CELERY_BEAT_SCHEDULE = {
     'deployment.usage_stats': {
         'task': task_names.TASK_NAME_USAGE_STATS,
         'schedule': 60 * 60 * 12,
-        'options': {'queue': 'default', 'expires': 60 * 60 * 12},
+        'options': {'queue': CELERY_QUEUE_DEFAULT, 'expires': 60 * 60 * 12},
     },
     'apps.rawdb.tasks.auto_reindex_not_tracked': {
         'task': task_names.TASK_NAME_AUTO_REINDEX,
@@ -596,13 +600,16 @@ CELERY_QUEUE_WORKER_BCAST = 'worker_bcast'
 CELERY_EXCHANGE_WORKER_BCAST = 'worker_bcast_exchange'
 exchange = Exchange(CELERY_EXCHANGE_WORKER_BCAST, type='fanout')
 
+DEFAULT_RABBIT_QUEUE_PRIO = 10
+
 CELERY_TASK_QUEUES = (
-    Queue('default', routing_key='task_default.#', queue_arguments={'max-priority': 10}),
-    Queue('high_priority', routing_key='task_high_priority.#'),
-    Queue('serial', routing_key='task_serial.#'),
-    Queue('beat-db', routing_key='task_beat_db.#'),
+    Queue(CELERY_QUEUE_DEFAULT, routing_key='task_default.#', max_priority=DEFAULT_RABBIT_QUEUE_PRIO),
+    Queue(CELERY_QUEUE_HIGH_PRIO, routing_key='task_high_priority.#', max_priority=DEFAULT_RABBIT_QUEUE_PRIO),
+    Queue(CELERY_QUEUE_SERIAL, routing_key='task_serial.#', max_priority=DEFAULT_RABBIT_QUEUE_PRIO),
+    Queue(CELERY_QUEUE_BEAT_DB, routing_key='task_beat_db.#'),
     Broadcast(name=CELERY_QUEUE_WORKER_BCAST, exchange=exchange),
 )
+
 
 CELERY_ROUTES = {
     'apps.task.tasks.terminate_processes': {
@@ -611,7 +618,8 @@ CELERY_ROUTES = {
     }
 }
 
-CELERY_TASK_DEFAULT_QUEUE = 'default'
+# this is Celery argument
+CELERY_TASK_DEFAULT_QUEUE = CELERY_QUEUE_DEFAULT
 
 # Redis for Celery args caching
 CELERY_CACHE_REDIS_URL = 'redis://127.0.0.1:6379/0'
@@ -1009,9 +1017,11 @@ HOST_NAME = 'localhost'
 
 TEXT_EXTRACTION_SYSTEM_URL = 'http://127.0.0.1:8000'
 TEXT_EXTRACTION_SYSTEM_CALLBACK_URL = 'http://localhost:3355/api/v1/task/process_text_extraction_results'
+FORCE_INIT_APP_VARS = True
 
 MODEL_S3_BUCKET = 'lexnlp-models-public'
 MODEL_S3_REGION = 'us-west-1'
+MODEL_S3_SSL_VERIFY = True
 
 try:
     from local_settings import *
@@ -1056,6 +1066,7 @@ LOGIN_EXEMPT_URLS = (
     r'^' + BASE_URL + 'accounts/',  # allow any URL under /accounts/*
     r'^rest-auth/',  # allow any URL under /rest-auth/*
     r'^api/v',  # allow any URL under /api/v*
+    r'^api/media-data/',   # allow media urls
     r'^' + BASE_URL + '__debug__/',  # allow debug toolbar
     r'^' + BASE_URL + 'extract/search/',  # TODO: forbid?
     r'^api/v\d+/logging/log_message/',  # TODO: intersects with r'^api/v'

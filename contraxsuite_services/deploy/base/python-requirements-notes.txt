@@ -4,3 +4,5 @@
 4. asgi-redis 1.4.3 has requirement asgiref~=1.1.2, but we have asgiref 3.2.10 which is incompatible, BUT it works well
 5. celery didn't work without django-autocomplete-light
 6. jedi==0.17.2 was included in requirements to not allow jupyter install 18.0 version which breaks autocomplete
+
+7. 2021/09/22 : the newest tzlocal==3.0 breaks dates parser so set tzlocal==2.1

@@ -255,6 +255,8 @@ Method | HTTP request | Description
 [**extractUrlUsageTopGET**](V1Api.md#extractUrlUsageTopGET) | **GET** /api/v1/extract/url-usage/top/ | 
 [**loggingLogMessagePOST**](V1Api.md#loggingLogMessagePOST) | **POST** /api/v1/logging/log_message/ | 
 [**mediaDataPathGET**](V1Api.md#mediaDataPathGET) | **GET** /api/media-data/{path}/ | 
+[**notificationsWebNotificationsGET**](V1Api.md#notificationsWebNotificationsGET) | **GET** /api/v1/notifications/web-notifications/ | 
+[**notificationsWebNotificationsMarkSeenPOST**](V1Api.md#notificationsWebNotificationsMarkSeenPOST) | **POST** /api/v1/notifications/web-notifications/mark_seen/ | 
 [**projectProjectClusteringGET**](V1Api.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ | 
 [**projectProjectClusteringIdGET**](V1Api.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ | 
 [**projectProjectsFormFieldsGET**](V1Api.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ | 
@@ -265,6 +267,7 @@ Method | HTTP request | Description
 [**projectProjectsIdAssignDocumentPOST**](V1Api.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**projectProjectsIdAssignDocumentsPOST**](V1Api.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**projectProjectsIdAssigneesGET**](V1Api.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ | 
+[**projectProjectsIdCheckSimilarityProcessAllowedPOST**](V1Api.md#projectProjectsIdCheckSimilarityProcessAllowedPOST) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
 [**projectProjectsIdCleanupPOST**](V1Api.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
 [**projectProjectsIdClusterActionsGET**](V1Api.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**projectProjectsIdClusterPOST**](V1Api.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ | 
@@ -359,6 +362,7 @@ Method | HTTP request | Description
 [**taskUpdateElasticIndexPOST**](V1Api.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ | 
 [**tusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**tusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
+[**usersSocialAccountsGET**](V1Api.md#usersSocialAccountsGET) | **GET** /api/v1/users/social_accounts/ | 
 [**usersUsersFormFieldsGET**](V1Api.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ | 
 [**usersUsersGET**](V1Api.md#usersUsersGET) | **GET** /api/v1/users/users/ | 
 [**usersUsersIdFormFieldsGET**](V1Api.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -931,7 +935,7 @@ Name | Type | Description  | Notes
 
 <a name="analyzeProjectDocumentSimilarityListGET"></a>
 # **analyzeProjectDocumentSimilarityListGET**
-> List&lt;ProjectDocumentSimilarity&gt; analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters)
+> ProjectDocumentSimilarityResponse analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters)
 
 
 
@@ -964,7 +968,7 @@ public class Example {
     Integer documentId = 56; // Integer | run id or document id required
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<ProjectDocumentSimilarity> result = apiInstance.analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
+      ProjectDocumentSimilarityResponse result = apiInstance.analyzeProjectDocumentSimilarityListGET(textMaxLength, runId, documentId, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#analyzeProjectDocumentSimilarityListGET");
@@ -988,7 +992,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;ProjectDocumentSimilarity&gt;**](ProjectDocumentSimilarity.md)
+[**ProjectDocumentSimilarityResponse**](ProjectDocumentSimilarityResponse.md)
 
 ### Authorization
 
@@ -2347,7 +2351,7 @@ Name | Type | Description  | Notes
 
 <a name="commonActionsGET"></a>
 # **commonActionsGET**
-> List&lt;List&lt;Action&gt;&gt; commonActionsGET(projectId, documentId, viewActions, jqFilters)
+> List&lt;Action&gt; commonActionsGET(projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -2380,7 +2384,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<List<Action>> result = apiInstance.commonActionsGET(projectId, documentId, viewActions, jqFilters);
+      List<Action> result = apiInstance.commonActionsGET(projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#commonActionsGET");
@@ -2404,7 +2408,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;List&lt;Action&gt;&gt;**](List.md)
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -2422,7 +2426,7 @@ Name | Type | Description  | Notes
 
 <a name="commonActionsIdGET"></a>
 # **commonActionsIdGET**
-> List&lt;Action&gt; commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters)
+> Action commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -2456,7 +2460,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
+      Action result = apiInstance.commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#commonActionsIdGET");
@@ -2481,7 +2485,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**Action**](Action.md)
 
 ### Authorization
 
@@ -9339,7 +9343,7 @@ Name | Type | Description  | Notes
 
 <a name="documentDocumentsIdActionsGET"></a>
 # **documentDocumentsIdActionsGET**
-> List&lt;Action&gt; documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
+> DocumentsForUser documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -9371,7 +9375,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      DocumentsForUser result = apiInstance.documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#documentDocumentsIdActionsGET");
@@ -9396,7 +9400,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -12135,7 +12139,7 @@ Name | Type | Description  | Notes
 
 <a name="documentProjectProjectPkDocumentsIdActionsGET"></a>
 # **documentProjectProjectPkDocumentsIdActionsGET**
-> List&lt;Action&gt; documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
+> DocumentsForUser documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -12168,7 +12172,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
+      DocumentsForUser result = apiInstance.documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#documentProjectProjectPkDocumentsIdActionsGET");
@@ -12194,7 +12198,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**DocumentsForUser**](DocumentsForUser.md)
 
 ### Authorization
 
@@ -17765,6 +17769,140 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="notificationsWebNotificationsGET"></a>
+# **notificationsWebNotificationsGET**
+> Map&lt;String, Object&gt; notificationsWebNotificationsGET()
+
+
+
+Web Notification List
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      Map<String, Object> result = apiInstance.notificationsWebNotificationsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#notificationsWebNotificationsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+<a name="notificationsWebNotificationsMarkSeenPOST"></a>
+# **notificationsWebNotificationsMarkSeenPOST**
+> MarkForSeenWebNotificationResponse notificationsWebNotificationsMarkSeenPOST(markForSeenWebNotificationRequest)
+
+
+
+Method marks a number of web notifications for updating as seen/not seen. :param request: provide a list of web notification message ids here:
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    MarkForSeenWebNotificationRequest markForSeenWebNotificationRequest = new MarkForSeenWebNotificationRequest(); // MarkForSeenWebNotificationRequest | 
+    try {
+      MarkForSeenWebNotificationResponse result = apiInstance.notificationsWebNotificationsMarkSeenPOST(markForSeenWebNotificationRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#notificationsWebNotificationsMarkSeenPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **markForSeenWebNotificationRequest** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional]
+
+### Return type
+
+[**MarkForSeenWebNotificationResponse**](MarkForSeenWebNotificationResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="projectProjectClusteringGET"></a>
 # **projectProjectClusteringGET**
 > List&lt;ProjectClustering&gt; projectProjectClusteringGET(jqFilters)
@@ -18462,6 +18600,75 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **200** |  |  -  |
 
+<a name="projectProjectsIdCheckSimilarityProcessAllowedPOST"></a>
+# **projectProjectsIdCheckSimilarityProcessAllowedPOST**
+> ProjectDetail projectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail)
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this project.
+    ProjectDetail projectDetail = new ProjectDetail(); // ProjectDetail | 
+    try {
+      ProjectDetail result = apiInstance.projectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#projectProjectsIdCheckSimilarityProcessAllowedPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**| A unique integer value identifying this project. |
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+
+### Return type
+
+[**ProjectDetail**](ProjectDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
 <a name="projectProjectsIdCleanupPOST"></a>
 # **projectProjectsIdCleanupPOST**
 > String projectProjectsIdCleanupPOST(id, cleanupProjectRequest)
@@ -18536,7 +18743,7 @@ Name | Type | Description  | Notes
 
 <a name="projectProjectsIdClusterActionsGET"></a>
 # **projectProjectsIdClusterActionsGET**
-> List&lt;Action&gt; projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
+> ProjectDetail projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -18568,7 +18775,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      ProjectDetail result = apiInstance.projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#projectProjectsIdClusterActionsGET");
@@ -18593,7 +18800,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -19868,7 +20075,7 @@ Name | Type | Description  | Notes
 
 <a name="projectProjectsIdSettingsActionsGET"></a>
 # **projectProjectsIdSettingsActionsGET**
-> List&lt;Action&gt; projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
+> ProjectDetail projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -19900,7 +20107,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+      ProjectDetail result = apiInstance.projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#projectProjectsIdSettingsActionsGET");
@@ -19925,7 +20132,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -20160,7 +20367,7 @@ Name | Type | Description  | Notes
 
 
 
-Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \&quot;all\&quot; is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \&quot;all\&quot; is set)         fields_data: - dict {field_code: [values]}         on_existing_value: \&quot;replace_all\&quot; | \&quot;add_new\&quot; (for multi-choice fields)     Returns:         task_id
 
 ### Example
 ```java
@@ -25023,6 +25230,69 @@ null (empty response body)
 |-------------|-------------|------------------|
 **201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
 **400** |  |  -  |
+
+<a name="usersSocialAccountsGET"></a>
+# **usersSocialAccountsGET**
+> SocialAccountsResponse usersSocialAccountsGET()
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    try {
+      SocialAccountsResponse result = apiInstance.usersSocialAccountsGET();
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#usersSocialAccountsGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**SocialAccountsResponse**](SocialAccountsResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
 
 <a name="usersUsersFormFieldsGET"></a>
 # **usersUsersFormFieldsGET**

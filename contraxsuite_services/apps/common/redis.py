@@ -41,8 +41,8 @@ from apps.common.utils import fast_uuid
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -78,6 +78,20 @@ def lpush(key, value, pickle_value=True):
     if pickle_value:
         value = pickle.dumps(value)
     return r.rpush(key, value)
+
+
+def llen(key):
+    """
+    Get count of items in redis list
+    """
+    return r.llen(key)
+
+
+def ltrim(key, start, end):
+    """
+    Trim the list ``name``, removing all values not within the slice between ``start`` and ``end``
+    """
+    return r.ltrim(key, start, end)
 
 
 def lrange(key, unpickle_value=True, start=0, end=-1, delete=False):

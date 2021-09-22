@@ -24,7 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Set, Optional
 from django.db import connection
 
 from apps.common.collection_utils import group_by
@@ -32,39 +32,41 @@ from apps.common.model_utils.table_deps import TableDeps, DependencyRecord
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class TableDepsBuilder:
-    @staticmethod
-    def build_table_dependences(table_name: str) -> List[TableDeps]:
-        relations = TableDepsBuilder.get_relations()
-        pkeys = TableDepsBuilder.get_all_primary_keys()
+    def __init__(self, max_depth: int = 4):
+        self.existing_paths: Set[str] = set()
+        self.max_depth = max_depth
+
+    def build_table_dependences(self, table_name: str) -> List[TableDeps]:
+        relations = TableDepsBuilder().get_relations()
+        pkeys = self.get_all_primary_keys()
         all_deps = []  # type: List[TableDeps]
-        TableDepsBuilder.find_dependend_tables(relations, all_deps, None, table_name)
+        self.find_dependend_tables(relations, all_deps, None, table_name)
 
         # remove longer chains
         dep_by_own_table = group_by(all_deps,
                                     lambda d: d.deps[0].own_table)  # type: Dict[str, List[TableDeps]]
         shortcuts = []  # type: List[TableDeps]
         for key in dep_by_own_table:
-            opt_deps = TableDeps.remove_duplicates(dep_by_own_table[key])
-            opt_deps = TableDeps.leave_shortest_chains(opt_deps)
-            shortcuts += opt_deps
+            short_paths = TableDeps.leave_shortest_chains(dep_by_own_table[key])
+            shortcuts += short_paths
 
         all_deps = TableDeps.sort_deps(shortcuts, relations)
         for dep in all_deps:
             dep.own_table_pk = pkeys[dep.deps[0].own_table]
         return all_deps
 
-    @staticmethod
     def find_dependend_tables(
+            self,
             relations: List[Tuple[str, str, str, str]],
             all_deps: List[TableDeps],
-            current_dep: TableDeps,
+            current_dep: Optional[TableDeps],
             table_name: str) -> None:
         for fk_table, fk_column, rf_table, rf_column in relations:
             if rf_table != table_name:
@@ -78,14 +80,18 @@ class TableDepsBuilder:
                 new_dep = TableDeps(current_dep)
                 new_dep.deps.insert(0, dep_record)
 
+            dep_path = new_dep.stringify()
+            if dep_path in self.existing_paths:
+                continue
+            self.existing_paths.add(dep_path)
             all_deps.append(new_dep)
 
             # max recursion is limited
-            if len(new_dep.deps) < 6:
-                TableDepsBuilder.find_dependend_tables(relations, all_deps, new_dep, dep_record.own_table)
+            if len(new_dep.deps) < self.max_depth:
+                self.find_dependend_tables(relations, all_deps, new_dep, dep_record.own_table)
 
-    @staticmethod
-    def get_relations() -> List[Tuple[str, str, str, str]]:
+    @classmethod
+    def get_relations(cls) -> List[Tuple[str, str, str, str]]:
         cmd = '''
         DROP TABLE IF EXISTS KCU1;
 
@@ -129,8 +135,8 @@ class TableDepsBuilder:
             # print(rel_text)
             return list(row)
 
-    @staticmethod
-    def get_all_primary_keys() -> Dict[str, List[str]]:
+    @classmethod
+    def get_all_primary_keys(cls) -> Dict[str, List[str]]:
         pkeys = {}  # type:Dict[str, List[str]]
         cmd = '''
             SELECT c.table_name, c.column_name, c.ordinal_position

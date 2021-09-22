@@ -25,6 +25,7 @@
 # -*- coding: utf-8 -*-
 
 # Standard imports
+import json
 import re
 import weakref
 
@@ -44,14 +45,15 @@ from django.utils.functional import curry
 from rest_framework.response import Response as RestFrameworkResponse
 
 # Project imports
+from apps.common import signals as custom_signals
 from apps.users.authentication import CookieAuthentication, token_cache
 from apps.task.utils.task_utils import check_blocks
 # from apps.common.utils import get_test_user
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -202,18 +204,23 @@ class RequestUserMiddleware(MiddlewareMixin):
                     user = None
             else:
                 user = None
-            updated_signal_receiver = curry(self.insert_user, user)
 
-            self.connect_signal(signals.pre_save,
-                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
-            self.connect_signal(signals.post_save,
-                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
-            self.connect_signal(signals.m2m_changed,
-                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
-            self.connect_signal(signals.pre_delete,
-                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
-            self.connect_signal(signals.post_delete,
-                                updated_signal_receiver, dispatch_uid=(self.__class__, request,), weak=False)
+            request_data = getattr(request, 'data', None) or \
+                           getattr(request, 'GET', None) or \
+                           getattr(request, 'POST', None)
+
+            if request_data and 'fields_data' in request_data:
+                request_data = request_data['fields_data']
+
+            updated_signal_receiver = curry(self.insert_user_and_request_data, user, request_data)
+            signals_list = [
+                signals.pre_save, signals.post_save, signals.m2m_changed, signals.pre_delete,
+                signals.post_delete, custom_signals.pre_update, custom_signals.post_update,
+                custom_signals.pre_bulk_create, custom_signals.post_bulk_create,
+            ]
+            for signal in signals_list:
+                self.connect_signal(signal, updated_signal_receiver,
+                                    dispatch_uid=(self.__class__, request,), weak=False)
 
     @classmethod
     def connect_signal(cls, signal, receiver, sender=None, weak=True, dispatch_uid=None):
@@ -259,9 +266,17 @@ class RequestUserMiddleware(MiddlewareMixin):
         signals.pre_delete.disconnect(dispatch_uid=(self.__class__, request,))
         signals.post_delete.disconnect(dispatch_uid=(self.__class__, request,))
 
-    def insert_user(self, user, sender, instance, **kwargs):
+    def insert_user_and_request_data(self, user, request_data, sender, **kwargs):
+        if 'instance' in kwargs:
+            obj_name = 'instance'
+        elif 'queryset' in kwargs:
+            obj_name = 'queryset'
+        else:
+            return
         try:
-            instance.request_user = user
+            kwargs[obj_name].request_user = user
+            if not hasattr(kwargs[obj_name], 'request_data'):    # Action model has request_data itself so skip
+                kwargs[obj_name].request_data = request_data
         except:
             # if instance is not object
             pass

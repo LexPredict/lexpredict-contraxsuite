@@ -68,8 +68,8 @@
             function (itm) { itm.hide(); });
       if (this.destSelectList)
           this.adjustListItems(this.destSelectList, enabledFields,
-            function (itm) { itm.css('color', 'black'); },
-            function (itm) { itm.css('color', 'red'); });
+            function (itm) { itm.show(); /*itm.css('color', 'black'); -- uncomment these lines */ },
+            function (itm) { itm.hide(); /*itm.css('color', 'red'); -- to show the wrong options red */ });
     }
 
     FieldFilter.prototype.adjustListItems = function (

@@ -1,10 +1,5 @@
 {% extends "base.html" %}
 {% load static %}
-
-{% block title %}Party Network Chart{% endblock %}
-
-{% block page_header %}Party Network Chart{% endblock %}
-
 {% block css_extra %}
   {{ block.super }}
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.6.2/chosen.min.css">
@@ -20,9 +15,12 @@
   </style>
 {% endblock %}
 
+{% block title %}Party Network Chart{% endblock %}
+{% block page_header %}Party Network Chart{% endblock %}
+
 {% block content %}
 
-  <select name="party_name" data-placeholder="Party name..." required="" id="party_name" class="chosen">
+  <select name="party_name" data-placeholder="Party name..." required="" id="party_name" class="party_chosen">
     <option></option>
     {% for party_name in parties %}
       <option value="{{ party_name }}" {% if forloop.first %}selected="selected"{% endif %}>{{ party_name }}</option>
@@ -42,7 +40,7 @@
     $(function () {
       $.ajaxSetup({ cache: false });
 
-      $('select.chosen:enabled')
+      $('select.party_chosen:enabled')
           .chosen({width: "50%"})
           .change(function(ev) {
               draw_chart();

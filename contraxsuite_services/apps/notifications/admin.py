@@ -25,7 +25,7 @@
 # -*- coding: utf-8 -*-
 
 from email.utils import parseaddr
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from django import forms
 from django.contrib import admin
@@ -39,8 +39,8 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -194,12 +194,22 @@ class DocumentNotificationSubscriptionAdmin(admin.ModelAdmin):
     list_display = (
         'pk', 'document_type', 'event', 'recipients', 'specified_user', 'enabled')
     search_fields = ('pk', 'document_type__code', 'event', 'recipients', 'specified_user__name')
-
     form = DocumentNotificationSubscriptionForm
+    change_form_template = 'admin/notifications/documentnotificationsubscription/change_form.html'
 
     def __init__(self, model, admin_site):
         super().__init__(model, admin_site)
-        self.change_form_template = 'notifications/notification_subscription_change.html'
+
+    def add_view(self, request, form_url='', extra_context=None):
+        extra_context = extra_context or dict()
+        extra_context['fields_by_doctype'] = DocumentField.get_fields_by_doctype()
+        return super().add_view(request, form_url, extra_context=extra_context)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None, **kwargs):
+        extra_context = extra_context or dict()
+        extra_context.update(kwargs)
+        extra_context['fields_by_doctype'] = DocumentField.get_fields_by_doctype()
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
 
 def check_generic_fields(gen_fields: Optional[List[str]]) -> str:

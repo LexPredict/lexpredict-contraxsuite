@@ -35,8 +35,8 @@ from apps.project.signals import project_soft_deleted
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -76,4 +76,4 @@ def catch_project_soft_deleted(sender, instance, user, **kwargs):
 def cancel_similarity_task(project_id, user=None):
     from apps.similarity.tasks import DeleteDocumentSimilarityResults, DeleteTextUnitSimilarityResults, _call_task
     for task in (DeleteDocumentSimilarityResults, DeleteTextUnitSimilarityResults):
-        _call_task(task, project_id=project_id, user_id=user.pk if user else None)
+        _call_task(task, project_id=project_id, user_id=user.pk if user else None, visible=False)

@@ -37,8 +37,8 @@ from apps.websocket.websockets import Websockets
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -143,6 +143,25 @@ def notify_update_project_document_fields_completed(task_id, project_id, documen
     )
     message = ChannelMessage(
         message_types.CHANNEL_MSG_TYPE_PROJECT_DOCUMENT_FIELDS_UPDATED, data)
+
+    users = User.get_users_for_object(
+        object_pk=project_id,
+        object_model=Project,
+        perm_name='view_project').values_list('pk', flat=True)
+
+    Websockets().send_to_users(qs_users=users, message_obj=message)
+
+
+def notify_project_annotations_status_updated(task_id, project_id):
+    """
+    Notify users about updated annotations in a Project
+    """
+    data = dict(
+        task_id=task_id,
+        project_id=project_id
+    )
+    message = ChannelMessage(
+        message_types.CHANNEL_MSG_TYPE_PROJECT_ANNOTATIONS_STATUS_UPDATED, data)
 
     users = User.get_users_for_object(
         object_pk=project_id,

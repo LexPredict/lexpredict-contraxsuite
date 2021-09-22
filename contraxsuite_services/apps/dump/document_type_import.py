@@ -52,8 +52,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -677,6 +677,7 @@ def import_document_type(json_bytes: bytes,
                                                      logger=logger)
             document_type.object.created_by = user
             document_type.object.modified_by = user
+            document_type.object.request_user = user
 
         elif isinstance(obj, DocumentField):
             field = DeserializedDocumentField(deserialized_object,
@@ -685,22 +686,26 @@ def import_document_type(json_bytes: bytes,
                                               logger=logger)
             field.object.created_by = user
             field.object.modified_by = user
+            field.object.request_user = user
 
             pk_to_field[field.pk] = field
         elif isinstance(obj, DocumentFieldDetector):
             field_detector = DeserializedDocumentFieldDetector(deserialized_object,
                                                                auto_fix_validation_errors=auto_fix_validation_errors,
                                                                logger=logger)
+            field_detector.object.request_user = user
             field_detectors.append(field_detector)
         elif isinstance(obj, DocumentFieldCategory):
             category = DeserializedDocumentFieldCategory(deserialized_object,
                                                          auto_fix_validation_errors=auto_fix_validation_errors,
                                                          logger=logger)
+            category.object.request_user = user
             other_objects.append(category)
         elif isinstance(obj, DocumentFieldFamily):
             family = DeserializedDocumentFieldFamily(deserialized_object,
                                                      auto_fix_validation_errors=auto_fix_validation_errors,
                                                      logger=logger)
+            family.object.request_user = user
             other_objects.append(family)
         else:
             raise RuntimeError('Unknown model')

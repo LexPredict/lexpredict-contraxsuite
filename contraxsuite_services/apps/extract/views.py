@@ -61,8 +61,8 @@ from apps.extract.models import (
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -316,7 +316,7 @@ class BaseTextUnitUsageListView(apps.common.mixins.JqPaginatedListView):
         if sortfield == 'unit_type':
             # if we're sorting by "unit_type" - that performs bad
             # let's split the query on two and union
-            sortorder = self.request.GET.get('sortorder', 'asc')
+            sortorder = self.request.GET.get('sortorder', 'asc').lower()
             qs_s = qs.filter(unit_type='sentence')
             qs_p = qs.filter(unit_type='paragraph')
             qs_filtered = qs_p if sortorder.lower() == 'asc' else qs_s
@@ -367,6 +367,7 @@ class TextUnitTermUsageListView(BaseTextUnitUsageListView):
             pk__in=Subquery(term_usages.values('text_unit_id'))).order_by('document_id')
         filtered_projects = list(self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
         qs = qs.filter(document__project_id__in=filtered_projects or [])
+        qs = qs.filter(document__delete_pending=False)
         return qs
 
     def set_filter_value_by_ref_id(self, ctx: Dict[str, Any]):
@@ -454,6 +455,19 @@ class TextUnitTermUsageListView(BaseTextUnitUsageListView):
 class GeoEntityListView(apps.common.mixins.JqPaginatedListView):
     template_name = 'extract/geo_entity_list.html'
     model = GeoEntity
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.document_lookup = 'projectgeoentityusage'
+        self.search_individual_documents = False
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(projectgeoentityusage__project__delete_pending=False)
+        qs = qs.filter(
+            projectgeoentityusage__project_id__in=list(
+                self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
+        return qs
 
     def get_json_data(self, **kwargs):
         data = super().get_json_data()
@@ -560,6 +574,11 @@ class TopGeoEntityUsageListView(BaseTopUsageListView):
     sub_app = 'geoentity'
     parent_list_view = GeoEntityUsageListView
     template_name = "extract/top_geo_entity_usage_list.html"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.document_lookup = ''
+        self.search_individual_documents = False
 
     def get_item_data(self, item, parent_data):
         item['url'] = '{}?entity_search={}'.format(
@@ -691,6 +710,11 @@ class TopPartyUsageListView(BaseTopUsageListView):
     parent_list_view = PartyUsageListView
     template_name = 'extract/top_party_usage_list.html'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.document_lookup = ''
+        self.search_individual_documents = False
+
     def get_item_data(self, item, parent_data):
         item['url'] = self.full_reverse('extract:party-usage-list') + '?party_search=' + item['party__name']
         item['party_summary_url'] = self.full_reverse('extract:party-summary', args=[item['party_id']])
@@ -761,6 +785,11 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
         truncate_text_unit_text = json.loads(self.request.GET.get('truncate_text_unit_text', 'false'))
 
         qs = super().get_queryset()
+        selected_projects = list(
+            self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True))
+        if selected_projects:
+            qs = qs.filter(document__project_id__in=selected_projects)
+
         if "document_pk" in self.request.GET:
             qs = qs.filter(document_id=self.request.GET['document_pk'])
 
@@ -776,8 +805,8 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
                 .annotate(count=Sum('count'))
             date_data = {}
             if show_documents:
-                annotations = dict(document=F('document__name'))
-                values = ['date', 'document']
+                annotations = dict(document_name=F('document__name'))
+                values = ['date', 'document_name']
                 if show_text_unit_text:
                     values.append('text')
                     if truncate_text_unit_text:
@@ -830,8 +859,8 @@ class DateUsageCalendarView(apps.common.mixins.JqPaginatedListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         documents = self.request.user.user_documents
+        # TODO: should we filter documents by user?
         documents = documents.filter(
-            taskqueue__user_id=self.request.user.pk,
             textunit__dateusage__isnull=False).distinct()
         ctx['documents'] = documents.values('pk', 'name').iterator()
 
@@ -971,6 +1000,11 @@ class TopDefinitionUsageListView(BaseTopUsageListView):
     parent_list_view = DefinitionUsageListView
     template_name = 'extract/top_definition_usage_list.html'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.document_lookup = ''
+        self.search_individual_documents = False
+
     def get_item_data(self, item, parent_data):
         item['url'] = '{}?definition_search={}'.format(
             self.full_reverse('extract:definition-usage-list'), item['definition'])
@@ -981,13 +1015,12 @@ class TopDefinitionUsageListView(BaseTopUsageListView):
 
     def get_queryset(self):
         self.model = DefinitionUsage if "document_pk" in self.request.GET else ProjectDefinitionUsage
-        qs = None
-        if qs is None:
-            qs = super().get_queryset() \
-                .values("definition") \
-                .annotate(count=Sum("count")) \
-                .order_by("-count")
+        qs = super().get_queryset() \
+            .values("definition") \
+            .annotate(count=Sum("count")) \
+            .order_by("-count")
         return qs
+
 
 
 class CourtUsageListView(BaseUsageListView):
@@ -1477,9 +1510,10 @@ class PartyNetworkChartView(PartyUsageListView):
             Party.objects.filter(partyusage__isnull=False).distinct().values_list('name', flat=True))
         return ctx
 
-    def get_json_data(self):
+    def get_json_data(self, **kwargs):
         party_name = self.request.GET.get('party_name_iexact')
-        qs = self.get_queryset() \
+        qs = kwargs.get('qs') or self.get_queryset()
+        qs = qs \
             .values('party__name', 'document_id') \
             .order_by('party__name', 'document_id')
         if party_name:
@@ -1506,7 +1540,7 @@ class PartyNetworkChartView(PartyUsageListView):
                        for g in party_doc_edge for i, j in g]
 
         members = {party_name}
-        while 1:
+        while True:
             members1 = {i["source"] for i in chart_links
                         if i["target"] in members and i["source"] not in members}
             members2 = {i["target"] for i in chart_links

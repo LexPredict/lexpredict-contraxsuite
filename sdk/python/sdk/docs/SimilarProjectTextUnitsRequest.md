@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **location_start** | **int** | start of chosen text block in a Document | [optional] 
 **location_end** | **int** | end of chosen text block in a Document | [optional] 
 **selection** | **[{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]** | selection coordinates | [optional] 
+**any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

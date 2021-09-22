@@ -33,20 +33,22 @@ from apps.common.contraxsuite_urls import root_url, doc_editor_url
 from apps.document.constants import DOCUMENT_FIELD_CODE_NAME, DOCUMENT_FIELD_CODE_PROJECT, \
     DOCUMENT_FIELD_CODE_PROJECT_ID, DOCUMENT_FIELD_CODE_PROJECT_NAME, DOCUMENT_FIELD_CODE_STATUS, \
     DOCUMENT_FIELD_CODE_STATUS_NAME, DOCUMENT_FIELD_CODE_ASSIGNEE, DOCUMENT_FIELD_CODE_ASSIGNEE_ID, \
-    DOCUMENT_FIELD_CODE_ID, DOCUMENT_FIELD_CODE_ASSIGNEE_NAME
+    DOCUMENT_FIELD_CODE_ID, DOCUMENT_FIELD_CODE_ASSIGNEE_NAME, DOCUMENT_FIELD_CODE_MODIFIED_DATE
 from apps.document.models import DocumentType
 from apps.document.repository.document_field_repository import DocumentFieldRepository
-from apps.notifications.models import DocumentNotificationSubscription, DocumentAssignedEvent, DocumentLoadedEvent
+from apps.notifications.models import DocumentNotificationSubscription, DocumentAssignedEvent, DocumentLoadedEvent, \
+    DocumentChangedEvent
 from apps.notifications.notifications import RenderedNotification, DocumentNotificationSource, \
     get_notification_template_resource
 from apps.rawdb.constants import FIELD_CODES_HIDE_BY_DEFAULT, \
     DOC_FIELD_TO_CACHE_FIELD
 from apps.users.models import User
+from django.utils.timezone import now
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -62,7 +64,8 @@ class NotificationRenderer:
                               DOCUMENT_FIELD_CODE_STATUS_NAME,
                               DOCUMENT_FIELD_CODE_ASSIGNEE,
                               DOCUMENT_FIELD_CODE_ASSIGNEE_ID,
-                              DOCUMENT_FIELD_CODE_ASSIGNEE_NAME}
+                              DOCUMENT_FIELD_CODE_ASSIGNEE_NAME,
+                              DOCUMENT_FIELD_CODE_MODIFIED_DATE}
 
     @staticmethod
     def render_notification(package_id: str,
@@ -85,6 +88,9 @@ class NotificationRenderer:
         doc_field_values = data.field_values
         if not doc_field_values:
             return None
+        # update field values: actualize modification time
+        if event_info.code in {DocumentChangedEvent.code, DocumentAssignedEvent.code}:
+            doc_field_values['modified_date'] = now()
         display_fields = set(doc_field_values.keys())
 
         recipients = subscription.resolve_recipients(data.field_values)
@@ -128,7 +134,6 @@ class NotificationRenderer:
 
         subject_template = subscription.subject or event_info.default_subject
         header_template = subscription.header or event_info.default_header
-
         subject = Template(subject_template).render(template_context)
         header = Template(header_template).render(template_context)
 
@@ -253,6 +258,8 @@ class NotificationRenderer:
                     'changed_by_user': msg_data.changed_by_user
                 }  # type: Dict[str, Any]
                 template_context['documents'].append(document_context)
+            if template_context['documents']:
+                template_context['document'] = template_context['documents'][0]['document']
 
             html = None
             subject_template = subscription.subject or event_info.default_bulk_subject

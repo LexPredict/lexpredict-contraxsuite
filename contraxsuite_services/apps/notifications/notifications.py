@@ -48,8 +48,8 @@ from apps.notifications.models import DocumentDigestConfig, DocumentDigestSendDa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -84,10 +84,24 @@ def get_notification_template_resource(rfn: str) -> Optional[bytes]:
 
 
 RE_SRC_ATTACHMENT = re.compile(r'(<.{1,2000}")(images/)([^"]+)(".{1,2000})>')
+RE_HYPERLINK = re.compile(r"(?<!<)<a\s")
 
 
-def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
-               image_dir: str = None, cc: Set[str] = None):
+def add_link_nontrack_attr(html: str, attr_value: str) -> str:
+    if not html or not attr_value:
+        return html
+    html = RE_HYPERLINK.sub(f'<a {attr_value} ', html)
+    return html
+
+
+def send_email(log: ProcessLogger,
+               dst_user,
+               subject: str,
+               txt: str,
+               html: str,
+               image_dir: str = None,
+               cc: Set[str] = None,
+               prevent_link_tracking: bool = False):
 
     if not dst_user.email:
         log.error('Destination user {0} has no email assigned'.format(dst_user.name))
@@ -104,6 +118,9 @@ def send_email(log: ProcessLogger, dst_user, subject: str, txt: str, html: str,
                                        to=['"{0}" <{1}>'.format(dst_user.name, dst_user.email)],
                                        connection=backend)
         if html:
+            if prevent_link_tracking:
+                from apps.notifications.app_vars import NON_TRACKED_LINK_ATTR
+                html = add_link_nontrack_attr(html, NON_TRACKED_LINK_ATTR.val())
             images = [m.group(3) for m in RE_SRC_ATTACHMENT.finditer(html)]
             email_html = RE_SRC_ATTACHMENT.sub(r'\1cid:\3\4', html)
             email.attach_alternative(email_html, 'text/html')

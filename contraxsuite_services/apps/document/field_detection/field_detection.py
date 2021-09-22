@@ -54,8 +54,8 @@ from apps.document.field_detection.mlflow_field_detection import MLFlowModelBase
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -228,7 +228,11 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         all_codes = {f.code for f in all_fields}
         skip_codes = skip_codes.union(all_codes - set(field_codes_to_detect))
 
+    old_assignees: List[Tuple[str, int, int, int]] = []
     if clear_old_values:
+        # store assignees
+        old_assignees = field_repo.get_annotations_assignees(
+            document.pk, list(skip_codes), updated_field_codes)
         field_repo.delete_document_field_values(
             document.pk, list(skip_codes), updated_field_codes)
 
@@ -277,6 +281,9 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             detection_errors.append((field.code, typed_field.type_code, e, sys.exc_info()))
             fire_document_field_detection_failed(task, document, field,
                                                  er_msg + f'\n{e}', document_initial_load)
+
+    if old_assignees:
+        field_repo.restore_annotations_assignees(document.pk, old_assignees)
 
     if save:
         if updated_field_codes:

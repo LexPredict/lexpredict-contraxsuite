@@ -1,0 +1,7 @@
+this is test Document
+
+date: 05-14-2001
+geo entity: US, New York
+company: Lexpredict LLC
+
+etc

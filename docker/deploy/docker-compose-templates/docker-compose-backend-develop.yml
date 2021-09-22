@@ -303,6 +303,7 @@ services:
       - contraxsuite_nginx_certs:/etc/nginx/certificates
       - contraxsuite_frontend:/contraxsuite_frontend
       - contraxsuite_nginx_server_include:/etc/nginx/server_include
+      - contraxsuite_nginx_error_pages:/usr/share/nginx/html
     configs:
       - source: nginx_cust_${NGINX_CUSTOMER_CONF_VERSION}
         target: /etc/nginx/nginx-customer.conf
@@ -332,10 +333,11 @@ services:
     hostname: contrax-rabbitmq
     networks:
       - contrax_net
-    environment:
-      - "RABBITMQ_DEFAULT_USER=${DOCKER_RABBITMQ_USER}"
-      - "RABBITMQ_DEFAULT_PASS=${DOCKER_RABBITMQ_PASSWORD}"
-      - "RABBITMQ_DEFAULT_VHOST=${DOCKER_RABBITMQ_VHOST}"
+    configs:
+      - source: rabbitmq_${RABBITMQ_CONFIG_VERSION}
+        target: /etc/rabbitmq/rabbitmq.conf
+      - source: rabbitmq_${RABBITMQ_CONFIG_VERSION}
+        target: /etc/rabbitmq/conf.d/10-default-guest-user.conf
     logging:
       driver: "json-file"
       options:
@@ -478,6 +480,7 @@ volumes:
   celery_worker_state:
   backup:
   contraxsuite_nginx_server_include:
+  contraxsuite_nginx_error_pages:
   contraxsuite_additional_fixtures:
   contraxsuite_jupyter_add_req:
   contraxsuite_minio:
@@ -517,3 +520,5 @@ configs:
     file: ./pgbouncer.celery.ini
   pgbnc_userlist_${PGBOUNCER_USERLIST_VERSION}:
     file: ./pgbouncer.userlist.txt
+  rabbitmq_${RABBITMQ_CONFIG_VERSION}:
+    file: ./rabbitmq.conf

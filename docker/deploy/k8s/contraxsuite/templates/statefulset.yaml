@@ -1,8 +1,10 @@
+# contrax-celery-high
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: contrax-celery-high
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Values.namespace | quote }}
 spec:
   selector:
     matchLabels:
@@ -17,145 +19,154 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: "contraxsuite.com/role"
-                  operator: In
-                  values:
-                  - manager
-            topologyKey: "kubernetes.io/hostname"
-      # nodeSelector:
-       #  contraxsuite.com/role: manager
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                      - manager
+              topologyKey: "kubernetes.io/hostname"
       terminationGracePeriodSeconds: 10
       containers:
-      - args:
-          - celery-high-prio
-        env:
-        - name: DOCKER_CELERY_CONCURRENCY
-          value: "4"
-        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
-          value: optional
-        - name: DOCKER_DJANGO_ADMIN_EMAIL
-          value: admin@localhost
-        - name: DOCKER_DJANGO_ADMIN_NAME
-          value: Administrator
-        - name: DOCKER_DJANGO_ADMIN_PASSWORD
-          value: Administrator
-        - name: DOCKER_DJANGO_BASE_PATH
-          value: /explorer/
-        - name: DOCKER_DJANGO_DEBUG
-          value: "False"
-        - name: DOCKER_DJANGO_DEBUG_SQL
-          value: "False"
-        - name: DOCKER_DJANGO_EMAIL_BACKEND
-          value: django.core.mail.backends.console.EmailBackend
-        - name: DOCKER_DJANGO_EMAIL_HOST
-          value: localhost
-        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
-        - name: DOCKER_DJANGO_EMAIL_HOST_USER
-        - name: DOCKER_DJANGO_EMAIL_PORT
-          value: "587"
-        - name: DOCKER_DJANGO_EMAIL_USE_TLS
-          value: "False"
-        - name: DOCKER_DJANGO_HOST_NAME
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_DJANGO_SECRET_KEY
-          value: Welcome1
-        - name: DOCKER_FLOWER_BASE_PATH
-          value: flower
-        - name: DOCKER_FRONTEND_ROOT_URL
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_HOST_NAME_ELASTICSEARCH
-          value: {{ .Values.docker_host_name_elasticsearch }}
-        - name: DOCKER_ELASTICSEARCH_PORT
-          value: "{{ .Values.docker_elasticsearch_port }}"
-        - name: DOCKER_HOST_NAME_KIBANA
-          value: contrax-kibana
-        - name: DOCKER_HOST_NAME_PG
-          value: {{ .Values.pg_host_name }}
-        - name: DOCKER_HOST_NAME_RABBITMQ
-          value: contrax-rabbitmq
-        - name: DOCKER_HOST_NAME_REDIS
-          value: contrax-redis
-        - name: DOCKER_JUPYTER_BASE_URL
-          value: /jupyter
-        - name: DOCKER_JUPYTER_PORT
-          value: "8888"
-        - name: DOCKER_NGINX_SERVER_NAME
-          value: contrax-nginx
-        - name: DOCKER_PG_DB_NAME
-          value: {{ .Values.pg_db_name }}
-        - name: DOCKER_PG_PASSWORD
-          value: {{ .Values.pg_password }}
-        - name: DOCKER_PG_USER
-          value: {{ .Values.pg_user }}
-        - name: DOCKER_RABBITMQ_PASSWORD
-          value: contrax1
-        - name: DOCKER_RABBITMQ_USER
-          value: contrax1
-        - name: DOCKER_RABBITMQ_VHOST
-          value: contrax1_vhost
-        - name: SHARED_USER_ID
-          value: "65432"
-        - name: SHARED_USER_NAME
-          value: contraxsuite_docker_user
-        - name: DOCKER_WEBDAV_AUTH_PASSWORD
-          value: password
-        - name: DOCKER_WEBDAV_AUTH_USER
-          value: user
-        - name: DOCKER_WEBDAV_SERVER_NAME
-          value: contrax-webdav
-        - name: LEXNLP_TIKA_PARSER_MODE
-          value: pdf_ocr
-        - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
-        - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
-        - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
-        name: contrax-celery-high
-        image: {{ .Values.docker_image }}
-        resources:
-          limits:
-            cpu: 2
-          requests:
-            cpu: 500m
-        volumeMounts:
-        # - name: contrax-celery-high-pvc
-        #   mountPath: /data/celery_worker_state
-        - name: local-settings-py
-          mountPath: /contraxsuite_services/local_settings.py
-          subPath: local_settings.py
+        - args:
+            - celery-high-prio
+          env:
+            - name: DOCKER_CELERY_CONCURRENCY
+              value: "4"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: {{ default "optional" .Values.djangoAccountEmailVerification | quote }}
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_email
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_name
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_password
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: {{ default "/explorer/" .Values.djangoBasePath | quote }}
+            - name: DOCKER_DJANGO_DEBUG
+              value: {{ default "False" .Values.djangoDebugMode | quote }}
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: {{ default "False" .Values.djangoDebugSql | quote }}
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: {{ default "smtp.CustomEmailBackend" .Values.djangoEmailBackend | quote }}
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: {{ default "localhost" .Values.djangoEmailHost | quote }}
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_email_host_password
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: {{ default "" .Values.djangoEmailHostUser | quote }}
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: {{ default "587" .Values.djangoEmailHostPort | quote }}
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: {{ default "False" .Values.djangoEmailUseTls | quote }}
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: {{ .Values.domainName }}
+            - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+              value: './deploy/dependencies/jqwidgets.zip'
+            - name: DOCKER_DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_secret_key
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: {{ default "flower" .Values.flowerBasePath | quote }}
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS
+              value: {{ .Values.esHost | quote }}
+            - name: DOCKER_ELASTICSEARCH_PORT
+              value: {{ .Values.esPort | quote }}
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: contrax-kibana
+            - name: DOCKER_HOST_NAME_REDIS_ACCESS
+              value: contrax-redis
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: {{ default "/jupyter" .Values.jupyterBasePath | quote }}
+            - name: DOCKER_JUPYTER_PORT
+              value: {{ default "8888" .Values.jupyterPort | quote }}
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: contrax-nginx
+            - name: DOCKER_HOST_NAME_PG_ACCESS
+              value: {{ default "contrax-db" .Values.dbHost | quote }}
+            - name: DOCKER_PG_DB_NAME
+              value: {{ .Values.dbName | quote }}
+            - name: DOCKER_PG_PASSWORD
+              value: {{ .Values.dbPassword | quote }}
+            - name: DOCKER_PG_USER
+              value: {{ .Values.dbUsername | quote }}
+            - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
+              value: {{ .Values.rmqHost | quote}}
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: {{ .Values.rmqPassword | quote}}
+            - name: DOCKER_RABBITMQ_USER
+              value: {{ .Values.rmqUsername | quote}}
+            - name: DOCKER_RABBITMQ_VHOST
+              value: {{ .Values.rmqVhost | quote}}
+            - name: DOCKER_WEBDAV_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: webdav-secrets
+                  key: password
+            - name: DOCKER_WEBDAV_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: webdav-secrets
+                  key: username
+            - name: DOCKER_WEBDAV_SERVER_NAME_ACCESS
+              value: contrax-webdav
+            - name: LEXNLP_TIKA_PARSER_MODE
+              value: pdf_ocr
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: {{ .Values.mlflowS3EndpointUrl | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-aws-secrets
+                  key: aws_access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-aws-secrets
+                  key: aws_secret_key
+          name: contrax-celery-high
+          image: {{ .Values.contraxImage }}
+          resources:
+            limits:
+              cpu: 2
+            requests:
+              cpu: 0.5
+          volumeMounts:
+            - name: local-settings
+              mountPath: /contraxsuite_services/local_settings.py
+              subPath: local_settings_celery.py
       initContainers:
-      - name: daphne-waiter
-        image: {{ .Values.docker_image }}
-        command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        - name: daphne-waiter
+          image: {{ .Values.contraxImage }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
       volumes:
-      - name: local-settings-py
-        configMap:
-          name: local-settings-celery
+        - name: local-settings
+          configMap:
+            name: local-settings
       imagePullSecrets:
-      - name: contraxsuitesecret
-  # volumeClaimTemplates:
-  # - metadata:
-  #     name: contrax-celery-high-pvc
-  #   spec:
-  #     accessModes: [ "ReadWriteOnce" ]
-  #     storageClassName: "rook-ceph-block"
-  #     resources:
-  #       requests:
-  #         storage: 1Gi
+        - name: contraxsuitesecret
 
-
+# contrax-celery
 ---
-
-#contrax-celery
-
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: contrax-celery
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Values.namespace | quote }}
 spec:
   selector:
     matchLabels:
@@ -175,146 +186,158 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: "contraxsuite.com/role"
-                  operator: In
-                  values:
-                  - worker
-            topologyKey: "kubernetes.io/hostname"
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                      - worker
+              topologyKey: "kubernetes.io/hostname"
       terminationGracePeriodSeconds: 10
       nodeSelector:
         contraxsuite.com/role: worker
       containers:
-      - args:
-          - celery-single
-        env:
-        - name: DOCKER_CELERY_CONCURRENCY
-          value: "4"
-        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
-          value: optional
-        - name: DOCKER_DJANGO_ADMIN_EMAIL
-          value: admin@localhost
-        - name: DOCKER_DJANGO_ADMIN_NAME
-          value: Administrator
-        - name: DOCKER_DJANGO_ADMIN_PASSWORD
-          value: Administrator
-        - name: DOCKER_DJANGO_BASE_PATH
-          value: /explorer/
-        - name: DOCKER_DJANGO_DEBUG
-          value: "False"
-        - name: DOCKER_DJANGO_DEBUG_SQL
-          value: "False"
-        - name: DOCKER_DJANGO_EMAIL_BACKEND
-          value: smtp.CustomEmailBackend
-        - name: DOCKER_DJANGO_EMAIL_HOST
-          value: localhost
-        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
-        - name: DOCKER_DJANGO_EMAIL_HOST_USER
-        - name: DOCKER_DJANGO_EMAIL_PORT
-          value: "587"
-        - name: DOCKER_DJANGO_EMAIL_USE_TLS
-          value: "False"
-        - name: DOCKER_DJANGO_HOST_NAME
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_DJANGO_SECRET_KEY
-          value: Welcome1
-        - name: DOCKER_FLOWER_BASE_PATH
-          value: flower
-        - name: DOCKER_FRONTEND_ROOT_URL
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_HOST_NAME_ELASTICSEARCH
-          value: {{ .Values.docker_host_name_elasticsearch }}
-        - name: DOCKER_ELASTICSEARCH_PORT
-          value: "{{ .Values.docker_elasticsearch_port }}"
-        - name: DOCKER_HOST_NAME_KIBANA
-          value: contrax-kibana
-        - name: DOCKER_HOST_NAME_PG
-          value: {{ .Values.pg_host_name }}
-        - name: DOCKER_HOST_NAME_RABBITMQ
-          value: contrax-rabbitmq
-        - name: DOCKER_HOST_NAME_REDIS
-          value: contrax-redis
-        - name: DOCKER_JUPYTER_BASE_URL
-          value: /jupyter
-        - name: DOCKER_JUPYTER_PORT
-          value: "8888"
-        - name: DOCKER_NGINX_SERVER_NAME
-          value: contrax-nginx
-        - name: DOCKER_PG_DB_NAME
-          value: {{ .Values.pg_db_name }}
-        - name: DOCKER_PG_PASSWORD
-          value: {{ .Values.pg_password }}
-        - name: DOCKER_PG_USER
-          value: {{ .Values.pg_user }}
-        - name: DOCKER_RABBITMQ_PASSWORD
-          value: contrax1
-        - name: DOCKER_RABBITMQ_USER
-          value: contrax1
-        - name: DOCKER_RABBITMQ_VHOST
-          value: contrax1_vhost
-        - name: SHARED_USER_ID
-          value: "65432"
-        - name: SHARED_USER_NAME
-          value: contraxsuite_docker_user
-        - name: DOCKER_WEBDAV_AUTH_PASSWORD
-          value: password
-        - name: DOCKER_WEBDAV_AUTH_USER
-          value: user
-        - name: DOCKER_WEBDAV_SERVER_NAME
-          value: contrax-webdav
-        - name: LEXNLP_TIKA_PARSER_MODE
-          value: pdf_ocr
-        - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
-        - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
-        - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
-        - name: DOCKER_TEXT_EXTRACTION_SYSTEM_URL
-          value: {{ .Values.tes_url }}
-        name: contrax-celery
-        image: {{ .Values.docker_image }}
-        resources:
-          limits:
-            cpu: {{ .Values.celery_cpu_limit }}
-          requests:
-            cpu: {{ .Values.celery_cpu_request }}
-        volumeMounts:
-        # - name: contrax-celery-pvc
-        #   mountPath: /data/celery_worker_state
-        - name: local-settings-py
-          mountPath: /contraxsuite_services/local_settings.py
-          subPath: local_settings.py
+        - args:
+            - celery-single
+          env:
+            - name: DOCKER_CELERY_CONCURRENCY
+              value: "4"
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: {{ default "optional" .Values.djangoАccountEmailVerification | quote }}
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_email
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_name
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_password
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: {{ default "/explorer/" .Values.djangoBasePath | quote }}
+            - name: DOCKER_DJANGO_DEBUG
+              value: {{ default "False" .Values.djangoDebugMode | quote }}
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: {{ default "False" .Values.djangoDebugSql | quote }}
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: {{ default "smtp.CustomEmailBackend" .Values.djangoEmailBackend | quote }}
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: {{ default "localhost" .Values.djangoEmailHost | quote }}
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_email_host_password
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: {{ default "" .Values.djangoEmailHostUser | quote }}
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: {{ default "587" .Values.djangoEmailHostPort | quote }}
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: {{ default "False" .Values.djangoEmailUseTls | quote }}
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: {{ .Values.domainName }}
+            - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+              value: ./deploy/dependencies/jqwidgets.zip
+            - name: DOCKER_DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_secret_key
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: {{ default "flower" .Values.flowerBasePath | quote }}
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS
+              value: {{ .Values.esHost | quote }}
+            - name: DOCKER_ELASTICSEARCH_PORT
+              value: {{ .Values.esPort | quote }}
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: contrax-kibana
+            - name: DOCKER_HOST_NAME_REDIS_ACCESS
+              value: contrax-redis
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: {{ default "/jupyter" .Values.jupyterBasePath | quote }}
+            - name: DOCKER_JUPYTER_PORT
+              value: {{ default "8888" .Values.jupyterPort | squote }}
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: contrax-nginx
+            - name: DOCKER_HOST_NAME_PG_ACCESS
+              value: {{ .Values.dbHost }}
+            - name: DOCKER_PG_DB_NAME
+              value: {{ .Values.dbName }}
+            - name: DOCKER_PG_PASSWORD
+              value: {{ .Values.dbPassword }}
+            - name: DOCKER_PG_USER
+              value: {{ .Values.dbUsername }}
+            - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
+              value: {{ .Values.rmqHost }}
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: {{ .Values.rmqPassword }}
+            - name: DOCKER_RABBITMQ_USER
+              value: {{ .Values.rmqUsername }}
+            - name: DOCKER_RABBITMQ_VHOST
+              value: {{ .Values.rmqVhost }}
+            - name: DOCKER_WEBDAV_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: webdav-secrets
+                  key: password
+            - name: DOCKER_WEBDAV_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: webdav-secrets
+                  key: username
+            - name: DOCKER_WEBDAV_SERVER_NAME_ACCESS
+              value: contrax-webdav
+            - name: LEXNLP_TIKA_PARSER_MODE
+              value: pdf_ocr
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: {{ .Values.mlflowS3EndpointUrl | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-aws-secrets
+                  key: aws_access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-aws-secrets
+                  key: aws_secret_key
+            - name: DOCKER_TEXT_EXTRACTION_SYSTEM_URL
+              value: "tes-web-api:8000"
+          name: contrax-celery
+          image: {{ .Values.contraxImage }}
+          resources:
+            limits:
+              cpu: {{ default '4'  .Values.celeryLimitCpu | quote }}
+            requests:
+              cpu: {{ default '3'  .Values.celeryRequestCpu | quote }}
+          volumeMounts:
+            - name: local-settings
+              mountPath: /contraxsuite_services/local_settings.py
+              subPath: local_settings_celery.py
       initContainers:
-      - name: daphne-waiter
-        image: {{ .Values.docker_image }}
-        command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        - name: daphne-waiter
+          image: {{ .Values.contraxImage }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
       volumes:
-      - name: local-settings-py
-        configMap:
-          name: local-settings-celery
+        - name: local-settings
+          configMap:
+            name: local-settings
       imagePullSecrets:
-      - name: contraxsuitesecret
-  # volumeClaimTemplates:
-  # - metadata:
-  #     name: contrax-celery-pvc
-  #   spec:
-  #     accessModes: [ "ReadWriteOnce" ]
-  #     storageClassName: "rook-ceph-block"
-  #     resources:
-  #       requests:
-  #         storage: 1Gi
+        - name: contraxsuitesecret
 
+# contrax-celery-beat
 ---
-
-#contrax-celery-beat
-
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: contrax-celery-beat
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Values.namespace | quote }}
 spec:
   selector:
     matchLabels:
@@ -329,136 +352,158 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: "contraxsuite.com/role"
-                  operator: In
-                  values:
-                  - manager
-            topologyKey: "kubernetes.io/hostname"
-      # nodeSelector:
-       #  contraxsuite.com/role: manager
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                      - manager
+              topologyKey: "kubernetes.io/hostname"
       terminationGracePeriodSeconds: 10
       containers:
-      - args:
-          - celery-beat
-        env:
-        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
-          value: optional
-        - name: DOCKER_DJANGO_ADMIN_EMAIL
-          value: admin@localhost
-        - name: DOCKER_DJANGO_ADMIN_NAME
-          value: Administrator
-        - name: DOCKER_DJANGO_ADMIN_PASSWORD
-          value: Administrator
-        - name: DOCKER_DJANGO_BASE_PATH
-          value: /explorer/
-        - name: DOCKER_DJANGO_DEBUG
-          value: "False"
-        - name: DOCKER_DJANGO_DEBUG_SQL
-          value: "False"
-        - name: DOCKER_DJANGO_EMAIL_BACKEND
-          value: smtp.CustomEmailBackend
-        - name: DOCKER_DJANGO_EMAIL_HOST
-          value: localhost
-        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
-        - name: DOCKER_DJANGO_EMAIL_HOST_USER
-        - name: DOCKER_DJANGO_EMAIL_PORT
-          value: "587"
-        - name: DOCKER_DJANGO_EMAIL_USE_TLS
-          value: "False"
-        - name: DOCKER_DJANGO_HOST_NAME
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_DJANGO_SECRET_KEY
-          value: Welcome1
-        - name: DOCKER_FLOWER_BASE_PATH
-          value: flower
-        - name: DOCKER_FRONTEND_ROOT_URL
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_HOST_NAME_ELASTICSEARCH
-          value: {{ .Values.docker_host_name_elasticsearch }}
-        - name: DOCKER_ELASTICSEARCH_PORT
-          value: "{{ .Values.docker_elasticsearch_port }}"
-        - name: DOCKER_HOST_NAME_KIBANA
-          value: contrax-kibana
-        - name: DOCKER_HOST_NAME_PG
-          value: {{ .Values.pg_host_name }}
-        - name: DOCKER_HOST_NAME_RABBITMQ
-          value: contrax-rabbitmq
-        - name: DOCKER_HOST_NAME_REDIS
-          value: contrax-redis
-        - name: DOCKER_JUPYTER_BASE_URL
-          value: /jupyter
-        - name: DOCKER_JUPYTER_PORT
-          value: "8888"
-        - name: DOCKER_NGINX_CERTIFICATE
-        - name: DOCKER_NGINX_CERTIFICATE_KEY
-        - name: DOCKER_NGINX_SERVER_NAME
-          value: contrax-nginx
-        - name: DOCKER_PG_DB_NAME
-          value: {{ .Values.pg_db_name }}
-        - name: DOCKER_PG_PASSWORD
-          value: {{ .Values.pg_password }}
-        - name: DOCKER_PG_USER
-          value: {{ .Values.pg_user }}
-        - name: DOCKER_RABBITMQ_PASSWORD
-          value: contrax1
-        - name: DOCKER_RABBITMQ_USER
-          value: contrax1
-        - name: DOCKER_RABBITMQ_VHOST
-          value: contrax1_vhost
-        - name: SHARED_USER_ID
-          value: "65432"
-        - name: SHARED_USER_NAME
-          value: contraxsuite_docker_user
-        - name: DOCKER_WEBDAV_AUTH_PASSWORD
-          value: password
-        - name: DOCKER_WEBDAV_AUTH_USER
-          value: user
-        - name: DOCKER_WEBDAV_SERVER_NAME
-          value: contrax-webdav
-        - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
-        - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
-        - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
-        name: contrax-celery-beat
-        image: {{ .Values.docker_image }}
-        volumeMounts:
-        - name: contrax-celery-beat-pvc
-          mountPath: /data/celery_worker_state
-        - name: local-settings-py
-          mountPath: /contraxsuite_services/local_settings.py
-          subPath: local_settings.py
+        - args:
+            - celery-beat
+          env:
+            - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+              value: {{ default "optional" .Values.djangoAccountEmailVerification | quote }}
+            - name: DOCKER_DJANGO_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_email
+            - name: DOCKER_DJANGO_ADMIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_name
+            - name: DOCKER_DJANGO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_admin_password
+            - name: DOCKER_DJANGO_BASE_PATH
+              value: {{ default "/explorer/" .Values.djangoBasePath | quote }}
+            - name: DOCKER_DJANGO_DEBUG
+              value: {{ default "False" .Values.djangoDebugMode | quote }}
+            - name: DOCKER_DJANGO_DEBUG_SQL
+              value: {{ default "False" .Values.djangoDebugSql | quote }}
+            - name: DOCKER_DJANGO_EMAIL_BACKEND
+              value: {{ default "smtp.CustomEmailBackend" .Values.djangoEmailBackend | quote }}
+            - name: DOCKER_DJANGO_EMAIL_HOST
+              value: {{ default "localhost" .Values.djangoEmailHost | quote }}
+            - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_email_host_password
+            - name: DOCKER_DJANGO_EMAIL_HOST_USER
+              value: {{ default "" .Values.djangoEmailHostUser | quote }}
+            - name: DOCKER_DJANGO_EMAIL_PORT
+              value: {{ default "587" .Values.djangoEmailHostPort | quote }}
+            - name: DOCKER_DJANGO_EMAIL_USE_TLS
+              value: {{ default "False" .Values.djangoEmailUseTls | quote }}
+            - name: DOCKER_DJANGO_HOST_NAME
+              value: {{ .Values.domainName }}
+            - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+              value: ./deploy/dependencies/jqwidgets.zip
+            - name: DOCKER_DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: django_secret_key
+            - name: DOCKER_FLOWER_BASE_PATH
+              value: {{ default "flower" .Values.flowerBasePath | quote }}
+            - name: DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS
+              value: {{ .Values.esHost | quote }}
+            - name: DOCKER_ELASTICSEARCH_PORT
+              value: {{ .Values.esPort | quote }}
+            - name: DOCKER_HOST_NAME_KIBANA
+              value: contrax-kibana
+            - name: DOCKER_HOST_NAME_REDIS_ACCESS
+              value: contrax-redis
+            - name: DOCKER_JUPYTER_BASE_URL
+              value: {{ default "/jupyter" .Values.jupyterBasePath | quote }}
+            - name: DOCKER_JUPYTER_PORT
+              value: {{ default "8888" .Values.jupyterPort | squote }}
+            - name: DOCKER_NGINX_SERVER_NAME
+              value: contrax-nginx
+            - name: DOCKER_HOST_NAME_PG_ACCESS
+              value: {{ .Values.dbHost }}
+            - name: DOCKER_PG_DB_NAME
+              value: {{ .Values.dbName }}
+            - name: DOCKER_PG_PASSWORD
+              value: {{ .Values.dbPassword }}
+            - name: DOCKER_PG_USER
+              value: {{ .Values.dbUsername }}
+            - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
+              value: {{ .Values.rmqHost }}
+            - name: DOCKER_RABBITMQ_PASSWORD
+              value: {{ .Values.rmqPassword }}
+            - name: DOCKER_RABBITMQ_USER
+              value: {{ .Values.rmqUsername }}
+            - name: DOCKER_RABBITMQ_VHOST
+              value: {{ .Values.rmqVhost }}
+            - name: DOCKER_WEBDAV_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: webdav-secrets
+                  key: password
+            - name: DOCKER_WEBDAV_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: webdav-secrets
+                  key: username
+            - name: DOCKER_WEBDAV_SERVER_NAME_ACCESS
+              value: contrax-webdav
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: {{ .Values.mlflowS3EndpointUrl | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-aws-secrets
+                  key: aws_access_key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-aws-secrets
+                  key: aws_secret_key
+          name: contrax-celery-beat
+          image: {{ .Values.contraxImage | quote }}
+          volumeMounts:
+            - name: contrax-celery-beat-pvc
+              mountPath: /data/celery_worker_state
+            - name: local-settings
+              mountPath: /contraxsuite_services/local_settings.py
+              subPath: local_settings_celery.py
       initContainers:
-      - name: daphne-waiter
-        image: {{ .Values.docker_image }}
-        command: [ 'sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne && sleep 5; done" ]
+        - name: daphne-waiter
+          image: {{ .Values.contraxImage | quote }}
+          command: [ 'sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne && sleep 5; done" ]
       volumes:
-      - name: local-settings-py
-        configMap:
-          name: local-settings-celery
+        - name: local-settings
+          configMap:
+            name: local-settings
       imagePullSecrets:
-      - name: contraxsuitesecret
+        - name: contraxsuitesecret
   volumeClaimTemplates:
-  - metadata:
-      name: contrax-celery-beat-pvc
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "rook-ceph-block"
-      resources:
-        requests:
-          storage: 1Gi
-          
-### --- contrax-text-extraction-system --- #
+    - metadata:
+        name: contrax-celery-beat-pvc
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "rook-ceph-block"
+        resources:
+          requests:
+            storage: 1Gi
+
+
+### --- contrax-text-extraction-system ---
 # tes-celery-worker
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: tes-celery-worker
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
 spec:
   selector:
     matchLabels:
@@ -478,59 +523,59 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: "contraxsuite.com/role"
-                  operator: In
-                  values:
-                  - worker
-            topologyKey: "kubernetes.io/hostname"
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                      - worker
+              topologyKey: "kubernetes.io/hostname"
       nodeSelector:
         contraxsuite.com/role: worker
       terminationGracePeriodSeconds: 60
       containers:
-      - args: 
-        - celery-worker
-        env:
-        - name: text_extraction_system_celery_broker
-          value: redis://contrax-redis:6379/8
-        - name: text_extraction_system_celery_backend
-          value: redis://contrax-redis:6379/8
-        - name: text_extraction_system_webdav_url
-          value: http://contrax-tes-webdav:80
-        - name: text_extraction_system_webdav_username
-          value: {{.Values.tes_webdav_username}}
-        - name: text_extraction_system_webdav_password
-          value: {{.Values.tes_webdav_password}}
-        - name: text_extraction_system_delete_temp_files_on_request_finish
-          value: "true"
-        - name: text_extraction_system_keep_failed_files
-          value: "true"
-        name: lexpredict-text-extraction-system
-        image: {{ .Values.docker_tes_image }}
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/sh","-c","/bin/sleep 1; kill -QUIT 1"]
-        resources:
-          limits:
-            cpu: {{ .Values.tes_cpu_limit }}
-          requests:
-            cpu: {{ .Values.tes_cpu_request }}
-        volumeMounts:
-        - name: local-settings-py
-          mountPath: /contraxsuite_services/local_settings.py
-          subPath: local_settings.py
+        - args:
+            - celery-worker
+          env:
+            - name: text_extraction_system_celery_broker
+              value: redis://contrax-redis:6379/8
+            - name: text_extraction_system_celery_backend
+              value: redis://contrax-redis:6379/8
+            - name: text_extraction_system_webdav_url
+              value: http://contrax-tes-webdav:80
+            - name: text_extraction_system_webdav_username
+              value: {{.Values.tesWebdavUsername | quote }}
+            - name: text_extraction_system_webdav_password
+              value: {{.Values.tesWebdavPassword | quote }}
+            - name: text_extraction_system_delete_temp_files_on_request_finish
+              value: "true"
+            - name: text_extraction_system_keep_failed_files
+              value: "true"
+          name: lexpredict-text-extraction-system
+          image: {{ .Values.tesImage }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "/bin/sleep 1; kill -QUIT 1"]
+          resources:
+            limits:
+              cpu: {{ default '4' .Values.tesLimitCpu | quote }}
+            requests:
+              cpu: {{ default '3' .Values.tesRequestCpu | quote }}
+          volumeMounts:
+            - name: local-settings
+              mountPath: /contraxsuite_services/local_settings.py
+              subPath: local_settings_celery.py
       initContainers:
-      - name: daphne-waiter
-        image: {{ .Values.docker_tes_image }}
-        command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        - name: daphne-waiter
+          image: {{ .Values.tesImage }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
       volumes:
-      - name: local-settings-py
-        configMap:
-          name: local-settings-celery
+        - name: local-settings
+          configMap:
+            name: local-settings
       imagePullSecrets:
-      - name: contraxsuitesecret
+        - name: contraxsuitesecret
 
 # tes-celery-beat
 ---
@@ -538,7 +583,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: tes-celery-beat
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
 spec:
   selector:
     matchLabels:
@@ -558,68 +603,66 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: "contraxsuite.com/role"
-                  operator: In
-                  values:
-                  - manager
-            topologyKey: "kubernetes.io/hostname"
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                      - manager
+              topologyKey: "kubernetes.io/hostname"
       nodeSelector:
         contraxsuite.com/role: manager
       terminationGracePeriodSeconds: 60
       containers:
-      - args: 
-        - celery-worker
-        env:
-        - name: text_extraction_system_celery_broker
-          value: redis://contrax-redis:6379/8
-        - name: text_extraction_system_celery_backend
-          value: redis://contrax-redis:6379/8
-        - name: text_extraction_system_webdav_url
-          value: http://contrax-tes-webdav:80
-        - name: text_extraction_system_webdav_username
-          value: {{.Values.tes_webdav_username}}
-        - name: text_extraction_system_webdav_password
-          value: {{.Values.tes_webdav_password}}
-        - name: text_extraction_system_delete_temp_files_on_request_finish
-          value: "true"
-        - name: text_extraction_system_keep_failed_files
-          value: "true"
-        name: lexpredict-text-extraction-system
-        image: {{ .Values.docker_tes_image }}
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/sh","-c","/bin/sleep 1; kill -QUIT 1"]
-        resources:
-          limits:
-            cpu: 1
-          requests:
-            cpu: 500m
-        volumeMounts:
-        # - name: lexpredict-text-extraction-system-pvc
-        #   mountPath: /data/celery_worker_state
-        - name: local-settings-py
-          mountPath: /contraxsuite_services/local_settings.py
-          subPath: local_settings.py
+        - args:
+            - celery-worker
+          env:
+            - name: text_extraction_system_celery_broker
+              value: redis://contrax-redis:6379/8
+            - name: text_extraction_system_celery_backend
+              value: redis://contrax-redis:6379/8
+            - name: text_extraction_system_webdav_url
+              value: http://contrax-tes-webdav:80
+            - name: text_extraction_system_webdav_username
+              value: {{ .Values.tesWebdavUsername | quote }}
+            - name: text_extraction_system_webdav_password
+              value: {{ .Values.tesWebdavPassword | quote }}
+            - name: text_extraction_system_delete_temp_files_on_request_finish
+              value: "true"
+            - name: text_extraction_system_keep_failed_files
+              value: "true"
+          name: lexpredict-text-extraction-system
+          image: {{ .Values.tesImage }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "/bin/sleep 1; kill -QUIT 1"]
+          resources:
+            limits:
+              cpu: 1
+            requests:
+              cpu: 500m
+          volumeMounts:
+            - name: local-settings
+              mountPath: /contraxsuite_services/local_settings.py
+              subPath: local_settings_celery.py
       initContainers:
-      - name: daphne-waiter
-        image: {{ .Values.docker_tes_image }}
-        command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        - name: daphne-waiter
+          image: {{ .Values.tesImage }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
       volumes:
-      - name: local-settings-py
-        configMap:
-          name: local-settings-celery
+        - name: local-settings
+          configMap:
+            name: local-settings
       imagePullSecrets:
-      - name: contraxsuitesecret
+        - name: contraxsuitesecret
 ---
 # tes-web-api
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: tes-web-api
-  namespace: contraxsuite
+  namespace: {{ .Values.namespace | quote }}
 spec:
   selector:
     matchLabels:
@@ -634,56 +677,54 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: "contraxsuite.com/role"
-                  operator: In
-                  values:
-                  - manager
-            topologyKey: "kubernetes.io/hostname"
+            - labelSelector:
+                matchExpressions:
+                  - key: "contraxsuite.com/role"
+                    operator: In
+                    values:
+                      - manager
+              topologyKey: "kubernetes.io/hostname"
       nodeSelector:
         contraxsuite.com/role: manager
       terminationGracePeriodSeconds: 10
       containers:
-      - args: 
-        - web-api
-        env:
-        - name: text_extraction_system_celery_broker
-          value: redis://contrax-redis:6379/8
-        - name: text_extraction_system_celery_backend
-          value: redis://contrax-redis:6379/8
-        - name: text_extraction_system_webdav_url
-          value: http://contrax-tes-webdav:80
-        - name: text_extraction_system_webdav_username
-          value: {{.Values.tes_webdav_username}}
-        - name: text_extraction_system_webdav_password
-          value: {{.Values.tes_webdav_password}}
-        - name: "text_extraction_system_root_path"
-          value: {{.Values.tes_root_path}}
-        - name: text_extraction_system_keep_failed_files
-          value: "true"
-        - name: text_extraction_system_delete_temp_files_on_request_finish
-          value: "true"
-        name: lexpredict-text-extraction-system-web-api
-        image: {{ .Values.docker_tes_image }}
-        resources:
-          limits:
-            cpu: 1000m
-          requests:
-            cpu: 500m
-        volumeMounts:
-        # - name: lexpredict-text-extraction-system-pvc
-        #   mountPath: /data/celery_worker_state
-        - name: local-settings-py
-          mountPath: /contraxsuite_services/local_settings.py
-          subPath: local_settings.py
+        - args:
+            - web-api
+          env:
+            - name: text_extraction_system_celery_broker
+              value: redis://contrax-redis:6379/8
+            - name: text_extraction_system_celery_backend
+              value: redis://contrax-redis:6379/8
+            - name: text_extraction_system_webdav_url
+              value: http://contrax-tes-webdav:80
+            - name: text_extraction_system_webdav_username
+              value: {{ .Values.tesWebdavUsername | quote }}
+            - name: text_extraction_system_webdav_password
+              value: {{ .Values.tesWebdavPassword | quote }}
+            - name: "text_extraction_system_root_path"
+              value: {{ default "/text_extraction_system" .Values.tesRootPath | quote }}
+            - name: text_extraction_system_keep_failed_files
+              value: "true"
+            - name: text_extraction_system_delete_temp_files_on_request_finish
+              value: "true"
+          name: lexpredict-text-extraction-system-web-api
+          image: {{ .Values.tesImage }}
+          resources:
+            limits:
+              cpu: '1'
+            requests:
+              cpu: '0.5'
+          volumeMounts:
+            - name: local-settings
+              mountPath: /contraxsuite_services/local_settings.py
+              subPath: local_settings_celery.py
       initContainers:
-      - name: daphne-waiter
-        image: {{ .Values.docker_tes_image }}
-        command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
+        - name: daphne-waiter
+          image: {{ .Values.tesImage }}
+          command: ['sh', '-c', "until curl http://contrax-daphne:3355; do echo still waiting for daphne; sleep 5; done"]
       volumes:
-      - name: local-settings-py
-        configMap:
-          name: local-settings-celery
+        - name: local-settings
+          configMap:
+            name: local-settings
       imagePullSecrets:
-      - name: contraxsuitesecret
+        - name: contraxsuitesecret

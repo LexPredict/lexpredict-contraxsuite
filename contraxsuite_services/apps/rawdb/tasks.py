@@ -41,14 +41,14 @@ from apps.rawdb.constants import DOC_NUM_PER_SUB_TASK, DOC_NUM_PER_MAIN_TASK
 from apps.rawdb.field_value_tables import adapt_table_structure
 from apps.rawdb.repository.raw_db_repository import doc_fields_table_name
 from apps.rawdb.field_value_tables import cache_document_fields
-from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func
+from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Task, purge_task, call_task_func, Locate
 from apps.users.models import User
 import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -102,16 +102,20 @@ def get_non_indexed_doc_ids_not_planned_to_index_by_predicate(
         # return documents of the specified type which
         # - do not exist in the corresponding fields cache
         # - have no planned but not-started reindex tasks on them
-        cursor.execute('select dd.id \n'
-                       'from document_document dd \n'
-                       f'left outer join "{table_name}" df on dd.id = df.document_id \n'
-                       'left outer join lateral (select jsonb_array_elements(args->0) doc_id \n'
-                       '                         from task_task \n'
-                       f"                         where name = '{_get_reindex_task_name()}' \n"
-                       "                         and own_status = 'PENDING'\n"
-                       '                         and date_work_start is null) tt on tt.doc_id = to_jsonb(dd.id) \n'
-                       f'where {predicate} and df.document_id is null and tt.doc_id is null \n'
-                       'and dd.processed is true')
+        # - have no Locate task
+        cursor.execute(f'''select dd.id
+                       from document_document dd 
+                       left outer join "{table_name}" df on dd.id = df.document_id 
+                       left outer join lateral (select jsonb_array_elements(args->0) doc_id 
+                                                from task_task where 
+                                                (name = '{_get_reindex_task_name()}' 
+                                                 and own_status = 'PENDING' 
+                                                 and date_work_start is null) or
+                                                (name = '{Locate.name}' 
+                                                 and own_status = 'PENDING')                       
+                       ) tt on tt.doc_id = to_jsonb(dd.id) 
+                       where {predicate} and df.document_id is null and tt.doc_id is null 
+                       and dd.processed is true''')
 
         rows = cursor.fetchmany(pack_size)
         while rows:

@@ -27,8 +27,8 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,7 +42,7 @@ from apps.common.model_utils.table_deps_builder import TableDepsBuilder
 
 class TestBulkDelete(DjangoTestCase):
     def non_test_document(self):
-        deps = TableDepsBuilder.build_table_dependences('document_document')
+        deps = TableDepsBuilder().build_table_dependences('document_document')
         dep_names = self.deps_to_table_names(deps)
         self.assertLess(dep_names.index('document_fieldannotation'),
                         dep_names.index('document_textunit'))
@@ -77,6 +77,12 @@ class TestBulkDelete(DjangoTestCase):
         deps = TableDeps.sort_deps(deps, relations)
         dep_names = ''.join(self.deps_to_table_names(deps))
         self.assertEqual('gfdb', dep_names)
+
+    def test_dependency_loops(self):
+        deps = {'a': {'b', 'c'}, 'c': {}, 'b': {'c'}}
+        self.assertFalse(TableDeps.check_loops_in_deps(deps))
+        deps = {'a': {'b', 'c'}, 'c': {}, 'b': {'a'}}
+        self.assertTrue(TableDeps.check_loops_in_deps(deps))
 
     @classmethod
     def deps_to_table_names(cls, deps: List[TableDeps]):

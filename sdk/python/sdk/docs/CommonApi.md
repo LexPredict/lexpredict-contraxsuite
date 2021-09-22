@@ -42,7 +42,7 @@ Method | HTTP request | Description
 
 
 # **common_actions_get**
-> [[Action]] common_actions_get()
+> [Action] common_actions_get()
 
 
 
@@ -108,7 +108,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**[[Action]]**
+[**[Action]**](Action.md)
 
 ### Authorization
 
@@ -128,7 +128,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **common_actions_id_get**
-> [Action] common_actions_id_get(id)
+> Action common_actions_id_get(id)
 
 
 
@@ -203,7 +203,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[Action]**](Action.md)
+[**Action**](Action.md)
 
 ### Authorization
 
@@ -1029,11 +1029,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | 
     menu_group = MenuGroup(
-        pk=1,
         name="name_example",
         public=True,
         order=0,
-        user="user_example",
     ) # MenuGroup |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -1120,11 +1118,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | 
     menu_group = MenuGroup(
-        pk=1,
         name="name_example",
         public=True,
         order=0,
-        user="user_example",
     ) # MenuGroup |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -1210,11 +1206,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = common_api.CommonApi(api_client)
     menu_group = MenuGroup(
-        pk=1,
         name="name_example",
         public=True,
         order=0,
-        user="user_example",
     ) # MenuGroup |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -1656,13 +1650,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | 
     menu_item = MenuItem(
-        pk=1,
         name="name_example",
         url="url_example",
         group=1,
         public=True,
         order=0,
-        user="user_example",
     ) # MenuItem |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -1749,13 +1741,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | 
     menu_item = MenuItem(
-        pk=1,
         name="name_example",
         url="url_example",
         group=1,
         public=True,
         order=0,
-        user="user_example",
     ) # MenuItem |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -1841,13 +1831,11 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = common_api.CommonApi(api_client)
     menu_item = MenuItem(
-        pk=1,
         name="name_example",
         url="url_example",
         group=1,
         public=True,
         order=0,
-        user="user_example",
     ) # MenuItem |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -2164,7 +2152,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status Group.
     review_status_group = ReviewStatusGroup(
-        pk=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -2255,7 +2242,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status Group.
     review_status_group = ReviewStatusGroup(
-        pk=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -2345,7 +2331,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = common_api.CommonApi(api_client)
     review_status_group = ReviewStatusGroup(
-        pk=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -2666,7 +2651,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status.
     review_status = ReviewStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -2758,7 +2742,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = common_api.CommonApi(api_client)
     id = "id_example" # str | A unique integer value identifying this Review Status.
     review_status = ReviewStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,
@@ -2849,7 +2832,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = common_api.CommonApi(api_client)
     review_status = ReviewStatus(
-        id=1,
         name="name_example",
         code="code_example",
         order=0,

@@ -24,7 +24,8 @@
 """
 # -*- coding: utf-8 -*-
 
-# Third-party imports
+import os
+
 from picklefield import PickledObjectField
 from scipy.spatial.distance import _METRICS
 
@@ -37,6 +38,7 @@ from django.dispatch import receiver
 from django.utils.timezone import now
 
 # App imports
+from apps.common.file_storage import get_file_storage
 from apps.document.models import Document, TextUnit
 from apps.extract.models import Party
 from apps.project.models import Project
@@ -44,8 +46,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -229,12 +231,15 @@ class TextUnitVector(BaseVector):
     # Text unit
     text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
 
+    # Document
+    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
+
     class Meta(BaseVector.Meta):
         ordering = ('text_unit', 'vector_name', 'timestamp')
 
     def __str__(self):
-        return "TextUnitVector (text_unit={}, vector_name={}, timestamp={}" \
-            .format(self.text_unit, self.vector_name, self.timestamp)
+        return f'TextUnitVector (doc id={self.document_id}, t.unit={self.text_unit}, ' +\
+               f'name={self.vector_name}, timestamp={self.timestamp}'
 
 
 class DocumentVector(BaseVector):

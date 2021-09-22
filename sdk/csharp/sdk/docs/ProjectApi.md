@@ -14,6 +14,7 @@ Method | HTTP request | Description
 [**ProjectProjectsIdAssignDocumentPOST**](ProjectApi.md#projectprojectsidassigndocumentpost) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
 [**ProjectProjectsIdAssignDocumentsPOST**](ProjectApi.md#projectprojectsidassigndocumentspost) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
 [**ProjectProjectsIdAssigneesGET**](ProjectApi.md#projectprojectsidassigneesget) | **GET** /api/v1/project/projects/{id}/assignees/ | 
+[**ProjectProjectsIdCheckSimilarityProcessAllowedPOST**](ProjectApi.md#projectprojectsidchecksimilarityprocessallowedpost) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
 [**ProjectProjectsIdCleanupPOST**](ProjectApi.md#projectprojectsidcleanuppost) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
 [**ProjectProjectsIdClusterActionsGET**](ProjectApi.md#projectprojectsidclusteractionsget) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
 [**ProjectProjectsIdClusterPOST**](ProjectApi.md#projectprojectsidclusterpost) | **POST** /api/v1/project/projects/{id}/cluster/ | 
@@ -872,6 +873,86 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## ProjectProjectsIdCheckSimilarityProcessAllowedPOST
+
+> ProjectDetail ProjectProjectsIdCheckSimilarityProcessAllowedPOST (string id, ProjectDetail projectDetail = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class ProjectProjectsIdCheckSimilarityProcessAllowedPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new ProjectApi(Configuration.Default);
+            var id = id_example;  // string | A unique integer value identifying this project.
+            var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
+
+            try
+            {
+                ProjectDetail result = apiInstance.ProjectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling ProjectApi.ProjectProjectsIdCheckSimilarityProcessAllowedPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this project. | 
+ **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] 
+
+### Return type
+
+[**ProjectDetail**](ProjectDetail.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## ProjectProjectsIdCleanupPOST
 
 > string ProjectProjectsIdCleanupPOST (string id, CleanupProjectRequest cleanupProjectRequest = null)
@@ -957,7 +1038,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdClusterActionsGET
 
-> List&lt;Action&gt; ProjectProjectsIdClusterActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> ProjectDetail ProjectProjectsIdClusterActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -991,7 +1072,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.ProjectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                ProjectDetail result = apiInstance.ProjectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1018,7 +1099,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -2498,7 +2579,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdSettingsActionsGET
 
-> List&lt;Action&gt; ProjectProjectsIdSettingsActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> ProjectDetail ProjectProjectsIdSettingsActionsGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -2532,7 +2613,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.ProjectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
+                ProjectDetail result = apiInstance.ProjectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2559,7 +2640,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**ProjectDetail**](ProjectDetail.md)
 
 ### Authorization
 
@@ -2834,7 +2915,7 @@ Name | Type | Description  | Notes
 
 
 
-Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}     Returns:         task_id
+Bulk update project documents field, similar to /fields/ API in document app      Params:         document_ids: list[int]         all: any value - update all documents if any value         no_document_ids: list[int] - exclude those docs from action (if \"all\" is set)         fields_data: - dict {field_code: [values]}         on_existing_value: \"replace_all\" | \"add_new\" (for multi-choice fields)     Returns:         task_id
 
 ### Example
 

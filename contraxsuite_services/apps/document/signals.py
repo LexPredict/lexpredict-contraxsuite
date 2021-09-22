@@ -24,7 +24,7 @@
 """
 # -*- coding: utf-8 -*-
 
-from typing import Set, List
+from typing import Set, List, Optional, Dict, Any
 
 from django.db import transaction
 from django.db.models import QuerySet
@@ -40,15 +40,15 @@ from apps.users.models import User, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 document_changed = Signal(providing_args=['changed_by_user', 'log', 'document', 'system_fields_changed',
                                           'generic_fields_changed', 'user_fields_changed',
-                                          'document_initial_load', 'skip_caching'])
+                                          'document_initial_load', 'skip_caching', 'old_field_values'])
 document_deleted = Signal(providing_args=['user', 'document'])
 
 doc_full_delete = Signal(providing_args=['user', 'document_type_code', 'document_ids'])
@@ -79,7 +79,8 @@ def fire_document_changed(sender,
                           system_fields_changed: FieldSpec = True,
                           generic_fields_changed: FieldSpec = True,
                           user_fields_changed: bool = True,
-                          skip_caching: bool = False):
+                          skip_caching: bool = False,
+                          old_field_values: Optional[Dict[str, Any]] = None):
     document_changed.send(sender,
                           log=log,
                           changed_by_user=changed_by_user,
@@ -88,7 +89,8 @@ def fire_document_changed(sender,
                           system_fields_changed=system_fields_changed,
                           user_fields_changed=user_fields_changed,
                           generic_fields_changed=generic_fields_changed,
-                          skip_caching=skip_caching)
+                          skip_caching=skip_caching,
+                          old_field_values=old_field_values)
 
 
 def fire_document_deleted(sender,

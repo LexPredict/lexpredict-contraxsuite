@@ -43,7 +43,7 @@ Method | HTTP request | Description
 
 <a name="commonActionsGET"></a>
 # **commonActionsGET**
-> List&lt;List&lt;Action&gt;&gt; commonActionsGET(projectId, documentId, viewActions, jqFilters)
+> List&lt;Action&gt; commonActionsGET(projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -76,7 +76,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<List<Action>> result = apiInstance.commonActionsGET(projectId, documentId, viewActions, jqFilters);
+      List<Action> result = apiInstance.commonActionsGET(projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling CommonApi#commonActionsGET");
@@ -100,7 +100,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;List&lt;Action&gt;&gt;**](List.md)
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -118,7 +118,7 @@ Name | Type | Description  | Notes
 
 <a name="commonActionsIdGET"></a>
 # **commonActionsIdGET**
-> List&lt;Action&gt; commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters)
+> Action commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters)
 
 
 
@@ -152,7 +152,7 @@ public class Example {
     List<String> viewActions = Arrays.asList(); // List<String> | Action names
     Map<String, String> jqFilters = new HashMap(); // Map<String, String> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                            
     try {
-      List<Action> result = apiInstance.commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
+      Action result = apiInstance.commonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling CommonApi#commonActionsIdGET");
@@ -177,7 +177,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**Action**](Action.md)
 
 ### Authorization
 

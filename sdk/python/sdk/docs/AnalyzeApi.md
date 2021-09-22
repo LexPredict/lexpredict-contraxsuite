@@ -238,7 +238,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = analyze_api.AnalyzeApi(api_client)
     id = "id_example" # str | A unique integer value identifying this document cluster.
     document_cluster_update = DocumentClusterUpdate(
-        pk=1,
         name="name_example",
     ) # DocumentClusterUpdate |  (optional)
 
@@ -326,7 +325,6 @@ with openapi_client.ApiClient(configuration) as api_client:
     api_instance = analyze_api.AnalyzeApi(api_client)
     id = "id_example" # str | A unique integer value identifying this document cluster.
     document_cluster_update = DocumentClusterUpdate(
-        pk=1,
         name="name_example",
     ) # DocumentClusterUpdate |  (optional)
 
@@ -688,7 +686,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **analyze_project_document_similarity_list_get**
-> [ProjectDocumentSimilarity] analyze_project_document_similarity_list_get()
+> ProjectDocumentSimilarityResponse analyze_project_document_similarity_list_get()
 
 
 
@@ -701,7 +699,7 @@ Project Document Similarity List for ONE document
 import time
 import openapi_client
 from openapi_client.api import analyze_api
-from openapi_client.model.project_document_similarity import ProjectDocumentSimilarity
+from openapi_client.model.project_document_similarity_response import ProjectDocumentSimilarityResponse
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -752,7 +750,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**[ProjectDocumentSimilarity]**](ProjectDocumentSimilarity.md)
+[**ProjectDocumentSimilarityResponse**](ProjectDocumentSimilarityResponse.md)
 
 ### Authorization
 
@@ -1488,11 +1486,9 @@ with openapi_client.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = analyze_api.AnalyzeApi(api_client)
     text_unit_classification_create = TextUnitClassificationCreate(
-        pk=1,
         class_name="class_name_example",
         class_value="class_value_example",
         text_unit_id=1,
-        user_id=1,
     ) # TextUnitClassificationCreate |  (optional)
 
     # example passing only required values which don't have defaults set

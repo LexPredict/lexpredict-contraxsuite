@@ -19,6 +19,11 @@ variable "location" {
   default = "East US 2"
   type    = string
 }
+variable "main_domain" {
+  default     = "_"
+  type        = string
+  description = "Root Domain name used for application"
+}
 variable "resource_group_name" {
   default = "default-contraxuite-cluster-rg"
   type    = string
@@ -131,34 +136,50 @@ variable "kubeconfig" {
   default = "~/.kube/config"
   type    = string
 }
+
+variable "k8s_version" {
+  default = "1.19.11"
+  type    = string
+}
 # Helm Charts
 variable "helm_install_cert_manager" {
-  default = false
-  type = string
+  default     = false
+  type        = string
   description = "Should Cert Manager Helm Chart be installed"
 }
 variable "helm_install_ingress" {
-  default = false
-  type = string
+  default     = false
+  type        = string
   description = "Should Ingress-Nginx Helm Chart be installed"
 }
 variable "helm_install_monitoring" {
-  default = false
-  type = string
+  default     = false
+  type        = string
   description = "Should Kube-prometheus-stack Helm Chart be installed"
 }
 variable "helm_install_rook_ceph" {
-  default = false
-  type = string
+  default     = false
+  type        = string
   description = "Should Rook Ceph Helm Chart be installed"
 }
-variable "deploy_ceph_cluster" {
-  default = false
-  type = string
+
+variable "helm_install_keda" {
+  default     = false
+  type        = string
+  description = "Should Keda Helm Chart be installed"
+}
+variable "ceph_cluster_deploy" {
+  default     = false
+  type        = string
   description = ""
 }
-variable "helm_install_keda" {
-  default = false
-  type = string
-  description = "Should Keda Helm Chart be installed"
+variable "ceph_cluster_rook_version" {
+  default     = "v1.5.11"
+  type        = string
+  description = ""
+}
+variable "ceph_cluster_ceph_version" {
+  default     = "v15.2.11"
+  type        = string
+  description = ""
 }

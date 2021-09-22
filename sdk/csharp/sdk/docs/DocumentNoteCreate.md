@@ -15,7 +15,7 @@ Name | Type | Description | Notes
 **FieldId** | **string** |  | [optional] 
 **UserId** | **string** |  | [optional] [readonly] 
 **Username** | **string** |  | [optional] 
-**User** | [**DocumentDetailUser**](DocumentDetailUser.md) |  | [optional] 
+**User** | [**DocumentNoteDetailUser**](DocumentNoteDetailUser.md) |  | [optional] 
 **Selections** | **List&lt;Object&gt;** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

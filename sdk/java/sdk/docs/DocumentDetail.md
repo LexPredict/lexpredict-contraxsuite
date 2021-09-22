@@ -13,9 +13,13 @@ Name | Type | Description | Notes
 **fileSize** | **Integer** |  |  [optional]
 **folder** | **String** |  |  [optional]
 **createdDate** | **OffsetDateTime** |  |  [optional]
-**createdByName** | **String** |  | 
 **modifiedDate** | **OffsetDateTime** |  |  [optional]
 **modifiedByName** | **String** |  | 
+**createdByName** | **String** |  | 
+**createdByInitials** | **String** |  | 
+**createdByPhoto** | **String** |  | 
+**modifiedByInitials** | **String** |  | 
+**modifiedByPhoto** | **String** |  | 
 **status** | **Integer** |  |  [optional]
 **statusData** | [**DocumentDetailStatusData**](DocumentDetailStatusData.md) |  | 
 **availableStatusesData** | **List&lt;Object&gt;** |  |  [optional] [readonly]
@@ -28,11 +32,12 @@ Name | Type | Description | Notes
 **initialAnnotationId** | **String** |  |  [optional] [readonly]
 **pageLocations** | **List&lt;List&lt;Integer&gt;&gt;** |  |  [optional] [readonly]
 **pageBounds** | **List&lt;List&lt;BigDecimal&gt;&gt;** |  |  [optional] [readonly]
-**notes** | [**List&lt;DocumentDetailNotes&gt;**](DocumentDetailNotes.md) |  | 
 **fieldValues** | **Object** |  |  [optional] [readonly]
 **fieldValueObjects** | **Object** |  |  [optional] [readonly]
 **prevId** | **Integer** |  |  [optional] [readonly]
 **nextId** | **Integer** |  |  [optional] [readonly]
+**position** | **String** |  |  [optional] [readonly]
+**documentsCount** | **String** |  |  [optional] [readonly]
 **sections** | **List&lt;Object&gt;** |  |  [optional] [readonly]
 **clusterId** | **String** |  |  [optional] [readonly]
 **userPermissions** | **Object** |  |  [optional] [readonly]

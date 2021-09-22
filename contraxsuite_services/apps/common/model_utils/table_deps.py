@@ -28,8 +28,8 @@ from typing import List, Dict, Set, Tuple
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,13 +68,13 @@ class TableDeps:
     def stringify(self) -> str:
         return '; '.join([d.stringify() for d in self.deps])
 
-    @staticmethod
-    def remove_duplicates(dep_list: 'List[TableDeps]') -> 'List[TableDeps]':
+    @classmethod
+    def remove_duplicates(cls, dep_list: 'List[TableDeps]') -> 'List[TableDeps]':
         uniq_dict = {x.stringify(): x for x in dep_list}
         return list(uniq_dict.values())
 
-    @staticmethod
-    def leave_shortest_chains(dep_list: 'List[TableDeps]') -> 'List[TableDeps]':
+    @classmethod
+    def leave_shortest_chains(cls, dep_list: 'List[TableDeps]') -> 'List[TableDeps]':
         shortest = []
         ln = 1000  # no chain could be so long
         for dep in dep_list:
@@ -87,8 +87,9 @@ class TableDeps:
             ln = len(dep.deps)
         return shortest
 
-    @staticmethod
-    def sort_deps(dep_list: 'List[TableDeps]',
+    @classmethod
+    def sort_deps(cls,
+                  dep_list: 'List[TableDeps]',
                   relations: List[Tuple[str, str, str, str]]) -> 'List[TableDeps]':
         dep_list.sort(key=lambda x: len(x.deps), reverse=True)
         # { a: { b, f }, b: ... } - table a depends on b and f
@@ -99,8 +100,16 @@ class TableDeps:
             else:
                 table_deps[a].add(b)
 
+        has_loops = cls.check_loops_in_deps(table_deps)
+        iterations_left = len(dep_list)
+
         while True:
             are_ordered = True
+            if has_loops:
+                iterations_left -= 1
+                if not iterations_left:
+                    # there are loops. We probably won't sort the deps better
+                    return dep_list
             for i in range(len(dep_list)):
                 for j in range(i + 1, len(dep_list)):
                     # if subsequent table depends on one of the previous tables
@@ -113,23 +122,38 @@ class TableDeps:
                         deps_a = dep_list[i]
                         dep_list[i] = dep_list[j]
                         dep_list[j] = deps_a
+                        break
             if are_ordered:
                 break
         return dep_list
 
-    @staticmethod
-    def parse_stored_deps_multiline(text: str) -> List:
+    @classmethod
+    def check_loops_in_deps(cls, table_deps: Dict[str, Set[str]]) -> bool:
+        # { a: { b, f }, b: { a } } - simplest loop
+        keys = list(table_deps.keys())
+        for i in range(len(keys) - 1):
+            tab_a = keys[i]
+            tab_a_refs = table_deps[tab_a]
+            for j in range(i, len(keys)):
+                tab_b = keys[j]
+                tab_b_refs = table_deps[tab_b]
+                if tab_a in tab_b_refs and tab_b in tab_a_refs:
+                    return True
+        return False
+
+    @classmethod
+    def parse_stored_deps_multiline(cls, text: str) -> List:
         dep_list = []
         for line in [l.strip(' ') for l in text.split('\n')]:
             if not line:
                 continue
-            dep = TableDeps.parse_stored_deps_line(line)
+            dep = cls.parse_stored_deps_line(line)
             if dep:
                 dep_list.append(dep)
         return dep_list
 
-    @staticmethod
-    def parse_stored_deps_line(line: str):
+    @classmethod
+    def parse_stored_deps_line(cls, line: str):
         if not line.startswith('pk:['):
             return None
         parts = line.split(', ')

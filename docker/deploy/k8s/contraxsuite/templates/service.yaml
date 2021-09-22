@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -25,7 +25,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -33,7 +33,7 @@ metadata:
   name: contrax-flower
 spec:
   ports:
-  - name: "15555"
+  - name: "5555"
     port: 5555
     targetPort: 5555
   selector:
@@ -48,7 +48,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -71,7 +71,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file test2.yml
       -o output/ -c
@@ -93,7 +93,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   name: contrax-tes-webdav
 spec:
   ports:
@@ -111,7 +111,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -132,7 +132,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -149,13 +149,13 @@ status:
   loadBalancer: {}
 
 ---
-{{ if eq .Values.pg_host_name "contrax-db" }}
+{{- if eq .Values.dbType "test" }}
 #contrax-db
 
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -176,14 +176,14 @@ status:
   loadBalancer: {}
 
 
-{{ end }}
+{{- end }}
 ---
 #contrax-elasticsearch
 
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -206,7 +206,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -231,7 +231,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -254,7 +254,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -279,7 +279,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -311,7 +311,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -334,7 +334,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file test2.yml
       -o output/ -c
@@ -357,7 +357,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: contrax-pgbouncer-session
 spec:
@@ -376,7 +376,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: contrax-pgbouncer-transaction
 spec:
@@ -395,7 +395,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: contrax-celery-beat
 spec:
@@ -414,7 +414,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: contrax-celery
 spec:
@@ -433,7 +433,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: contrax-celery-doc-load
 spec:
@@ -452,7 +452,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: contrax-celery-high
 spec:
@@ -470,7 +470,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: tes-celery-worker
 spec:
@@ -488,7 +488,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: tes-celery-beat
 spec:
@@ -507,7 +507,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
   name: tes-web-api
 spec:

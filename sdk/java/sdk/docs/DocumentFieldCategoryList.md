@@ -8,7 +8,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **Integer** |  |  [optional] [readonly]
-**documentType** | **String** |  |  [optional]
+**documentType** | **String** |  | 
 **documentTypeTitle** | **String** |  | 
 **name** | **String** |  | 
 **order** | **Integer** |  |  [optional]

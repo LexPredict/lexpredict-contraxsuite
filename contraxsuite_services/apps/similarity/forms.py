@@ -38,8 +38,8 @@ from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -203,24 +203,6 @@ class ProjectTextUnitsSimilarityByVectorsForm(TextUnitSimilarityByFeaturesForm):
             required=False,
             help_text='Project with Text Unit Transformer trained model')
         self.fields = {n: f for n, f in self.fields.items() if n in self.Meta.fields}
-
-    # CS-6538: allow all vs all
-    # def clean(self):
-    #
-    #     item_id = self.cleaned_data.get('item_id')
-    #     document_id = self.cleaned_data.get('document_id')
-    #     location_start = self.cleaned_data.get('location_start')
-    #     location_end = self.cleaned_data.get('location_end')
-    #
-    #     if not item_id and (document_id is None or location_start is None or location_end is None):
-    #         error = 'Text Unit Item ID or its document ID, location start and location end' \
-    #                 ' must be provided.'
-    #         self.add_error('item_id', error)
-    #         self.add_error('document_id', error)
-    #         self.add_error('location_start', error)
-    #         self.add_error('location_end', error)
-    #
-    #     return super().clean()
 
 
 class ChunkSimilarityForm(forms.Form):

@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **DocumentType** | **string** |  | [optional] [readonly] 
 **Progress** | **string** |  | [optional] [readonly] 
 **Completed** | **bool?** |  | [optional] 
+**IsCanceling** | **string** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

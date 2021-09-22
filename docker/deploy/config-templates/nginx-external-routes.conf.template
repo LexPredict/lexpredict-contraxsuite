@@ -1,6 +1,12 @@
 port_in_redirect off;
 
 
+error_page 404 /404.html;
+location = /404.html {
+    root /usr/share/nginx/html;
+    internal;
+}
+
 location ${DOCKER_DJANGO_BASE_PATH}media/data/frontend/ {
     rewrite  ^${DOCKER_DJANGO_BASE_PATH}media/data/frontend/(.*) /$1 break;
     root /data/media/data/frontend/;
@@ -161,6 +167,8 @@ location /websocket/ {
     proxy_set_header Upgrade ${DOLLAR}http_upgrade;
     proxy_set_header Connection "upgrade";
 }
+
+rewrite ^/text_extraction_system$ /text_extraction_system/ redirect;
 
 location /text_extraction_system {
     rewrite /text_extraction_system/(.*) /${DOLLAR}1 break;

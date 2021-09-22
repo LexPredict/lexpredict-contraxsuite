@@ -31,7 +31,6 @@ from decimal import Decimal, InvalidOperation
 from random import randint, random
 from typing import List, Tuple, Optional, Any, Callable, Set
 
-import dateparser
 import pyap
 from lexnlp.extract.all_locales.languages import DEFAULT_LANGUAGE
 from lexnlp.extract.en.addresses.addresses import get_addresses
@@ -47,14 +46,15 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from sklearn.pipeline import FeatureUnion, Pipeline
 
+from apps.common.utils import parse_date
 from apps.document.field_processing import vectorizers
-from apps.document.models import DocumentField, Document
+from apps.document.models import DocumentField, Document, FieldValue
 from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -354,14 +354,19 @@ class TypedField:
 
 class MultiValueField(TypedField):
 
-    def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
+    def build_json_field_value_from_json_ant_values(self,
+                                                    ant_values: List[Any],
+                                                    document_id: int,
+                                                    field_id: str) -> Any:
         raise NotImplementedError()
 
     def update_field_value_by_changing_annotations(self,
                                                    current_ant_values: List,
                                                    old_field_value: Any,
                                                    added_ant_value: Any,
-                                                   removed_ant_value: Any):
+                                                   removed_ant_value: Any,
+                                                   document_id: int,
+                                                   field_id: str):
         raise NotImplementedError()
 
 
@@ -386,7 +391,9 @@ class MultiValueSetField(MultiValueField):
                                                    current_ant_values: List,
                                                    old_field_value: List,
                                                    added_ant_value: Any,
-                                                   removed_ant_value: Any):
+                                                   removed_ant_value: Any,
+                                                   document_id: int,
+                                                   field_id: str):
 
         # New field value consists of:
         # - values introduced by current annotations;
@@ -409,7 +416,10 @@ class MultiValueSetField(MultiValueField):
 
         return sorted(ant_values_set) if ant_values_set else None
 
-    def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
+    def build_json_field_value_from_json_ant_values(self,
+                                                    ant_values: List[Any],
+                                                    document_id: int,
+                                                    field_id: str) -> Any:
         if not ant_values:
             return None
         return sorted(set(ant_values))
@@ -719,13 +729,13 @@ class DateTimeField(TypedField):
     def field_value_json_to_python(self, json_value: Any) -> Any:
         if json_value is None:
             return None
-        return dateparser.parse(json_value)
+        return parse_date(json_value)
 
     def extract_from_possible_value(self, possible_value):
         if isinstance(possible_value, (datetime, date)):
             return possible_value
         try:
-            return dateparser.parse(str(possible_value))
+            return parse_date(str(possible_value))
         except:
             return None
 
@@ -790,7 +800,7 @@ class DateField(TypedField):
         if isinstance(json_value, str) and not json_value:
             return None
         try:
-            return dateparser.parse(json_value).date()
+            return parse_date(json_value).date()
         except AttributeError as e:
             raise RuntimeError(f'Value json_value="{json_value}" throws dateparser error') from e
 
@@ -800,7 +810,7 @@ class DateField(TypedField):
         if isinstance(possible_value, date):
             return possible_value
         try:
-            return dateparser.parse(str(possible_value)).date()
+            return parse_date(str(possible_value)).date()
         except:
             return None
 
@@ -1166,6 +1176,18 @@ class RelatedInfoField(MultiValueField):
     allows_value = True
     value_extracting = False
 
+    def build_json_field_value_from_json_ant_values(self,
+                                                    ant_values: List[Any],
+                                                    document_id: int,
+                                                    field_id: str) -> Any:
+        if not ant_values:
+            if self.field.requires_text_annotations:
+                return False
+        f_val = FieldValue.objects.filter(field_id=field_id, document_id=document_id).first()  # type: FieldValue
+        if not f_val:
+            return False
+        return f_val.value
+
     def is_there_annotation_matching_field_value(self, field_value: Any, annotation_values: List) -> bool:
         if not field_value or not self.field.requires_text_annotations:
             return True
@@ -1179,15 +1201,14 @@ class RelatedInfoField(MultiValueField):
     def is_json_field_value_ok(self, val: Any):
         return val is None or isinstance(val, bool) or val in {0, 1}
 
-    def build_json_field_value_from_json_ant_values(self, ant_values: List) -> Any:
-        return bool(ant_values)
-
     def update_field_value_by_changing_annotations(self,
                                                    current_ant_values: List,
                                                    old_field_value: List,
                                                    added_ant_value: Any,
-                                                   removed_ant_value: Any):
-        return self.build_json_field_value_from_json_ant_values(current_ant_values)
+                                                   removed_ant_value: Any,
+                                                   document_id: int,
+                                                   field_id: str):
+        return self.build_json_field_value_from_json_ant_values(current_ant_values, document_id, field_id)
 
     def build_vectorization_pipeline(self) -> Tuple[List[Tuple[str, Any]], Callable[[], List[str]]]:
         vect = vectorizers.NumberVectorizer(to_float_converter=lambda merged: len(merged) if merged else 0)

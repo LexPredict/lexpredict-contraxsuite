@@ -11,9 +11,9 @@ Name | Type | Description | Notes
 **FieldsData** | [**List&lt;DocumentTypeDetailFieldsData&gt;**](DocumentTypeDetailFieldsData.md) |  | [optional] [readonly] 
 **SearchFields** | **List&lt;string&gt;** |  | [optional] 
 **EditorType** | **string** |  | [optional] 
-**CreatedByName** | **string** |  | 
+**CreatedByName** | **string** |  | [optional] [readonly] 
 **CreatedDate** | **DateTime** |  | [optional] [readonly] 
-**ModifiedByName** | **string** |  | 
+**ModifiedByName** | **string** |  | [optional] [readonly] 
 **ModifiedDate** | **DateTime** |  | [optional] [readonly] 
 **Metadata** | **Object** |  | [optional] 
 **FieldsNumber** | **int** |  | 

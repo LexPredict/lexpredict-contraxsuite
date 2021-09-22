@@ -28,8 +28,8 @@ from typing import Iterable, List, Sequence, Any, Callable, Dict
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -43,15 +43,11 @@ def sequence_chunks(col: Sequence, n: int) -> Iterable[List]:
     :return:
     """
     i = 0
-    while True:
-        block = col[i:i + n]
-        if block:
-            if not isinstance(block, list):
-                block = list(block)
-            yield block
-            i = i + n
-        else:
-            break
+    while block := col[i:i + n]:
+        if not isinstance(block, list):
+            block = list(block)
+        yield block
+        i = i + n
 
 
 def iterable_chunks(col: Iterable, n: int) -> Iterable[List]:

@@ -33,8 +33,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,6 +48,8 @@ class UnableToReadFile(Exception):
 
 
 class ContraxsuiteFileStorage:
+    RE_VALID_SUBFOLDER = re.compile(r'[\da-z._\-]+', re.IGNORECASE)
+
     """
     Accumulates several methods for accessing shared files from different machines of the Contraxsuite cluster.
 
@@ -78,6 +80,13 @@ class ContraxsuiteFileStorage:
 
     RE_PATH_PROHIBITED = re.compile(r'(^\.\./)|(/\.\.$)|(/\.\./)')
     RE_PATH_DOUBLE_SLASH = re.compile(r'/+')
+
+    @classmethod
+    def normalize_folder_name(cls, folder_name: str) -> str:
+        # returns a canonical folder name by replacing invalid characters
+        # for the specific file storage. The implementation can be overriden
+        folder_name = folder_name.strip('/')
+        return '_'.join([m.group(0) for m in cls.RE_VALID_SUBFOLDER.finditer(folder_name)])
 
     @classmethod
     def check_for_path_manipulations(cls, path: str):

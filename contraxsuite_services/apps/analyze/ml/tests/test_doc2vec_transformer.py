@@ -27,12 +27,14 @@
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+
 from tests.django_test_case import *
+import shutil
 import pathlib
 from apps.common.file_storage.local_file_storage import ContraxsuiteInstanceLocalFileStorage
 from apps.analyze.ml.tests.texts_collection import TEST_TEXTS
@@ -41,7 +43,7 @@ from typing import Optional, Iterable, Union, Any, Tuple
 from django.db.models import QuerySet
 from apps.document.models import Document
 from apps.analyze.ml.classifier_repository import ClassifierRepositoryBuilder, ClassifierRepository
-from django.test import TestCase
+from apps.analyze.ml.tests.base_transformer_test import BaseTransformerTest
 from apps.analyze.ml.transform import Doc2VecTransformer
 
 
@@ -76,14 +78,16 @@ class TestFileStorage(ContraxsuiteInstanceLocalFileStorage):
         pass
 
 
-class TestDoc2VecTransformer(TestCase):
+class TestDoc2VecTransformer(BaseTransformerTest):
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         builder = ClassifierRepositoryBuilder()
         builder._repository = MockClassifierRepository()
 
     @classmethod
     def tearDownClass(cls):
+        super().tearDownClass()
         builder = ClassifierRepositoryBuilder()
         builder._repository = ClassifierRepository()
 
@@ -103,7 +107,28 @@ class TestDoc2VecTransformer(TestCase):
         module_path = pathlib.Path(__file__).parent.absolute()
         file_storage = TestFileStorage(os.path.join(module_path, 'test_data'))
         tr = Doc2VecTransformer(100, 10, 10, 1, file_storage)
+
+        model_path = os.path.join(
+            pathlib.Path(__file__).parent.absolute(),
+            'test_data',
+            'models/en/transformer/document/document_doc2vec_dm_1_vector_100_window_10/model.pickle')
+        model_reserve_path = model_path + '.old'
+        try:
+            # store the original model file
+            shutil.move(model_path, model_reserve_path)
+        except:
+            pass
         model, trans = tr.build_doc2vec_document_model(train_docs, 'trans_test')
+        try:
+            os.remove(model_path)
+        except:
+            pass
+        try:
+            # restore the original model file
+            shutil.move(model_reserve_path, model_path)
+        except:
+            pass
+
         self.assertIsNotNone(model)
         self.assertIsNotNone(trans)
 

@@ -44,7 +44,7 @@ Method | HTTP request | Description
 
 ## CommonActionsGET
 
-> List&lt;List&lt;Action&gt;&gt; CommonActionsGET (int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> List&lt;Action&gt; CommonActionsGET (int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -79,7 +79,7 @@ namespace Example
 
             try
             {
-                List<List<Action>> result = apiInstance.CommonActionsGET(projectId, documentId, viewActions, jqFilters);
+                List<Action> result = apiInstance.CommonActionsGET(projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -105,7 +105,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**List<List<Action>>**
+[**List&lt;Action&gt;**](Action.md)
 
 ### Authorization
 
@@ -130,7 +130,7 @@ Name | Type | Description  | Notes
 
 ## CommonActionsIdGET
 
-> List&lt;Action&gt; CommonActionsIdGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
+> Action CommonActionsIdGET (string id, int? projectId = null, int? documentId = null, List<string> viewActions = null, Dictionary<string, string> jqFilters = null)
 
 
 
@@ -166,7 +166,7 @@ namespace Example
 
             try
             {
-                List<Action> result = apiInstance.CommonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
+                Action result = apiInstance.CommonActionsIdGET(id, projectId, documentId, viewActions, jqFilters);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -193,7 +193,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**List&lt;Action&gt;**](Action.md)
+[**Action**](Action.md)
 
 ### Authorization
 

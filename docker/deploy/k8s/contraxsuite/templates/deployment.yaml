@@ -1,16 +1,15 @@
-#contrax-minio
-
+### contrax-minio
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
   creationTimestamp: null
   name: contrax-minio
 spec:
-
   replicas: 1
   selector:
     matchLabels:
@@ -36,12 +35,18 @@ spec:
         - sh
         env:
         - name: MINIO_ACCESS_KEY
-          value: 'Administrator'
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key: aws_access_key
         - name: MINIO_SECRET_KEY
-          value: 'Administrator'
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key: aws_secret_key
         - name: MINIO_BROWSER
           value: 'off'
-        image: {{ .Values.docker_minio_image }}
+        image: {{ .Values.minioImage | quote }}
         livenessProbe:
           exec:
             command:
@@ -54,7 +59,13 @@ spec:
         name: contrax-minio
         ports:
         - containerPort: 9000
-        resources: {}
+        resources:
+          requests:
+            cpu: '0.1'
+            memory: '256Mi'
+          limits:
+            cpu: '0.5'
+            memory: '512Mi'
         volumeMounts:
         - mountPath: /data
           name: contraxsuite-minio
@@ -65,19 +76,13 @@ spec:
         persistentVolumeClaim:
           claimName: contraxsuite-minio
           readOnly: false
-status: {}
 
+# contrax-mlflow-tracking
 ---
-
-#contrax-mlflow-tracking
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
-  annotations:
-    kompose.cmd: ./kompose convert --file yml
-    kompose.version: 1.19.0 (f63a961c)
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
   name: contrax-mlflow-tracking
 spec:
@@ -89,35 +94,43 @@ spec:
     type: Recreate
   template:
     metadata:
-      annotations:
-        kompose.cmd: ./kompose convert --file yml
-        kompose.version: 1.19.0 (f63a961c)
       creationTimestamp: null
       labels:
         app: contrax-mlflow-tracking
     spec:
-
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
       - env:
-        - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
         - name: AWS_BUCKET
-          value: '{{ .Values.mlflow_aws_bucket }}'
-        - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
+          value: {{ .Values.mlflowAwsBucket | quote }}
         - name: FILE_DIR
           value: /mlflow
         - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
+          value: {{ .Values.mlflowS3EndpointUrl | quote }}
         - name: PORT
           value: "5000"
-        image: {{ .Values.docker_mlflow_tracking_image }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key: aws_access_key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key: aws_secret_key
+        image: {{ .Values.mlflowTrackingImage | quote }}
         name: contrax-mlflow-tracking
         ports:
         - containerPort: 5000
-        resources: {}
+        resources:
+          requests:
+            cpu: '0.1'
+            memory: '256Mi'
+          limits:
+            cpu: '0.5'
+            memory: '512Mi'
         volumeMounts:
         - mountPath: /mlflow
           name: contraxsuite-mlflow-tracking
@@ -126,15 +139,14 @@ spec:
       - name: contraxsuite-mlflow-tracking
         persistentVolumeClaim:
           claimName: contraxsuite-mlflow-tracking
-status: {}
 
+
+# contrax-webdav
 ---
-
-#contrax-webdav
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file test2.yml
     kompose.version: 1.17.0 (a74acad)
@@ -160,16 +172,24 @@ spec:
         - name: AUTH_TYPE
           value: Basic
         - name: PASSWORD
-          value: password
+          valueFrom:
+            secretKeyRef:
+              name: webdav-secrets
+              key: password
         - name: USERNAME
-          value: user
-        image: {{ .Values.docker_webdav_image }}
+          valueFrom:
+            secretKeyRef:
+              name: webdav-secrets
+              key: username
+        image: {{ .Values.webdavImage | quote }}
         name: contrax-webdav
-        resources: 
+        resources:
           limits:
-            cpu: "1500m"
+            cpu: "1.5"
+            memory: '256Mi'
           requests:
-            cpu: "1000m"
+            cpu: "1"
+            memory: '128Mi'
         volumeMounts:
         - mountPath: /var/lib/dav
           name: contraxsuite-data-media
@@ -179,15 +199,14 @@ spec:
         persistentVolumeClaim:
           claimName: contraxsuite-data-media
           readOnly: false
-status: {}
 
----
 
 #contrax-tes-webdav
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file test2.yml
     kompose.version: 1.17.0 (a74acad)
@@ -213,16 +232,24 @@ spec:
         - name: AUTH_TYPE
           value: Basic
         - name: PASSWORD
-          value: {{ .Values.tes_webdav_password }}
+          valueFrom:
+            secretKeyRef:
+              name: tes-webdav-secrets
+              key: password
         - name: USERNAME
-          value: {{ .Values.tes_webdav_username }}
-        image: {{ .Values.docker_tes_webdav_image }}
+          valueFrom:
+            secretKeyRef:
+              name: tes-webdav-secrets
+              key: username
+        image: {{ .Values.tesWebdavImage | quote }}
         name: contrax-tes-webdav
-        resources: 
+        resources:
           limits:
-            cpu: "1500m"
+            cpu: "1.5"
+            memory: '256Mi'
           requests:
-            cpu: "1000m"
+            cpu: "1"
+            memory: '128Mi'
         volumeMounts:
         - mountPath: /var/lib/dav
           name: contraxsuite-tes-data-media
@@ -232,15 +259,14 @@ spec:
         persistentVolumeClaim:
           claimName: contraxsuite-tes-data-media
           readOnly: false
-status: {}
 
----
 
 #contrax-redis
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   name: contrax-redis
 spec:
   replicas: 1
@@ -258,7 +284,7 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - image: redis:5-alpine
+      - image: {{ .Values.redisImage | quote }}
         name: contrax-redis
         volumeMounts:
         - mountPath: /data
@@ -270,16 +296,14 @@ spec:
         persistentVolumeClaim:
           claimName: redis-data
           readOnly: false
-status: {}
 
----
-{{ if eq .Values.pg_host_name "contrax-db" }}
 #contrax-db
-
+{{- if eq .Values.dbType "test" }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -287,7 +311,7 @@ metadata:
   creationTimestamp: null
   name: contrax-db
 spec:
-  replicas: {{ .Values.docker_pg_replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app: contrax-db
@@ -299,99 +323,98 @@ spec:
       labels:
         app: contrax-db
     spec:
-
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      {{ if .Values.powa }}
+      {{- if .Values.powa }}
       - args:
         - bash
         - -c
         - apt-get update && apt-get install -y --no-install-recommends postgresql-11-powa postgresql-11-pg-qualstats postgresql-11-pg-stat-kcache postgresql-11-hypopg && rm -rf /var/lib/apt/lists/* && service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf -c hba_file=/contraxsuite/pg_hba.conf
-      {{ else }}
+      {{- else }}
       - args:
         - bash
         - -c
         - service cron start && /usr/local/bin/docker-entrypoint.sh postgres -c config_file=/contraxsuite/postgresql.conf -c hba_file=/contraxsuite/pg_hba.conf
-      {{ end }}
+      {{- end }}
         env:
         - name: PGDATA
           value: /var/lib/contraxsuite-postgres
         - name: POSTGRES_DB
-          value: contrax1
-        - name: POSTGRES_PASSWORD
-          value: contrax1
+          valueFrom:
+            secretKeyRef:
+              name: porstgrs-db-secrets
+              key: db_name
+        - name: POSTGRES_PASSWORD #
+          valueFrom:
+            secretKeyRef:
+              name: porstgrs-db-secrets
+              key: db_password
         - name: POSTGRES_USER
-          value: contrax1
-        image: {{ .Values.docker_pg_image }}
+          valueFrom:
+            secretKeyRef:
+              name: porstgrs-db-secrets
+              key: db_username
+        image: {{ .Values.postgresImage | quote }}
         name: contrax-db
         ports:
-        - containerPort: 5432
+          - containerPort: {{ .Values.dbPort }}
         resources:
           limits:
-            memory: "{{ .Values.postgres_memory_limit }}"
+            memory: {{ default "4Gi" .Values.dbLimitMemory }}
           requests:
-            memory: "{{ .Values.postgres_memory_request }}"
+            memory: {{ default "2Gi" .Values.dbRequestMemory }}
         volumeMounts:
-        - mountPath: /var/lib/contraxsuite-postgres
-          name: postgres-data-11
-        - mountPath: /contraxsuite/db-backup.sh
-          name: db-backup
-          subPath: db-backup.sh
-        - mountPath: /backup
-          name: backup
-        - mountPath: /contraxsuite/postgresql.conf
-          name: contraxsuite-postgresqlconf
-          subPath: postgresql.conf
-        - mountPath: /etc/crontab
-          name: postgresql-crontab
-          subPath: backup-cron.conf
-        - mountPath: /docker-entrypoint-initdb.d/postgres_init.sql
-          name: postgresql-init
-          subPath: postgres-init.sql
-        - mountPath: /contraxsuite/pg_hba.conf
-          name: pg-hba
-          subPath: pg_hba.conf
+          - mountPath: /var/lib/contraxsuite-postgres
+            name: postgres-data-11
+          - mountPath: /backup
+            name: backup
+          - mountPath: /contraxsuite/postgresql.conf
+            name: postgres-conf
+            subPath: postgresql.conf
+          - mountPath: /contraxsuite/db-backup.sh
+            name: postgres-conf
+            subPath: db-backup.sh
+          - mountPath: /etc/crontab
+            name: postgres-conf
+            subPath: backup-cron.conf
+          - mountPath: /docker-entrypoint-initdb.d/postgres_init.sql
+            name: postgres-conf
+            subPath: postgres-init.sql
+          - mountPath: /contraxsuite/pg_hba.conf
+            name: postgres-conf
+            subPath: pg_hba.conf
       restartPolicy: Always
       volumes:
-      - name: postgres-data-11
-        persistentVolumeClaim:
-          claimName: postgres-data-11
-          readOnly: false
-      - name: backup
-        persistentVolumeClaim:
-          claimName: backup
-          readOnly: false
-      - name: contraxsuite-postgresqlconf
-        configMap:
-          {{ if .Values.powa }}
-          name: postgresqlconf-powa-configmap
-          {{ else }}
-          name: postgresqlconf-configmap
-          {{ end }}
-      - name: postgresql-crontab
-        configMap:
-          name: pg-backup-cron-722aba991ba1ea855e6736133174990a
-      - name: postgresql-init
-        configMap:
-          name: pg-init-sql-106a59094d5cd047cb07f39e68db563a
-      - name: db-backup
-        configMap:
-          name: db-backup-configmap
-      - name: pg-hba
-        configMap:
-          name: pg-hba-configmap
-status: {}
-
----
-{{ end }}
-
+        - name: postgres-data-11
+          persistentVolumeClaim:
+            claimName: postgres-data-11
+            readOnly: false
+        - name: backup
+          persistentVolumeClaim:
+            claimName: backup
+            readOnly: false
+        - name: postgres-conf
+          configMap:
+            name: postgres-conf
+            items:
+              - key: pg_conf
+                path: postgresql.conf
+              - key: pg_backup
+                path: db-backup.sh
+              - key: pg_crontab
+                path: backup-cron.conf
+              - key: pg_init
+                path: postgres-init.sql
+              - key: pg_hba
+                path: pg_hba.conf
+{{- end }}
 #contrax-elasticsearch
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -399,7 +422,7 @@ metadata:
   creationTimestamp: null
   name: contrax-elasticsearch
 spec:
-  replicas: {{ .Values.docker_elasticsearch_replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app: contrax-elasticsearch
@@ -423,7 +446,7 @@ spec:
         securityContext:
           privileged: true
       containers:
-      - image: {{ .Values.docker_elasticsearch_image }}
+      - image: {{ .Values.elasticSearchImage | quote }}
         name: contrax-elasticsearch
         resources:
           limits:
@@ -438,25 +461,23 @@ spec:
             name: elasticsearch-data
           - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
             subPath: elasticsearch.yml
-            name: elasticsearch-yaml-config
+            name: elasticsearch-conf
       restartPolicy: Always
       volumes:
       - name: elasticsearch-data
         persistentVolumeClaim:
           claimName: elasticsearch-data
           readOnly: false
-      - name: elasticsearch-yaml-config
+      - name: elasticsearch-conf
         configMap:
-          name: elasticsearch-yaml-config
-status: {}
-
----
+          name: elasticsearch-conf
 
 #contrax-elastalert
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file yml
     kompose.version: 1.19.0 (f63a961c)
@@ -495,113 +516,44 @@ spec:
         - mountPath: /rule_templates
           name: elastalert-rule-templates
         - mountPath: /opt/elastalert/config.yaml
-          name: elastalert-config-yaml
+          name: elastalert-conf
           subPath: config.yaml
         - mountPath: /opt/elastalert-server/config/elastalert.yaml
-          name: elastalert-server-yaml
+          name: elastalert-conf
           subPath: elastalert.yaml
         - mountPath: /opt/elastalert-server/config/config.json
-          name: elastalert-server-config-json
+          name: elastalert-conf
           subPath: config.json
         - mountPath: /elastalert-smtp-auth.yaml
-          name: elastalert-smtp-auth-yaml
+          name: elastalert-conf
           subPath: elastalert-smtp-auth.yaml
       restartPolicy: Always
       volumes:
-      - name: elastalert-rules
-        persistentVolumeClaim:
-          claimName: elastalert-rules
-      - name: elastalert-rule-templates
-        persistentVolumeClaim:
-          claimName: elastalert-rule-templates
-      - name: elastalert-config-yaml
-        configMap:
-          name: elastalert-config-yaml-configmap
-      - name: elastalert-server-yaml
-        configMap:
-          name: elastalert-server-yaml-configmap
-      - name: elastalert-server-config-json
-        configMap:
-          name: elastalert-server-config-json-configmap
-      - name: elastalert-smtp-auth-yaml
-        configMap:
-          name: elastalert-smtp-auth-yaml-configmap
-status: {}
-
----
-
-#contrax-filebeat
-
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   namespace: {{ .Values.namespace}}
-#   annotations:
-#     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
-#       -o output/ -c
-#     kompose.version: 1.17.0 (a74acad)
-#   creationTimestamp: null
-#   name: contrax-filebeat
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       app: contrax-filebeat
-#   template:
-#     metadata:
-#       creationTimestamp: null
-#       labels:
-#         app: contrax-filebeat
-#     spec:
-#       containers:
-#       - image: {{ .Values.docker_filebeat_image }}
-#         name: contrax-filebeat
-#         resources:
-#           requests:
-#             cpu: 0
-#             memory: 0
-#           limits:
-#             cpu: 500m
-#             memory: "1073741824"
-#         volumeMounts:
-#         - mountPath: /usr/share/filebeat/data
-#           name: filebeat-data
-#         - mountPath: /usr/share/filebeat/filebeat.yml
-#           name: filebeat-yml
-#           subPath: filebeat.yml
-#         - mountPath: /hostfs/var/run/docker.sock
-#           name: contrax-filebeat-claim1
-#         - mountPath: /hostfs
-#           name: contrax-filebeat-claim2
-#           readOnly: true
-#       restartPolicy: Always
-#       volumes:
-#       - name: filebeat-data
-#         persistentVolumeClaim:
-#           claimName: filebeat-data
-#           readOnly: false
-#       - name: filebeat-yml
-#         configMap:
-#           name: filebeat-1b84ea4a4555e9c33f0ea04461533050
-#       - name: contrax-filebeat-claim1
-#         hostPath:
-#           path: /var/run/docker.sock
-#           type: File
-#       - name: contrax-filebeat-claim2
-#         hostPath:
-#           path: /
-#           type: Directory
-#           # readOnly: true
-# status: {}
-
----
+        - name: elastalert-rules
+          persistentVolumeClaim:
+            claimName: elastalert-rules
+        - name: elastalert-rule-templates
+          persistentVolumeClaim:
+            claimName: elastalert-rule-templates
+        - name: elastalert-conf
+          configMap:
+            name: elastalert-conf
+            items:
+              - key: config.yaml
+                path: config.yaml
+              - key: elastalert.yaml
+                path: elastalert.yaml
+              - key: elastalert_smtp_auth.yaml
+                path: elastalert-smtp-auth.yaml
+              - key: config.json
+                path: config.json
 
 #contrax-kibana
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -623,28 +575,26 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - image: {{ .Values.docker_kibana_image }}
+      - image: {{ .Values.kibanaImage | quote }}
         name: contrax-kibana
         resources: {}
         volumeMounts:
         - mountPath: /usr/share/kibana/config/kibana.yml
-          name: contrax-kibana-conf
+          name: kibana-conf
           subPath: kibana.yml
       restartPolicy: Always
       volumes:
-      - name: contrax-kibana-conf
+      - name: kibana-conf
         configMap:
-          name: contrax-kibana-conf-configmap
-status: {}
+          name: kibana-conf
 
+
+# contrax-metricbeat
 ---
-
-#contrax-metricbeat
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -652,7 +602,7 @@ metadata:
   creationTimestamp: null
   name: contrax-metricbeat
 spec:
-  replicas: 0
+  replicas: 0 # by default disabled
   selector:
     matchLabels:
       app: contrax-metricbeat
@@ -670,15 +620,15 @@ spec:
       - args:
         - -e
         - -system.hostfs=/hostfs
-        image: {{ .Values.docker_metricbeat_image }}
+        image: {{ .Values.metricbeatImage | quote }}
         name: contrax-metricbeat
         resources:
           limits:
-            cpu: "1"
-            memory: "2147483648"
+            cpu: '1'
+            memory: '2Gi'
           requests:
-            cpu: "0"
-            memory: "0"
+            cpu: '0.1'
+            memory: '128Mi'
         volumeMounts:
         - mountPath: /usr/share/metricbeat/data
           name: metricbeat-data
@@ -695,7 +645,7 @@ spec:
           name: contrax-metricbeat-claim4
           readOnly: true
         - mountPath: /usr/share/metricbeat/metricbeat.yml
-          name: metricbeat-yml
+          name: metricbeat-conf
           subPath: metricbeat.yml
       restartPolicy: Always
       volumes:
@@ -719,19 +669,17 @@ spec:
         hostPath:
           path: /
           type: Directory
-      - name: metricbeat-yml
+      - name: metricbeat-conf
         configMap:
-          name: metricbeat-99b4e27a4f53a7c722f3e17e204d86c2
-status: {}
+          name: metricbeat-conf
 
----
 
 #contrax-rabbitmq
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -739,7 +687,7 @@ metadata:
   creationTimestamp: null
   name: contrax-rabbitmq
 spec:
-  replicas: {{ .Values.docker_rabbitmq_replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app: contrax-rabbitmq
@@ -756,17 +704,20 @@ spec:
       containers:
       - env:
         - name: RABBITMQ_DEFAULT_PASS
-          value: contrax1
+          value: {{ .Values.rmqPassword }}
         - name: RABBITMQ_DEFAULT_USER
-          value: contrax1
+          value: {{ .Values.rmqUsername}}
         - name: RABBITMQ_DEFAULT_VHOST
-          value: contrax1_vhost
-        image: {{ .Values.docker_rabbitmq_image }}
+          value: {{ .Values.rmqVhost }}
+        image: {{ .Values.rabbitmqImage }}
         name: contrax-rabbitmq
         resources:
           requests:
-            cpu: {{ .Values.rabbitmq_cpu_request }}
-            memory: {{ .Values.rabbitmq_memory_request }}
+            cpu: {{ default "0.5" .Values.rmqRequestCpu | quote }}
+            memory: {{ default "1Gi" .Values.rmqRequestMemory | quote }}
+          limits:
+            cpu: {{ default "1" .Values.rmqLimitCpu | quote }}
+            memory: {{ default "2Gi" .Values.rmqLimitMemory | quote }}
         volumeMounts:
         - mountPath: /var/lib/rabbitmq
           name: rabbitmq-data
@@ -777,16 +728,14 @@ spec:
         persistentVolumeClaim:
           claimName: rabbitmq-data
           readOnly: false
-status: {}
 
----
 
 #contrax-nginx
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace  | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -809,15 +758,15 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - image: {{ .Values.docker_nginx_image }}
+      - image: {{ .Values.nginxImage }}
         name: contrax-nginx
         resources:
           limits:
-            cpu: "1"
-            memory: "4203741184"
+            cpu: '1'
+            memory: '4Gi'
           requests:
-            cpu: "0"
-            memory: "0"
+            cpu: '0.25'
+            memory: '128Mi'
         securityContext:
           capabilities:
             add: ["NET_ADMIN"]
@@ -826,9 +775,6 @@ spec:
         - containerPort: 4443
         - containerPort: 4444
         volumeMounts:
-        # - mountPath: /etc/nginx
-        #   readOnly: true
-        #   name: nginx-conf
         - mountPath: /etc/nginx/.kibana_htpasswd
           name: nginx-conf
           subPath: .kibana_htpasswd
@@ -859,6 +805,9 @@ spec:
         - mountPath: /data/media/data/frontend/.env
           name: nginx-conf
           subPath: .env
+        - mountPath: /data/media/data/frontend/env.json
+          name: nginx-conf
+          subPath: env.json
       restartPolicy: Always
       volumes:
       - name: nginx-conf
@@ -885,22 +834,18 @@ spec:
               path: nginx-customer.conf
             - key: .env
               path: .env
+            - key: env.json
+              path: env.json
       imagePullSecrets:
       - name: contraxsuitesecret
-status: {}
 
----
 
 #contrax-jupyter
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
-  annotations:
-    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
-      -o output/ -c
-    kompose.version: 1.17.0 (a74acad)
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
   name: contrax-jupyter
 spec:
@@ -922,106 +867,78 @@ spec:
       - args:
         - jupyter
         env:
-        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
-          value: optional
-        - name: DOCKER_DJANGO_ADMIN_EMAIL
-          value: admin@localhost
-        - name: DOCKER_DJANGO_ADMIN_NAME
-          value: Administrator
-        - name: DOCKER_DJANGO_ADMIN_PASSWORD
-          value: Administrator
-        - name: DOCKER_DJANGO_BASE_PATH
-          value: /explorer/
-        - name: DOCKER_DJANGO_DEBUG
-          value: "False"
-        - name: DOCKER_DJANGO_DEBUG_SQL
-          value: "False"
-        - name: DOCKER_DJANGO_EMAIL_BACKEND
-          value: smtp.CustomEmailBackend
-        - name: DOCKER_DJANGO_EMAIL_HOST
-          value: localhost
-        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
-        - name: DOCKER_DJANGO_EMAIL_HOST_USER
-        - name: DOCKER_DJANGO_EMAIL_PORT
-          value: "587"
-        - name: DOCKER_DJANGO_EMAIL_USE_TLS
-          value: "False"
         - name: DOCKER_DJANGO_HOST_NAME
-          value: {{ .Values.domain_name }}
+          value: {{ .Values.domainName }}
         - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
-          value: ./deploy/dependencies/jqwidgets.zip
+          value: './deploy/dependencies/jqwidgets.zip'
         - name: DOCKER_DJANGO_SECRET_KEY
-          value: Welcome1
+          valueFrom:
+            secretKeyRef:
+                name: django-secrets
+                key:  django_secret_key
+        - name: DOCKER_DJANGO_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: django_admin_password
         - name: DOCKER_FLOWER_BASE_PATH
           value: flower
         - name: DOCKER_FRONTEND_ROOT_URL
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_HOST_NAME_ELASTICSEARCH
-          value: {{ .Values.docker_host_name_elasticsearch }}
-        - name: DOCKER_HOST_NAME_KIBANA
-          value: contrax-kibana
-        - name: DOCKER_HOST_NAME_PG
-          value: {{ .Values.pg_host_name }}
-        - name: DOCKER_HOST_NAME_RABBITMQ
-          value: {{ .Values.rabbitmq.host }}
-        - name: DOCKER_HOST_NAME_REDIS
+          value: {{ .Values.domainName }}
+        - name: DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS
+          value: {{ .Values.esHost }}
+        - name: DOCKER_HOST_NAME_REDIS_ACCESS
           value: contrax-redis
-        - name: DOCKER_JUPYTER_BASE_URL
-          value: /jupyter
-        - name: DOCKER_JUPYTER_PORT
-          value: "8888"
-        - name: DOCKER_NGINX_SERVER_NAME
-          value: contrax-nginx
+        - name: DOCKER_HOST_NAME_PG_ACCESS
+          value: {{ .Values.dbHost }}
         - name: DOCKER_PG_DB_NAME
-          value: {{ .Values.pg_db_name }}
+          value: {{ .Values.dbName }}
         - name: DOCKER_PG_PASSWORD
-          value: {{ .Values.pg_password }}
+          value: {{ .Values.dbPassword }}
         - name: DOCKER_PG_USER
-          value: {{ .Values.pg_user }}
+          value: {{ .Values.dbUsername }}
+        - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
+          value: {{ .Values.rmqHost }}
         - name: DOCKER_RABBITMQ_PASSWORD
-          value: {{ .Values.rabbitmq.password }}
+          value: {{ .Values.rmqPassword }}
         - name: DOCKER_RABBITMQ_USER
-          value: {{ .Values.rabbitmq.username }}
+          value: {{ .Values.rmqUsername }}
         - name: DOCKER_RABBITMQ_VHOST
-          value: {{ .Values.rabbitmq.vhost }}
-        - name: SHARED_USER_ID
-          value: "65432"
-        - name: SHARED_USER_NAME
-          value: contraxsuite_docker_user
-        - name: DOCKER_WEBDAV_AUTH_PASSWORD
-          value: password
-        - name: DOCKER_WEBDAV_AUTH_USER
-          value: user
-        - name: DOCKER_WEBDAV_SERVER_NAME
-          value: contrax-webdav
+          value: {{ .Values.rmqVhost }}
         - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
-        - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
-        - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
-        image: {{ .Values.docker_image }}
+          value: {{ .Values.mlflowS3EndpointUrl | quote }}
+        - name: MLFLOW_AWS_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key: aws_access_key
+        - name: MLFLOW_AWS_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key: aws_secret_key
+        image: {{ .Values.contraxImage }}
         name: contrax-jupyter
         resources:
           limits:
-            cpu: "1"
-            memory: "4203741184"
+            cpu: '1'
+            memory: '4Gi'
           requests:
-            cpu: "0"
-            memory: "0"
+            cpu: '0.1'
+            memory: '100Mi'
         volumeMounts:
         - mountPath: /contraxsuite_services/notebooks/persistent_volume
           name: contraxsuite-notebooks
         - mountPath: /contraxsuite_services/jupyter_add_req
           name: contraxsuite-jupyter-add-req
         - mountPath: /contraxsuite_services/local_settings.py
-          name: local-settings-py
-          subPath: local_settings.py
+          name: local-settings
+          subPath: local_settings_websrv.py
         - mountPath: /contraxsuite_services/uwsgi.ini
           name: uwsgi-ini
           subPath: uwsgi.ini
         - mountPath: /contraxsuite_services/jupyter_notebook_config.py
-          name: jupyter-notebook-config-py
+          name: jupyter-notebook-conf
           subPath: jupyter_notebook_config.py
       imagePullSecrets:
       - name: contraxsuitesecret
@@ -1035,25 +952,25 @@ spec:
         persistentVolumeClaim:
           claimName: contraxsuite-jupyter-add-req
           readOnly: false
-      - name: local-settings-py
+      - name: local-settings
         configMap:
-          name: local-settings-websrv
+          name: local-settings
+          items:
+            - key: local_settings_websrv.py
+              path: local_settings_websrv.py
       - name: uwsgi-ini
         configMap:
-          name: uwsgi-ini-configmap
-      - name: jupyter-notebook-config-py
+          name: uwsgi-ini
+      - name: jupyter-notebook-conf
         configMap:
-          name: jupyter-notebook-config-py-configmap
-status: {}
-
----
+          name: jupyter-notebook-conf
 
 #contrax-flower
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -1094,17 +1011,22 @@ spec:
         - name: DOCKER_DJANGO_DEBUG_SQL
           value: "False"
         - name: DOCKER_DJANGO_EMAIL_BACKEND
-          value: smtp.CustomEmailBackend
+          value: {{ default "smtp.CustomEmailBackend" .Values.djangoEmailBackend | quote }}
         - name: DOCKER_DJANGO_EMAIL_HOST
-          value: localhost
+          value: {{ default "localhost" .Values.djangoEmailHost | quote }}
         - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: django_email_host_password
         - name: DOCKER_DJANGO_EMAIL_HOST_USER
+          value: {{ default " " .Values.djangoEmailHostUser | quote }}
         - name: DOCKER_DJANGO_EMAIL_PORT
-          value: "587"
+          value: {{ default "587" .Values.djangoEmailHostPort | quote }}
         - name: DOCKER_DJANGO_EMAIL_USE_TLS
-          value: "False"
+          value: {{ default "False" .Values.djangoEmailUseTls | quote }}
         - name: DOCKER_DJANGO_HOST_NAME
-          value: {{ .Values.domain_name }}
+          value: {{ .Values.domainName }}
         - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
           value: ./deploy/dependencies/jqwidgets.zip
         - name: DOCKER_DJANGO_SECRET_KEY
@@ -1112,18 +1034,14 @@ spec:
         - name: DOCKER_FLOWER_BASE_PATH
           value: flower
         - name: DOCKER_FRONTEND_ROOT_URL
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_HOST_NAME_ELASTICSEARCH
-          value: {{ .Values.docker_host_name_elasticsearch }}
+          value: {{ .Values.domainName }}
+        - name: DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS
+          value: {{ .Values.esHost }}
         - name: DOCKER_ELASTICSEARCH_PORT
-          value: "{{ .Values.docker_elasticsearch_port }}"
+          value: "{{ .Values.esPort }}"
         - name: DOCKER_HOST_NAME_KIBANA
           value: contrax-kibana
-        - name: DOCKER_HOST_NAME_PG
-          value: {{ .Values.pg_host_name }}
-        - name: DOCKER_HOST_NAME_RABBITMQ
-          value: {{ .Values.rabbitmq.host }}
-        - name: DOCKER_HOST_NAME_REDIS
+        - name: DOCKER_HOST_NAME_REDIS_ACCESS
           value: contrax-redis
         - name: DOCKER_JUPYTER_BASE_URL
           value: /jupyter
@@ -1131,18 +1049,22 @@ spec:
           value: "8888"
         - name: DOCKER_NGINX_SERVER_NAME
           value: contrax-nginx
+        - name: DOCKER_HOST_NAME_PG_ACCESS
+          value: {{ .Values.dbHost }}
         - name: DOCKER_PG_DB_NAME
-          value: {{ .Values.pg_db_name }}
+          value: {{ .Values.dbName }}
         - name: DOCKER_PG_PASSWORD
-          value: {{ .Values.pg_password }}
+          value: {{ .Values.dbPassword }}
         - name: DOCKER_PG_USER
-          value: {{ .Values.pg_user }}
+          value: {{ .Values.dbUsername }}
+        - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
+          value: {{ .Values.rmqHost }}
         - name: DOCKER_RABBITMQ_PASSWORD
-          value: {{ .Values.rabbitmq.password }}
+          value: {{ .Values.rmqPassword }}
         - name: DOCKER_RABBITMQ_USER
-          value: {{ .Values.rabbitmq.username }}
+          value: {{ .Values.rmqUsername }}
         - name: DOCKER_RABBITMQ_VHOST
-          value: {{ .Values.rabbitmq.vhost }}
+          value: {{ .Values.rmqVhost }}
         - name: SHARED_USER_ID
           value: "65432"
         - name: SHARED_USER_NAME
@@ -1151,37 +1073,42 @@ spec:
           value: password
         - name: DOCKER_WEBDAV_AUTH_USER
           value: user
-        - name: DOCKER_WEBDAV_SERVER_NAME
+        - name: DOCKER_WEBDAV_SERVER_NAME_ACCESS
           value: contrax-webdav
         - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
+          value: {{ .Values.mlflowS3EndpointUrl | quote }}
         - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key:  aws_access_key
         - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
-        image: {{ .Values.docker_image }}
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-aws-secrets
+              key:  aws_secret_key
+        image: {{ .Values.contraxImage  | quote }}
         name: contrax-flower
         resources:
           limits:
-            cpu: "1"
-            memory: "2147483648"
+            cpu: '1'
+            memory: '2Gi'
           requests:
-            cpu: "0"
-            memory: "0"
+            cpu: '0.1'
+            memory: '100Mi'
         volumeMounts:
         - mountPath: /contraxsuite_services/local_settings.py
-          name: local-settings-py
-          subPath: local_settings.py
+          name: local-settings
+          subPath: local_settings_celery.py
       imagePullSecrets:
       - name: contraxsuitesecret
       restartPolicy: Always
       volumes:
-      - name: local-settings-py
+      - name: local-settings
         configMap:
-          name: local-settings-celery
-status: {}
+          name: local-settings
 
----
+#---
 #contrax-curator-metricbeat
 
 # apiVersion: apps/v1
@@ -1225,18 +1152,12 @@ status: {}
 #       restartPolicy: Always
 # status: {}
 
----
-
 #contrax-curator-filebeat
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
-  annotations:
-    kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
-      -o output/ -c
-    kompose.version: 1.17.0 (a74acad)
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
   name: contrax-curator-filebeat
 spec:
@@ -1254,11 +1175,7 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - args:
-        - --host
-        - contrax-elasticsearch
-        - --port
-        - "9200"
+      - args: ["--host", "contrax-elasticsearch", "--port", "9200" ]
         env:
         - name: INDEX_PREFIX
           value: filebeat-
@@ -1266,23 +1183,18 @@ spec:
           value: "30"
         - name: PERIOD
           value: 15min
-        image: {{ .Values.docker_curator_image }}
+        image: {{ .Values.curatorImage | quote }}
         name: contrax-curator-filebeat
         resources: {}
       restartPolicy: Always
-status: {}
 
----
 
 #contrax-daphne
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
-  annotations:
-    kompose.cmd: ./kompose convert --file test2.yml
-    kompose.version: 1.17.0 (a74acad)
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
   name: contrax-daphne
 spec:
@@ -1302,126 +1214,141 @@ spec:
         contraxsuite.com/role: manager
       containers:
       - args:
-        - daphne
+          - daphne
         env:
-        - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
-          value: optional
-        - name: DOCKER_DJANGO_ADMIN_EMAIL
-          value: admin@localhost
-        - name: DOCKER_DJANGO_ADMIN_NAME
-          value: Administrator
-        - name: DOCKER_DJANGO_ADMIN_PASSWORD
-          value: Administrator
-        - name: DOCKER_DJANGO_BASE_PATH
-          value: /explorer/
-        - name: DOCKER_DJANGO_DEBUG
-          value: "False"
-        - name: DOCKER_DJANGO_DEBUG_SQL
-          value: "False"
-        - name: DOCKER_DJANGO_EMAIL_BACKEND
-          value: smtp.CustomEmailBackend
-        - name: DOCKER_DJANGO_EMAIL_HOST
-          value: localhost
-        - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
-        - name: DOCKER_DJANGO_EMAIL_HOST_USER
-        - name: DOCKER_DJANGO_EMAIL_PORT
-          value: "587"
-        - name: DOCKER_DJANGO_EMAIL_USE_TLS
-          value: "False"
-        - name: DOCKER_DJANGO_HOST_NAME
-          value: {{ .Values.domain_name }}
-        - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
-          value: ./deploy/dependencies/jqwidgets.zip
-        - name: DOCKER_DJANGO_SECRET_KEY
-          value: Welcome1
-        - name: DOCKER_FLOWER_BASE_PATH
-          value: flower
-        - name: DOCKER_HOST_NAME_ELASTICSEARCH
-          value: {{ .Values.docker_host_name_elasticsearch }}
-        - name: DOCKER_ELASTICSEARCH_PORT
-          value: "{{ .Values.docker_elasticsearch_port }}"
-        - name: DOCKER_HOST_NAME_KIBANA
-          value: contrax-kibana
-        - name: DOCKER_HOST_NAME_PG
-          value: {{ .Values.pg_host_name }}
-        - name: DOCKER_HOST_NAME_RABBITMQ
-          value: {{ .Values.rabbitmq.host }}
-        - name: DOCKER_HOST_NAME_REDIS
-          value: contrax-redis
-        - name: DOCKER_JUPYTER_BASE_URL
-          value: /jupyter
-        - name: DOCKER_JUPYTER_PORT
-          value: "8888"
-        - name: DOCKER_NGINX_SERVER_NAME
-          value: contrax-nginx
-        - name: DOCKER_PG_DB_NAME
-          value: {{ .Values.pg_db_name }}
-        - name: DOCKER_PG_PASSWORD
-          value: {{ .Values.pg_password }}
-        - name: DOCKER_PG_USER
-          value: {{ .Values.pg_user }}
-        - name: DOCKER_RABBITMQ_PASSWORD
-          value: {{ .Values.rabbitmq.password }}
-        - name: DOCKER_RABBITMQ_USER
-          value: {{ .Values.rabbitmq.username }}
-        - name: DOCKER_RABBITMQ_VHOST
-          value: {{ .Values.rabbitmq.vhost }}
-        - name: DOCKER_WEBDAV_AUTH_PASSWORD
-          value: password
-        - name: DOCKER_WEBDAV_AUTH_USER
-          value: user
-        - name: DOCKER_WEBDAV_SERVER_NAME
-          value: contrax-webdav
-        - name: SHARED_USER_ID
-          value: "82"
-        - name: SHARED_USER_NAME
-          value: contraxsuite_docker_user
-        - name: MLFLOW_S3_ENDPOINT_URL
-          value: '{{ .Values.mlflow_s3_endpoint_url }}'
-        - name: AWS_ACCESS_KEY_ID
-          value: 'Administrator'
-        - name: AWS_SECRET_ACCESS_KEY
-          value: 'Administrator'
-        image: {{ .Values.docker_image }}
+          - name: DOCKER_DJANGO_ACCOUNT_EMAIL_VERIFICATION
+            value: {{ default "optional" .Values.djangoAccountEmailVerification | quote }}
+          - name: DOCKER_DJANGO_ADMIN_EMAIL
+            valueFrom:
+              secretKeyRef:
+                name: django-secrets
+                key: django_admin_email
+          - name: DOCKER_DJANGO_ADMIN_NAME
+            valueFrom:
+              secretKeyRef:
+                name: django-secrets
+                key: django_admin_name
+          - name: DOCKER_DJANGO_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: django-secrets
+                key: django_admin_password
+          - name: DOCKER_DJANGO_BASE_PATH
+            value: {{ default "/explorer/" .Values.djangoBasePath | quote }}
+          - name: DOCKER_DJANGO_DEBUG
+            value: {{ default "False" .Values.djangoDebugMode | quote }}
+          - name: DOCKER_DJANGO_DEBUG_SQL
+            value: {{ default "False" .Values.djangoDebugSql | quote }}
+          - name: DOCKER_DJANGO_EMAIL_BACKEND
+            value: {{ default "smtp.CustomEmailBackend" .Values.djangoEmailBackend | quote }}
+          - name: DOCKER_DJANGO_EMAIL_HOST
+            value: {{ default "localhost" .Values.djangoEmailHost | quote }}
+          - name: DOCKER_DJANGO_EMAIL_HOST_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: django-secrets
+                key: django_email_host_password
+          - name: DOCKER_DJANGO_EMAIL_HOST_USER
+            value: {{ default " " .Values.djangoEmailHostUser | quote }}
+          - name: DOCKER_DJANGO_EMAIL_PORT
+            value: {{ default "587" .Values.djangoEmailHostPort | quote }}
+          - name: DOCKER_DJANGO_EMAIL_USE_TLS
+            value: {{ default "False" .Values.djangoEmailUseTls | quote }}
+          - name: DOCKER_DJANGO_HOST_NAME
+            value: {{ .Values.domainName }}
+          - name: DOCKER_DJANGO_JQWIDGETS_ARCHIVE
+            value: ./deploy/dependencies/jqwidgets.zip
+          - name: DOCKER_DJANGO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: django-secrets
+                key: django_secret_key
+          - name: DOCKER_FLOWER_BASE_PATH
+            value: {{ default "flower" .Values.flowerBasePath | quote }}
+          - name: DOCKER_HOST_NAME_ELASTICSEARCH_ACCESS
+            value: {{ .Values.esHost | quote }}
+          - name: DOCKER_ELASTICSEARCH_PORT
+            value: {{ .Values.esPort | quote }}
+          - name: DOCKER_HOST_NAME_KIBANA
+            value: contrax-kibana
+          - name: DOCKER_HOST_NAME_REDIS_ACCESS
+            value: contrax-redis
+          - name: DOCKER_JUPYTER_BASE_URL
+            value: {{ default "/jupyter" .Values.jupyterBasePath | quote }}
+          - name: DOCKER_JUPYTER_PORT
+            value: {{ default "8888" .Values.jupyterPort | squote }}
+          - name: DOCKER_NGINX_SERVER_NAME
+            value: contrax-nginx
+          - name: DOCKER_HOST_NAME_PG_ACCESS
+            value: {{ .Values.dbHost }}
+          - name: DOCKER_PG_DB_NAME
+            value: {{ .Values.dbName }}
+          - name: DOCKER_PG_PASSWORD
+            value: {{ .Values.dbPassword }}
+          - name: DOCKER_PG_USER
+            value: {{ .Values.dbUsername }}
+          - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
+            value: {{ .Values.rmqHost }}
+          - name: DOCKER_RABBITMQ_PASSWORD
+            value: {{ .Values.rmqPassword }}
+          - name: DOCKER_RABBITMQ_USER
+            value: {{ .Values.rmqUsername }}
+          - name: DOCKER_RABBITMQ_VHOST
+            value: {{ .Values.rmqVhost }}
+          - name: DOCKER_WEBDAV_AUTH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: webdav-secrets
+                key: password
+          - name: DOCKER_WEBDAV_AUTH_USER
+            valueFrom:
+              secretKeyRef:
+                name: webdav-secrets
+                key: username
+          - name: DOCKER_WEBDAV_SERVER_NAME_ACCESS
+            value: contrax-webdav
+          - name: SHARED_USER_ID
+            value: "82"
+          - name: SHARED_USER_NAME
+            value: contraxsuite_docker_user
+          - name: MLFLOW_S3_ENDPOINT_URL
+            value: {{ .Values.mlflowS3EndpointUrl | quote }}
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: mlflow-aws-secrets
+                key: aws_access_key
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: mlflow-aws-secrets
+                key: aws_secret_key
+        image: {{ .Values.contraxImage }}
         name: contrax-daphne
         resources: {}
         volumeMounts:
-        - mountPath: /contraxsuite_services/local_settings.py
-          name: local-settings-py
-          subPath: local_settings.py
-        - mountPath: /contraxsuite_services/uwsgi.ini
-          name: uwsgi-ini
-          subPath: uwsgi.ini
-      #   - mountPath: /contraxsuite_frontend_nginx_volume
-      #     name: contraxsuite-frontend-nginx-volume
-      #     readOnly: false
-      # restartPolicy: Always
+          - mountPath: /contraxsuite_services/local_settings.py
+            name: local-settings
+            subPath: local_settings_websrv.py
+          - mountPath: /contraxsuite_services/uwsgi.ini
+            name: uwsgi-ini
+            subPath: uwsgi.ini
       volumes:
-      # - name: contraxsuite-frontend-nginx-volume
-      #   flexVolume:
-      #     driver: ceph.rook.io/rook
-      #     fsType: ceph
-      #     options:
-      #       fsName: nginxcephfs
-      #       clusterNamespace: rook-ceph
-      - name: local-settings-py
-        configMap:
-          name: local-settings-websrv
-      - name: uwsgi-ini
-        configMap:
-          name: uwsgi-ini-configmap
+        - name: local-settings
+          configMap:
+            name: local-settings
+        - name: uwsgi-ini
+          configMap:
+            name: uwsgi-ini
       imagePullSecrets:
-      - name: contraxsuitesecret
-status: {}
-
----
+        - name: contraxsuitesecret
 
 #contrax-powa-web
-
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   annotations:
     kompose.cmd: ./kompose convert --file docker-compose-single-host-db-open-afterdeploy.yml
       -o output/ -c
@@ -1429,11 +1356,11 @@ metadata:
   creationTimestamp: null
   name: contrax-powa-web
 spec:
-  {{ if .Values.powa }}
+  {{- if .Values.powa }}
   replicas: 1
-  {{ else }}
+  {{- else }}
   replicas: 0
-  {{ end }}
+  {{- end }}
   selector:
     matchLabels:
       app: contrax-powa-web
@@ -1448,27 +1375,26 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - image: powateam/powa-web
-        name: contrax-powa-web
-        resources: {}
-        volumeMounts:
-        - mountPath: /etc/powa-web.conf
+        - image: powateam/powa-web
           name: contrax-powa-web
-          subPath: powa-web.conf
+          resources: {}
+          volumeMounts:
+            - mountPath: /etc/powa-web.conf
+              name: contrax-powa-web
+              subPath: powa-web.conf
       hostname: contrax-powa-web
       restartPolicy: Always
       volumes:
-      - name: contrax-powa-web
-        configMap:
-          name: powa-web-configmap
-status: {}
+        - name: contrax-powa-web
+          configMap:
+            name: powa-web-configmap
 
+# contrax-pgbouncer-session
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   name: contrax-pgbouncer-session
 spec:
   replicas: 1
@@ -1485,31 +1411,32 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - image: wiredrequired/pgbouncer:0.0.1
-        name: contrax-pgbouncer-session
-        volumeMounts:
-        - mountPath: /etc/pgbouncer/pgbouncer.ini
-          name: pgbouncer-websrv-ini
-          subPath: pgbouncer.ini
-        - mountPath: /etc/pgbouncer/userlist.txt
-          name: userlist-txt
-          subPath: userlist.txt
+        - image: {{ .Values.pgbouncerImage | quote }}
+          name: contrax-pgbouncer-session
+          volumeMounts:
+            - mountPath: /etc/pgbouncer/pgbouncer.ini
+              name: pgbouncer-websrv-ini
+              subPath: pgbouncer.ini
+            - mountPath: /etc/pgbouncer/userlist.txt
+              name: userlist-txt
+              subPath: userlist.txt
       hostname: contrax-pgbouncer-session
       restartPolicy: Always
       volumes:
-      - name: pgbouncer-websrv-ini
-        configMap:
-          name: pgbouncer-websrv-ini-configmap
-      - name: userlist-txt
-        configMap:
-          name: userlist-txt-configmap
+        - name: pgbouncer-websrv-ini
+          configMap:
+            name: pgbouncer-websrv-ini
+        - name: userlist-txt
+          configMap:
+            name: userlist-txt
+
 
 ---
-
+# contrax-pgbouncer-transaction
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   name: contrax-pgbouncer-transaction
 spec:
   replicas: 1
@@ -1526,21 +1453,21 @@ spec:
       nodeSelector:
         contraxsuite.com/role: manager
       containers:
-      - image: wiredrequired/pgbouncer:0.0.1
-        name: contrax-pgbouncer-transaction
-        volumeMounts:
-        - mountPath: /etc/pgbouncer/pgbouncer.ini
-          name: pgbouncer-websrv-ini
-          subPath: pgbouncer.ini
-        - mountPath: /etc/pgbouncer/userlist.txt
-          name: userlist-txt
-          subPath: userlist.txt
+        - image: {{ .Values.pgbouncerImage | quote }}
+          name: contrax-pgbouncer-transaction
+          volumeMounts:
+            - mountPath: /etc/pgbouncer/pgbouncer.ini
+              name: pgbouncer-websrv-ini
+              subPath: pgbouncer.ini
+            - mountPath: /etc/pgbouncer/userlist.txt
+              name: userlist-txt
+              subPath: userlist.txt
       hostname: contrax-pgbouncer-transaction
       restartPolicy: Always
       volumes:
-      - name: pgbouncer-websrv-ini
-        configMap:
-          name: pgbouncer-celery-ini-configmap
-      - name: userlist-txt
-        configMap:
-          name: userlist-txt-configmap
+        - name: pgbouncer-websrv-ini
+          configMap:
+            name: pgbouncer-celery-ini
+        - name: userlist-txt
+          configMap:
+            name: userlist-txt

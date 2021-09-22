@@ -13,6 +13,8 @@ Name | Type | Description | Notes
 **ModelName** | **string** |  | [optional] 
 **Date** | **DateTime** |  | [optional] [readonly] 
 **UserName** | **string** |  | [optional] [readonly] 
+**UserInitials** | **string** |  | [optional] [readonly] 
+**UserPhotoUrl** | **string** |  | [optional] [readonly] 
 **RequestData** | **Object** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

@@ -9,6 +9,8 @@ Name | Type | Description | Notes
 **LastName** | **string** |  | [optional] 
 **FirstName** | **string** |  | [optional] 
 **Name** | **string** |  | [optional] 
+**Initials** | **string** |  | [optional] [readonly] 
+**Photo** | **System.IO.Stream** |  | [optional] 
 **Email** | **string** |  | [optional] [readonly] 
 **Organization** | **string** |  | [optional] 
 **Groups** | **List&lt;int&gt;** | The groups this user belongs to. A user will get all permissions granted to each of their groups. | [optional] [readonly] 

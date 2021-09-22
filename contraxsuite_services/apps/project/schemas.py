@@ -32,8 +32,8 @@ from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, \
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -285,6 +285,7 @@ class ProjectClusteringStatusSchema(CustomAutoSchema):
     class ProjectClusteringStatusResponseSerializer(serializers.Serializer):
         document_clusters = serializers.ListField(child=serializers.DictField())
         project_clusters_documents_count = serializers.IntegerField()
+        project_clusters_actions_count = serializers.IntegerField()
         status = serializers.CharField(allow_null=True)
 
     response_serializer = ProjectClusteringStatusResponseSerializer()

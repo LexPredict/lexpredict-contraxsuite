@@ -22,6 +22,7 @@ from openapi_client.api.dump_api import DumpApi
 from openapi_client.api.extract_api import ExtractApi
 from openapi_client.api.logging_api import LoggingApi
 from openapi_client.api.media_data_api import MediaDataApi
+from openapi_client.api.notifications_api import NotificationsApi
 from openapi_client.api.project_api import ProjectApi
 from openapi_client.api.rawdb_api import RawdbApi
 from openapi_client.api.rest_auth_api import RestAuthApi

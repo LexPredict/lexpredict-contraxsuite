@@ -3,7 +3,7 @@
 Expand the name of the chart.
 */}}
 {{- define "contraxsuite.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 5 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*

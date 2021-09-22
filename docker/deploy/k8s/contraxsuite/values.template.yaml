@@ -1,65 +1,115 @@
+### --- General settings ---
 namespace: contraxsuite
-domain_name: ${CONTRAX_DOMAIN_NAME}
-docker_image: lexpredict/contraxsuite-dev:${HELM_CHART_APP_VERSION}
+domainName: ${CONTRAX_DOMAIN_NAME}
 letsencryptenv: prod
+basicAuth: ${BASIC_AUTH}
+basicAuthUsername:
+basicAuthPassword:
 
-### --- PostgeSQL Settings
+### --- Docker Images
+contraxImage: lexpredict/contraxsuite-dev:${HELM_CHART_APP_VERSION}
+curatorImage: lexpredict/es-curator-cron:5.8.1-1
+elasticSearchImage: docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
+filebeatImage: docker.elastic.co/beats/filebeat-oss:7.5.2
+kibanaImage: lexpredict/lexpredict-kibana:7.5.0
+metricbeatImage: docker.elastic.co/beats/metricbeat-oss:7.5.2
+minioImage: minio/minio:RELEASE.2020-01-03T19-12-21Z
+mlflowTrackingImage: lexpredict/mlflow-tracking-server:1.6.0-1
+nginxImage: lexpredict/contraxsuite-dev-frontend:${HELM_CHART_APP_VERSION}
+postgresImage: postgres:11.5
+pgbouncerImage: wiredrequired/pgbouncer:0.0.1
+rabbitmqImage: rabbitmq:3.8-management
+redisImage: redis:5-alpine
+#webdavImage: bytemark/webdav:2.4
+webdavImage: lexpredict/nginx-webdav:1.19.6
+tesImage: ${DOCKER_TES_IMAGE}
+tesWebdavImage: lexpredict/nginx-webdav:1.19.6
+
+### --- Django settings ---
+djangoSecretKey: contraxwelcome1
+djangoAdminEmail: admin@localhost
+djangoAdminName: Administrator
+djangoAdminPassword: Administrator
+djangoAccountEmailVerification:  
+djangoDebugMode: false
+djangoDebugSql: false 
+
+### --- Email settings --- 
+djangoEmailBackend:
+djangoEmailHost:
+djangoEmailHostPassword:
+djangoEmailHostUser:
+djangoEmailHostPort: "587" 
+djangoEmailUseTls: "false"
+
+### --- Celery Settings ---
+#celeryTargetCpuUsage: 80
+celeryRequestCpu: 3
+celeryRequestMemory: 2Gi
+celeryLimitCpu: 4
+celeryLimitMemory: 4Gi
+### --- Uwsgi Settings ---
+uwsgiRequestCpu: 1
+uwsgiRequestMemory: 1Gi
+uwsgiLimitCpu: 2
+uwsgiLimitMemory: 2Gi
+### --- Powa Settings ---
 powa:
-pg_host_name: ${CONTRAX_DATABASE_ADDRESS}
-pg_db_name: ${CONTRAX_DATABASE_NAME}
-pg_user: ${CONTRAX_DATABASE_USERNAME}
-pg_password: ${CONTRAX_DATABASE_PASSWORD}
 
-celery_replicas: ${CELERY_WORKER_REPLICAS}
-celery_cpu_request: 3
-celery_cpu_limit: 4
-celery_target_cpu_usage: 80
-tes_replicas: ${CELERY_WORKER_REPLICAS}
-tes_cpu_request: 3
-tes_cpu_limit: 4
-tes_target_cpu_usage: 80
-uwsgi_cpu_request: 1
-uwsgi_memory_request: 1Gi
-uwsgi_cpu_limit: 2
-uwsgi_memory_limit: 2Gi
+### --- ElasticSearch --- 
+esHost: contrax-elasticsearch
+esPort: 9200
 
-### RabbitMQ settings ###
-rabbitmq_cpu_request: 1
-rabbitmq_memory_request: 1Gi
-rabbitmq: 
-  username: contrax1
-  password: contrax1
-  host: contrax-rabbitmq
-  port: 5672
-  vhost: contrax1_vhost
+#docker_elasticsearch_image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
+#docker_elasticsearch_replicas: 1
+#docker_elasticsearch_port: 9200
+#docker_host_name_elasticsearch: contrax-elasticsearch
 
-postgres_memory_request: 2Gi
-postgres_memory_limit: 2Gi
-docker_elasticsearch_replicas: 1
-docker_rabbitmq_replicas: 1
-docker_pg_replicas: 1
-docker_elasticsearch_port: 9200
-docker_host_name_elasticsearch: contrax-elasticsearch
-mlflow_aws_bucket: contraxmlflowartifacts
-mlflow_s3_endpoint_url: http://contrax-minio:9000
-docker_minio_image: minio/minio:RELEASE.2020-01-03T19-12-21Z
-docker_webdav_image: bytemark/webdav:2.4
-docker_tes_webdav_image: lexpredict/nginx-webdav:1.19.6
-docker_mlflow_tracking_image: lexpredict/mlflow-tracking-server:1.6.0-1
-docker_curator_image: lexpredict/es-curator-cron:5.8.1-1
-docker_elasticsearch_image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
-docker_kibana_image: lexpredict/lexpredict-kibana:7.5.0
-docker_metricbeat_image: docker.elastic.co/beats/metricbeat-oss:7.5.2
-docker_rabbitmq_image: rabbitmq:3-management
-docker_pg_image: postgres:11.5
-docker_nginx_image: lexpredict/contraxsuite-dev-frontend:${HELM_CHART_APP_VERSION}
-docker_redis_image: redis:5-alpine
-docker_filebeat_image: docker.elastic.co/beats/filebeat-oss:7.5.2
-docker_tes_image: ${DOCKER_TES_IMAGE}
+### MLFlow Settings ### 
+mlflowS3EndpointUrl: http://contrax-minio:9000
+mlflowAwsBucket: contraxmlflowartifacts
+mlflowAwsAccessKey: Administrator
+mlflowAwsSecretKey: Administrator
 
+
+### --- Postgres Settings ---
+dbType: test
+dbHost: ${CONTRAX_DATABASE_ADDRESS}
+dbName: ${CONTRAX_DATABASE_NAME}
+dbUsername: ${CONTRAX_DATABASE_USERNAME}
+dbPassword: ${CONTRAX_DATABASE_PASSWORD}
+dbPort: 5432
+dbRequestCpu: 500
+dbRequestMemory: 3Gi
+dbLimitCpu: 1
+dbLimitMemory: 4Gi
+
+### --- RabbitMQ settings --- 
+rmqUsername: contrax
+rmqPassword: contrax
+rmqHost: contrax-rabbitmq
+rmqPort: 5672
+rmqVhost: contrax
+rmqRequestCpu: 1
+rmqRequestMemory: 1Gi
+rmqLimitCpu: 1
+rmqLmitMemory: 2Gi
+  
+
+### --- Redis settinsgs --- 
+### --- Rook Ceph Settings --- 
 storage_class_name: rook-ceph-block
-basic_auth: ${BASIC_AUTH}
-tes_webdav_username: user
-tes_webdav_password: password
-tes_root_path: /text_extraction_system
-tes_url: tes-web-api:8000
+### --- WebDav settings ---
+webdavUsername: user
+webdavPassword: password
+
+### --- TES subsystem settings --- 
+tesWebdavUsername: username
+tesWebdavPassword: password
+tesRootPath: /text_extraction_system
+tesUrl: tes-web-api:8000
+tesRequestCpu: 3
+tesRequestMemory: 1Gi
+tesLimitCpu: 4
+tesLimitMemory: 2Gi
+#tesTargetCpuUsage: 80

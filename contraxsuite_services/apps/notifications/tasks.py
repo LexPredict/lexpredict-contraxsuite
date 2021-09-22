@@ -27,12 +27,14 @@
 import datetime
 import numbers
 import pickle
+import time
 import uuid
 from typing import Optional, Any, Set, Dict, Tuple, List, Callable
 
 import tzlocal
 from billiard.exceptions import SoftTimeLimitExceeded
 from celery import shared_task
+from celery.utils.log import get_task_logger
 from dateutil.parser import parse
 from django.db import connection
 from django.db.models import Prefetch, Min
@@ -42,11 +44,13 @@ from psycopg2 import InterfaceError, OperationalError
 from apps.celery import app
 from apps.common.collection_utils import chunks
 from apps.common.models import ObjectStorage
+from apps.common.redis import push
 from apps.common.sql_commons import fetch_bool, SQLClause
 from apps.document.models import Document, DocumentField, DocumentType
 from apps.notifications.document_notification import DocumentNotification
 from apps.notifications.models import DocumentDeletedEvent, DocumentLoadedEvent, \
-    DocumentChangedEvent, DocumentAssignedEvent, DocumentNotificationSubscription, DocumentDigestConfig
+    DocumentChangedEvent, DocumentAssignedEvent, DocumentNotificationSubscription, \
+    DocumentDigestConfig, WebNotificationStorage
 from apps.notifications.notifications import render_digest, RenderedDigest, \
     RenderedNotification, DocumentNotificationSource
 from apps.notifications.notification_renderer import NotificationRenderer
@@ -55,13 +59,14 @@ from apps.rawdb.constants import FIELD_CODE_ASSIGNEE_ID
 from apps.rawdb.rawdb.rawdb_field_handlers import RawdbFieldHandler
 from apps.rawdb.signals import DocumentEvent
 from apps.task.tasks import ExtendedTask, call_task, CeleryTaskLogger
+from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 import task_names
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,6 +74,8 @@ __email__ = "support@contraxsuite.com"
 MODULE_NAME = __name__
 
 CACHE_DOC_NOTIFICATION_PREFIX = 'DocumentNotification_'
+
+logger = get_task_logger(__name__)
 
 
 class SendDigest(ExtendedTask):
@@ -566,3 +573,16 @@ def values_look_equal(a, b) -> bool:
     except:
         pass
     return False
+
+
+@app.task
+def send_web_notifications():
+    """Collects web notifications, that are in storage, in packs and sends them through websocket
+    """
+    TaskUtils.prepare_task_execution()
+    storage = WebNotificationStorage()
+    push(storage.REDIS_IS_COLLECTING_TASKS_KEY, 'False')
+    notifications = storage.extract()
+    for notification in notifications:
+        notification.send()
+    logger.info(f"{len(notifications)} web notification messages was sent to users")

@@ -24,29 +24,33 @@
 """
 # -*- coding: utf-8 -*-
 
+from urllib.parse import quote
+
 from django.conf import settings
 from django.conf.urls import url
-from django.db.models import Count, F, Q, Case, When, DecimalField
 from django.contrib.postgres.aggregates import StringAgg
+from django.db.models import Count, F, Q, Case, When, DecimalField
 
-# Third-party imports
 import coreapi
 import coreschema
+from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount import providers
+from drf_extra_fields.fields import Base64ImageField
 from guardian.shortcuts import get_objects_for_user
 from rest_framework import routers, viewsets, serializers, views, schemas
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissions, AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-# Project imports
-from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer, APIFormFieldsMixin
+from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer, APIFormFieldsMixin, APILoggingMixin
 from apps.common.schemas import CustomAutoSchema, ObjectToItemResponseMixin, string_content
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,6 +58,8 @@ __email__ = "support@contraxsuite.com"
 # --------------------------------------------------------
 # User View
 # --------------------------------------------------------
+from apps.users.schemas import SocialAccountsAPISchema
+
 
 class UserSerializer(SimpleRelationSerializer):
     photo = serializers.SerializerMethodField()
@@ -94,7 +100,19 @@ class UserSerializer(SimpleRelationSerializer):
     get_permissions.output_field = serializers.DictField(child=serializers.BooleanField())
 
 
+class CustomBase64ImageField(Base64ImageField):
+    def to_representation(self, value):
+        if not value:
+            return None
+        try:
+            url = value.url
+        except AttributeError:
+            return None
+        return url
+
+
 class UserProfileSerializer(UserSerializer):
+    photo = CustomBase64ImageField(required=False, allow_null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -103,9 +121,20 @@ class UserProfileSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'last_name', 'first_name', 'name', 'initials',
+        fields = ['username', 'last_name', 'first_name', 'name', 'initials', 'photo',
                   'email', 'organization', 'groups']
         read_only_fields = ('username', 'email', 'initials')
+
+    def save(self, **kwargs):
+        initial_photo_name = None
+        if self.instance is not None:
+            initial_photo_name = self.instance.photo.name
+        instance = super().save(**kwargs)
+        if initial_photo_name and initial_photo_name != instance.photo.name:
+            from apps.common.file_storage import get_media_file_storage
+            storage = get_media_file_storage(folder='media')
+            storage.delete(initial_photo_name)
+        return instance
 
 
 class UserStatsSerializer(serializers.Serializer):
@@ -293,10 +322,38 @@ class VerifyAuthTokenAPIView(views.APIView):
         return Response()
 
 
+class SocialAccountsAPIView(APILoggingMixin, APIView):
+    permission_classes = (AllowAny,)
+    authentication_classes = []
+    schema = SocialAccountsAPISchema()
+    action = 'retrieve'    # need for schema to treat response as single object, not list
+
+    def get(self, request, *_args, **_kwargs):
+        root_url = request.build_absolute_uri('/')
+        next_val = quote(root_url.rstrip('/') + '/#/?redirect_oauth=true')
+
+        social_apps = SocialApp.objects.all()
+        social_app_data = []
+        for app in social_apps:  # type: SocialApp
+            provider = providers.registry.by_id(app.provider)
+            provider_url = provider.get_login_url(None)
+            provider_url = f'{provider_url.rstrip()}?next={next_val}'
+            social_app_data.append({
+                'name': app.name,
+                'provider': app.provider,
+                'login_url': provider_url
+            })
+
+        return Response({
+            'social_accounts': social_app_data
+        })
+
+
 router = routers.DefaultRouter()
 router.register('users', UserViewSet, 'user')
 
 
 urlpatterns = [
     url('verify-token/', VerifyAuthTokenAPIView.as_view(), name='verify-token'),
+    url(r'social_accounts/$', SocialAccountsAPIView.as_view(), name='social_accounts'),
 ]

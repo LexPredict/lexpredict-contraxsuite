@@ -25,26 +25,35 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any, Set
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models.deletion import CASCADE
+from django.dispatch import receiver
+from django.urls import reverse
 
 from apps.common.model_utils.improved_django_json_encoder import ImprovedDjangoJSONEncoder
+from apps.common.redis import lpush, llen, lrange, ltrim, push, pop
+from apps.common.signals import post_bulk_create
+from apps.common.singleton import Singleton
 from apps.common.sql_commons import SQLClause
 from apps.document.models import DocumentType, DocumentField
-from apps.rawdb.constants import FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, FIELD_CODE_IS_COMPLETED, \
-    FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE
+from apps.rawdb.constants import FIELD_CODE_CREATE_DATE, FIELD_CODE_IS_REVIEWED, \
+    FIELD_CODE_IS_COMPLETED, FIELD_CODE_ASSIGNEE_ID, FIELD_CODE_ASSIGN_DATE
 from apps.rawdb.field_value_tables import query_documents, \
     DocumentQueryResults
 from apps.rawdb.rawdb.query_parsing import SortDirection
 from apps.users.models import User
+from apps.websocket.websockets import Websockets
+from apps.websocket.channel_message import ChannelMessage
+from apps.websocket import channel_message_types as message_types
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -232,18 +241,21 @@ class PeriodThisWeek(DigestPeriod):
     code = 'this_week'
     title = 'This week'
 
-    def prepare_period(self, config: 'DocumentDigestConfig', dst_user: User, run_date: datetime.datetime) \
+    def prepare_period(self, config: 'DocumentDigestConfig', dst_user: User,
+                       run_date: datetime.datetime) \
             -> Tuple[datetime.datetime, datetime.datetime]:
         period_start = (run_date - datetime.timedelta(days=run_date.weekday())) \
             .replace(hour=0, minute=0, second=0, microsecond=0)
-        return period_start.astimezone(dst_user.get_time_zone()), run_date.astimezone(dst_user.get_time_zone())
+        return period_start.astimezone(dst_user.get_time_zone()), \
+               run_date.astimezone(dst_user.get_time_zone())
 
 
 class PeriodPrevWeek(DigestPeriod):
     code = 'prev_week'
     title = 'Previous week'
 
-    def prepare_period(self, config: 'DocumentDigestConfig', dst_user: User, run_date: datetime.datetime) \
+    def prepare_period(self, config: 'DocumentDigestConfig', dst_user: User,
+                       run_date: datetime.datetime) \
             -> Tuple[datetime.datetime, datetime.datetime]:
         this_week_start = (run_date - datetime.timedelta(days=run_date.weekday())) \
             .replace(hour=0, minute=0, second=0, microsecond=0)
@@ -252,7 +264,8 @@ class PeriodPrevWeek(DigestPeriod):
                this_week_start.astimezone(dst_user.get_time_zone())
 
 
-DIGEST_PERIODS = [PeriodAfterLastRun(), PeriodPrevDay(), PeriodPrevWeek(), PeriodThisDay(), PeriodThisWeek()]
+DIGEST_PERIODS = [PeriodAfterLastRun(), PeriodPrevDay(), PeriodPrevWeek(), PeriodThisDay(),
+                  PeriodThisWeek()]
 
 DIGEST_PERIODS_BY_CODE = {p.code: p for p in DIGEST_PERIODS}  # type: Dict[str, DigestPeriod]
 DIGEST_PERIOD_CHOICES = ((p.code, p.title) for p in DIGEST_PERIODS)
@@ -301,7 +314,8 @@ class DocumentDigestConfig(models.Model):
     header = models.CharField(max_length=2048, null=True, blank=True, help_text='''Template of the header
     in Jinja2 syntax. Leave empty for using the default. Example: {0}'''.format(DocFilterLoadedDocuments.header))
 
-    generic_fields = JSONField(encoder=ImprovedDjangoJSONEncoder, default=document_digest_config_generic_fields_default)
+    generic_fields = JSONField(encoder=ImprovedDjangoJSONEncoder,
+                               default=document_digest_config_generic_fields_default)
 
     user_fields = models.ManyToManyField(DocumentField, blank=True, help_text='''Fields of the documents to 
     render in the email. Should match the specified document type. Leave empty for rendering all fields.
@@ -341,7 +355,8 @@ class DocumentDigestConfig(models.Model):
 
 
 class DocumentDigestSendDate(models.Model):
-    config = models.ForeignKey(DocumentDigestConfig, null=False, blank=False, db_index=True, on_delete=CASCADE)
+    config = models.ForeignKey(DocumentDigestConfig, null=False, blank=False, db_index=True,
+                               on_delete=CASCADE)
 
     to = models.ForeignKey(User, null=False, blank=False, db_index=True, on_delete=CASCADE)
 
@@ -398,7 +413,8 @@ class DocumentAssignedEvent:
     code = 'document_assigned'
     title = 'Document assigned'
     default_subject = 'Document assigned: {{ document.document_name }}'
-    default_header = 'Document "{{ document.document_name }}" assigned to {{ document.assignee_name }}'
+    default_header = 'Document "{{ document.document_name }}" assigned to ' \
+                     '{{ document.assignee_name }}'
     default_bulk_subject = 'Documents assigned ({{ documents|length }})'
     default_bulk_header = '{{ documents|length }} document(s) have been assigned'
 
@@ -407,7 +423,8 @@ class NotificationRecipients:
     code = None
     title = None
 
-    def resolve(self, subscription: 'DocumentNotificationSubscription', document_fields: Dict[str, Any]) \
+    def resolve(self, subscription: 'DocumentNotificationSubscription',
+                document_fields: Dict[str, Any]) \
             -> Optional[List[User]]:
         pass
 
@@ -416,7 +433,8 @@ class CurrentAssignee(NotificationRecipients):
     code = 'current_assignee'
     title = 'Current assignee'
 
-    def resolve(self, subscription: 'DocumentNotificationSubscription', document_fields: Dict[str, Any]) \
+    def resolve(self, subscription: 'DocumentNotificationSubscription',
+                document_fields: Dict[str, Any]) \
             -> Optional[List[User]]:
         assignee_id = document_fields.get(FIELD_CODE_ASSIGNEE_ID)
         return [User.objects.get(pk=assignee_id)] if assignee_id is not None else None
@@ -433,8 +451,9 @@ class SpecifiedUser(NotificationRecipients):
 
 
 NOTIFICATION_RECIPIENTS = [CurrentAssignee(), SpecifiedUser()]
-NOTIFICATION_RECIPIENTS_BY_CODE = {d.code: d
-                                   for d in NOTIFICATION_RECIPIENTS}  # type: Dict[str, NotificationRecipients]
+NOTIFICATION_RECIPIENTS_BY_CODE = {
+    d.code: d for d in NOTIFICATION_RECIPIENTS
+}  # type: Dict[str, NotificationRecipients]
 NOTIFICATION_RECIPIENTS_CHOICES = ((d.code, d.title) for d in NOTIFICATION_RECIPIENTS)
 
 DOCUMENT_EVENTS = [DocumentLoadedEvent(), DocumentChangedEvent(), DocumentAssignedEvent()]
@@ -453,9 +472,11 @@ class DocumentNotificationSubscription(models.Model):
 
     document_type = models.ForeignKey(DocumentType, blank=False, null=False, on_delete=CASCADE)
 
-    event = models.CharField(max_length=100, blank=False, null=False, choices=DOCUMENT_EVENTS_CHOICES)
+    event = models.CharField(max_length=100, blank=False, null=False,
+                             choices=DOCUMENT_EVENTS_CHOICES)
 
-    recipients = models.CharField(max_length=100, blank=False, null=False, choices=NOTIFICATION_RECIPIENTS_CHOICES)
+    recipients = models.CharField(max_length=100, blank=False, null=False,
+                                  choices=NOTIFICATION_RECIPIENTS_CHOICES)
 
     specified_user = models.ForeignKey(User, blank=True, null=True, on_delete=CASCADE)
 
@@ -506,3 +527,237 @@ class DocumentNotificationSubscription(models.Model):
         if not self.event:
             return None
         return DOCUMENT_EVENTS_BY_CODE.get(self.event)
+
+
+@Singleton
+class WebNotificationStorage:
+    REDIS_KEY = 'web_notification_list'
+    NOTIFICATION_BATCH_SIZE = 10
+    # CRITICAL_NOTIFICATION_BATCH_SIZE is to control situations when there are too much \
+    # notifications in the storage or celery was crashed
+    CRITICAL_NOTIFICATION_BATCH_SIZE = 100
+    SEND_TIME_DELAY_SECONDS = 2
+    REDIS_IS_COLLECTING_TASKS_KEY = 'is_collecting_web_notifications'
+
+    def process(self, web_notification_message):
+        from apps.notifications.tasks import send_web_notifications
+        self.add(web_notification_message)
+        # sometimes redis value has additional bytes, that's why `in` is used
+        if 'True' not in pop(self.REDIS_IS_COLLECTING_TASKS_KEY) \
+                or llen(self.REDIS_KEY) >= self.CRITICAL_NOTIFICATION_BATCH_SIZE:
+            push(self.REDIS_IS_COLLECTING_TASKS_KEY, 'True')
+            send_web_notifications.apply_async(countdown=self.SEND_TIME_DELAY_SECONDS)
+
+    def add(self, web_notification_message):
+        lpush(self.REDIS_KEY, web_notification_message)
+
+    def extract(self):
+        if llen(self.REDIS_KEY) > self.NOTIFICATION_BATCH_SIZE:
+            notification_messages = lrange(self.REDIS_KEY, start=0,
+                                           end=self.NOTIFICATION_BATCH_SIZE-1)
+            ltrim(self.REDIS_KEY, start=self.NOTIFICATION_BATCH_SIZE, end=-1)
+        else:
+            notification_messages = lrange(self.REDIS_KEY, start=0, end=-1, delete=True)
+        return notification_messages
+
+
+class WebNotificationTypes(Enum):
+    DOCUMENT_ASSIGNED = {
+        'type': "document_assigned",
+        'template': 'Document "{document}" was assigned to {assignee} by {action_creator}',
+        'template_keywords': ['document', 'assignee', 'action_creator'],
+        'link_type': 'document',
+    }
+    DOCUMENT_UNASSIGNED = {
+        'type': "document_unassigned",
+        'template': 'Document "{document}" was unassigned from {assignee} by {action_creator}',
+        'template_keywords': ['document', 'assignee', 'action_creator'],
+        'link_type': 'project-grid',
+    }
+    CLAUSES_ASSIGNED = {
+        'type': "clauses_assigned",
+        'template': '{count} clause{plural} assigned to {assignee} by {action_creator} in project '
+                    '"{project}"',
+        'template_keywords': ['count', 'plural', 'assignee', 'action_creator', 'project'],
+        'link_type': 'project-clause-grid',
+    }
+    CLAUSES_UNASSIGNED = {
+        'type': "clauses_unassigned",
+        'template': '{count} clause{plural} unassigned from {assignee} by {action_creator} in '
+                    'project "{project}"',
+        'template_keywords': ['count', 'plural', 'assignee', 'action_creator', 'project'],
+        'link_type': 'project-grid',
+    }
+    DOCUMENTS_UPLOADED = {
+        'type': "documents_uploaded",
+        'template': '{count} document{plural} uploaded to project "{project}"',
+        'template_keywords': ['count', 'plural', 'project'],
+        'link_type': 'project-grid',
+    }
+    DOCUMENT_DELETED = {
+        'type': "document_deleted",
+        'template': 'Document "{document}" was deleted from project "{project}"',
+        'template_keywords': ['document', 'project'],
+        'link_type': 'project-grid',
+    }
+    DOCUMENT_ADDED = {
+        'type': "document_added",
+    }
+    DOCUMENT_STATUS_CHANGED = {
+        'type': "document_status_updated",
+        'template': 'Status for document "{document}" was changed to {status} by {action_creator}',
+        'template_keywords': ['document', 'status', 'action_creator'],
+        'link_type': 'document',
+    }
+    CLUSTER_IMPORTED = {
+        'type': "cluster_imported",
+    }
+    FIELD_VALUE_DETECTION_COMPLETED = {
+        'type': "field_value_detection_completed",
+    }
+    CUSTOM_TERM_SET_SEARCH_FINISHED = {
+        'type': "custom_term_set_search_finished",
+    }
+    CUSTOM_COMPANY_TYPE_SEARCH_FINISHED = {
+        'type': "custom_company_type_search_finished",
+    }
+    DOCUMENT_SIMILARITY_SEARCH_FINISHED = {
+        'type': "document_similarity_search_finished",
+    }
+    TEXT_UNIT_SIMILARITY_SEARCH_FINISHED = {
+        'type': "text_unit_similarity_search_finished",
+    }
+
+    @classmethod
+    def choices(cls):
+        return tuple((i.name, i.type()) for i in cls)
+
+    @classmethod
+    def get_plural(cls, count):
+        return "s were" if count > 1 else " was"
+
+    @classmethod
+    def get_type_by_value(cls, value):
+        for i in cls:
+            if i.type() == value:
+                return i
+        return None
+
+    def __str__(self):
+        return self.type()
+
+    def type(self):
+        return self.value.get('type', '')
+
+    def message_template(self):
+        return self.value.get('template', '')
+
+    def message_template_keywords(self):
+        return self.value.get('template_keywords', [])
+
+    def redirect_link_type(self):
+        return self.value.get('link_type', '')
+
+    def check_message_data(self, message_data):
+        # Prepare web notification message data object
+        message_template_keywords = self.message_template_keywords()
+        message_data_keys = message_data.keys()
+
+        # Remove redundant keywords
+        for i in message_data_keys:
+            if i not in message_template_keywords:
+                del message_data[i]
+        # Add missing keywords
+        for i in message_template_keywords:
+            if i not in message_data_keys:
+                message_data[i] = ''
+
+        return message_data
+
+
+class WebNotificationMessage(models.Model):
+    created_date = models.DateTimeField(auto_now_add=True, db_index=True)
+    message_data = JSONField(blank=True, null=True)
+    notification_type = models.CharField(max_length=100, db_index=True, null=True, blank=True,
+                                         choices=WebNotificationTypes.choices(),
+                                         help_text='Notification type')
+    redirect_link = JSONField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'web notification message'
+        verbose_name_plural = 'web notification messages'
+        db_table = 'web_notification_message'
+
+    def get_recipients_ids(self):
+        return list(self.notifications.all().values_list('recipient_id', flat=True))
+
+    @classmethod
+    def bulk_create_notification_messages(cls, notifications: list):
+        """
+        Creates multiple WebNotificationMessages and proper WebNotifications at a time
+        """
+        web_notifications = []
+        web_notification_recipients = []
+        for message_data, redirect_link, notification_type, recipients in notifications:
+            web_notifications.append(WebNotificationMessage(message_data=message_data,
+                                                            redirect_link=redirect_link,
+                                                            notification_type=notification_type))
+            web_notification_recipients.append({
+                'message_data': message_data,
+                'notification_type': notification_type,
+                'recipients': recipients
+            })
+        if web_notifications:
+            WebNotificationMessage.objects.bulk_create(web_notifications,
+                                                       recipients=web_notification_recipients)
+
+    def send(self):
+        data = {
+            'id': self.id,
+            'message_data': self.message_data,
+            'message_template': WebNotificationTypes.get_type_by_value(
+                self.notification_type).message_template(),
+            'notification_type': self.notification_type,
+            'redirect_link': self.redirect_link,
+            'created_date': self.created_date,
+        }
+        message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_WEB_NOTIFICATION_ADDED, data)
+        Websockets().send_to_users_by_ids(user_ids=self.get_recipients_ids(), message_obj=message)
+
+
+@receiver(post_bulk_create, sender=WebNotificationMessage)
+def generate_web_notifications(sender, queryset, *args, **kwargs):
+    recipients = kwargs.get('kwargs', {}).get('recipients', [])
+    notifications = []
+    for recipient in recipients:
+        notification = WebNotificationMessage.objects.filter(
+            message_data=recipient['message_data'],
+            notification_type=recipient['notification_type']).last()
+        if notification:
+            notifications.extend([
+                WebNotification(recipient_id=i, notification=notification)
+                for i in recipient['recipients']])
+    WebNotification.objects.bulk_create(notifications)
+
+
+class WebNotification(models.Model):
+    LAST_NOTIFICATIONS_COUNT = 15
+
+    recipient = models.ForeignKey(User, blank=True, null=True, on_delete=CASCADE)
+    is_seen = models.BooleanField(default=False)
+    notification = models.ForeignKey(WebNotificationMessage, db_index=True, on_delete=CASCADE,
+                                     related_name="notifications")
+
+    class Meta:
+        verbose_name = 'web notification'
+        verbose_name_plural = 'web notifications'
+        db_table = 'web_notification'
+
+
+@receiver(post_bulk_create, sender=WebNotification)
+def process_web_notification(sender, queryset, *args, **kwargs):
+    storage = WebNotificationStorage()
+    notification_messages_ids = set([item.notification_id for item in queryset])
+    notification_messages = WebNotificationMessage.objects.filter(id__in=notification_messages_ids)
+    for message in notification_messages:
+        storage.process(message)

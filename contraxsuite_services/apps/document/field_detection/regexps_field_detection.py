@@ -32,7 +32,7 @@ import pandas as pd
 import regex as re
 from contraxsuite_logging import CausedException
 from apps.common.log_utils import ProcessLogger
-from apps.document.field_types import TypedField, MultiValueField
+from apps.document.field_types import TypedField, MultiValueField, RelatedInfoField
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
 from apps.document.field_detection.fields_detection_abstractions import FieldDetectionStrategy
 from apps.document.models import ClassifierModel, TextUnit, DocumentFieldDetector, DocumentField, Document, \
@@ -45,8 +45,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -117,10 +117,12 @@ class RegexpsOnlyFieldDetectionStrategy(FieldDetectionStrategy):
         if not ants:
             return None
 
-        if isinstance(typed_field, MultiValueField):
-            field_value = typed_field.build_json_field_value_from_json_ant_values(
-                [a.annotation_value for a in ants])
-        field_value = typed_field.annotation_value_python_to_json(ants[0].annotation_value)
+        # RelatedInfo field can have "False" value while the field has some annotations
+        # but when we detect some annotations for a related info field we consider its value "True"
+        if field.type == RelatedInfoField.type_code:
+            field_value = True if ants else False
+        else:
+            field_value = typed_field.annotation_value_python_to_json(ants[0].annotation_value)
         return FieldValueDTO(field_value=field_value, annotations=ants)
 
     @classmethod
@@ -249,7 +251,8 @@ class FieldBasedRegexpsDetectionStrategy(FieldDetectionStrategy):
                     values.append(value)
 
         if isinstance(typed_field, MultiValueField):
-            return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values(values))
+            return FieldValueDTO(field_value=typed_field.build_json_field_value_from_json_ant_values(
+                values, doc.pk, field.pk))
 
 
 class CsvDetectorImporter:

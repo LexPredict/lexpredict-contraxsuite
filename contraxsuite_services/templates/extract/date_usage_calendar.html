@@ -12,7 +12,7 @@
 {% endblock %}
 
 {% block content %}
-  <select name="document_id" data-placeholder="Filter by a document..." required="" id="document_id" class="chosen">
+  <select name="document_id" data-placeholder="Filter by a document..." required="" id="document_id" class="doc_chosen">
     <option></option>
     <option value="">View data for all documents</option>
     {% for document in documents %}
@@ -54,7 +54,7 @@
     $(function () {
       $.ajaxSetup({ cache: false });
 
-      $('select.chosen:enabled')
+      $('select.doc_chosen:enabled')
           .chosen({width: "50%"})
           .change(function(ev) {
               draw_calendar();

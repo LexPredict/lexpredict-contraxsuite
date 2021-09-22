@@ -53,15 +53,17 @@ from apps.celery import app
 from apps.common.file_storage import get_file_storage
 from apps.common.models import Action
 from apps.document import signals
-from apps.document.constants import DocumentGenericField
+from apps.document.constants import DocumentGenericField, DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.field_detection import field_detection
-from apps.document.models import Document, DocumentType, TextUnit, FieldAnnotation, FieldAnnotationFalseMatch, \
+from apps.document.models import Document, DocumentType, TextUnit, FieldAnnotation, \
+    FieldAnnotationFalseMatch, \
     FieldAnnotationStatus
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
 from apps.project.notifications import notify_active_upload_sessions, \
-    notify_cancelled_upload_session, notify_update_project_document_fields_completed
+    notify_cancelled_upload_session, notify_update_project_document_fields_completed, \
+    notify_project_annotations_status_updated
 from apps.project.utils.unique_name import UniqueNameBuilder
 from apps.rawdb.constants import FIELD_CODE_STATUS_ID
 from apps.task.tasks import CeleryTaskLogger, Task, purge_task, ExtendedTask
@@ -70,8 +72,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -92,6 +94,10 @@ class ClusterProjectDocuments(ExtendedTask):
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
     max_retries = 3
 
+    default_n_clusters = 3
+    default_method = 'kmeans'
+    default_cluster_by = 'term'
+
     project_clustering_id = None
 
     min_log_interval_seconds = 60 * 5
@@ -102,9 +108,9 @@ class ClusterProjectDocuments(ExtendedTask):
 
     def process(self, **kwargs):
 
-        n_clusters = kwargs.get('n_clusters', 3)
-        method = kwargs.get('method', 'kmeans')
-        cluster_by = kwargs.get('cluster_by', 'term')
+        n_clusters = kwargs.get('n_clusters', self.default_n_clusters)
+        method = kwargs.get('method', self.default_method)
+        cluster_by = kwargs.get('cluster_by', self.default_cluster_by)
 
         self.project_clustering_id = kwargs.get('project_clustering_id')
         project_clustering = ProjectClustering.objects.get(pk=self.project_clustering_id)
@@ -150,7 +156,8 @@ class ClusterProjectDocuments(ExtendedTask):
                                           changed_by_user=None,
                                           system_fields_changed=False,
                                           user_fields_changed=False,
-                                          generic_fields_changed=[DocumentGenericField.cluster_id.value])
+                                          generic_fields_changed=[
+                                              DocumentGenericField.cluster_id.value])
 
         project_clustering.status = SUCCESS
         project_clustering.save()
@@ -167,9 +174,9 @@ class ClusterProjectDocuments(ExtendedTask):
             exc_str = str(exc)
             message_head = 'Clustering failed. '
             message_body = 'Unexpected error while clustering. Try again later.'
-            low_features_message = 'Not enough data points for features ' \
-                                   'of chosen "cluster by". Try adding documents, reducing number ' \
-                                   'of clusters, or changing "cluster by" feature selection.'
+            low_features_message = 'Not enough data points for features of chosen "cluster by". ' \
+                                   'Try adding documents, reducing number of clusters, or ' \
+                                   'changing "cluster by" feature selection.'
 
             if ('max_df corresponds to < documents than min_df' in exc_str) or \
                     ('Number of samples smaller than number of clusters' in exc_str) or \
@@ -192,9 +199,9 @@ class ClusterProjectDocuments(ExtendedTask):
     def log_wo_flooding(self, msg: str, msg_key='') -> None:
         if msg_key:
             last_call = self.log_times.get(msg_key)
-            if last_call:
-                if (datetime.datetime.now() - last_call).total_seconds() < self.min_log_interval_seconds:
-                    return
+            if last_call and (datetime.datetime.now() - last_call).total_seconds() \
+                    < self.min_log_interval_seconds:
+                return
         self.log_info(msg)
         if msg_key:
             self.log_times[msg_key] = datetime.datetime.now()
@@ -214,6 +221,10 @@ class ReassignProjectClusterDocuments(ExtendedTask):
         new_project = Project.objects.get(pk=new_project_id)
 
         documents = Document.objects.filter(documentcluster__pk__in=reassign_cluster_ids)
+
+        # update rawdb cache forGeneric Doc Type
+        for document in documents:
+            signals.document_deleted.send(self.__name__, user=None, document=document)
 
         self.set_doc_unique_name_and_project(documents, new_project, new_project.type)
 
@@ -263,7 +274,6 @@ class ReassignProjectClusterDocuments(ExtendedTask):
                  max_retries=3)
     def reassign_document(task, document_id):
         document = Document.objects.get(pk=document_id)
-        signals.document_deleted.send(task.__class__, user=None, document=document)
         log = CeleryTaskLogger(task)
         dfvs = field_detection.detect_and_cache_field_values_for_document(
             log=log,
@@ -272,8 +282,8 @@ class ReassignProjectClusterDocuments(ExtendedTask):
             generic_fields_changed=True,
             task=field_detection.detect_and_cache_field_values_for_document)
 
-        task.log_info(
-            f'Detected {len(dfvs)} field values for document ' + f'#{document.id} ({document.name})')
+        task.log_info(f'Detected {len(dfvs)} field values for document #{document.id} '
+                      f'({document.name})')
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -326,7 +336,7 @@ class ReassignProjectClusterDocuments(ExtendedTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
                  max_retries=3,
-                 priority=9)
+                 priority=7)
     def finalize(self, project_clustering_id, new_project_id, reassign_cluster_ids):
         """
         Update ProjectClustering.metadata:
@@ -449,7 +459,7 @@ class CancelUpload(ExtendedTask):
     Cancel Upload Session - remove session, remove uploaded files, Documents, Tasks, reindex.
     """
     name = 'Cancel Upload'
-    priority = 9
+    priority = 7
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -572,7 +582,8 @@ def track_session_completed(_celery_task):
                                                 completed=True,
                                                 project__type__code=DocumentType.GENERIC_TYPE_CODE):
         ProjectViewSet._cluster(project=session.project, user_id=session.created_by.id)
-        # TODO: move it in "cluster" task? Or better just count a try? Either use API ProjectViewSet.cluster
+        # TODO: move it in "cluster" task? Or better just count a try? Either use
+        #  API ProjectViewSet.cluster
         Action.objects.create(
             user_id=session.created_by.id,
             name='Cluster Project',
@@ -581,7 +592,10 @@ def track_session_completed(_celery_task):
             object_pk=session.project.pk,
             content_type=ContentType.objects.get_for_model(Project),
             model_name='Project',
-            app_label='project')
+            app_label='project',
+            request_data={'method': ClusterProjectDocuments.default_method,
+                          'cluster_by': ClusterProjectDocuments.default_cluster_by,
+                          'n_clusters': ClusterProjectDocuments.default_n_clusters})
 
     for session in UploadSession.objects.filter(
             notified_upload_started=True,
@@ -650,7 +664,8 @@ class LoadArchive(ExtendedTask):
                 file_name=kwargs.get('file_name'),
                 directory_path=kwargs.get('directory_path'),
                 response_status_code=resp.status_code,
-                response_data=resp.data['status'] if isinstance(resp.data, dict) and 'status' in resp.data
+                response_data=resp.data['status'] if isinstance(resp.data,
+                                                                dict) and 'status' in resp.data
                 else resp.data
             )
         )
@@ -674,11 +689,14 @@ class LoadArchive(ExtendedTask):
                     else:
                         directory_path = self.directory_path
 
-                    self.log_info(
-                        'Extract/start LoadDocument for {} of {} files: name={}, size={}, mime_type={}'.format(
-                            n + 1, len(zip_file_filelist), file_name, file_size, mime_type))
+                    self.log_info(f'Extract/start LoadDocument for {n + 1} of '
+                                  f'{len(zip_file_filelist)} files: name={file_name}, '
+                                  f'size={file_size}, mime_type={mime_type}')
 
-                    with TemporaryUploadedFile(file_name, mime_type, file_size, 'utf-8') as tempfile:
+                    with TemporaryUploadedFile(file_name,
+                                               mime_type,
+                                               file_size,
+                                               'utf-8') as tempfile:
                         tempfile.file = zip_file.open(a_file)
                         tempfile.file.seek = lambda *args: 0
 
@@ -706,11 +724,14 @@ class LoadArchive(ExtendedTask):
                     else:
                         directory_path = self.directory_path
 
-                    self.log_info(
-                        'Extract/start LoadDocument for {} of {} files: name={}, size={}, mime_type={}'.format(
-                            n + 1, len(tar_file_members), file_name, file_size, mime_type))
+                    self.log_info(f'Extract/start LoadDocument for {n + 1} of '
+                                  f'{len(tar_file_members)} files: name={file_name}, '
+                                  f'size={file_size}, mime_type={mime_type}')
 
-                    with TemporaryUploadedFile(file_name, mime_type, file_size, 'utf-8') as tempfile:
+                    with TemporaryUploadedFile(file_name,
+                                               mime_type,
+                                               file_size,
+                                               'utf-8') as tempfile:
                         tempfile.file = tar_file.extractfile(a_file)
 
                         self.upload_file(
@@ -735,6 +756,8 @@ class SetAnnotationsStatus(ExtendedTask):
     def process(self, **kwargs):
         ant_uids = kwargs.get('ids')
         status_id = kwargs.get('status_id')
+        project_id = kwargs.get('project_id')
+        skip_notification = kwargs.get('skip_notification')
 
         # for preventing "connection already closed"
         TaskUtils.prepare_task_execution()
@@ -768,6 +791,9 @@ class SetAnnotationsStatus(ExtendedTask):
         Document.reset_status_from_annotations(ann_status=ann_status,
                                                document_ids=list(ant_docs))
 
+        if not skip_notification:
+            notify_project_annotations_status_updated(task_id=self.task.id, project_id=project_id)
+
 
 class UpdateProjectDocumentsFields(ExtendedTask):
     """
@@ -799,11 +825,13 @@ class UpdateProjectDocumentsFields(ExtendedTask):
 
         for document in documents:
             _fields = [f.code for f, _ in
-                       field_repo.update_field_values(document, self.task.user, fields_data, on_existing_value)]
+                       field_repo.update_field_values(document, self.task.user, fields_data,
+                                                      on_existing_value)]
             fields.update(_fields)
             data = {'document_id': document.pk,
                     'do_not_write': False,
-                    'updated_field_codes': _fields}
+                    'updated_field_codes': _fields,
+                    'skip_modified_values': False}
             subtask_args.append((data,))
 
         self.log_info(f'Cache and update field values for fields [{fields}]')
@@ -825,7 +853,7 @@ class UpdateProjectDocumentsFields(ExtendedTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3,
-                 priority=9)
+                 priority=7)
     def convert(task: ExtendedTask,
                 document_id: int,
                 file_name: str,
@@ -852,7 +880,7 @@ class UpdateProjectDocumentsFields(ExtendedTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3,
-                 priority=9)
+                 priority=7)
     def notify_task_completed(task: ExtendedTask,
                               task_id,
                               project_id: int,

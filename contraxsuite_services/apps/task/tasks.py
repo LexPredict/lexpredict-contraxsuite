@@ -51,7 +51,7 @@ import pandas as pd
 from celery import shared_task, signature
 from celery.exceptions import SoftTimeLimitExceeded, Retry
 from celery.result import AsyncResult
-from celery.states import FAILURE, UNREADY_STATES
+from celery.states import FAILURE, UNREADY_STATES, SUCCESS
 from celery.utils.log import get_task_logger
 from celery.utils.time import get_exponential_backoff_interval
 # Django imports
@@ -68,7 +68,7 @@ from lexnlp.extract.en.contracts.detector import is_contract
 from lexnlp.nlp.en.segments.paragraphs import get_paragraphs
 from psycopg2 import InterfaceError, OperationalError
 from text_extraction_system_api.client import TextExtractionSystemWebClient
-from text_extraction_system_api.dto import PlainTextStructure, STATUS_DONE, OutputFormat
+from text_extraction_system_api.dto import PlainTextStructure, STATUS_DONE, OutputFormat, TableParser
 
 # Project imports
 import task_names
@@ -114,8 +114,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.0.0/LICENSE"
-__version__ = "2.0.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
+__version__ = "2.1.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -148,7 +148,7 @@ def get_task_priority(callable_or_class) -> int:
 
 def get_queue_by_task_priority(priority: int) -> str:
     priority = priority or 0
-    return 'high_priority' if priority > 7 else 'default'
+    return settings.CELERY_QUEUE_HIGH_PRIO if priority > 7 else settings.CELERY_QUEUE_DEFAULT
 
 
 class ExtendedTask(app.Task):
@@ -165,6 +165,7 @@ class ExtendedTask(app.Task):
     """
 
     db_connection_ping = False
+    weight = 100
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -304,7 +305,8 @@ class ExtendedTask(app.Task):
                     priority=priority or 0,
                     call_stack=call_stack,
                     restart_count=0,
-                    bad_health_check_num=0)
+                    bad_health_check_num=0,
+                    weight=self.weight)
         task.save()
         self.task.has_sub_tasks = True
 
@@ -839,6 +841,7 @@ class LoadDocuments(ExtendedTask):
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
     max_retries = 3
+    weight = 10
 
     TASK_META_PREDEFINED_DOC_FIELDS_CODE_TO_VAL = 'pre_defined_doc_fields_code_to_val'
     TASK_META_FILE_NAME = 'file_name'
@@ -1026,7 +1029,7 @@ class LoadDocuments(ExtendedTask):
                                         parent_task_id=task.request.id,
                                         status=None,
                                         own_status=None,
-                                        queue='default',
+                                        queue=settings.CELERY_QUEUE_DEFAULT,
                                         args=(),
                                         user_id=user_id,
                                         kwargs={},
@@ -1047,12 +1050,16 @@ class LoadDocuments(ExtendedTask):
             client = TextExtractionSystemWebClient(settings.TEXT_EXTRACTION_SYSTEM_URL)
 
             from apps.document.app_vars import OCR_ENABLE, DESKEW_ENABLE, \
-                DOCUMENT_LOCALE, OCR_FILE_SIZE_LIMIT, PDF_COORDINATES_DEBUG_ENABLE, TABLE_DETECTION_ENABLE
+                DOCUMENT_LOCALE, OCR_FILE_SIZE_LIMIT, PDF_COORDINATES_DEBUG_ENABLE, TABLE_DETECTION_ENABLE, \
+                TABLE_DETECTION_METHOD, OCR_PAGE_TIMEOUT, REMOVE_OCR_LAYERS
             ocr_enable = OCR_ENABLE.val(project_id=project_id) \
                          and os.path.getsize(file_path) <= OCR_FILE_SIZE_LIMIT.val(project_id=project_id) * 1024 * 1024
+            remove_ocr_layers = REMOVE_OCR_LAYERS.val(project_id)
             deskew_enable = DESKEW_ENABLE.val(project_id=project_id)
             coords_debug_enable = PDF_COORDINATES_DEBUG_ENABLE.val(project_id=project_id)
             table_detection_enable = TABLE_DETECTION_ENABLE.val(project_id=project_id)
+            table_parser_str = TABLE_DETECTION_METHOD.val(project_id=project_id)
+            ocr_page_timeout = OCR_PAGE_TIMEOUT.val(project_id=project_id)
 
             call_back_url = f'{settings.TEXT_EXTRACTION_SYSTEM_CALLBACK_URL}/{process_results_task.id}/'
 
@@ -1071,7 +1078,10 @@ class LoadDocuments(ExtendedTask):
                                                      'special_log_type': 'cx',
                                                      'log_main_task_id': task.main_task_id
                                                  },
-                                                 output_format=OutputFormat.msgpack)
+                                                 output_format=OutputFormat.msgpack,
+                                                 table_parser=TableParser(table_parser_str),
+                                                 page_ocr_timeout_sec=ocr_page_timeout,
+                                                 remove_ocr_layer=remove_ocr_layers)
             return document.pk
 
     @staticmethod
@@ -1240,6 +1250,7 @@ class LoadDocuments(ExtendedTask):
             TextUnitText.objects.bulk_create([
                 TextUnitText(
                     text_unit=text_unit,
+                    document_id=doc.pk,
                     text=plain_text[p.start:p.end]
                 ) for text_unit, p in zip(paragraph_list, plain_text_struct.paragraphs)
             ])
@@ -1260,6 +1271,7 @@ class LoadDocuments(ExtendedTask):
             TextUnitText.objects.bulk_create([
                 TextUnitText(
                     text_unit=text_unit,
+                    document_id=doc.pk,
                     text=plain_text[s.start:s.end]
                 ) for text_unit, s in zip(sentence_list, plain_text_struct.sentences)
             ])
@@ -1299,10 +1311,10 @@ class LoadDocuments(ExtendedTask):
                 doc_tables = [
                     DocumentTable(document=doc,
                                   table=pd.DataFrame(t.data, columns=range(len(t.data[0]))),
-                                  bounding_rect=[t.coordinates['left'],
-                                                 t.coordinates['top'],
-                                                 t.coordinates['width'],
-                                                 t.coordinates['height']],
+                                  bounding_rect=[t.coordinates.left,
+                                                 t.coordinates.top,
+                                                 t.coordinates.width,
+                                                 t.coordinates.height],
                                   page=t.page)
                     for t in tables_json.tables if t.data
                 ]
@@ -1431,6 +1443,7 @@ class CreateDocument(ExtendedTask):
     retry_backoff = True
     autoretry_for = (SoftTimeLimitExceeded, InterfaceError, OperationalError)
     max_retries = 3
+    weight = 10
     name = 'Create Document'
 
     def process(self,
@@ -1654,9 +1667,16 @@ class Locate(ExtendedTask):
         document_initial_load = bool(kwargs.get('document_initial_load'))
         predefined_field_codes_to_python_values = kwargs.get('predefined_field_codes_to_python_values')
         project_id = kwargs.get('project_id')
-        selected_tags = kwargs.get('selected_tags')
         self.project_id = project_id
         self.root_task_id = self.task.id
+
+        if project_id:
+            # NB: we subscribe on failed event right from the beginning
+            # but we subscribe on successful completion event later on when
+            # all subtasks are created
+            self.run_if_task_or_sub_tasks_failed(
+                Locate.notify_on_completed_complete_action,
+                args=(project_id, self.root_task_id, 'FAILURE'))
 
         # detect items to locate/delete
         if 'locate' in kwargs:
@@ -1739,6 +1759,12 @@ class Locate(ExtendedTask):
               self.project_id,
               self.root_task_id)])
 
+        if project_id:
+            self.run_after_sub_tasks_finished(
+                'Notify on Locate finished',
+                Locate.notify_on_completed_complete_action,
+                [(project_id, self.root_task_id, 'SUCCESS')])
+
     @shared_task(base=ExtendedTask,
                  bind=True,
                  soft_time_limit=3600,
@@ -1767,14 +1793,6 @@ class Locate(ExtendedTask):
                                  locate,
                                  detect_field_values,
                                  fire_doc_changed)])
-        if project_id:
-            self.run_after_sub_tasks_finished(
-                'Notify on Locate finished',
-                Locate.notify_on_completed_complete_action,
-                [(project_id, root_task_id, 'SUCCESS')])
-            self.run_if_task_or_sub_tasks_failed(
-                Locate.notify_on_completed_complete_action,
-                args=(project_id, root_task_id, 'FAILURE'))
 
     @staticmethod
     def save_summary_on_locate_finished(log: ProcessLogger, doc_id: int, locate: Dict[str, Dict],
@@ -1797,7 +1815,7 @@ class Locate(ExtendedTask):
                  retry_backoff=True,
                  autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
                  max_retries=3,
-                 priority=9)
+                 priority=7)
     def on_locate_finished(_self: ExtendedTask,
                            doc_id: int,
                            doc_loaded_by_user_id: Optional[int],
@@ -1930,6 +1948,11 @@ class Locate(ExtendedTask):
                                             project_id: int,
                                             root_task_id: str,
                                             status: str):
+        locate_task: Optional[Task] = Task.objects.filter(id=root_task_id).first()
+        if locate_task:
+            locate_task.status = SUCCESS
+            locate_task.progress = 100
+            locate_task.save(update_fields=['status', 'progress'])
         data = {'task_id': root_task_id, 'task_name': 'Locate',
                 'task_status': status,
                 'project_id': project_id}
@@ -1953,7 +1976,7 @@ class Locate(ExtendedTask):
              retry_backoff=True,
              autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError),
              max_retries=3,
-             priority=9)
+             priority=7)
 def clean_tasks(this_task: ExtendedTask):
     all_tasks = Task.objects.exclude(id=this_task.request.id)
     executing_tasks = [t for t in all_tasks if t.status in UNREADY_STATES]

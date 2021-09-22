@@ -1,112 +1,74 @@
-#shared-configmaps
-
+# shared-configmaps
+---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  creationTimestamp: null
+  name: uwsgi-ini
 data:
   uwsgi.ini: {{ tpl (.Files.Get "files/uwsgi.ini") . | quote }}
+
+
+# local-settings
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
-  name: uwsgi-ini-configmap
-
----
-
-apiVersion: v1
+  name: local-settings
 data:
-  local_settings.py: {{ tpl (.Files.Get "files/local_settings_celery.py") . | quote }}
+  local_settings_celery.py: {{ tpl (.Files.Get "files/local_settings_celery.py") . | quote }}
+  local_settings_websrv.py: {{ tpl (.Files.Get "files/local_settings_websrv.py") . | quote }}
+
+
+
+# contrax-elasticsearch
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
-  name: local-settings-celery
----
-
-apiVersion: v1
-data:
-  local_settings.py: {{ tpl (.Files.Get "files/local_settings_websrv.py") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: local-settings-websrv
-
----
-
-#contrax-elasticsearch
-
-apiVersion: v1
+  name: elasticsearch-conf
 data:
   elasticsearch.yml: {{ tpl (.Files.Get "files/elasticsearch.yml") . | quote }}
+
+# contrax-elasticalert
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
-  name: elasticsearch-yaml-config
-
----
-
-#contrax-elastalert
-
-apiVersion: v1
+  name: elastalert-conf
 data:
   config.yaml: {{ tpl (.Files.Get "files/elastalert-config.yaml") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: elastalert-config-yaml-configmap
-
----
-
-apiVersion: v1
-data:
   elastalert.yaml: {{ tpl (.Files.Get "files/elastalert.yaml") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: elastalert-server-yaml-configmap
-
----
-
-apiVersion: v1
-data:
+  elastalert_smtp_auth.yaml: {{ tpl (.Files.Get "files/elastalert-smtp-auth.yaml") . | quote }}
   config.json: {{ tpl (.Files.Get "files/elastalert-server-config.json") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: elastalert-server-config-json-configmap
-
----
-
-apiVersion: v1
-data:
-  elastalert-smtp-auth.yaml: {{ tpl (.Files.Get "files/elastalert-smtp-auth.yaml") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: elastalert-smtp-auth-yaml-configmap
-
----
 
 #contrax-filebeat
-
+---
 apiVersion: v1
-data:
-  filebeat.yml: {{ tpl (.Files.Get "files/filebeat.yml") . | quote }}
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
-  name: filebeat-1b84ea4a4555e9c33f0ea04461533050
+  name: filebeat-conf
+data:
+  filebeat.yml: {{ tpl (.Files.Get "files/filebeat.yml") . | quote }}
 
----
 
 #contrax-kibana
-
+---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  creationTimestamp: null
+  name: kibana-conf
 data: 
   kibana.yml: |
     server.name: kibana
@@ -117,21 +79,24 @@ data:
     elastalert-kibana-plugin.serverHost: "contrax-elastalert"
     elastalert-kibana-plugin.serverPort: 3030
   # kibana.yml: {{ tpl (.Files.Get "files/kibana.yml") . | quote }}
+
+#contrax-filebeat
+---
+apiVersion: v1
+data:
+  filebeat.yml: {{ tpl (.Files.Get "files/metricbeat.yml") . | quote }}
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace }}
   creationTimestamp: null
-  name: contrax-kibana-conf-configmap
-
-
----
+  name: metricbeat-conf
 
 #contrax-nginx
-
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   name: nginx-conf
 data:
   nginx.conf: {{ tpl (.Files.Get "files/nginx.conf") . | quote }}
@@ -140,49 +105,137 @@ data:
   default.conf: {{ tpl (.Files.Get "files/default.conf") . | quote }}
   internal.conf: {{ tpl (.Files.Get "files/internal.conf") . | quote }}
   kibana_htpasswd: |
-    Administrator:$apr1$yc07e2od$U638sCmxqSKUcNSjfWoYU0
-  mime.types: {{ tpl (.Files.Get "files/nginx/mime.types") . | quote }}
+    {{ .Values.basicAuth | quote }} }}
+  mime.types: |
+    types {
+      text/html                             html htm shtml;
+      text/css                              css;
+      text/xml                              xml;
+      image/gif                             gif;
+      image/jpeg                            jpeg jpg;
+      application/javascript                js;
+      application/atom+xml                  atom;
+      application/rss+xml                   rss;
+      text/mathml                           mml;
+      text/plain                            txt;
+      text/vnd.sun.j2me.app-descriptor      jad;
+      text/vnd.wap.wml                      wml;
+      text/x-component                      htc;  
+      image/png                             png;
+      image/tiff                            tif tiff;
+      image/vnd.wap.wbmp                    wbmp;
+      image/x-icon                          ico;
+      image/x-jng                           jng;
+      image/x-ms-bmp                        bmp;
+      image/svg+xml                         svg svgz;
+      image/webp                            webp; 
+      application/font-woff                 woff;
+      application/java-archive              jar war ear;
+      application/json                      json;
+      application/mac-binhex40              hqx;
+      application/msword                    doc;
+      application/pdf                       pdf;
+      application/postscript                ps eps ai;
+      application/rtf                       rtf;
+      application/vnd.apple.mpegurl         m3u8;
+      application/vnd.ms-excel              xls;
+      application/vnd.ms-fontobject         eot;
+      application/vnd.ms-powerpoint         ppt;
+      application/vnd.wap.wmlc              wmlc;
+      application/vnd.google-earth.kml+xml  kml;
+      application/vnd.google-earth.kmz      kmz;
+      application/x-7z-compressed           7z;
+      application/x-cocoa                   cco;
+      application/x-java-archive-diff       jardiff;
+      application/x-java-jnlp-file          jnlp;
+      application/x-makeself                run;
+      application/x-perl                    pl pm;
+      application/x-pilot                   prc pdb;
+      application/x-rar-compressed          rar;
+      application/x-redhat-package-manager  rpm;
+      application/x-sea                     sea;
+      application/x-shockwave-flash         swf;
+      application/x-stuffit                 sit;
+      application/x-tcl                     tcl tk;
+      application/x-x509-ca-cert            der pem crt;
+      application/x-xpinstall               xpi;
+      application/xhtml+xml                 xhtml;
+      application/xspf+xml                  xspf;
+      application/zip                       zip;  
+      application/octet-stream              bin exe dll;
+      application/octet-stream              deb;
+      application/octet-stream              dmg;
+      application/octet-stream              iso img;
+      application/octet-stream              msi msp msm;  
+      application/vnd.openxmlformats-officedocument.wordprocessingml.document    docx;
+      application/vnd.openxmlformats-officedocument.spreadsheetml.sheet          xlsx;
+      application/vnd.openxmlformats-officedocument.presentationml.presentation  pptx; 
+      audio/midi                            mid midi kar;
+      audio/mpeg                            mp3;
+      audio/ogg                             ogg;
+      audio/x-m4a                           m4a;
+      audio/x-realaudio                     ra;  
+      video/3gpp                            3gpp 3gp;
+      video/mp2t                            ts;
+      video/mp4                             mp4;
+      video/mpeg                            mpeg mpg;
+      video/quicktime                       mov;
+      video/webm                            webm;
+      video/x-flv                           flv;
+      video/x-m4v                           m4v;
+      video/x-mng                           mng;
+      video/x-ms-asf                        asx asf;
+      video/x-ms-wmv                        wmv;
+      video/x-msvideo                       avi;
+    }  
   nginx-customer.conf: {{ tpl (.Files.Get "files/nginx-customer.conf") . | quote }}
   powa.conf: {{ tpl (.Files.Get "files/powa.conf") . | quote }}
   uwsgi_params: {{ tpl (.Files.Get "files/nginx/uwsgi_params") . | quote }}
   .env: |
-    API_HOST={{ .Values.domain_name }}
-    WS_HOST={{ .Values.domain_name }}
+    API_HOST={{ .Values.domainName }}
+    WS_HOST={{ .Values.domainName }}
+  env.json: |
+    {
+      "API_HOST": {{ .Values.domainName | quote }},
+      "WS_HOST": {{ .Values.domainName | quote }}
+    }
 
----
 
 #contrax-jupyter
-
+---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  creationTimestamp: null
+  name: jupyter-notebook-conf
 data:
   jupyter_notebook_config.py: {{ tpl (.Files.Get "files/jupyter_notebook_config.py") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: jupyter-notebook-config-py-configmap
 
----
 
 #contrax-powa-web
-
+---
 apiVersion: v1
-data:
-  powa-web.conf: {{ tpl (.Files.Get "files/powa-web.conf") . | quote }}
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   creationTimestamp: null
-  name: powa-web-configmap
+  name: powa-web-conf
+data:
+  powa-web.conf: {{ tpl (.Files.Get "files/powa-web.conf") . | quote }}
 
----
 
 # pgbouncer daphne
+---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  name: pgbouncer-websrv-ini
 data:
   pgbouncer.ini: |
     [databases]
-    contrax1 = host={{ .Values.pg_host_name }} port=5432 user={{ .Values.pg_user }} password={{ .Values.pg_password }} dbname={{ .Values.pg_db_name }}
+    contrax1 = host={{ .Values.dbHost }} port={{ .Values.dbPort }} user={{ .Values.dbUsername }} password={{ .Values.dbPassword }} dbname={{ .Values.dbName }}
     [pgbouncer]
     listen_addr = 0.0.0.0
     listen_port = 5432
@@ -196,26 +249,26 @@ data:
     ignore_startup_parameters = extra_float_digits
     application_name_add_host = 1
     # Log settings
-    admin_users = contrax1
-    stats_users = contrax1
+    admin_users = {{ .Values.dbUsername }}
+    stats_users = {{ .Values.dbUsername }}
     log_connections = 0
     log_disconnections = 0
     # Connection sanity checks, timeouts
     server_reset_query = DISCARD ALL
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  name: pgbouncer-websrv-ini-configmap
 
----
 
 # pgbouncer celery
-
+---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  creationTimestamp: null
+  name: pgbouncer-celery-ini
 data:
   pgbouncer.ini: |
     [databases]
-    contrax1 = host={{ .Values.pg_host_name }} port=5432 user={{ .Values.pg_user }} password={{ .Values.pg_password }} dbname={{ .Values.pg_db_name }}
+    contrax1 = host={{ .Values.dbHost }} port={{ .Values.dbPort }} user={{ .Values.dbUsername }} password={{ .Values.dbPassword }} dbname={{ .Values.dbName }}
     [pgbouncer]
     listen_addr = 0.0.0.0
     listen_port = 5432
@@ -229,65 +282,102 @@ data:
     ignore_startup_parameters = extra_float_digits
     application_name_add_host = 1
     # Log settings
-    admin_users = contrax1
-    stats_users = contrax1
+    admin_users = {{ .Values.dbUser }}
+    stats_users = {{ .Values.dbUser }}
     log_connections = 0
     log_disconnections = 0
     # Connection sanity checks, timeouts
     server_reset_query = DISCARD ALL
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: pgbouncer-celery-ini-configmap
 
----
 
 # pgbouncer userlist.txt
-
+---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  creationTimestamp: null
+  name: userlist-txt
 data:
   userlist.txt: {{ tpl (.Files.Get "files/pgbouncer.userlist.txt") . | quote }}
-kind: ConfigMap
-metadata:
-  namespace: {{ .Values.namespace}}
-  creationTimestamp: null
-  name: userlist-txt-configmap
 
-{{ if eq .Values.pg_host_name "contrax-db" }}
+
+# contrax-db
 ---
-#contrax-db
-
+{{- if eq .Values.dbType "test" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Values.namespace}}
+  namespace: {{ .Values.namespace | quote }}
   name: postgres-conf
 data:
-  ####
-  - source: pg_${PG_CONFIG_VERSION}
-        target: /contraxsuite/postgresql.conf
-      - source: pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}
-        target: /contraxsuite/db-backup.sh
-      - source: pg_backup_cron_${PG_BACKUP_CRON_CONFIG_VERSION}
-        target: /etc/crontab
-      - source: pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}
-        target: /docker-entrypoint-initdb.d/postgres_init.sql
-  ####
-
-  postgesql.conf: {{ tpl (.Files.Get "files/postgresql.conf") . | quote }}
-  db-backup.sh: {{ tpl (.Files.Get "files/db-backup.sh") . | quote }}
+  pg_conf: {{ tpl (.Files.Get "files/postgresql.conf") . | quote }}
+  pg_backup: {{ tpl (.Files.Get "files/db-backup.sh") . | quote }}
   pg_crontab: {{ tpl (.Files.Get "files/nginx/pg_backup_cron") . | quote }}
-  pg_init.sql: {{ tpl (.Files.Get "files/postgres_init.sql") . | quote }}
-  internal.conf: {{ tpl (.Files.Get "files/internal.conf") . | quote }}
-  kibana_htpasswd: |
-    Administrator:$apr1$yc07e2od$U638sCmxqSKUcNSjfWoYU0
-  mime.types: {{ tpl (.Files.Get "files/nginx/mime.types") . | quote }}
-  nginx-customer.conf: {{ tpl (.Files.Get "files/nginx-customer.conf") . | quote }}
-  powa.conf: {{ tpl (.Files.Get "files/powa.conf") . | quote }}
-  uwsgi_params: {{ tpl (.Files.Get "files/nginx/uwsgi_params") . | quote }}
-  .env: |
-    API_HOST={{ .Values.domain_name }}
-    WS_HOST={{ .Values.domain_name }}
+  pg_init: {{ tpl (.Files.Get "files/postgres_init.sql") . | quote }}
+  pg_hba: {{ tpl (.Files.Get "files/pg_hba.conf") . | quote }}
+{{- end }}
 
-{{ end }}
+# contrax-filebeat
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Values.namespace | quote}}
+  name: filebeat-backend-conf
+
+  labels:
+    k8s-app: contrax-filebeat
+data:
+  filebeat.yml: |-
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          templates:
+            - condition:
+                equals:
+                  kubernetes.namespace: {{ .Values.namespace }}
+              config:
+                - type: container
+                  paths:
+                    /var/log/containers/*${data.kubernetes.container.id}.log
+                  containers.ids:
+                    - "${data.kubernetes.container.id}"
+                  fields:
+                    type: kubernetes_log
+                    cluster: dev
+                    multiline: "true"
+                  multiline.pattern: '^[[:space:]]'
+                  multiline.negate: false
+                  multiline.match: after
+                  processors:
+                    - decode_json_fields:
+                        when.regexp.message: '^{"'
+                        fields: ["message"]
+                        target: ""
+                        overwrite_keys: true
+    processors:
+      - add_cloud_metadata:
+      - add_kubernetes_metadata:
+          in_cluster: true
+          namespace: {{ .Values.namespace }}
+
+    output.elasticsearch:
+      hosts: ['${ELASTICSEARCH_HOST:contrax-elasticsearch}:${ELASTICSEARCH_PORT:9200}']
+      index: "filebeat-%{[special_log_type]:logs}-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+    setup.template.name: "filebeat"
+    setup.template.pattern: "filebeat-*"
+    setup.dashboards.index: "filebeat-*"
+    setup.template.overwrite: true
+
+    setup.dashboards.enabled: true
+
+    setup.kibana.host: "contrax-kibana"
+    setup.kibana.path: /kibana
+    setup.kibana.protocol: "http"
+
+    logging.metrics.enabled: false
+    logging.level: info
+    logging.to_files: true
+    logging.to_syslog: false
