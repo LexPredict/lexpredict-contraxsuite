@@ -1,1 +1,1 @@
-https://github.com/LexPredict/lexpredict-lexnlp/archive/2.0.0.zip
+https://github.com/LexPredict/lexpredict-lexnlp/archive/2.1.0.zip
