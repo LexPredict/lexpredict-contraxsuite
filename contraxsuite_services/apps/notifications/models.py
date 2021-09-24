@@ -543,7 +543,8 @@ class WebNotificationStorage:
         from apps.notifications.tasks import send_web_notifications
         self.add(web_notification_message)
         # sometimes redis value has additional bytes, that's why `in` is used
-        if 'True' not in pop(self.REDIS_IS_COLLECTING_TASKS_KEY) \
+        is_collecting = pop(self.REDIS_IS_COLLECTING_TASKS_KEY) or ""
+        if 'True' not in is_collecting \
                 or llen(self.REDIS_KEY) >= self.CRITICAL_NOTIFICATION_BATCH_SIZE:
             push(self.REDIS_IS_COLLECTING_TASKS_KEY, 'True')
             send_web_notifications.apply_async(countdown=self.SEND_TIME_DELAY_SECONDS)
