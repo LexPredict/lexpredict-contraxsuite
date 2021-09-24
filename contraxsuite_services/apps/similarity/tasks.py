@@ -783,7 +783,7 @@ class DeleteDocumentSimilarityResults(ExtendedTask):
 
         Action.objects.create(name='Processed Similarity Tasks',
                               message=f'{self.name} task for project '
-                                      f'"{Project.objects.get(id=project_id)}" is finished',
+                                      f'"{Project.all_objects.get(id=project_id)}" is finished',
                               user_id=kwargs.get('user_id'),
                               view_action='update',
                               content_type=ContentType.objects.get_for_model(Project),
