@@ -1449,7 +1449,7 @@ class DocumentFieldDetailSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = DocumentField
-        fields = ['uid', 'document_type', 'code', 'long_code', 'title', 'description', 'type',
+        fields = ['uid', 'document_type', 'document_type__title', 'code', 'long_code', 'title', 'description', 'type',
                   'text_unit_type', 'value_detection_strategy',
                   'classifier_init_script', 'formula', 'convert_decimals_to_floats_in_formula_args',
                   'value_regexp', 'depends_on_fields', 'value_detection_strategy_name',
