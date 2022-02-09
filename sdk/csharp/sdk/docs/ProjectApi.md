@@ -1765,7 +1765,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdLocateItemsPOST
 
-> ProjectDetail ProjectProjectsIdLocateItemsPOST (string id, ProjectDetail projectDetail = null)
+> TaskIdResponse ProjectProjectsIdLocateItemsPOST (string id, LocateItemsRequest locateItemsRequest = null)
 
 
 
@@ -1792,11 +1792,11 @@ namespace Example
 
             var apiInstance = new ProjectApi(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this project.
-            var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
+            var locateItemsRequest = new LocateItemsRequest(); // LocateItemsRequest |  (optional) 
 
             try
             {
-                ProjectDetail result = apiInstance.ProjectProjectsIdLocateItemsPOST(id, projectDetail);
+                TaskIdResponse result = apiInstance.ProjectProjectsIdLocateItemsPOST(id, locateItemsRequest);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -1816,11 +1816,11 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this project. | 
- **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] 
+ **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional] 
 
 ### Return type
 
-[**ProjectDetail**](ProjectDetail.md)
+[**TaskIdResponse**](TaskIdResponse.md)
 
 ### Authorization
 

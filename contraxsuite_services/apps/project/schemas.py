@@ -31,9 +31,9 @@ from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, \
     ObjectToItemResponseMixin, json_ct, string_content, object_content, binary_string_schema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -362,6 +362,19 @@ class DetectProjectFieldValuesSchema(CustomAutoSchema):
         document_ids = serializers.ListField(required=False, child=serializers.IntegerField())
 
     request_serializer = DetectProjectFieldValuesRequestSerializer()
+    response_serializer = TaskIdResponseSerializer()
+
+
+class LocateItemsSchema(CustomAutoSchema):
+
+    class LocateItemsRequestSerializer(serializers.Serializer):
+        items_to_locate = serializers.ListField(required=True, child=serializers.CharField())
+        project_id = serializers.IntegerField(required=True)
+        delete_existing = serializers.BooleanField(required=False)
+        search_in = serializers.ListField(required=False, child=serializers.CharField())
+        selected_tags = serializers.ListField(required=False, child=serializers.CharField())
+
+    request_serializer = LocateItemsRequestSerializer()
     response_serializer = TaskIdResponseSerializer()
 
 

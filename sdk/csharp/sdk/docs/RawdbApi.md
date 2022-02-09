@@ -8,7 +8,6 @@ Method | HTTP request | Description
 [**RawdbDocumentsDocumentTypeCodeGET**](RawdbApi.md#rawdbdocumentsdocumenttypecodeget) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**RawdbDocumentsDocumentTypeCodePOST**](RawdbApi.md#rawdbdocumentsdocumenttypecodepost) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**RawdbProjectStatsProjectIdGET**](RawdbApi.md#rawdbprojectstatsprojectidget) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-[**RawdbSocialAccountsGET**](RawdbApi.md#rawdbsocialaccountsget) | **GET** /api/v1/rawdb/social_accounts/ | 
 
 
 
@@ -330,80 +329,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 **Dictionary<string, Object>**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## RawdbSocialAccountsGET
-
-> SocialAccountsResponse RawdbSocialAccountsGET ()
-
-
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class RawdbSocialAccountsGETExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new RawdbApi(Configuration.Default);
-
-            try
-            {
-                SocialAccountsResponse result = apiInstance.RawdbSocialAccountsGET();
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling RawdbApi.RawdbSocialAccountsGET: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-This endpoint does not need any parameter.
-
-### Return type
-
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 

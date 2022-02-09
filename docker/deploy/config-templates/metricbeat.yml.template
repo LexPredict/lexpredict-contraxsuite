@@ -60,6 +60,8 @@ setup.template.overwrite: true
 
 setup.dashboards.enabled: true
 
+setup.ilm.overwrite: true
+
 setup.kibana.host: "contrax-kibana"
 setup.kibana.protocol: "http"
 #setup.kibana.path: "${DOCKER_KIBANA_BASE_PATH}"

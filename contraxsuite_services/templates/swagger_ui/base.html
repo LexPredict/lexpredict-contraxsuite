@@ -25,10 +25,6 @@
        /
       <span><a href="{% url 'openapi-schema' %}?format=openapi" download="contraxsuite-openapi.yaml">YAML</a></span>
     </h5>
-    <h5>
-      <a href="{% url "swagger" "app" %}">CoreAPI Swagger UI</a>
-    </h5>
-
   </div>
   <div id="swagger-ui"></div>
 {% endblock %}
@@ -46,7 +42,10 @@
         SwaggerUIBundle.presets.apis,
         SwaggerUIBundle.SwaggerUIStandalonePreset
       ],
-      layout: "BaseLayout"
+      layout: "BaseLayout",
+      apisSorter: 'alpha',
+      operationsSorter: 'alpha',
+      tagsSorter: 'alpha'
     })
   </script>
   {{ block.super }}

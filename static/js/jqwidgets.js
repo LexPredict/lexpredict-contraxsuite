@@ -36,6 +36,7 @@
       beforeprocessing: function (data) {
         // for server-side pagination
         source.totalrecords = data.total_records;
+        disable_data_export = data.disable_data_export || false;
         render_error(data);
       },
       loadError: function (xhr, status, error){
@@ -726,7 +727,11 @@
     query_data['return_raw_data'] = '1';
     var conjunct = source._source.url.indexOf('?') >= 0 ? '&' : '?';
     var downloadUrl = source._source.url.replace('#', '') + conjunct + $.param(query_data);
-    window.open(downloadUrl);
+    if (disable_data_export) {
+      window.open(downloadUrl, "_self");
+    } else {
+      window.open(downloadUrl);
+    }
     source._source.data = query_data_initial;
   });
 

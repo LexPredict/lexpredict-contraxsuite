@@ -33,7 +33,8 @@ from psycopg2._psycopg import InterfaceError, OperationalError
 
 from django.conf import settings
 
-from apps.common.models import Action
+from apps.common.models import Action, get_default_status
+from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.field_detection import field_detection
 from apps.document.field_detection.detect_field_values_params import DocDetectFieldValuesParams
 from apps.document.models import DocumentType, Document
@@ -41,9 +42,9 @@ from apps.project.models import Project
 from apps.task.tasks import ExtendedTask, call_task_func, CeleryTaskLogger
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -61,6 +62,7 @@ class DetectFieldValues(ExtendedTask):
         self.log_info("Going to detect document field values based on "
                       "the pre-coded regexps and field values entered by users...")
 
+        reset_document_status = existing_data_action == 'delete'
         do_not_run_for_modified_documents = existing_data_action == 'maintain'
         if isinstance(document_type, dict):
             document_type = DocumentType.objects.get(pk=document_type['pk'])
@@ -82,7 +84,8 @@ class DetectFieldValues(ExtendedTask):
             dcptrs = DocDetectFieldValuesParams(document_id,
                                                 False,
                                                 kwargs.get('clear_old_values') or True,
-                                                skip_modified_values=do_not_run_for_modified_documents)
+                                                skip_modified_values=do_not_run_for_modified_documents,
+                                                reset_document_status=reset_document_status)
             self.run_sub_tasks('Detect Field Values For Single Document',
                                DetectFieldValues.detect_field_values_for_document,
                                [(dcptrs.to_dict(),)])
@@ -118,7 +121,8 @@ class DetectFieldValues(ExtendedTask):
             dcptrs = DocDetectFieldValuesParams(doc_id,
                                                 do_not_write,
                                                 kwargs.get('clear_old_values') or True,
-                                                skip_modified_values=do_not_run_for_modified_documents)
+                                                skip_modified_values=do_not_run_for_modified_documents,
+                                                reset_document_status=reset_document_status)
             detect_field_values_for_document_args.append((dcptrs.to_dict(),))
             if source:
                 source_data.append('{0}/{1}'.format(source, name))
@@ -126,7 +130,9 @@ class DetectFieldValues(ExtendedTask):
                 source_data.append(name)
             task_count += 1
 
-        for project_id in set(qs.values_list('project_id', flat=True)):
+        project_ids_list = list(set(qs.values_list('project_id', flat=True)))
+
+        for project_id in project_ids_list:
             Action.objects.create(name='Detected Field Values',
                                   message=f'Detect Field Values task started for project '
                                           f'"{Project.objects.get(id=project_id).name}"',
@@ -140,6 +146,11 @@ class DetectFieldValues(ExtendedTask):
         self.run_sub_tasks('Detect Field Values For Each Document',
                            DetectFieldValues.detect_field_values_for_document,
                            detect_field_values_for_document_args, source_data)
+
+        self.run_after_sub_tasks_finished(
+            'Notify on Detect Field Values finished',
+            DetectFieldValues.notify_on_completed_detect_action,
+            [(project_ids_list, self.task.user_id)])
 
         if task_count > 0:
             self.log_info('Found {0} documents'.format(task_count))
@@ -163,6 +174,11 @@ class DetectFieldValues(ExtendedTask):
         # If the document is in one of completed statuses then
         # the detected values wont be stored even if do_not_write = False.
         # But caching should go as usual.
+
+        if detect_ptrs.reset_document_status:
+            doc.status_id = get_default_status()
+            doc.save()
+
         dfvs = field_detection \
             .detect_and_cache_field_values_for_document(
                 log,
@@ -172,7 +188,8 @@ class DetectFieldValues(ExtendedTask):
                 clear_old_values=detect_ptrs.clear_old_values,
                 updated_field_codes=detect_ptrs.updated_field_codes,
                 skip_modified_values=detect_ptrs.skip_modified_values,
-                task=field_detection.detect_and_cache_field_values_for_document)
+                task=field_detection.detect_and_cache_field_values_for_document,
+                reset_document_status=detect_ptrs.reset_document_status)
 
         task.log_info(f'Detected {len(dfvs)} field values for document ' +
                       f'#{detect_ptrs.document_id} ({doc.name})',
@@ -190,3 +207,37 @@ class DetectFieldValues(ExtendedTask):
                               model_name='Project',
                               app_label='project',
                               object_pk=doc.project_id)
+
+    @staticmethod
+    @shared_task(base=ExtendedTask,
+                 bind=True,
+                 soft_time_limit=3600,
+                 default_retry_delay=10,
+                 retry_backoff=True,
+                 autoretry_for=(SoftTimeLimitExceeded, InterfaceError, OperationalError,),
+                 max_retries=3)
+    def notify_on_completed_detect_action(_self,
+                                          project_ids: list,
+                                          user_id: int):
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        notifications = []
+        for project_id in project_ids:
+            project = Project.all_objects.get(id=project_id)
+            message_data = {
+                'project': project.name,
+            }
+            notification_type = WebNotificationTypes.FIELD_VALUE_DETECTION_COMPLETED
+            message_data = notification_type.check_message_data(message_data)
+            redirect_link = {
+                'type': notification_type.redirect_link_type(),
+                'params': {
+                    'project_type': 'batch_analysis'
+                        if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                        else 'contract_analysis',
+                    'project_id': project.pk
+                },
+            }
+            recipients = [user_id, ]
+            notifications.append((message_data, redirect_link, notification_type,
+                                  recipients))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)

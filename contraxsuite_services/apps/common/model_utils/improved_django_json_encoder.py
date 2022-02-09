@@ -26,18 +26,20 @@
 
 import datetime
 import decimal
+import inspect
 import json
 import pytz
 import uuid
 from collections import Collection, Mapping
 
+from django.db import models
 from django.utils.duration import duration_iso_string
 from django.utils.functional import Promise
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -69,11 +71,19 @@ class ImprovedDjangoJSONEncoder(json.JSONEncoder):
             return o
         if isinstance(o, Mapping):
             return dict(o)
+        if isinstance(o, models.Model):
+            return {k: self.default(v) for k, v in o.__dict__.items()}
         if isinstance(o, Collection) and not isinstance(o, str):
             return list(o)
-        # note that isinstance(True, int) == isinstance(False, int) == True as True and False are treated as 1 and 0
+        # note that `isinstance(True, int) == isinstance(False, int) == True`
+        # as True and False are treated as 1 and 0
         if isinstance(o, (str, float, bool)) or type(o) is int:
             return o
         if hasattr(o, '__dict__'):
             return {k: self.default(v) for k, v in o.__dict__.items()}
+        if inspect.isclass(type(o)):
+            try:
+                return str(o)
+            except:
+                pass
         return super().default(o)

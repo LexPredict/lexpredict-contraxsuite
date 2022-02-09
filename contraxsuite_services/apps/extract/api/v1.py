@@ -53,9 +53,9 @@ from apps.extract.models import *
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -125,7 +125,7 @@ class BaseUsageListAPIView(apps.common.mixins.JqListAPIView, ViewSetDataMixin):
         if document_id:
             qs = qs.filter(text_unit__document_id=document_id)
             return qs.select_related('text_unit')
-        return qs.select_related('text_unit', 'text_unit__textunittext', 'text_unit__document')
+        return qs.select_related('text_unit', 'text_unit__document')
 
 
 class BaseTopUsageSerializer:
@@ -213,8 +213,8 @@ class TermUsageListAPIView(BaseUsageListAPIView):
                 term_search,
                 qs,
                 _or_lookup='term__term__exact',
-                _and_lookup='text_unit__textunittext__text__icontains',
-                _not_lookup='text_unit__textunittext__text__icontains')
+                _and_lookup='text_unit__text__icontains',
+                _not_lookup='text_unit__text__icontains')
         # filter out duplicated Terms (equal terms, but diff. term sources)
         # qs = qs.order_by('term__term').distinct('term__term', 'text_unit__pk')
         return qs.select_related('term')

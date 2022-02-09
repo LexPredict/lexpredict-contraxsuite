@@ -19,12 +19,12 @@
         { name: 'text_unit_a__pk', type: 'int' },
         { name: 'text_unit_a__unit_type', type: 'string' },
         { name: 'text_unit_a__language', type: 'string' },
-        { name: 'text_unit_a__textunittext__text', type: 'string' },
+        { name: 'text_unit_a__text', type: 'string' },
         { name: 'text_unit_a__url', type: 'string' },
         { name: 'text_unit_a_document_url', type: 'string' },
         { name: 'text_unit_b__pk', type: 'int' },
         { name: 'text_unit_b__language', type: 'string' },
-        { name: 'text_unit_b__textunittext__text', type: 'string' },
+        { name: 'text_unit_b__text', type: 'string' },
         { name: 'text_unit_b__url', type: 'string' },
         { name: 'text_unit_b_document_url', type: 'string' },
         { name: 'similarity', type: 'float' },
@@ -59,7 +59,7 @@
         { text: 'Language', datafield: 'text_unit_a__language', width: 70,
           enabletooltips: true, columngroup: 'Text Unit A',
           align: 'center', cellsalign: 'center' },
-        { text: 'Text', datafield: 'text_unit_a__textunittext__text', width: 'auto',
+        { text: 'Text', datafield: 'text_unit_a__text', width: 'auto',
           align: 'center', cellsalign: 'center', cellclassname: 'hint_cell',
           columngroup: 'Text Unit A' },
         { text: 'ID', datafield: 'text_unit_b__pk', width: 70,
@@ -68,7 +68,7 @@
         { text: 'Language', datafield: 'text_unit_b__language', width: 70,
           enabletooltips: true, columngroup: 'Text Unit B',
           align: 'center', cellsalign: 'center' },
-        { text: 'Text', datafield: 'text_unit_b__textunittext__text', width: 'auto',
+        { text: 'Text', datafield: 'text_unit_b__text', width: 'auto',
           align: 'center', cellsalign: 'center', cellclassname: 'hint_cell',
           columngroup: 'Text Unit B' },
         { text: 'Similarity', datafield: 'similarity', width: 70,
@@ -90,8 +90,8 @@
       $(".jqxgrid").bind("cellclick", function (event) {
           var rowindex = event.args.rowindex;
           var column = event.args.column;
-          if (column.datafield != 'text_unit_a__textunittext__text' &&
-            column.datafield != 'text_unit_b__textunittext__text')
+          if (column.datafield != 'text_unit_a__text' &&
+            column.datafield != 'text_unit_b__text')
             return;
           var datarow = $(".jqxgrid").jqxGrid('getrowdata', rowindex);
           window.showDiff(datarow.text_diff);

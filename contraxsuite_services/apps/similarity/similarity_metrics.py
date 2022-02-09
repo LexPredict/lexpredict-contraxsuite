@@ -29,9 +29,9 @@ from django.db.models.functions import Length
 from apps.document.models import TextUnit
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -50,5 +50,5 @@ def make_text_units_query(project_id):
     filters = dict(unit_type='paragraph', text_len__gt=99)
     if project_id:
         filters['document__project_id'] = project_id
-    return TextUnit.objects.annotate(text_len=Length('textunittext__text')).filter(
+    return TextUnit.objects.annotate(text_len=Length('text')).filter(
         **filters).order_by('pk')

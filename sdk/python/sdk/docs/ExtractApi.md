@@ -65,6 +65,7 @@ Amount Usage List  GET params:   - document_id: int   - text_unit_id: int   - am
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -127,6 +128,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -143,6 +145,7 @@ Top Amount Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -197,6 +200,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -213,6 +217,7 @@ Citation Usage List  GET params:   - document_id: int   - text_unit_id: int   - 
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -275,6 +280,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -291,6 +297,7 @@ Top Citation Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -345,6 +352,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -361,6 +369,7 @@ Copyright Usage List  GET params:   - document_id: int   - text_unit_id: int   -
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -423,6 +432,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -439,6 +449,7 @@ Top Copyright Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -493,6 +504,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -509,6 +521,7 @@ Court Usage List  GET params:   - document_id: int   - text_unit_id: int   - cou
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -571,6 +584,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -587,6 +601,7 @@ Top Court Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -641,6 +656,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -657,6 +673,7 @@ Currency Usage List  GET params:   - document_id: int   - amount_search: str   -
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -719,6 +736,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -735,6 +753,7 @@ Top Currency Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -789,6 +808,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -805,6 +825,7 @@ Date Duration Usage List  GET params:   - document_id: int   - text_unit_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -867,6 +888,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -883,6 +905,7 @@ Top Date Duration Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -937,6 +960,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -953,6 +977,7 @@ Date Usage Calendar Chart  GET params:     - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1008,6 +1033,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1024,6 +1050,7 @@ Date Usage List  GET params:   - document_id: int   - date_search: str   - month
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1086,6 +1113,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1102,6 +1130,7 @@ Date Usage Timeline Chart  GET params:     - document_id: int     - per_month: b
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1157,6 +1186,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1173,6 +1203,7 @@ Load Date Usage as iCal  GET params:     - document_id: int (required)
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1235,6 +1266,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1251,6 +1283,7 @@ Top Date Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1305,6 +1338,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1321,6 +1355,7 @@ Definition Usage List  GET params:   - document_id: int   - definition: str
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1383,6 +1418,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1399,6 +1435,7 @@ Top Definition Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1453,6 +1490,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1469,6 +1507,7 @@ Distance Usage List  GET params:   - document_id: int   - distance_type: str   -
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1531,6 +1570,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1547,6 +1587,7 @@ Top Distance Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1601,6 +1642,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1617,6 +1659,7 @@ Geo Alias Usage List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1679,6 +1722,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1695,6 +1739,7 @@ Top Geo Alias Usage List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1749,6 +1794,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1765,6 +1811,7 @@ Geo Entity List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1827,6 +1874,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1843,6 +1891,7 @@ Retrieve Geo Entity
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1914,6 +1963,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1930,6 +1980,7 @@ Update Geo Entity
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2001,6 +2052,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2017,6 +2069,7 @@ Geo Entity Usage List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2079,6 +2132,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2095,6 +2149,7 @@ Top Geo Entity Usage List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2149,6 +2204,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2165,6 +2221,7 @@ Party List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2227,6 +2284,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2243,6 +2301,7 @@ Retrieve Party
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2314,6 +2373,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2330,6 +2390,7 @@ Party Network Chart  GET params:     - party_name_iexact: str
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2392,6 +2453,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2408,6 +2470,7 @@ Party Usage List  GET params:   - document_id: int   - text_unit_id: int   - par
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2470,6 +2533,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2486,6 +2550,7 @@ Top Party Usage List  GET params:   - document_id: int   - party_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2540,6 +2605,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2556,6 +2622,7 @@ Percent Usage List  GET params:   - document_id: int   - unit_type: str   - amou
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2618,6 +2685,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2634,6 +2702,7 @@ Top Percent Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2688,6 +2757,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2704,6 +2774,7 @@ Ratio Usage List  GET params:   - document_id: int   - text_unit_id: int   - amo
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2766,6 +2837,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2782,6 +2854,7 @@ Top Ratio Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2836,6 +2909,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2852,6 +2926,7 @@ Regulation Usage List  GET params:   - document_id: int   - text_unit_id: int   
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2914,6 +2989,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2930,6 +3006,7 @@ Top Regulation Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2984,6 +3061,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2998,6 +3076,7 @@ This endpoint does not need any parameter.
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3060,6 +3139,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3076,6 +3156,7 @@ Term Usage List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3138,6 +3219,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3154,6 +3236,7 @@ Top Term Usage List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3208,6 +3291,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3224,6 +3308,7 @@ Trademark Usage List  GET params:   - document_id: int   - text_unit_id: int   -
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3286,6 +3371,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3302,6 +3388,7 @@ Top Trademark Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3356,6 +3443,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3372,6 +3460,7 @@ Typeahead Geo Entity Usage      Kwargs: field_name: [entity__name]     GET param
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3431,6 +3520,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3447,6 +3537,7 @@ Typeahead Party Usage      Kwargs: field_name: [party__name]     GET params:    
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3506,6 +3597,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3522,6 +3614,7 @@ Typeahead Term Usage      Kwargs: field_name: [term__term]     GET params:      
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3581,6 +3674,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3597,6 +3691,7 @@ Url Usage List  GET params:   - document_id: int   - text_unit_id: int   - sourc
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3659,6 +3754,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -3675,6 +3771,7 @@ Top Url Usage List  GET params:   - document_id: int
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -3729,6 +3826,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |

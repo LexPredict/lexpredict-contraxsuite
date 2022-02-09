@@ -34,6 +34,8 @@ import regex as re
 from typing import Tuple, Match, List
 
 # Django imports
+from django.contrib import messages
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.db.models import Count, Q
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -44,14 +46,15 @@ from apps.analyze.forms import *
 from apps.analyze.tasks import TrainDoc2VecModel, TrainClassifier, RunClassifier, Cluster, \
     BuildDocumentVectorsTask, BuildTextUnitVectorsTask
 from apps.common.contraxsuite_urls import doc_editor_url, project_documents_url
+from apps.common.utils import export_qs_to_file
 from apps.document.views import SubmitTextUnitTagView
 from apps.task.views import BaseAjaxTaskView
 import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -552,39 +555,48 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     template_name = "analyze/text_unit_similarity_list.html"
     document_lookup = ['text_unit_a__document', 'text_unit_b__document']
     json_fields = ['similarity', 'text_unit_a_id', 'text_unit_b_id']
-    #extra_json_fields = ['text_diff']
-    LIMIT_QUERY = 100000
+    extra_json_fields = [
+        'text_unit_a__unit_type', 'text_unit_b__unit_type', 'text_unit_a__language',
+        'text_unit_b__language', 'text_unit_a__text', 'text_unit_b__text',
+        'text_unit_a__document_id', 'text_unit_b__document_id'
+    ]
 
     def get_json_data(self, **kwargs):
-        data = super().get_json_data()
+        qs = kwargs.get('qs') or self.get_queryset()
+        kwargs['qs'] = qs
+
+        # ToDo: move exporting large amount of items to separate celery task
+        from apps.analyze.app_vars import NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT
+        disable_data_export = qs.count() > NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT.val()
+
+        # super method removes qs from kwargs
+        data = super().get_json_data(**kwargs)
+        data['disable_data_export'] = disable_data_export
+
+        all_document_names = {
+            i['pk']: i['name'] for i in Document.all_objects.all().values('pk', 'name')
+        }
         for item in data['data']:
-            unit_a = TextUnit.objects.get(pk=item['text_unit_a_id'])  # type: TextUnit
-            unit_b = TextUnit.objects.get(pk=item['text_unit_b_id'])  # type: TextUnit
+            item['text_unit_a__pk'] = item['text_unit_a_id']
+            item['text_unit_b__pk'] = item['text_unit_b_id']
+            item['text_unit_a__document__pk'] = item['text_unit_a__document_id']
+            item['text_unit_b__document__pk'] = item['text_unit_b__document_id']
+            item['text_unit_a__document__name'] = all_document_names[
+                item['text_unit_a__document_id']]
+            item['text_unit_b__document__name'] = all_document_names[
+                item['text_unit_b__document_id']]
 
-            item['text_unit_a__pk'] = unit_a.pk
-            item['text_unit_b__pk'] = unit_b.pk
-            item['text_unit_a__unit_type'] = unit_a.unit_type
-            item['text_unit_b__unit_type'] = unit_b.unit_type
-            item['text_unit_a__language'] = unit_a.language
-            item['text_unit_b__language'] = unit_b.language
+            item['text_diff'] = DiffRenderer.render_diff(item['text_unit_a__text'],
+                                                         item['text_unit_b__text']) or ''
 
-            item['text_unit_a__textunittext__text'] = unit_a.text
-            item['text_unit_b__textunittext__text'] = unit_b.text
-            item['text_diff'] = DiffRenderer.render_diff(unit_a.text, unit_b.text) or ''
-
-            item['text_unit_a__document__pk'] = unit_a.document_id
-            item['text_unit_b__document__pk'] = unit_b.document_id
-            item['text_unit_a__document__name'] = unit_a.document.name
-            item['text_unit_b__document__name'] = unit_b.document.name
-
-            item['text_unit_a__url'] = self.full_reverse('document:text-unit-detail',
-                                                         args=[item['text_unit_a__pk']])
-            item['text_unit_b__url'] = self.full_reverse('document:text-unit-detail',
-                                                         args=[item['text_unit_b__pk']])
-            item['text_unit_a_document_url'] = self.full_reverse('document:document-detail',
-                                                                 args=[item['text_unit_a__document__pk']])
-            item['text_unit_b_document_url'] = self.full_reverse('document:document-detail',
-                                                                 args=[item['text_unit_b__document__pk']])
+            item['text_unit_a__url'] = self.full_reverse(
+                'document:text-unit-detail', args=[item['text_unit_a__pk']])
+            item['text_unit_b__url'] = self.full_reverse(
+                'document:text-unit-detail', args=[item['text_unit_b__pk']])
+            item['text_unit_a_document_url'] = self.full_reverse(
+                'document:document-detail', args=[item['text_unit_a__document__pk']])
+            item['text_unit_b_document_url'] = self.full_reverse(
+                'document:document-detail', args=[item['text_unit_b__document__pk']])
         return data
 
     def get_queryset(self):
@@ -596,9 +608,36 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
 
         if "text_unit_pk" in self.request.GET:
             qs = qs.filter(text_unit_a__pk=self.request.GET['text_unit_pk'])
-        qs = qs.select_related('text_unit_a', 'text_unit_a__textunittext',
-                               'text_unit_b', 'text_unit_b__textunittext')
         return qs
+
+    def get(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+
+        self.object_list = qs
+        context = self.get_context_data()
+
+        # ToDo: move exporting large amount of items to separate celery task
+        from apps.analyze.app_vars import NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT
+        if qs.count() > NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT.val():
+            context['disable_data_export'] = True
+
+        if request.is_ajax() or 'return_raw_data' in self.request.GET:
+            if 'export' in self.request.GET:
+                return export_qs_to_file(request, qs=qs, **self.export_params)
+            if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
+                if context.get('disable_data_export', False):
+                    messages.error(request, 'There are too many items to export')
+                    return HttpResponseRedirect(self.request.path_info)
+
+                data = self.get_json_data(qs=qs)
+                if isinstance(data, dict) and 'data' in data:
+                    data = data['data']
+                return self.export(data,
+                                   source_name=self.get_export_file_name() or
+                                               self.model.__name__.lower(),
+                                   fmt=request.GET.get('export_to'))
+            return self.render_to_response(qs=qs)
+        return self.render_to_response(context)
 
 
 class PartySimilarityListView(apps.common.mixins.JqPaginatedListView):

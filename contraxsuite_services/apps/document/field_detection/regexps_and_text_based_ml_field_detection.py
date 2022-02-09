@@ -51,9 +51,9 @@ from apps.document.repository.text_unit_repository import TextUnitRepository
 from apps.document.value_extraction_hints import ValueExtractionHint
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,15 +77,15 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                                               Q(text_unit__isnull=False),
                                               Q(document__in=Subquery(qs_modified_document_ids))
                                               | Q(document__in=Subquery(qs_finished_document_ids))) \
-                   .values('modified_by', 'text_unit__textunittext__text', 'value', 'extraction_hint') \
+                   .values('modified_by', 'text_unit__text', 'value', 'extraction_hint') \
                    .order_by('modified_by')[:settings.ML_TRAIN_DATA_SET_GROUP_LEN]
 
     @classmethod
     def get_external_field_values(cls, field) -> List[dict]:
         return list(ExternalFieldValue.objects
                     .filter(field_id=field.pk)
-                    .annotate(text_unit__textunittext__text=F('text_unit_text'))
-                    .values('text_unit__textunittext__text', 'value', 'extraction_hint')
+                    .annotate(text_unit__text=F('text_unit_text'))
+                    .values('text_unit__text', 'value', 'extraction_hint')
                     .annotate(created_by=Value(1, output_field=IntegerField()))[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
     @classmethod
@@ -93,7 +93,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         return list(
             TextUnit.objects.filter(document__document_type_id=document_type.pk, unit_type=text_unit_type,
                                     annotations_matches=None)
-                .values_list('textunittext__text', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
+                .values_list('text', flat=True)[:settings.ML_TRAIN_DATA_SET_GROUP_LEN])
 
     @classmethod
     def init_classifier(cls, field: DocumentField):
@@ -118,7 +118,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         df['target_index'] = df['target_name'].factorize(sort=True)[0] + 1
 
         df = df.append(
-            [{'text_unit__textunittext__text': i} for i in
+            [{'text_unit__text': i} for i in
              cls.get_no_field_text_units(field.document_type, field.text_unit_type)])
 
         df['target_index'] = df['target_index'].fillna(0).astype('int')
@@ -157,7 +157,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
                              ('tfidf', TfidfTransformer()),
                              ('clf', clf),
                              ])
-        x = res_df['text_unit__textunittext__text']
+        x = res_df['text_unit__text']
         y = res_df['target_index']
 
         if split_and_log_out_of_sample_test_report:
@@ -204,7 +204,7 @@ class TextBasedMLFieldDetectionStrategy(FieldDetectionStrategy):
         train_data = FieldAnnotation.objects \
             .filter(field_id=field_id,
                     document__project_id__in=train_data_project_ids) \
-            .values('modified_by', 'text_unit__textunittext__text', 'value', 'extraction_hint')
+            .values('modified_by', 'text_unit__text', 'value', 'extraction_hint')
         return [list(train_data)]
 
     @classmethod

@@ -31,9 +31,9 @@ from apps.common.utils import Serializable
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,6 +47,7 @@ class DocDetectFieldValuesParams(Serializable):
                  updated_field_codes: List[str] = None,
                  user: User = None,
                  skip_modified_values: bool = True,
+                 reset_document_status: bool = False,
                  *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,6 +57,7 @@ class DocDetectFieldValuesParams(Serializable):
         self.updated_field_codes = updated_field_codes
         self.user = user
         self.skip_modified_values = skip_modified_values
+        self.reset_document_status = reset_document_status
 
     @classmethod
     def wrap(cls, d: Dict) -> 'DocDetectFieldValuesParams':

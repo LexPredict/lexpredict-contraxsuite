@@ -30,7 +30,7 @@ import html
 import inspect
 import json
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Iterable
 
 # Django imports
 from django import forms
@@ -84,7 +84,7 @@ from apps.document.field_types import RelatedInfoField, TypedField, ChoiceField,
 from apps.document.models import Document, DocumentText, DocumentMetadata, DocumentField, DocumentType, FieldValue, \
     FieldAnnotationStatus, FieldAnnotation, FieldAnnotationFalseMatch, FieldAnnotationSavedFilter, \
     DocumentProperty, DocumentRelation, DocumentNote, DocumentFieldDetector, ExternalFieldValue, ClassifierModel, \
-    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, TextUnitText, DocumentFieldCategory, DocumentFieldFamily, \
+    TextUnit, TextUnitProperty, TextUnitNote, TextUnitTag, DocumentFieldCategory, DocumentFieldFamily, \
     DocumentFieldMultilineRegexDetector
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.extract.models import Term
@@ -94,9 +94,9 @@ from apps.rawdb.field_value_tables import validate_doctype_cache_columns_count
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -1185,14 +1185,28 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         qs, has_duplicates = super().get_search_results(request, queryset, search_term)
         return qs.select_related('document_type', 'modified_by'), has_duplicates
 
-    def save_model(self, request, obj: DocumentField, form, change: bool):
+    def save_model(self, request, field, form, change):
+        if self._save_model(request, field, form, change):
+            field.save_document_action('Modified' if change else 'Added', request.user, dict(form.data))
+
+    def delete_model(self, request, field: DocumentField):
+        super().delete_model(request, field)
+        field.save_document_removed_action('Deleted', request.user, {})
+
+    def delete_queryset(self, request, queryset: Union[QuerySet, Iterable[DocumentField]]):
+        fields = list(queryset) if queryset else []
+        super().delete_queryset(request, queryset)
+        for field in fields:
+            field.save_document_removed_action('Deleted', request.user, {})
+
+    def _save_model(self, request, obj: DocumentField, form, change: bool) -> bool:
         if self.is_clone_view is True:
-            return
+            return False
 
         typed = TypedField.by(obj)
         if change and (typed.is_choice_field and not obj.allow_values_not_specified_in_choices):
             # don't save here, prompt user if there are values other than in choices list
-            return
+            return False
         # check formula errors
         errors = {}  # type:Dict[str, List[str]]
         warnings = {}  # type:Dict[str, List[str]]
@@ -1225,8 +1239,10 @@ class DocumentFieldAdmin(FieldValuesValidationAdmin):
         try:
             super().save_model(request, obj, form, change)
             signals.document_field_changed.send(self.__class__, user=request.user, document_field=obj)
+            return True
         except ValidationError as e:
             messages.add_message(request, messages.ERROR, e.message)
+        return False
 
     def check_cache_column_limit(self,
                                  obj: DocumentField,
@@ -1529,7 +1545,8 @@ class DocumentFieldDetectorForm(forms.ModelForm):
             self.add_error(error_msg, exc)
 
         if field and field.type in [ChoiceField.type_code, MultiChoiceField.type_code] \
-                and field.allow_values_not_specified_in_choices is not True and detected_value not in field.choices:
+                and field.allow_values_not_specified_in_choices is not True and detected_value \
+                and detected_value not in field.choices:
             # CS-4254: check that filed detectors has detected_values from choices only
             # or allow_values_not_specified_in_choices is set to True
             choices = field.choices.splitlines() if field.choices else []
@@ -1587,6 +1604,20 @@ class DocumentFieldDetectorAdmin(admin.ModelAdmin):
         return format_html_join('\n', '<pre>{}</pre>',
                                 ((r,) for r in
                                  obj.definition_words.split('\n'))) if obj.field and obj.definition_words else None
+
+    def save_model(self, request, detector, form, change):
+        super().save_model(request, detector, form, change)
+        detector.save_document_action('Modified' if change else 'Added', request.user, dict(form.data))
+
+    def delete_model(self, request, detector: DocumentFieldDetector):
+        super().delete_model(request, detector)
+        detector.save_document_removed_action('Deleted', request.user, {})
+
+    def delete_queryset(self, request, queryset: Union[QuerySet, Iterable[DocumentFieldDetector]]):
+        detectors = list(queryset) if queryset else []
+        super().delete_queryset(request, queryset)
+        for detector in detectors:
+            detector.save_document_removed_action('Deleted', request.user, {})
 
 
 class DocumentFieldMultilineRegexDetectorForm(forms.ModelForm):
@@ -2214,14 +2245,10 @@ class DocumentRelationAdmin(admin.ModelAdmin):
     search_fields = ['document_a__name', 'document_a__name', 'relation_type']
 
 
-class TextUnitTextInline(admin.TabularInline):
-    model = TextUnitText
-
-
 class TextUnitAdmin(DjangoQLSearchMixin, admin.ModelAdmin):
-    list_display = ('document', 'unit_ref', 'unit_type', 'language')
+    list_display = ('document', 'unit_ref', 'unit_type', 'language', 'text')
     search_fields = ('document__name', 'unit_type', 'language')
-    inlines = [TextUnitTextInline]
+    # inlines = [TextUnit+Text+Inline]
     last_request = None
 
     change_list_template = 'admin/document/text_unit/change_list.html'
@@ -2254,12 +2281,8 @@ class TextUnitRelatedAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        qs = qs.select_related('text_unit', 'text_unit__document', 'text_unit__textunittext')
+        qs = qs.select_related('text_unit', 'text_unit__document')
         return qs
-
-
-class TextUnitTextAdmin(TextUnitRelatedAdmin):
-    search_fields = ('text_unit__id', 'text_unit__unit_type')
 
 
 class TextUnitPropertyAdmin(TextUnitRelatedAdmin):
@@ -2429,8 +2452,6 @@ admin.site.register(DocumentType, DocumentTypeAdmin)
 admin.site.register(DocumentRelation, DocumentRelationAdmin)
 admin.site.register(DocumentProperty, DocumentPropertyAdmin)
 admin.site.register(TextUnitProperty, TextUnitPropertyAdmin)
-# admin.site.register(TextUnit, TextUnitAdmin)
-admin.site.register(TextUnitText, TextUnitTextAdmin)
 admin.site.register(TextUnitTag, TextUnitTagAdmin)
 admin.site.register(TextUnitNote, TextUnitNoteAdmin)
 admin.site.register(DocumentNote, DocumentNoteAdmin)

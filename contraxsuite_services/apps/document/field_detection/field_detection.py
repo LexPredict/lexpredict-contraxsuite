@@ -53,9 +53,9 @@ from apps.users.models import User
 from apps.document.field_detection.mlflow_field_detection import MLFlowModelBasedFieldDetectionStrategy
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -145,7 +145,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                skip_modified_values: bool = True,
                                                field_codes_to_detect: Optional[List[str]] = None,
                                                task: Any = None,
-                                               skip_caching: bool = False):
+                                               skip_caching: bool = False,
+                                               reset_document_status: bool = False):
     """
     Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
     These two should always be consistent.
@@ -163,6 +164,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param field_codes_to_detect - optional list of fields codes - only these fields are to be detected
     :param task - optional task argument to fire signals
     :param skip_caching - don't cache right now, cache later
+    :param reset_document_status - reset document status to "Loaded" or initial doc status
     :return:
     """
     import apps.document.repository.document_field_repository as dfr
@@ -235,6 +237,10 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
             document.pk, list(skip_codes), updated_field_codes)
         field_repo.delete_document_field_values(
             document.pk, list(skip_codes), updated_field_codes)
+
+    if reset_document_status:
+        # to change status for a Document to "Loaded", see document/async_tasks/detect_field_value_task.py
+        system_fields_changed = True
 
     for field_code in sorted_codes:
         if field_code in skip_codes:

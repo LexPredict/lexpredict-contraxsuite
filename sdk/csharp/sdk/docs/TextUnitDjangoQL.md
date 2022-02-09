@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Id** | **int** |  | [optional] [readonly] 
 **UnitType** | **string** |  | 
-**Text** | **string** |  | [optional] [readonly] 
+**Text** | **string** |  | [optional] 
 **ProjectId** | **string** |  | [optional] [readonly] 
 **ProjectName** | **string** |  | 
 **DocumentId** | **string** |  | [optional] [readonly] 

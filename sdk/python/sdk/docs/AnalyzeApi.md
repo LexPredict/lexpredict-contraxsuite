@@ -44,6 +44,7 @@ Document Cluster List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -106,6 +107,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -122,6 +124,7 @@ Retrieve Document Cluster
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -193,6 +196,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -209,6 +213,7 @@ Partial Update Document Cluster (name)
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -280,6 +285,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -296,6 +302,7 @@ Update Document Cluster (name)
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -367,6 +374,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -383,6 +391,7 @@ Base Document Similarity List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -445,6 +454,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -461,6 +471,7 @@ MLModel List - document transformers only
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -523,6 +534,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -539,6 +551,7 @@ MLModel List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -601,6 +614,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -617,6 +631,7 @@ Party Similarity List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -679,6 +694,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -695,6 +711,7 @@ Project Document Similarity List for ONE document
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -763,6 +780,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -779,6 +797,7 @@ Project Text Unit Similarity List for ONE text unit
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -859,6 +878,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -875,6 +895,7 @@ Project Text Unit Similarity List for ONE text unit
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -947,6 +968,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **201** |  |  -  |
@@ -963,6 +985,7 @@ list Similarity Run objects
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1029,6 +1052,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1045,6 +1069,7 @@ delete Similarity Run object
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1113,6 +1138,7 @@ void (empty response body)
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** |  |  -  |
@@ -1129,6 +1155,7 @@ get Similarity Run object
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1204,6 +1231,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1220,6 +1248,7 @@ Text Unit Classification List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1282,6 +1311,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1298,6 +1328,7 @@ Delete Text Unit Classification
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1355,6 +1386,7 @@ void (empty response body)
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** |  |  -  |
@@ -1371,6 +1403,7 @@ Retrieve Text Unit Classification
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1442,6 +1475,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1458,6 +1492,7 @@ Create Text Unit Classification
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1522,6 +1557,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **201** |  |  -  |
@@ -1538,6 +1574,7 @@ Text Unit Classifier Suggestion List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1600,6 +1637,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1616,6 +1654,7 @@ Delete Text Unit Classifier Suggestion
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1673,6 +1712,7 @@ void (empty response body)
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** |  |  -  |
@@ -1687,6 +1727,7 @@ void (empty response body)
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1758,6 +1799,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1774,6 +1816,7 @@ Text Unit Classifier List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1836,6 +1879,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -1852,6 +1896,7 @@ Delete Text Unit Classifier
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1909,6 +1954,7 @@ void (empty response body)
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **204** |  |  -  |
@@ -1923,6 +1969,7 @@ void (empty response body)
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -1994,6 +2041,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2010,6 +2058,7 @@ Text Unit Cluster List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2072,6 +2121,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2088,6 +2138,7 @@ Base Text Unit Similarity List
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2150,6 +2201,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2166,6 +2218,7 @@ MLModel List - text unit transformers only
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2228,6 +2281,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -2244,6 +2298,7 @@ Typeahead TextUnitClassification      Kwargs: field_name: [class_name, class_val
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -2305,6 +2360,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |

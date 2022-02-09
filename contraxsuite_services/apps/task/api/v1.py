@@ -52,9 +52,9 @@ from apps.task.schemas import TaskLogSerializer, TaskLogSchema, TaskStatusSchema
 from apps.task.views import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -116,6 +116,7 @@ class TaskViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewSet):
                 Q(project_id=project_id) |
                 Q(kwargs__project=project_id) |
                 Q(kwargs__project_id=project_id) |
+                Q(kwargs__project_ids__contains=project_id) |
                 Q(kwargs__project=[{'pk': project_id}])) \
             .annotate(total_time=Coalesce(F('date_done') - F('date_start'), Now() - F('date_start')),
                       work_time=Coalesce(F('date_done') - F('date_work_start'), Now() - F('date_work_start'),

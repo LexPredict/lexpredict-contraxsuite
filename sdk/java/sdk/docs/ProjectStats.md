@@ -13,6 +13,8 @@ Name | Type | Description | Notes
 **documentsTotal** | **Integer** |  | 
 **clausesTotal** | **Integer** |  | 
 **avgOcrGrade** | **Integer** |  | 
+**documentStatusLoaded** | **Integer** |  | 
+**documentStatusLoadedPcnt** | **BigDecimal** |  | 
 **documentStatusNotStarted** | **Integer** |  | 
 **documentStatusNotStartedPcnt** | **BigDecimal** |  | 
 **documentStatusInReview** | **Integer** |  | 

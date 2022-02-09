@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -47,8 +47,6 @@ class TestBulkDelete(DjangoTestCase):
         self.assertLess(dep_names.index('document_fieldannotation'),
                         dep_names.index('document_textunit'))
         self.assertLess(dep_names.index('extract_termusage'),
-                        dep_names.index('document_textunit'))
-        self.assertLess(dep_names.index('document_textunittext'),
                         dep_names.index('document_textunit'))
 
         # there are 2 document references in analyze_documentsimilarity

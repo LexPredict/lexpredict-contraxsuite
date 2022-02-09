@@ -17,6 +17,7 @@ If directory:   action: None: - list directory   action: download - list directo
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -85,6 +86,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |

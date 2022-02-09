@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 **documents_total** | **int** |  | 
 **clauses_total** | **int** |  | 
 **avg_ocr_grade** | **int, none_type** |  | 
+**document_status_loaded** | **int** |  | 
+**document_status_loaded_pcnt** | **float** |  | 
 **document_status_not_started** | **int** |  | 
 **document_status_not_started_pcnt** | **float** |  | 
 **document_status_in_review** | **int** |  | 

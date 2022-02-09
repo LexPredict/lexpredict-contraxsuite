@@ -28,9 +28,9 @@
 import django.dispatch
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -60,7 +60,7 @@ def _bulk_create(self, objs, batch_size=None, ignore_conflicts=False, **kwargs):
     pre_bulk_create.send(sender=self.model, queryset=objs, kwargs=kwargs)
     try:
         instances = bulk_create_method(self, objs, batch_size, ignore_conflicts)
-    except ValueError:
+    except Exception:
         instances = None
     post_bulk_create.send(sender=self.model, queryset=instances,
                           created=bool(instances), kwargs=kwargs)

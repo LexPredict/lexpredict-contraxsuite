@@ -45,9 +45,9 @@ from apps.project.models import Project
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -230,6 +230,9 @@ class TextUnitVector(BaseVector):
 
     # Text unit
     text_unit = models.ForeignKey(TextUnit, db_index=True, on_delete=CASCADE)
+
+    # Text unit type, e.g., sentence, paragraph, section
+    unit_type = models.CharField(max_length=128, db_index=True, blank=False, null=False)
 
     # Document
     document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
@@ -664,7 +667,8 @@ class TextUnitSimilarity(BaseSimilarity):
         verbose_name_plural = 'Text Unit Similarities'
 
     def __str__(self):
-        return f'{self.text_unit_a_id}-{self.text_unit_b_id} : {self.run.feature_source} : {self.similarity}'
+        feature_source = self.run.feature_source if self.run else 'Nothing'
+        return f'{self.text_unit_a_id}-{self.text_unit_b_id} : {feature_source} : {self.similarity}'
 
     def save(self, **kwargs):
         if not self.document_a:

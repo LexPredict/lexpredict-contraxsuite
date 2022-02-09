@@ -28,9 +28,9 @@
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -128,6 +128,11 @@ OCR_PAGE_TIMEOUT = AppVar.set(
 REMOVE_OCR_LAYERS = AppVar.set(
     'Document', 'remove_ocr_layers', False,
     'Remove OCR layers on PDF pages',
+    system_only=False)
+
+CORRECT_PAGE_ORIENT_BY_TESSERACT = AppVar.set(
+    'Document', 'correct_page_orient_tesseract', False,
+    'Correct PDF page orientation by Tesseract',
     system_only=False)
 
 MIN_NOT_PLAIN_FILE_SIZE = AppVar.set(

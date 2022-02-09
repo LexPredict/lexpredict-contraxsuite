@@ -77,9 +77,9 @@ from apps.task.views import BaseAjaxTaskView, TaskListView, LoadFixturesView
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -190,7 +190,7 @@ class DocumentListView(apps.common.mixins.JqPaginatedListView):
 
         document_text_search = self.request.GET.get("document_text_search")
         if document_text_search:
-            document_ids = TextUnit.objects.filter(textunittext__text__full_text_search=document_text_search) \
+            document_ids = TextUnit.objects.filter(text__full_text_search=document_text_search) \
                 .values_list('document_id', flat=True) \
                 .distinct()
             qs = qs.filter(id__in=document_ids)
@@ -590,7 +590,7 @@ class TextUnitDetailView(PermissionRequiredMixin, DetailView):
 class TextUnitListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
     json_fields = ['unit_type', 'language',
-                   'textunittext__text',
+                   'text',
                    'text_hash',
                    'document__pk',
                    'document__project__name',
@@ -642,7 +642,7 @@ class TextUnitListView(apps.common.mixins.JqPaginatedListView):
             qs = TextUnit.objects.filter(pk__in=pks)
         elif "text_search" in self.request.GET:
             text_search = self.request.GET.get("text_search")
-            qs = qs.filter(textunittext__text__icontains=text_search).order_by('id')
+            qs = qs.filter(text__icontains=text_search).order_by('id')
         if "document_pk" in self.request.GET:
             # Document Detail view, Party summary view
             qs = qs.filter(document__pk=self.request.GET['document_pk']).order_by('pk')

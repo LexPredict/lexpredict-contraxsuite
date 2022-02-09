@@ -7,6 +7,7 @@ Name | Type | Description | Notes
 **username** | **str** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | 
 **email** | **str** |  | 
 **id** | **int** |  | [optional] [readonly] 
+**uid** | **str** |  | [optional] [readonly] 
 **last_name** | **str** |  | [optional] 
 **first_name** | **str** |  | [optional] 
 **is_superuser** | **bool** | Designates that this user has all permissions without explicitly assigning them. | [optional] 

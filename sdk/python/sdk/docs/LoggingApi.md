@@ -17,6 +17,7 @@ Log provided data
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -82,6 +83,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |

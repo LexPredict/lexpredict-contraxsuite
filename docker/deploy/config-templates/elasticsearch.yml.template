@@ -10,6 +10,6 @@ network.bind_host: 0.0.0.0
 transport.tcp.port: 9300
 http.port: 9200
 cluster.initial_master_nodes: ["${DOLLAR}{HOSTNAME}"]
-
+xpack.security.enabled: false
 
 

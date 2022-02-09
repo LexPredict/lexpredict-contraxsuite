@@ -84,9 +84,9 @@ from apps.users.permissions import remove_perm, document_type_manager_permission
 # When RawdbFieldHandler of a field is required - use RawdbFieldHandler.of() in the client code.
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -127,6 +127,49 @@ class LazyTimeStampedModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class ActionTrackedModel:
+    def _make_action_messages(self,
+                              object_exists: bool) -> List[Tuple[str, Any, str, any]]:
+        raise NotImplementedError()
+
+    def save_document_removed_action(
+            self,
+            view_action: str,
+            user: User,
+            request_data: Any):
+        self.save_document_action(view_action, user, request_data, False)
+
+    def _update_modified_by(self, user: Optional[User], date: datetime.datetime, object_exists: bool):
+        raise NotImplementedError()
+
+    def save_document_action(self,
+                             view_action: str,
+                             user: User,
+                             request_data: Any,
+                             object_exists: bool = True):
+        messages = self._make_action_messages(object_exists)
+        if request_data:
+            # clean the data
+            if 'csrfmiddlewaretoken' in request_data:
+                del request_data['csrfmiddlewaretoken']
+        date = now()
+        for act_name, model, model_name, obj_id in messages:
+            Action.objects.create(
+                name=f'{act_name} {view_action}',
+                message=f'{model_name} {view_action}',
+                user=user,
+                date=date,
+                object_pk=obj_id,
+                content_type=model,
+                model_name=model_name,
+                app_label='document',
+                request_data=request_data)
+            # this is for the parent entities: they are modified, not added or deleted
+            view_action = 'Modified'
+        # update "modified_by" and "modified_date" fields for the object itself and its parents
+        self._update_modified_by(user, date, object_exists)
 
 
 class DocumentFieldCategory(models.Model):
@@ -243,7 +286,7 @@ class DocumentFieldManager(models.Manager):
         return now() - datetime.timedelta(seconds=settings.RETRAINING_DELAY_IN_SEC)
 
 
-class DocumentField(TimeStampedModel):
+class DocumentField(TimeStampedModel, ActionTrackedModel):
     """DocumentField object model
 
     DocumentField describes manually created custom field for a document.
@@ -581,6 +624,22 @@ a Latin letter, and contain only Latin letters, digits, underscores. Field codes
             else:
                 fields_by_doctype[tp_id] = [pk]
         return fields_by_doctype
+
+    def _make_action_messages(self, object_exists: bool) -> List[Tuple[str, Any, str, any]]:
+        return [
+            ('Document Field', ContentType.objects.get_for_model(DocumentField),
+             'Document Field', self.pk if object_exists else None),
+            ('Document Type', ContentType.objects.get_for_model(DocumentType),
+             'Document Type', self.document_type.pk),
+        ]
+
+    def _update_modified_by(self, user: Optional[User], date: datetime.datetime, object_exists: bool):
+        records = (self, self.document_type) if object_exists \
+            else (self.document_type,)
+        for record in records:
+            record.modified_by = user
+            record.modified_date = date
+            record.save()
 
 
 @receiver(models.signals.pre_delete, sender=DocumentField)
@@ -1106,7 +1165,7 @@ class Document(LazyTimeStampedModel):
                 'document': document_name,
                 'action_creator': str(request_user) if request_user else "someone"
             }
-            if prev_assignee:
+            if prev_assignee and str(prev_assignee) != message_data['action_creator']:
                 notification_type = WebNotificationTypes.DOCUMENT_UNASSIGNED
                 redirect_link = {
                     'type': notification_type.redirect_link_type(),
@@ -1129,7 +1188,7 @@ class Document(LazyTimeStampedModel):
                 recipients = [prev_assignee.id]
                 notifications.append((message_data, redirect_link, notification_type,
                                       recipients))
-            if new_assignee:
+            if new_assignee and str(new_assignee) != message_data['action_creator']:
                 message_data = message_data.copy()
                 notification_type = WebNotificationTypes.DOCUMENT_ASSIGNED
                 redirect_link = {
@@ -1197,13 +1256,16 @@ class Document(LazyTimeStampedModel):
         super().save(**kwargs)
         if cache_modified_date:
             self.refresh_from_db()
-            from apps.document.tasks import plan_process_document_changed
-            plan_process_document_changed(self.pk,
-                                          system_fields_changed=['modified_by', 'modified_date'],
-                                          generic_fields_changed=False,
-                                          user_fields_changed=False,
-                                          changed_by_user_id=self.modified_by.id
-                                          if self.modified_by else None)
+            self.cache_doc_modified_date(self.pk, self.modified_by.id if self.modified_by else None)
+
+    @classmethod
+    def cache_doc_modified_date(cls, document_id: int, modified_by_id: Optional[int]):
+        from apps.document.tasks import plan_process_document_changed
+        plan_process_document_changed(document_id,
+                                      system_fields_changed=['modified_by', 'modified_date'],
+                                      generic_fields_changed=False,
+                                      user_fields_changed=False,
+                                      changed_by_user_id=modified_by_id)
 
 
 @receiver(models.signals.post_delete, sender=Document)
@@ -1589,6 +1651,11 @@ class TextUnit(models.Model):
     # Cryptographic hash of raw text for identical de-duplication
     text_hash = models.CharField(max_length=1024, null=True)
 
+    # Full document text
+    text = models.TextField(null=True)
+
+    text_tsvector = SearchVectorField(null=True)
+
     objects = models.Manager()
 
     ql_objects = DjangoQLQuerySet.as_manager()
@@ -1597,7 +1664,15 @@ class TextUnit(models.Model):
         indexes = [Index(fields=['text_hash']),
                    Index(fields=['unit_type']),
                    Index(fields=['document', 'unit_type']),
-                   Index(fields=['language'])]
+                   Index(fields=['language']),
+                   GinIndex(
+                       fields=['text'],
+                       name='idx_dtut_text_gin',
+                       opclasses=['gin_trgm_ops']),
+                   GinIndex(
+                       fields=['text_tsvector'],
+                       name='idx_dtut_text_tsvector_gin')
+                   ]
 
     def __str__(self):
         return "TextUnit (id={4}, document={0}, unit_type={1}, language={2}, len(text)={3})" \
@@ -1608,41 +1683,6 @@ class TextUnit(models.Model):
 
     def is_sentence(self) -> bool:
         return self.unit_type == 'sentence'
-
-    @property
-    def text(self):
-        """
-        Just an alias
-        """
-        try:
-            return self.textunittext.text
-        except TextUnitText.DoesNotExist:
-            pass
-
-
-class TextUnitText(models.Model):
-    """TextUnitText object model"""
-
-    # enable full-text-search for "text" column in "contains" and "icontains" queries
-    full_text_search_fields = ['text']
-
-    text_unit = models.OneToOneField(TextUnit, db_index=True, on_delete=CASCADE)
-
-    text = models.TextField(max_length=16384, null=True)
-
-    text_tsvector = SearchVectorField(null=True)
-
-    document = models.ForeignKey(Document, db_index=True, on_delete=CASCADE)
-
-    def __str__(self):
-        return "TextUnitText (id={}, text_unit={})".format(self.pk, str(self.text_unit))
-
-    class Meta:
-        indexes = [GinIndex(fields=['text'],
-                            name='idx_dtut_text_gin',
-                            opclasses=['gin_trgm_ops']),
-                   GinIndex(fields=['text_tsvector'],
-                            name='idx_dtut_text_tsvector_gin')]
 
 
 class TextUnitTag(models.Model):
@@ -1834,7 +1874,10 @@ class TextParts(Enum):
     INSIDE_REGEXP = "INSIDE_REGEXP"
 
 
-class DocumentFieldDetector(models.Model):
+class DocumentFieldDetector(models.Model, ActionTrackedModel):
+    class Meta:
+        ordering = ('uid',)
+
     DEF_RE_FLAGS = re.DOTALL
 
     TEXT_PARTS = (
@@ -1948,6 +1991,12 @@ parsed correctly as the start date.''')
     def detector_definition_words(self):
         return self._definition_words
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._include_matchers = None
+        self._exclude_matchers = None
+        self._definition_words = None
+
     # Validator. If field is not of an ordinal type and TAKE_MIN/MAX are selected, throw error
     def clean_fields(self, exclude=('uid', 'field', 'document_type', 'exclude_regexps',
                                     'include_regexps', 'regexps_pre_process_lower',
@@ -1965,12 +2014,6 @@ parsed correctly as the start date.''')
                 'Cannot take min or max of <Field> because its type is not amount, money, int, '
                 'float, date, or duration. Please select TAKE_FIRST, TAKE_SECOND, or TAKE_THIRD, '
                 'or change the field type.']})
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._include_matchers = None
-        self._exclude_matchers = None
-        self._definition_words = None
 
     def compile_regexps_string(self, regexps: str) -> list:
         matchers = []
@@ -2019,9 +2062,6 @@ parsed correctly as the start date.''')
         res = ''.join(filter(lambda ss: ss.isalpha() or ss.isnumeric() or ss.isspace(), s))
         return ' '.join(res.split()).lower()
 
-    class Meta:
-        ordering = ('uid',)
-
     def __str__(self):
         return "{0}: {1}".format(self.field, self.include_regexps)[:50] \
                + " (#{0})".format(self.uid)
@@ -2056,6 +2096,25 @@ parsed correctly as the start date.''')
         except Exception as exc:
             errors.append(('detected_value', exc,))
         return errors
+
+    def _make_action_messages(self,
+                              object_exists: bool) -> List[Tuple[str, Any, str, any]]:
+        return [
+            ('Document Field Detector', ContentType.objects.get_for_model(DocumentFieldDetector),
+             'Document Field Detector', self.pk if object_exists else None),
+            ('Document Field', ContentType.objects.get_for_model(DocumentField),
+             'Document Field', self.field_id),
+            ('Document Type', ContentType.objects.get_for_model(DocumentType),
+             'Document Type', self.field.document_type.pk),
+        ]
+
+    def _update_modified_by(self, user: Optional[User], date: datetime.datetime, object_exists: bool):
+        records = (self, self.field, self.field.document_type) if object_exists \
+            else (self.field, self.field.document_type)
+        for record in records:
+            record.modified_by = user
+            record.modified_date = date
+            record.save()
 
 
 @receiver(models.signals.pre_delete, sender=DocumentFieldDetector)
@@ -2279,7 +2338,7 @@ class FieldValue(models.Model):
                 'action_creator': str(request_user) if request_user else "someone",
                 'project': project.name
             }
-            if prev_assignee_id:
+            if prev_assignee_id and prev_assignee_name != message_data['action_creator']:
                 notification_type = WebNotificationTypes.CLAUSES_UNASSIGNED
                 redirect_link = {
                     'type': notification_type.redirect_link_type(),
@@ -2302,7 +2361,7 @@ class FieldValue(models.Model):
                 message_data = notification_type.check_message_data(message_data)
                 recipients = [prev_assignee_id]
                 notifications.append((message_data, redirect_link, notification_type, recipients))
-            if new_assignee_id:
+            if new_assignee_id and new_assignee_name != message_data['action_creator']:
                 message_data = message_data.copy()
                 notification_type = WebNotificationTypes.CLAUSES_ASSIGNED
                 redirect_link = {
@@ -2330,9 +2389,9 @@ class FieldValue(models.Model):
 
 
 @receiver([models.signals.pre_save, custom_signals.pre_update], sender=FieldValue)
-def update_document_assignee_actions(signal, sender, instance, *args, **kwargs):
+def update_field_value_assignee_actions(signal, sender, instance, *args, **kwargs):
     new_assignee = instance.assignee
-    prev_assignee = Document.objects.get(pk=instance.pk).assignee if instance.pk else None
+    prev_assignee = FieldValue.objects.get(pk=instance.pk).assignee if instance.pk else None
     FieldValue.update_assignee_actions(
         instance, prev_assignee=prev_assignee, new_assignee=new_assignee,
         request_user=getattr(instance, 'request_user', None),
@@ -2340,13 +2399,13 @@ def update_document_assignee_actions(signal, sender, instance, *args, **kwargs):
 
 
 @receiver([custom_signals.pre_update], sender=FieldValue)
-def update_document_assignee_actions(signal, sender, queryset, *args, **kwargs):
+def update_field_value_assignee_actions(signal, sender, queryset, *args, **kwargs):
     new_assignee = queryset.first().assignee
     request_user = getattr(queryset, 'request_user', None)
     request_data = getattr(queryset, 'request_data', None)
     queryset = FieldValue.objects.filter(id__in=queryset.values_list('id', flat=True))
     FieldValue.update_assignee_actions(
-        FieldValue.objects.filter(id__in=queryset.values_list('id', flat=True)),
+        queryset,
         new_assignee=new_assignee, request_user=request_user, request_data=request_data)
 
 
@@ -2488,6 +2547,41 @@ class FieldAnnotation(models.Model):
             pass
 
     @staticmethod
+    def update_actions(queryset, view_action: str = 'partial_update',
+                       request_user: User = None, request_data: dict = None):
+        from django.contrib.contenttypes.models import ContentType
+        from apps.common.models import Action
+        actions = []
+        action_params = {
+            'user': request_user,
+            'content_type': ContentType.objects.get_for_model(Document),
+            'model_name': 'Document',
+            'app_label': 'document',
+            'request_data': request_data
+        }
+        if not isinstance(queryset, QuerySet):
+            queryset = FieldAnnotation.objects.filter(pk=queryset.pk)
+        for item in queryset:
+            document_id = item.document_id
+            if view_action == 'create':
+                actions.append(Action(name='Annotation Added', object_pk=document_id, date=now(),
+                                      message=f'Annotation added to "{item.field.title}"',
+                                      **action_params))
+            elif view_action == 'destroy':
+                actions.append(Action(name='Annotation Deleted', object_pk=document_id, date=now(),
+                                      message=f'Annotation removed from "{item.field.title}"',
+                                      **action_params))
+            elif view_action in ['update', 'partial_update', 'annotate']:
+                actions.append(Action(name='Annotation Deleted', object_pk=document_id, date=now(),
+                                      message=f'Annotation removed from "{item.field.title}"',
+                                      **action_params))
+                actions.append(Action(name='Annotation Added', object_pk=document_id, date=now(),
+                                      message=f'Annotation added to "{item.field.title}"',
+                                      **action_params))
+        if actions:
+            Action.objects.bulk_create(actions)
+
+    @staticmethod
     def update_assignee_actions(queryset, prev_assignee: User = None, new_assignee: User = None,
                                 request_user: User = None, request_data: dict = None):
         from django.contrib.contenttypes.models import ContentType
@@ -2507,10 +2601,10 @@ class FieldAnnotation(models.Model):
         }
         new_assignee_id = new_assignee.id if new_assignee else None
         new_assignee_name = new_assignee.name if new_assignee else None
+        if not isinstance(queryset, QuerySet):
+            queryset = FieldAnnotation.objects.filter(pk=queryset.pk)
         queryset = queryset.select_related('document').values(
             'assignee__id', 'assignee__name', 'document__project').annotate(items_count=Count('id'))
-        if not isinstance(queryset, QuerySet):
-            queryset = [queryset, ]
         for item in queryset:
             prev_assignee_id = item['assignee__id'] if not prev_assignee else prev_assignee.id
             prev_assignee_name = item['assignee__name'] if not prev_assignee else prev_assignee.name
@@ -2526,7 +2620,7 @@ class FieldAnnotation(models.Model):
                 'action_creator': str(request_user) if request_user else "someone",
                 'project': project.name
             }
-            if prev_assignee_id:
+            if prev_assignee_id and prev_assignee_name != message_data['action_creator']:
                 notification_type = WebNotificationTypes.CLAUSES_UNASSIGNED
                 redirect_link = {
                     'type': notification_type.redirect_link_type(),
@@ -2549,7 +2643,7 @@ class FieldAnnotation(models.Model):
                 message_data = notification_type.check_message_data(message_data)
                 recipients = [prev_assignee_id]
                 notifications.append((message_data, redirect_link, notification_type, recipients))
-            if new_assignee_id:
+            if new_assignee_id and new_assignee_name != message_data['action_creator']:
                 message_data = message_data.copy()
                 notification_type = WebNotificationTypes.CLAUSES_ASSIGNED
                 redirect_link = {
@@ -2576,25 +2670,68 @@ class FieldAnnotation(models.Model):
             Action.objects.bulk_create(actions)
 
 
-@receiver([models.signals.pre_save, custom_signals.pre_update], sender=FieldAnnotation)
-def update_document_assignee_actions(signal, sender, instance, *args, **kwargs):
-    new_assignee = instance.assignee
-    prev_assignee = Document.objects.get(pk=instance.pk).assignee if instance.pk else None
-    FieldAnnotation.update_assignee_actions(
-        instance, prev_assignee=prev_assignee, new_assignee=new_assignee,
-        request_user=getattr(instance, 'request_user', None),
-        request_data=getattr(instance, 'request_data', None))
-
-
-@receiver([custom_signals.pre_update], sender=FieldAnnotation)
-def update_document_assignee_actions(signal, sender, queryset, *args, **kwargs):
-    new_assignee = queryset.first().assignee
+@receiver(custom_signals.pre_update, sender=FieldAnnotation)
+def pre_update_field_annotation_actions(signal, sender, queryset, *args, **kwargs):
     request_user = getattr(queryset, 'request_user', None)
     request_data = getattr(queryset, 'request_data', None)
+
+    # Update assignee actions
+    new_assignee = queryset.first().assignee
     queryset = FieldAnnotation.objects.filter(id__in=queryset.values_list('id', flat=True))
     FieldAnnotation.update_assignee_actions(
-        FieldAnnotation.objects.filter(id__in=queryset.values_list('id', flat=True)),
+        queryset,
         new_assignee=new_assignee, request_user=request_user, request_data=request_data)
+
+
+@receiver(models.signals.pre_save, sender=FieldAnnotation)
+def pre_save_field_annotation_actions(sender, instance, **kwargs):
+    request_user = getattr(instance, 'request_user', None)
+    request_data = getattr(instance, 'request_data', None)
+
+    # Update assignee actions
+    new_assignee = instance.assignee
+    prev_assignee = FieldAnnotation.objects.get(pk=instance.pk).assignee if instance.pk else None
+    FieldAnnotation.update_assignee_actions(instance, prev_assignee=prev_assignee, new_assignee=new_assignee,
+                                            request_user=request_user, request_data=request_data)
+
+    # Update status actions
+    try:
+        prev_object = FieldAnnotation.objects.get(pk=instance.pk) if instance.pk else None
+    except (FieldAnnotation.DoesNotExist, AttributeError):
+        prev_object = None
+    if prev_object:
+        # Process only existed items
+        prev_location_start, new_location_start = prev_object.location_start, instance.location_start
+        prev_location_end, new_location_end = prev_object.location_end, instance.location_end
+        prev_location_text, new_location_text = prev_object.location_text, instance.location_text
+        if (prev_location_start or prev_location_end or prev_location_text) \
+                and (prev_location_start != new_location_start
+                     or prev_location_end != new_location_end
+                     or prev_location_text != new_location_text):
+            FieldAnnotation.update_actions(instance, view_action='update',
+                                           request_user=request_user, request_data=request_data)
+
+
+@receiver(models.signals.post_save, sender=FieldAnnotation)
+def post_save_field_annotation_actions(sender, instance, created, **kwargs):
+    request_user = getattr(instance, 'request_user', None)
+    request_data = getattr(instance, 'request_data', None)
+
+    # Update status actions
+    if created:
+        # Process only new items
+        FieldAnnotation.update_actions(instance, view_action='create',
+                                       request_user=request_user, request_data=request_data)
+
+
+@receiver(models.signals.pre_delete, sender=FieldAnnotation)
+def post_delete_field_annotation_delete_actions(signal, sender, instance, *args, **kwargs):
+    request_user = getattr(instance, 'request_user', None)
+    request_data = getattr(instance, 'request_data', None)
+
+    # Update status actions
+    FieldAnnotation.update_actions(instance, view_action='destroy',
+                                   request_user=request_user, request_data=request_data)
 
 
 class FieldAnnotationFalseMatch(models.Model):

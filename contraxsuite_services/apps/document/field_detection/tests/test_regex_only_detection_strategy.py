@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -37,7 +37,7 @@ from tests.django_test_case import *
 from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFieldDetectionStrategy
 from apps.document.value_extraction_hints import ValueExtractionHint
 from apps.document.field_detection.detector_field_matcher import DetectorFieldMatcher
-from apps.document.models import DocumentField, TextUnit, TextUnitText, DocumentFieldDetector, TextParts, Document
+from apps.document.models import DocumentField, TextUnit, DocumentFieldDetector, TextParts, Document
 from apps.document.field_type_registry import init_field_type_registry
 
 
@@ -91,8 +91,7 @@ class RegexTestContext:
 
         self.text_unit = TextUnit()
         self.text_unit.document = self.document
-        self.text_unit.textunittext = TextUnitText()
-        self.text_unit.textunittext.text = text
+        self.text_unit.text = text
         self.text_unit.location_start = 1001
         self.text_unit.location_end = self.text_unit.location_start + len(text)
 

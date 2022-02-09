@@ -7,6 +7,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**uid** | **UUID** |  |  [optional] [readonly]
 **username** | **String** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. |  [optional] [readonly]
 **lastName** | **String** |  |  [optional]
 **firstName** | **String** |  |  [optional]

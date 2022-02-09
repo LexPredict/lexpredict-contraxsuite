@@ -93,9 +93,9 @@ from apps.task.schemas import ProjectTasksSchema, ProjectActiveTasksSchema, Proj
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -1062,6 +1062,11 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 cluster['cluster_terms'] = data['metadata']['clusters_data'][str(cluster['cluster_id'])][
                     'cluster_terms']
 
+                # Hide cluster terms if they are just vectors column names
+                if not any([item for item in cluster['cluster_terms']
+                            if item and (item[0] != 'f' or not item[1:].isdecimal())]):
+                    cluster['cluster_terms'] = []
+
             except KeyError:
                 pass
 
@@ -1399,11 +1404,23 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             DocumentField.objects.filter(pk__in=Subquery(modified_fields)).update(dirty=True)
             ret = documents.update(status=status_id)
 
-            # set Unreviewed annotations to Accepted
-            if review_status.is_final:
+            # set Unreviewed annotations to Accepted for Completed documents
+            if review_status.is_completed:
                 ann_final_status = FieldAnnotationStatus.accepted_status()
+                ann_initial_status = FieldAnnotationStatus.initial_status()
                 field_repo.update_field_annotations_by_doc_ids(
-                    document_ids, [(f'{FIELD_CODE_STATUS_ID}', ann_final_status.pk)])
+                    document_ids=document_ids,
+                    field_data=[(f'{FIELD_CODE_STATUS_ID}', ann_final_status.pk)],
+                    additional_where_clauses=[f'{FIELD_CODE_STATUS_ID} = {ann_initial_status.pk}']
+                )
+
+            # set all annotations to Rejected for Excluded documents
+            if review_status.is_excluded:
+                ann_final_status = FieldAnnotationStatus.rejected_status()
+                field_repo.update_field_annotations_by_doc_ids(
+                    document_ids=document_ids,
+                    field_data=[(f'{FIELD_CODE_STATUS_ID}', ann_final_status.pk)],
+                )
 
         plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
 
@@ -1692,7 +1709,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         return Response({'task_id': task_id})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], schema=LocateItemsSchema())
     def locate_items(self, request, **kwargs):
         items_to_locate = request.data.get('items_to_locate', [])  # i.e. ['term']
         if not items_to_locate:
@@ -1702,6 +1719,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             raise ValueError('"project_id" argument missed', 'project_id')
         delete_existing = request.data.get('delete_existing', True)
         search_in = request.data.get('search_in', ['sentence'])
+        selected_tags = request.data.get('selected_tags', [])
 
         task_id = call_task(
             'Locate',
@@ -1709,7 +1727,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             parse=search_in,
             user_id=request.user.pk,
             project_id=int(project_id),
-            selected_tags=request.data.get('selected_tags'))
+            selected_tags=selected_tags)
         return Response({'task_id': task_id}, status=status.HTTP_200_OK)
 
     def filter_queryset(self, queryset):
@@ -1747,7 +1765,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         # sync created/modified fields with action object
         if self.action in ['retrieve', 'cluster']:
             return
-        obj = self.user_action.object
+        obj = self.user_action.object if self.user_action else None
         if not obj:
             return
         if self.action == 'create':
@@ -1829,7 +1847,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
     @action(detail=True, methods=['get'], schema=ActionViewSchema())
     def settings_actions(self, request, **kwargs):
-        return self.actions(view_action_names=['create', 'update', 'partial_update'])
+        return self.actions(view_action_names=['create', 'update', 'partial_update', 'upload'])
 
     @action(detail=True, methods=['get'], schema=ActionViewSchema())
     def cluster_actions(self, request, **kwargs):
@@ -2575,10 +2593,10 @@ class ProjectClusteringSerializer(serializers.ModelSerializer):
 
     def get_status(self, obj):
         # 1. task purged
-        if not obj.task and obj.status == PENDING:
+        if not obj.task and not obj.status:
             return
         # 2. task started, but status is not set yet
-        if obj.status is None and obj.task:
+        if obj.task and not obj.status:
             return obj.task.status
         return obj.status
     get_status.output_field = serializers.CharField()

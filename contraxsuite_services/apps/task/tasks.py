@@ -51,7 +51,7 @@ import pandas as pd
 from celery import shared_task, signature
 from celery.exceptions import SoftTimeLimitExceeded, Retry
 from celery.result import AsyncResult
-from celery.states import FAILURE, UNREADY_STATES, SUCCESS
+from celery.states import FAILURE, UNREADY_STATES, SUCCESS, PENDING
 from celery.utils.log import get_task_logger
 from celery.utils.time import get_exponential_backoff_interval
 # Django imports
@@ -63,12 +63,14 @@ from django.db.models import QuerySet
 from django.db.utils import DatabaseError
 from django.utils.timezone import now
 
-from lexnlp.extract.common.ocr_rating.lang_vector_distribution_builder import LangVectorDistributionBuilder
+from lexnlp.extract.common.ocr_rating.lang_vector_distribution_builder import \
+    LangVectorDistributionBuilder
 from lexnlp.extract.en.contracts.detector import is_contract
 from lexnlp.nlp.en.segments.paragraphs import get_paragraphs
 from psycopg2 import InterfaceError, OperationalError
 from text_extraction_system_api.client import TextExtractionSystemWebClient
-from text_extraction_system_api.dto import PlainTextStructure, STATUS_DONE, OutputFormat, TableParser
+from text_extraction_system_api.dto import PlainTextStructure, STATUS_DONE, OutputFormat, \
+    TableParser
 
 # Project imports
 import task_names
@@ -85,12 +87,13 @@ from apps.common.utils import fast_uuid
 from apps.deployment.app_data import load_geo_entities, load_terms, load_courts
 from apps.document import signals
 from apps.document.constants import DOCUMENT_TYPE_PK_GENERIC_DOCUMENT, \
-    DOC_METADATA_DOCUMENT_CLASS_PROB, DOCUMENT_FIELD_CODE_CLASS, DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR
+    DOC_METADATA_DOCUMENT_CLASS_PROB, DOCUMENT_FIELD_CODE_CLASS, \
+    DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR, DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.document_class import DocumentClass
 from apps.document.field_detection.field_detection import detect_and_cache_field_values_for_document
-from apps.document.models import (
-    Document, DocumentText, DocumentPDFRepresentation, DocumentMetadata, DocumentProperty, DocumentType,
-    TextUnit, TextUnitTag, DocumentTable, TextUnitText, DocumentPage)
+from apps.document.models import Document, DocumentText, DocumentPDFRepresentation, \
+    DocumentMetadata, DocumentProperty, DocumentType, TextUnit, TextUnitTag, DocumentTable, \
+    DocumentPage
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.extract import dict_data_cache
 from apps.extract import models as extract_models
@@ -100,12 +103,14 @@ from apps.extract.models import Court, GeoAlias, GeoEntity, GeoRelation
 from apps.project.models import Project, UploadSession
 from apps.task.celery_backend.task_utils import revoke_task
 from apps.task.models import Task, TaskConfig, ReindexRoutine
-from apps.task.ocr_rating.ocr_rating_calculator import TextOCRRatingCalculator, CUSTOM_LANG_STORAGE_FOLDER
+from apps.task.ocr_rating.ocr_rating_calculator import TextOCRRatingCalculator, \
+    CUSTOM_LANG_STORAGE_FOLDER
 from apps.task.signals import task_deleted
 from apps.task.task_monitor import TaskMonitor
 from apps.task.task_visibility import TaskVisibility
-from apps.task.utils.task_utils import TaskUtils, pre_serialize, check_blocks, check_blocks_decorator, \
-    download_task_attached_file
+from apps.task.utils.task_utils import TaskUtils, pre_serialize, check_blocks, \
+    check_blocks_decorator, \
+    download_task_attached_file, get_bounding_rectangle_coordinates
 from apps.users.models import User
 from apps.websocket import channel_message_types as message_types
 from apps.websocket.channel_message import ChannelMessage
@@ -113,9 +118,9 @@ from apps.websocket.websockets import Websockets
 from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -174,7 +179,8 @@ class ExtendedTask(app.Task):
 
     def run(self, *args, **kwargs):
         run_count = Task.objects.increase_run_count(self.request.id)
-        if hasattr(self, 'max_retries') and self.max_retries is not None and run_count > self.max_retries:
+        if hasattr(self, 'max_retries') and self.max_retries is not None \
+                and run_count > self.max_retries:
             raise RuntimeError(f'Exceeded maximum number of retries ({self.max_retries})')
         self.log_info(f'Start task "{self.task_name}", id={self.main_task_id}, '
                       f'run_count={run_count}\nKwargs: {str(kwargs)}')
@@ -428,8 +434,8 @@ class ExtendedTask(app.Task):
             if hasattr(sub_task_function, 'queue') \
             else get_queue_by_task_priority(priority)
 
-        self.log_info(
-            '{0}: {1} starting {2} sub-tasks...'.format(self.task_name, sub_tasks_group_title, len(sub_tasks)))
+        self.log_info(f'{self.task_name}: {sub_tasks_group_title} starting {len(sub_tasks)} '
+                      f'sub-tasks...')
         for ss in sub_tasks:
             ss.apply_async(countdown=countdown,
                            priority=priority,
@@ -569,6 +575,8 @@ class ExtendedTask(app.Task):
                                 full_jitter=retry_jitter)
 
                     try:
+                        self.log_warn(f"Task has been failed because of {retry_exc.__name__}. "
+                                      f"Starting the task once again")
                         # Next line raises Retry exception
                         self.retry(exc=retry_exc, **retry_kwargs)
                     except Exception as e1:
@@ -803,7 +811,8 @@ def delete_document_on_load_failed(task: ExtendedTask, file_name: str, kwargs: d
             .values_list('pk', flat=True))
 
     if document_ids:
-        task.log_error(f'Loading documents task failed, deleting documents: {file_name} (ids: {document_ids})')
+        task.log_error(f'Loading documents task failed, deleting documents: {file_name} (ids: '
+                       f'{document_ids})')
 
         task_user = None
         try:
@@ -972,8 +981,10 @@ class LoadDocuments(ExtendedTask):
                     document_type = project.type
                 else:  # let it crash if document_type_id is not specified too
                     document_type = DocumentType.objects.get(pk=document_type_id)
-                document_type_str = f'{document_type.code} ({project.name})' if project else document_type.code
-                task.log_info(message=f'Document Upload Session id={upload_session.pk}, {document_type_str}')
+                document_type_str = f'{document_type.code} ({project.name})' \
+                    if project else document_type.code
+                task.log_info(message=f'Document Upload Session id={upload_session.pk}, '
+                                      f'{document_type_str}')
             elif project_id:
                 project = Project.objects.get(pk=project_id)
                 document_type = project.type
@@ -1050,8 +1061,9 @@ class LoadDocuments(ExtendedTask):
             client = TextExtractionSystemWebClient(settings.TEXT_EXTRACTION_SYSTEM_URL)
 
             from apps.document.app_vars import OCR_ENABLE, DESKEW_ENABLE, \
-                DOCUMENT_LOCALE, OCR_FILE_SIZE_LIMIT, PDF_COORDINATES_DEBUG_ENABLE, TABLE_DETECTION_ENABLE, \
-                TABLE_DETECTION_METHOD, OCR_PAGE_TIMEOUT, REMOVE_OCR_LAYERS
+                DOCUMENT_LOCALE, OCR_FILE_SIZE_LIMIT, PDF_COORDINATES_DEBUG_ENABLE, \
+                TABLE_DETECTION_ENABLE, TABLE_DETECTION_METHOD, OCR_PAGE_TIMEOUT, \
+                REMOVE_OCR_LAYERS, CORRECT_PAGE_ORIENT_BY_TESSERACT
             ocr_enable = OCR_ENABLE.val(project_id=project_id) \
                          and os.path.getsize(file_path) <= OCR_FILE_SIZE_LIMIT.val(project_id=project_id) * 1024 * 1024
             remove_ocr_layers = REMOVE_OCR_LAYERS.val(project_id)
@@ -1060,12 +1072,17 @@ class LoadDocuments(ExtendedTask):
             table_detection_enable = TABLE_DETECTION_ENABLE.val(project_id=project_id)
             table_parser_str = TABLE_DETECTION_METHOD.val(project_id=project_id)
             ocr_page_timeout = OCR_PAGE_TIMEOUT.val(project_id=project_id)
+            correct_page_orient_by_tesseract = CORRECT_PAGE_ORIENT_BY_TESSERACT.val(
+                project_id=project_id)
 
-            call_back_url = f'{settings.TEXT_EXTRACTION_SYSTEM_CALLBACK_URL}/{process_results_task.id}/'
+            call_back_url = f'{settings.TEXT_EXTRACTION_SYSTEM_CALLBACK_URL}/' \
+                            f'{process_results_task.id}/'
 
             # Define document language depending on the project language
-            is_project_locale_correct = DOCUMENT_LOCALE.val(project_id=project_id) in settings.LOCALES.keys()
-            doc_language = DOCUMENT_LOCALE.val(project_id=project_id) if is_project_locale_correct else ""
+            is_project_locale_correct = DOCUMENT_LOCALE.val(project_id=project_id) \
+                                        in settings.LOCALES.keys()
+            doc_language = DOCUMENT_LOCALE.val(project_id=project_id) \
+                if is_project_locale_correct else ""
             client.schedule_data_extraction_task(fn=file_path,
                                                  request_id=process_results_task.id,
                                                  call_back_url=call_back_url,
@@ -1081,7 +1098,8 @@ class LoadDocuments(ExtendedTask):
                                                  output_format=OutputFormat.msgpack,
                                                  table_parser=TableParser(table_parser_str),
                                                  page_ocr_timeout_sec=ocr_page_timeout,
-                                                 remove_ocr_layer=remove_ocr_layers)
+                                                 remove_ocr_layer=remove_ocr_layers,
+                                                 detect_orientation_tesseract=correct_page_orient_by_tesseract)
             return document.pk
 
     @staticmethod
@@ -1241,19 +1259,12 @@ class LoadDocuments(ExtendedTask):
                     location_end=p.end,
                     language=p.language,
                     text_hash=hashlib.sha1(plain_text[p.start:p.end].encode("utf-8")).hexdigest(),
+                    text=plain_text[p.start:p.end],
                     project=doc.project)
                 for p in plain_text_struct.paragraphs
             ]
             paragraph_list = TextUnit.objects.bulk_create(paragraph_list)
             doc.paragraphs = len(paragraph_list)
-
-            TextUnitText.objects.bulk_create([
-                TextUnitText(
-                    text_unit=text_unit,
-                    document_id=doc.pk,
-                    text=plain_text[p.start:p.end]
-                ) for text_unit, p in zip(paragraph_list, plain_text_struct.paragraphs)
-            ])
 
             sentence_list = [
                 TextUnit(
@@ -1263,18 +1274,12 @@ class LoadDocuments(ExtendedTask):
                     text_hash=hashlib.sha1(plain_text[s.start:s.end].encode("utf-8")).hexdigest(),
                     unit_type='sentence',
                     language=s.language,
-                    project=doc.project)
+                    project=doc.project,
+                    text=plain_text[s.start:s.end])
                 for s in plain_text_struct.sentences
             ]
             sentence_list = TextUnit.objects.bulk_create(sentence_list)
             doc.sentences = len(sentence_list)
-            TextUnitText.objects.bulk_create([
-                TextUnitText(
-                    text_unit=text_unit,
-                    document_id=doc.pk,
-                    text=plain_text[s.start:s.end]
-                ) for text_unit, s in zip(sentence_list, plain_text_struct.sentences)
-            ])
             task.log_info(f'{doc.sentences} sentences and {doc.paragraphs} paragraphs are stored')
 
             page_list = [
@@ -1311,10 +1316,7 @@ class LoadDocuments(ExtendedTask):
                 doc_tables = [
                     DocumentTable(document=doc,
                                   table=pd.DataFrame(t.data, columns=range(len(t.data[0]))),
-                                  bounding_rect=[t.coordinates.left,
-                                                 t.coordinates.top,
-                                                 t.coordinates.width,
-                                                 t.coordinates.height],
+                                  bounding_rect=get_bounding_rectangle_coordinates(t.coordinates),
                                   page=t.page)
                     for t in tables_json.tables if t.data
                 ]
@@ -1664,6 +1666,7 @@ class Locate(ExtendedTask):
     def process(self, **kwargs):
         document_id = kwargs.get('document_id')
         doc_loaded_by_user_id = kwargs.get('doc_loaded_by_user_id')
+        user_id = kwargs.get('user_id')
         document_initial_load = bool(kwargs.get('document_initial_load'))
         predefined_field_codes_to_python_values = kwargs.get('predefined_field_codes_to_python_values')
         project_id = kwargs.get('project_id')
@@ -1676,7 +1679,7 @@ class Locate(ExtendedTask):
             # all subtasks are created
             self.run_if_task_or_sub_tasks_failed(
                 Locate.notify_on_completed_complete_action,
-                args=(project_id, self.root_task_id, 'FAILURE'))
+                args=(project_id, self.root_task_id, user_id, {}, 'FAILURE'))
 
         # detect items to locate/delete
         if 'locate' in kwargs:
@@ -1763,7 +1766,7 @@ class Locate(ExtendedTask):
             self.run_after_sub_tasks_finished(
                 'Notify on Locate finished',
                 Locate.notify_on_completed_complete_action,
-                [(project_id, self.root_task_id, 'SUCCESS')])
+                [(project_id, self.root_task_id, user_id, locate, 'SUCCESS')])
 
     @shared_task(base=ExtendedTask,
                  bind=True,
@@ -1903,10 +1906,10 @@ class Locate(ExtendedTask):
                          user_id,
                          locate: Dict[str, Dict],
                          document_initial_load: bool,
-                         selected_tags: Optional[List[str]]=None):
+                         selected_tags: Optional[List[str]] = None):
         from apps.document.app_vars import DOCUMENT_LOCALE
         text_units = TextUnit.objects.filter(pk__in=text_unit_ids).values_list(
-            'pk', 'textunittext__text', 'language', 'document_id', 'project_id')
+            'pk', 'text', 'language', 'document_id', 'project_id')
         location_results = LocationResults(document_initial_load=document_initial_load)
         log = CeleryTaskLogger(self)
         locators = LocatorsCollection.get_locators()
@@ -1947,12 +1950,15 @@ class Locate(ExtendedTask):
     def notify_on_completed_complete_action(_self,
                                             project_id: int,
                                             root_task_id: str,
-                                            status: str):
+                                            user_id: int,
+                                            locate: dict,
+                                            status: str,):
         locate_task: Optional[Task] = Task.objects.filter(id=root_task_id).first()
         if locate_task:
             locate_task.status = SUCCESS
             locate_task.progress = 100
             locate_task.save(update_fields=['status', 'progress'])
+
         data = {'task_id': root_task_id, 'task_name': 'Locate',
                 'task_status': status,
                 'project_id': project_id}
@@ -1967,6 +1973,34 @@ class Locate(ExtendedTask):
         logger.info(f'Notify {users.count()} on Locate task completed')
         message = ChannelMessage(message_types.CHANNEL_MSG_TYPE_TASK_COMPLETED, data)
         Websockets().send_to_users(qs_users=users, message_obj=message)
+
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        notifications = []
+        project = Project.all_objects.get(id=project_id)
+        message_data = {
+            'project': project.name,
+        }
+        for locate_type in locate.keys():
+            if locate_type == 'party':
+                notification_type = WebNotificationTypes.CUSTOM_COMPANY_TYPE_SEARCH_FINISHED
+            elif locate_type == 'term':
+                notification_type = WebNotificationTypes.CUSTOM_TERM_SET_SEARCH_FINISHED
+            else:
+                continue
+            message_data = notification_type.check_message_data(message_data)
+            redirect_link = {
+                'type': notification_type.redirect_link_type(),
+                'params': {
+                    'project_type': 'batch_analysis'
+                        if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                        else 'contract_analysis',
+                    'project_id': project.pk
+                },
+            }
+            recipients = [user_id, ]
+            notifications.append((message_data, redirect_link, notification_type,
+                                  recipients))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
 
 
 @shared_task(base=ExtendedTask,
@@ -2194,7 +2228,8 @@ def track_failed_tasks(_celery_task):
 
 @app.task(name=task_names.TASK_NAME_CLEAN_TASKS_PERIODIC, bind=True, queue=settings.CELERY_QUEUE_SERIAL)
 def clean_tasks_periodic(_celery_task):
-    from apps.task.app_vars import REMOVE_READY_TASKS_DELAY_IN_HOURS
+    from apps.task.app_vars import REMOVE_READY_TASKS_DELAY_IN_HOURS, REMOVE_FAILED_TASKS_DELAY_IN_DAYS, \
+        REMOVE_PENDING_TASKS_DELAY_IN_DAYS
 
     TaskUtils.prepare_task_execution()
 
@@ -2206,18 +2241,28 @@ def clean_tasks_periodic(_celery_task):
         .filter(name__in=excluded, date_done__lt=del_sub_tasks_date) \
         .delete()
 
+    # delete old failed tasks
+    del_failed_tasks_date = now() - datetime.timedelta(days=REMOVE_FAILED_TASKS_DELAY_IN_DAYS.val())
+    qs = Task.objects.filter(status=FAILURE, date_done__lt=del_failed_tasks_date)
+    qs.delete()
+
+    # delete old pending tasks
+    del_pending_tasks_date = now() - datetime.timedelta(days=REMOVE_PENDING_TASKS_DELAY_IN_DAYS.val())
+    qs = Task.objects.filter(status=PENDING, date_start__lt=del_pending_tasks_date)
+    for task in qs:
+        purge_task(task.pk, delete=True)
+
     # Delete excess tasks from task list
     h = REMOVE_READY_TASKS_DELAY_IN_HOURS.val()
 
     if h and h > 0:
         del_ready_tasks_date = now() - datetime.timedelta(hours=h)
-        qr = Task.objects.filter(date_done__lt=del_ready_tasks_date)  # type: QuerySet
+        qs = Task.objects.filter(date_done__lt=del_ready_tasks_date).exclude(status=FAILURE)  # type: QuerySet
 
         if settings.TASKS_DO_NOT_REMOVE_WHEN_READY:
-            qr = qr.exclude(settings.TASKS_DO_NOT_REMOVE_WHEN_READY)
-        qr = qr.exclude(status=FAILURE)
+            qs = qs.exclude(settings.TASKS_DO_NOT_REMOVE_WHEN_READY)
 
-        qr.delete()
+        qs.delete()
 
 
 @app.task(name=task_names.TASK_NAME_CLEAN_EXPORT_FILES_PERIODIC,
@@ -2277,7 +2322,7 @@ def recall_task(task_pk: str,
     # try restarting All session tasks including the one passed
     if session_id:
         task = Task.objects.get(pk=task_pk)
-        target_status = task.status if task.status == 'PENDING' else 'FAILURE'
+        target_status = task.status if task.status == PENDING else FAILURE
         task_ids = find_tasks_by_session_ids(session_id, target_status)
         result = []
 
@@ -2390,6 +2435,12 @@ def purge_task(task_pk: Union[Task, str],
         # TODO: Refactor this. Create a kind of on_purge() handler per task.
         # TODO: see task_deleted signal
         LoadDocuments.cancel_text_extraction(task.pk, log_func)
+
+    from apps.project.tasks import ClusterProjectDocuments
+    if task.name == ClusterProjectDocuments.name and task.status in UNREADY_STATES:
+        # TODO: Refactor this. Create a kind of on_purge() handler per task.
+        # TODO: see task_deleted signal
+        ClusterProjectDocuments.update_purged_clustering_status(task.pk)
 
     for subtask in task.subtasks:
         subtask.terminate_spawned_processes('everywhere')

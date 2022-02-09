@@ -29,9 +29,9 @@ from rest_framework import serializers
 from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -177,17 +177,3 @@ class DocumentsAPIViewSchema(ObjectResponseSchema):
         if method == 'POST':
             return {self.post_schema_name: self.get_post_request_schema()}
         return super().get_components(path, method)
-
-
-class SocialAccountsSerializer(serializers.Serializer):
-    name = serializers.CharField()
-    provider = serializers.CharField()
-    login_url = serializers.CharField()
-
-
-class SocialAccountsResponseSerializer(serializers.Serializer):
-    social_accounts = SocialAccountsSerializer()
-
-
-class SocialAccountsAPISchema(CustomAutoSchema):
-    response_serializer = SocialAccountsResponseSerializer()

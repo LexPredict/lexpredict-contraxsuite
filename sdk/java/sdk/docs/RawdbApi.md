@@ -8,7 +8,6 @@ Method | HTTP request | Description
 [**rawdbDocumentsDocumentTypeCodeGET**](RawdbApi.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**rawdbDocumentsDocumentTypeCodePOST**](RawdbApi.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**rawdbProjectStatsProjectIdGET**](RawdbApi.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-[**rawdbSocialAccountsGET**](RawdbApi.md#rawdbSocialAccountsGET) | **GET** /api/v1/rawdb/social_accounts/ | 
 
 
 <a name="rawdbConfigGET"></a>
@@ -107,7 +106,7 @@ public class Example {
     String columns = "columns_example"; // String | Column names separated by commas
     Boolean associatedText = true; // Boolean | Boolean - show associated text
     Boolean asZip = true; // Boolean | Boolean - export as zip
-    String fmt = "fmt_example"; // String | Export format
+    String fmt = "json"; // String | Export format
     Integer limit = 56; // Integer | Page Size
     String orderBy = "orderBy_example"; // String | Sort order - column names separated by commas
     String savedFilters = "savedFilters_example"; // String | Saved filter ids separated by commas
@@ -292,69 +291,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 **Map&lt;String, Object&gt;**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="rawdbSocialAccountsGET"></a>
-# **rawdbSocialAccountsGET**
-> SocialAccountsResponse rawdbSocialAccountsGET()
-
-
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.RawdbApi;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    RawdbApi apiInstance = new RawdbApi(defaultClient);
-    try {
-      SocialAccountsResponse result = apiInstance.rawdbSocialAccountsGET();
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling RawdbApi#rawdbSocialAccountsGET");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 

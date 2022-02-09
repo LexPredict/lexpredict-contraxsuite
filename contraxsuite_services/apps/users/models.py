@@ -29,6 +29,7 @@ from __future__ import unicode_literals, absolute_import
 
 # Standard imports
 import tzlocal
+import uuid
 from allauth.socialaccount.models import SocialApp
 from timezone_field import TimeZoneField
 from typing import List, Tuple, Union
@@ -50,13 +51,14 @@ from guardian.managers import UserObjectPermissionManager
 from guardian.models import UserObjectPermissionAbstract
 
 # Project imports
+from apps.common.fields import StringUUIDField
 from apps.common.file_storage import get_media_file_storage
 from apps.users import signals
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,6 +79,7 @@ class User(AbstractUser):
 
     # First Name and Last Name do not cover name patterns
     # around the globe.
+    uid = StringUUIDField(default=uuid.uuid4, editable=False)
     name = models.CharField(_('Name of User'), blank=True, max_length=255)
     initials = models.CharField(_('User Initials'), blank=True, max_length=2)
     organization = models.CharField(_('Organization'), max_length=100, blank=True, null=True)

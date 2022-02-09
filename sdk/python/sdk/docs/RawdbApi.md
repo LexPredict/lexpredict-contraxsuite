@@ -8,7 +8,6 @@ Method | HTTP request | Description
 [**rawdb_documents_document_type_code_get**](RawdbApi.md#rawdb_documents_document_type_code_get) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**rawdb_documents_document_type_code_post**](RawdbApi.md#rawdb_documents_document_type_code_post) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**rawdb_project_stats_project_id_get**](RawdbApi.md#rawdb_project_stats_project_id_get) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-[**rawdb_social_accounts_get**](RawdbApi.md#rawdb_social_accounts_get) | **GET** /api/v1/rawdb/social_accounts/ | 
 
 
 # **rawdb_config_get**
@@ -19,6 +18,7 @@ Method | HTTP request | Description
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -73,6 +73,7 @@ This endpoint does not need any parameter.
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -87,6 +88,7 @@ This endpoint does not need any parameter.
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -183,6 +185,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -199,6 +202,7 @@ See .get() method signature, .post() method just reflects it and uses the same r
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -285,6 +289,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -299,6 +304,7 @@ Name | Type | Description  | Notes
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -357,75 +363,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **rawdb_social_accounts_get**
-> SocialAccountsResponse rawdb_social_accounts_get()
-
-
-
-### Example
-
-* Api Key Authentication (AuthToken):
-```python
-import time
-import openapi_client
-from openapi_client.api import rawdb_api
-from openapi_client.model.social_accounts_response import SocialAccountsResponse
-from pprint import pprint
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = openapi_client.Configuration(
-    host = "http://localhost"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AuthToken
-configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AuthToken'] = 'Bearer'
-
-# Enter a context with an instance of the API client
-with openapi_client.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = rawdb_api.RawdbApi(api_client)
-
-    # example, this endpoint has no required or optional parameters
-    try:
-        api_response = api_instance.rawdb_social_accounts_get()
-        pprint(api_response)
-    except openapi_client.ApiException as e:
-        print("Exception when calling RawdbApi->rawdb_social_accounts_get: %s\n" % e)
-```
-
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-
-### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |

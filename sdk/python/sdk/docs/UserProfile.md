@@ -4,6 +4,7 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**uid** | **str** |  | [optional] [readonly] 
 **username** | **str** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | [optional] [readonly] 
 **last_name** | **str** |  | [optional] 
 **first_name** | **str** |  | [optional] 

@@ -32,6 +32,7 @@ from typing import Set, Optional
 
 from bulk_update.helper import bulk_update
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection, transaction
 from django.db.models import QuerySet, Q, Subquery, F
 from django.utils.timezone import now
@@ -40,6 +41,7 @@ from rest_framework.exceptions import APIException, NotFound
 from apps.common.collection_utils import chunks, group_by
 from apps.common.contraxsuite_urls import doc_editor_url
 from apps.common.log_utils import ProcessLogger
+from apps.common.models import Action
 from apps.common.script_utils import eval_script
 from apps.common.singleton import Singleton
 from apps.common.sql_commons import sql_query
@@ -55,9 +57,9 @@ from apps.rawdb.constants import FIELD_CODE_DOC_ID, FIELD_CODE_HIDE_UNTIL_PYTHON
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -228,8 +230,8 @@ class DocumentFieldRepository:
     def get_annotated_values_for_dump(self) -> List[Dict]:
         data = FieldAnnotation.objects \
             .filter(modified_by__isnull=False,
-                    text_unit__textunittext__text__isnull=False) \
-            .annotate(text_unit_text=F('text_unit__textunittext__text')) \
+                    textunittext__text__isnull=False) \
+            .annotate(text_unit_text=F('text_unit__text')) \
             .values('field_id', 'value', 'extraction_hint',
                     'text_unit_text', 'modified_date')  # 'created_date'
         return data
@@ -1005,7 +1007,6 @@ class DocumentFieldRepository:
                             user: User,
                             fval_by_code: Dict[str, Any],
                             on_existing_value: str = 'replace_all') -> List[Tuple[DocumentField, FieldValue]]:
-
         res = []
         with connection.cursor() as cursor:
             self.lock_document(cursor, doc.pk)  # will unlock on transaction end
@@ -1016,18 +1017,18 @@ class DocumentFieldRepository:
                 field = field_by_code[field_code]
                 typed_field = TypedField.by(field)
 
-                ex_ants = list(FieldAnnotation.objects.filter(
-                    document_id=doc.pk, field=field))  # type:List[FieldAnnotation]
+                ex_ants = FieldAnnotation.objects.filter(
+                    document_id=doc.pk, field=field).values('pk', 'value')  # type:QuerySet
 
                 # 1. Validate new field value.
                 # If field requires annotation then there should be annotation matching the new field value.
                 # 2. Save new field value.
                 # 3. Delete annotations not matching the new field value.
 
-                if not typed_field.is_there_annotation_matching_field_value(value, [a.value for a in ex_ants]):
-                    raise NoExistingAnnotationMatchingNewFieldValue(f'Field {field_code} ({typed_field.type_code}) '
-                                                                    f'expects an existing annnotation matching the '
-                                                                    f'new value. Please assign an annotation first.')
+                if not typed_field.is_there_annotation_matching_field_value(value, [a['value'] for a in ex_ants]):
+                    raise NoExistingAnnotationMatchingNewFieldValue(
+                        f'Field {field_code} ({typed_field.type_code}) expects an existing '
+                        f'annnotation matching the new value. Please assign an annotation first.')
 
                 if not typed_field.is_json_field_value_ok(value):
                     raise BadValueForField(f'Wrong value format for field {field_code} ({typed_field.type_code}):\n'
@@ -1037,8 +1038,8 @@ class DocumentFieldRepository:
 
                 for ex_ant in ex_ants:
                     if not typed_field.annotation_value_matches_field_value(field_value=value,
-                                                                            annotation_value=ex_ant.value):
-                        deleting_ant_ids.append(ex_ant.pk)
+                                                                            annotation_value=ex_ant['value']):
+                        deleting_ant_ids.append(ex_ant['pk'])
                 if deleting_ant_ids:
                     FieldAnnotation.objects.filter(pk__in=deleting_ant_ids).delete()
                 res.append((field, field_value_model))
@@ -1114,11 +1115,15 @@ class DocumentFieldRepository:
 
     def update_field_annotations_by_doc_ids(self,
                                             document_ids: Iterable[int],
-                                            field_data: Iterable[Tuple[str, str]]):
+                                            field_data: Iterable[Tuple[str, str]],
+                                            additional_where_clauses: Iterable[str] = None):
         if not document_ids or not field_data:
             return
-        where_clause = ','.join([str(id) for id in document_ids])
+        where_clause = ','.join([str(doc_id) for doc_id in document_ids])
         where_clause = f'WHERE {FIELD_CODE_DOC_ID} in ({where_clause})'
+        if additional_where_clauses:
+            for clause in additional_where_clauses:
+                where_clause += f' AND {clause}'
         self.update_field_annotations(where_clause, field_data)
 
     def update_field_annotations_by_ant_ids(self,
@@ -1127,7 +1132,7 @@ class DocumentFieldRepository:
                                             update_false_matches: bool = False):
         if not annotation_ids or not field_data:
             return
-        where_clause = ','.join([f"'{id}'" for id in annotation_ids])
+        where_clause = ','.join([f"'{ann_id}'" for ann_id in annotation_ids])
         where_clause = f'WHERE "uid" in ({where_clause})'
         self.update_field_annotations(where_clause, field_data, update_false_matches)
 

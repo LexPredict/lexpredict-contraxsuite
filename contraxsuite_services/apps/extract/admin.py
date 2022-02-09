@@ -51,9 +51,9 @@ from apps.extract.models import AmountUsage, CitationUsage, CopyrightUsage, Cour
 from apps.task.forms import LoadTermsForm, LoadCompanyTypesForm
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -63,7 +63,7 @@ class TextUnitUsageAdminBase(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related('text_unit', 'text_unit__document', 'text_unit__textunittext')
+        return qs.select_related('text_unit', 'text_unit__document')
 
 
 class CourtAdmin(admin.ModelAdmin):
@@ -73,7 +73,7 @@ class CourtAdmin(admin.ModelAdmin):
 
 class CourtUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'court', 'count')
-    search_fields = ('text_unit__textunittext__text', 'court__name')
+    search_fields = ('text_unit__text', 'court__name')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -82,12 +82,12 @@ class CourtUsageAdmin(TextUnitUsageAdminBase):
 
 class CitationUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'citation_str', 'count')
-    search_fields = ('text_unit__textunittext__text', 'citation_str')
+    search_fields = ('text_unit__text', 'citation_str')
 
 
 class CopyrightUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'copyright_str', 'count')
-    search_fields = ('text_unit__textunittext__text', 'copyright_str')
+    search_fields = ('text_unit__text', 'copyright_str')
 
 
 class CurrencyUsageAdmin(TextUnitUsageAdminBase):
@@ -152,7 +152,7 @@ class GeoAliasAdmin(admin.ModelAdmin):
 
 class GeoAliasUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'alias', 'count')
-    search_fields = ('text_unit__textunittext__text', 'alias__alias')
+    search_fields = ('text_unit__text', 'alias__alias')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -166,7 +166,7 @@ class GeoEntityAdmin(admin.ModelAdmin):
 
 class GeoEntityUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'entity', 'count')
-    search_fields = ('text_unit__textunittext__text', 'entity__name')
+    search_fields = ('text_unit__text', 'entity__name')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -443,17 +443,17 @@ class DocumentTermUsageAdmin(admin.ModelAdmin):
 
 class TrademarkUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'trademark', 'count')
-    search_fields = ('text_unit__textunittext__text', 'trademark')
+    search_fields = ('text_unit__text', 'trademark')
 
 
 class UrlUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'source_url', 'count')
-    search_fields = ('text_unit__textunittext__text', 'source_url')
+    search_fields = ('text_unit__text', 'source_url')
 
 
 class PartyUsageAdmin(TextUnitUsageAdminBase):
     list_display = ('text_unit', 'party_name', 'count')
-    search_fields = ('text_unit__textunittext__text', 'party__name')
+    search_fields = ('text_unit__text', 'party__name')
 
     @staticmethod
     def party_name(obj):

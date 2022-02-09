@@ -38,9 +38,9 @@ from django.contrib.auth.models import Permission
 from apps.users.models import User, SocialAppUri, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -74,8 +74,9 @@ class MyUserCreationForm(UserCreationForm):
 class MyUserAdmin(AuthUserAdmin):
     form = MyUserChangeForm
     add_form = MyUserCreationForm
+    readonly_fields = ['uid']
     fieldsets = (('User Profile',
-                  {'fields': ('name', 'organization', 'timezone', 'photo')}),) + AuthUserAdmin.fieldsets
+                  {'fields': ('name', 'organization', 'timezone', 'photo', 'uid')}),) + AuthUserAdmin.fieldsets
     list_display = ('username', 'name', 'group_names', 'is_superuser', 'organization', 'timezone')
     sensitive_fields = ('password',)
     search_fields = ['username', 'name', 'organization']

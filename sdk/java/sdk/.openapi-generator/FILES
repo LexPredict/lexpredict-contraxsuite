@@ -97,6 +97,7 @@ docs/InlineResponse400.md
 docs/InlineResponse404.md
 docs/InlineResponse4041.md
 docs/LoadFixture.md
+docs/LocateItemsRequest.md
 docs/LoggingAPIViewRequest.md
 docs/LoggingApi.md
 docs/Login.md
@@ -206,7 +207,6 @@ docs/UserProfile.md
 docs/UserStats.md
 docs/UsersApi.md
 docs/V1Api.md
-docs/VarApi.md
 docs/VerifyAuthTokenRequest.md
 docs/VerifyAuthTokenResponse.md
 docs/VerifyEmail.md
@@ -251,7 +251,6 @@ src/main/java/org/openapitools/client/api/TaskApi.java
 src/main/java/org/openapitools/client/api/TusApi.java
 src/main/java/org/openapitools/client/api/UsersApi.java
 src/main/java/org/openapitools/client/api/V1Api.java
-src/main/java/org/openapitools/client/api/VarApi.java
 src/main/java/org/openapitools/client/auth/ApiKeyAuth.java
 src/main/java/org/openapitools/client/auth/Authentication.java
 src/main/java/org/openapitools/client/auth/HttpBasicAuth.java
@@ -343,6 +342,7 @@ src/main/java/org/openapitools/client/model/InlineResponse400.java
 src/main/java/org/openapitools/client/model/InlineResponse404.java
 src/main/java/org/openapitools/client/model/InlineResponse4041.java
 src/main/java/org/openapitools/client/model/LoadFixture.java
+src/main/java/org/openapitools/client/model/LocateItemsRequest.java
 src/main/java/org/openapitools/client/model/LoggingAPIViewRequest.java
 src/main/java/org/openapitools/client/model/Login.java
 src/main/java/org/openapitools/client/model/LoginResponse.java
@@ -448,6 +448,7 @@ src/main/java/org/openapitools/client/model/WebNotificationDetail.java
 src/main/java/org/openapitools/client/model/WebNotificationDetailNotification.java
 src/test/java/org/openapitools/client/api/NotificationsApiTest.java
 src/test/java/org/openapitools/client/model/DocumentNoteDetailUserTest.java
+src/test/java/org/openapitools/client/model/LocateItemsRequestTest.java
 src/test/java/org/openapitools/client/model/MarkForSeenWebNotificationRequestTest.java
 src/test/java/org/openapitools/client/model/MarkForSeenWebNotificationResponseTest.java
 src/test/java/org/openapitools/client/model/ProjectDocumentSimilarityResponseDataTest.java

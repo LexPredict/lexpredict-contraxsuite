@@ -1,8 +1,8 @@
 # contraxsuite-openapi-client
 
 Contraxsuite API
-- API version: 2.1.0
-  - Build date: 2021-09-21T17:23:12.379447+03:00[Europe/Moscow]
+- API version: 2.1.188
+  - Build date: 2022-01-19T15:46:46.101102+03:00[Europe/Moscow]
 
 Contraxsuite API
 
@@ -14,7 +14,7 @@ Contraxsuite API
 
 Building the API client library requires:
 1. Java 1.7+
-2. Maven/Gradle
+2. Maven (3.8.3+)/Gradle (7.2+)
 
 ## Installation
 
@@ -40,7 +40,7 @@ Add this dependency to your project's POM:
 <dependency>
   <groupId>com.lexpredict</groupId>
   <artifactId>contraxsuite-openapi-client</artifactId>
-  <version>2.0.0</version>
+  <version>2.2.0</version>
   <scope>compile</scope>
 </dependency>
 ```
@@ -50,7 +50,14 @@ Add this dependency to your project's POM:
 Add this dependency to your project's build file:
 
 ```groovy
-compile "com.lexpredict:contraxsuite-openapi-client:2.0.0"
+  repositories {
+    mavenCentral()     // Needed if the 'contraxsuite-openapi-client' jar has been published to maven central.
+    mavenLocal()       // Needed if the 'contraxsuite-openapi-client' jar has been published to the local maven repo.
+  }
+
+  dependencies {
+     implementation "com.lexpredict:contraxsuite-openapi-client:2.2.0"
+  }
 ```
 
 ### Others
@@ -63,7 +70,7 @@ mvn clean package
 
 Then manually install the following JARs:
 
-* `target/contraxsuite-openapi-client-2.0.0.jar`
+* `target/contraxsuite-openapi-client-2.2.0.jar`
 * `target/lib/*.jar`
 
 ## Getting Started
@@ -431,7 +438,6 @@ Class | Method | HTTP request | Description
 *RawdbApi* | [**rawdbDocumentsDocumentTypeCodeGET**](docs/RawdbApi.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 *RawdbApi* | [**rawdbDocumentsDocumentTypeCodePOST**](docs/RawdbApi.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 *RawdbApi* | [**rawdbProjectStatsProjectIdGET**](docs/RawdbApi.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-*RawdbApi* | [**rawdbSocialAccountsGET**](docs/RawdbApi.md#rawdbSocialAccountsGET) | **GET** /api/v1/rawdb/social_accounts/ | 
 *RestAuthApi* | [**restAuthLoginPOST**](docs/RestAuthApi.md#restAuthLoginPOST) | **POST** /rest-auth/login/ | 
 *RestAuthApi* | [**restAuthLogoutGET**](docs/RestAuthApi.md#restAuthLogoutGET) | **GET** /rest-auth/logout/ | 
 *RestAuthApi* | [**restAuthLogoutPOST**](docs/RestAuthApi.md#restAuthLogoutPOST) | **POST** /rest-auth/logout/ | 
@@ -799,7 +805,6 @@ Class | Method | HTTP request | Description
 *V1Api* | [**rawdbDocumentsDocumentTypeCodeGET**](docs/V1Api.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 *V1Api* | [**rawdbDocumentsDocumentTypeCodePOST**](docs/V1Api.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 *V1Api* | [**rawdbProjectStatsProjectIdGET**](docs/V1Api.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-*V1Api* | [**rawdbSocialAccountsGET**](docs/V1Api.md#rawdbSocialAccountsGET) | **GET** /api/v1/rawdb/social_accounts/ | 
 *V1Api* | [**restAuthLoginPOST**](docs/V1Api.md#restAuthLoginPOST) | **POST** /rest-auth/login/ | 
 *V1Api* | [**restAuthLogoutGET**](docs/V1Api.md#restAuthLogoutGET) | **GET** /rest-auth/logout/ | 
 *V1Api* | [**restAuthLogoutPOST**](docs/V1Api.md#restAuthLogoutPOST) | **POST** /rest-auth/logout/ | 
@@ -851,8 +856,6 @@ Class | Method | HTTP request | Description
 *V1Api* | [**usersUsersPOST**](docs/V1Api.md#usersUsersPOST) | **POST** /api/v1/users/users/ | 
 *V1Api* | [**usersUsersUserStatsGET**](docs/V1Api.md#usersUsersUserStatsGET) | **GET** /api/v1/users/users/user_stats/ | 
 *V1Api* | [**usersVerifyTokenPOST**](docs/V1Api.md#usersVerifyTokenPOST) | **POST** /api/v1/users/verify-token/ | 
-*V1Api* | [**varGET**](docs/V1Api.md#varGET) | **GET** /api/{var} | 
-*VarApi* | [**varGET**](docs/VarApi.md#varGET) | **GET** /api/{var} | 
 
 
 ## Documentation for Models
@@ -944,6 +947,7 @@ Class | Method | HTTP request | Description
  - [InlineResponse404](docs/InlineResponse404.md)
  - [InlineResponse4041](docs/InlineResponse4041.md)
  - [LoadFixture](docs/LoadFixture.md)
+ - [LocateItemsRequest](docs/LocateItemsRequest.md)
  - [LoggingAPIViewRequest](docs/LoggingAPIViewRequest.md)
  - [Login](docs/Login.md)
  - [LoginResponse](docs/LoginResponse.md)

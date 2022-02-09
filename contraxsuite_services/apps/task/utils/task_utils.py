@@ -41,9 +41,9 @@ from django.db.models.query import QuerySet
 from apps.common.db_cache.db_cache import DbCache
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -220,3 +220,10 @@ def check_blocks_decorator(raise_error=True, error_message=None):
             return res
         return inner
     return outer
+
+
+def get_bounding_rectangle_coordinates(coordinates):
+    if isinstance(coordinates, dict):
+        return [coordinates['left'], coordinates['top'], coordinates['width'],
+                coordinates['height']]
+    return [coordinates.left, coordinates.top, coordinates.width, coordinates.height]

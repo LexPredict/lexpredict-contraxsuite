@@ -105,10 +105,10 @@ def create_test_upload_session(project_id: int, user_id: int = None, upload_file
 
     with openapi_client.ApiClient(auth_configuration) as api_client:
         api_instance = project_api.ProjectApi(api_client)
-        request_data = UploadSessionCreate._from_openapi_data(
+        request_data = UploadSessionCreate(
             project=project_id,
             created_by=user_id,
-            upload_files=upload_files
+            # upload_files=upload_files
         )
         resp = api_instance.project_upload_session_post(upload_session_create=request_data)
         assert isinstance(resp, UploadSessionCreate)

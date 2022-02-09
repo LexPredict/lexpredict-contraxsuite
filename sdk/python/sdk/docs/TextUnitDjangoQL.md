@@ -8,7 +8,7 @@ Name | Type | Description | Notes
 **project_name** | **str** |  | 
 **document_name** | **str** |  | 
 **id** | **int** |  | [optional] [readonly] 
-**text** | **str** |  | [optional] [readonly] 
+**text** | **str, none_type** |  | [optional] 
 **project_id** | **str** |  | [optional] [readonly] 
 **document_id** | **str** |  | [optional] [readonly] 
 **any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]

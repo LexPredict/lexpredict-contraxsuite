@@ -43,15 +43,15 @@ from apps.analyze.ml.classify import ClassifyTextUnits, ClassifyDocuments
 from apps.analyze.models import SimilarityRun
 from apps.analyze.notifications import notify_build_vectors_completed
 from apps.common.utils import get_free_mem
-from apps.document.models import Document, TextUnit, DocumentText, TextUnitText
+from apps.document.models import Document, TextUnit, DocumentText
 from apps.project.models import Project
 from apps.task.tasks import ExtendedTask
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -68,7 +68,7 @@ class FeatureStoringTask(ExtendedTask):
         vector_class = DocumentVector if self.source == 'document' else TextUnitVector
         transformer = (self.transformer if hasattr(self, 'transformer') else None) or \
             model_class.objects.get(pk=self.transformer_id)
-        id_field = 'document_id' if self.source == 'document' else 'text_unit_id'
+        id_field = 'document_id' if self.source == 'document' else 'id'
 
         if self.source == 'document':
             data_query = DocumentText.objects.all()
@@ -76,9 +76,9 @@ class FeatureStoringTask(ExtendedTask):
                 data_query = data_query.filter(document__project_id__in=self.project_ids)
             data = data_query.values_list(id_field, 'full_text')
         else:
-            data_query = TextUnitText.objects.filter(text_unit__unit_type=self.text_unit_type)
+            data_query = TextUnit.objects.filter(unit_type=self.text_unit_type)
             if self.project_ids:
-                data_query = data_query.filter(text_unit__document__project_id__in=self.project_ids)
+                data_query = data_query.filter(document__project_id__in=self.project_ids)
             data = data_query.values_list(id_field, 'text')
 
         if self.delete_existing:
@@ -132,7 +132,7 @@ class TrainDoc2VecModel(FeatureStoringTask):
         self.log_info(f'Free memory initially: {get_free_mem()}')
         transformer_name = kwargs.get('transformer_name')
         if transformer_class.objects.filter(name=transformer_name).count() > 0:
-            raise RuntimeError(f"There's already {transformer_class.__name__} with name '{transformer_name}'")
+            raise RuntimeError(f"There's already a(n) {transformer_class.__name__} with name '{transformer_name}'")
 
         self.project_ids = kwargs.get('project_ids')
         vector_size = kwargs.get('vector_size')

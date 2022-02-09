@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **DocumentsTotal** | **int** |  | 
 **ClausesTotal** | **int** |  | 
 **AvgOcrGrade** | **int?** |  | 
+**DocumentStatusLoaded** | **int** |  | 
+**DocumentStatusLoadedPcnt** | **decimal** |  | 
 **DocumentStatusNotStarted** | **int** |  | 
 **DocumentStatusNotStartedPcnt** | **decimal** |  | 
 **DocumentStatusInReview** | **int** |  | 

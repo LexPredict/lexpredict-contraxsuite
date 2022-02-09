@@ -38,9 +38,9 @@ from apps.notifications.schemas import MarkForSeenWebNotificationSchema, \
     MarkForSeenWebNotificationRequestSerializer
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -54,7 +54,7 @@ class WebNotificationMessageDetailSerializer(serializers.ModelSerializer):
                   'redirect_link']
 
     def get_message_template(self, obj):
-        return WebNotificationTypes.get_type_by_value(obj.notification_type).message_template()
+        return obj.get_notification_message_template()
 
     get_message_template.output_field = serializers.CharField(allow_null=True)
 

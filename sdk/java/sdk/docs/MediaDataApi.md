@@ -38,7 +38,7 @@ public class Example {
 
     MediaDataApi apiInstance = new MediaDataApi(defaultClient);
     String path = "path_example"; // String | 
-    String action = "download"; // String | Action name
+    String action = "info"; // String | Action name
     try {
       Map<String, Object> result = apiInstance.mediaDataPathGET(path, action);
       System.out.println(result);

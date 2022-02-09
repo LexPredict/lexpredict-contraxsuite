@@ -5,6 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**Uid** | **Guid** |  | [optional] [readonly] 
 **Username** | **string** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | [optional] [readonly] 
 **LastName** | **string** |  | [optional] 
 **FirstName** | **string** |  | [optional] 

@@ -6,6 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Id** | **int** |  | [optional] [readonly] 
+**Uid** | **Guid** |  | [optional] [readonly] 
 **Username** | **string** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | 
 **LastName** | **string** |  | [optional] 
 **FirstName** | **string** |  | [optional] 

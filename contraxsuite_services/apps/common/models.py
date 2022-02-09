@@ -63,9 +63,9 @@ from apps.common.singleton import Singleton
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -693,8 +693,15 @@ class ReviewStatus(models.Model):
 
     @property
     def is_final(self):
-        if self.group:
-            return not self.group.is_active
+        return not self.group.is_active if self.group else False
+
+    @property
+    def is_completed(self):
+        return self.is_final and self.code == 'completed'
+
+    @property
+    def is_excluded(self):
+        return self.is_final and self.code == 'excluded'
 
 
 def get_default_status():

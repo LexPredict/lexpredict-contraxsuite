@@ -26,9 +26,9 @@
 
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -46,7 +46,7 @@ from apps.common.file_storage import get_file_storage
 from apps.common.sql_commons import ModelLock
 from apps.document.migration.table_export_map import TableExportMapCollection, TableExportMap
 from apps.document.models import DocumentType, DocumentField, Document, DocumentMetadata, \
-    DocumentText, FieldAnnotation, TextUnit, TextUnitText, FieldValue, DocumentNote, \
+    DocumentText, FieldAnnotation, TextUnit, FieldValue, DocumentNote, \
     DocumentRelation, DocumentTable, FieldAnnotationFalseMatch, \
     DocumentTag, TextUnitNote, TextUnitProperty, TextUnitTag, TextUnitRelation, \
     DocumentProperty, DocumentPage

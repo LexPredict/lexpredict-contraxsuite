@@ -320,7 +320,6 @@ Method | HTTP request | Description
 [**RawdbDocumentsDocumentTypeCodeGET**](V1Api.md#rawdbdocumentsdocumenttypecodeget) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**RawdbDocumentsDocumentTypeCodePOST**](V1Api.md#rawdbdocumentsdocumenttypecodepost) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**RawdbProjectStatsProjectIdGET**](V1Api.md#rawdbprojectstatsprojectidget) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-[**RawdbSocialAccountsGET**](V1Api.md#rawdbsocialaccountsget) | **GET** /api/v1/rawdb/social_accounts/ | 
 [**RestAuthLoginPOST**](V1Api.md#restauthloginpost) | **POST** /rest-auth/login/ | 
 [**RestAuthLogoutGET**](V1Api.md#restauthlogoutget) | **GET** /rest-auth/logout/ | 
 [**RestAuthLogoutPOST**](V1Api.md#restauthlogoutpost) | **POST** /rest-auth/logout/ | 
@@ -372,7 +371,6 @@ Method | HTTP request | Description
 [**UsersUsersPOST**](V1Api.md#usersuserspost) | **POST** /api/v1/users/users/ | 
 [**UsersUsersUserStatsGET**](V1Api.md#usersusersuserstatsget) | **GET** /api/v1/users/users/user_stats/ | 
 [**UsersVerifyTokenPOST**](V1Api.md#usersverifytokenpost) | **POST** /api/v1/users/verify-token/ | 
-[**VarGET**](V1Api.md#varget) | **GET** /api/{var} | 
 
 
 
@@ -10286,7 +10284,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Type     Params:         - code: str - Short name for field, max 50 symbols         - title: str - Verbose name for field, max 100 symbols         - field_code_aliases: json - Aliases of field codes for document import purposes         - fields: array of objects like [{id: uid, category: id, order: int}, ...]         - search_fields: array of uids - set of fields to filter/sort on Document list page         - editor_type: str - max 100 symbols (from pre-defined choices)         - metadata: json - optional
+Fill in \"self.action_message\" attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 
@@ -22386,7 +22384,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdLocateItemsPOST
 
-> ProjectDetail ProjectProjectsIdLocateItemsPOST (string id, ProjectDetail projectDetail = null)
+> TaskIdResponse ProjectProjectsIdLocateItemsPOST (string id, LocateItemsRequest locateItemsRequest = null)
 
 
 
@@ -22413,11 +22411,11 @@ namespace Example
 
             var apiInstance = new V1Api(Configuration.Default);
             var id = id_example;  // string | A unique integer value identifying this project.
-            var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
+            var locateItemsRequest = new LocateItemsRequest(); // LocateItemsRequest |  (optional) 
 
             try
             {
-                ProjectDetail result = apiInstance.ProjectProjectsIdLocateItemsPOST(id, projectDetail);
+                TaskIdResponse result = apiInstance.ProjectProjectsIdLocateItemsPOST(id, locateItemsRequest);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -22437,11 +22435,11 @@ namespace Example
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **string**| A unique integer value identifying this project. | 
- **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] 
+ **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional] 
 
 ### Return type
 
-[**ProjectDetail**](ProjectDetail.md)
+[**TaskIdResponse**](TaskIdResponse.md)
 
 ### Authorization
 
@@ -25814,80 +25812,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 **Dictionary<string, Object>**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## RawdbSocialAccountsGET
-
-> SocialAccountsResponse RawdbSocialAccountsGET ()
-
-
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class RawdbSocialAccountsGETExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-
-            try
-            {
-                SocialAccountsResponse result = apiInstance.RawdbSocialAccountsGET();
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.RawdbSocialAccountsGET: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-This endpoint does not need any parameter.
-
-### Return type
-
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 
@@ -29956,84 +29880,6 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 | **201** |  |  -  |
 | **403** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## VarGET
-
-> Object VarGET (string var)
-
-
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class VarGETExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var var = var_example;  // string | 
-
-            try
-            {
-                Object result = apiInstance.VarGET(var);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.VarGET: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **var** | **string**|  | 
-
-### Return type
-
-**Object**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/coreapi+json, application/openapi+json, text/html
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

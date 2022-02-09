@@ -71,9 +71,9 @@ from apps.task.utils.task_utils import TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -206,6 +206,15 @@ class ClusterProjectDocuments(ExtendedTask):
         if msg_key:
             self.log_times[msg_key] = datetime.datetime.now()
 
+    @staticmethod
+    def update_purged_clustering_status(cluster_main_task_id: str):
+        try:
+            project_clustering = ProjectClustering.objects.get(task_id=cluster_main_task_id)
+            project_clustering.status = None
+            project_clustering.save(update_fields=['status'])
+        except ProjectClustering.DoesNotExist:
+            pass
+
 
 class ReassignProjectClusterDocuments(ExtendedTask):
     """
@@ -263,6 +272,39 @@ class ReassignProjectClusterDocuments(ExtendedTask):
         doc_ids = [d.pk for d in documents]
         text_units = TextUnit.objects.filter(document_id__in=doc_ids)
         text_units.update(project_id=new_project.pk)
+
+    @staticmethod
+    def notify_on_completed_reclustering(reassign_cluster_ids: list,
+                                         project_id: int):
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        from apps.analyze.models import DocumentCluster
+        notifications = []
+        notification_type = WebNotificationTypes.CLUSTER_IMPORTED
+        project = Project.all_objects.get(id=project_id)
+        for cluster_id in reassign_cluster_ids:
+            try:
+                cluster_name = DocumentCluster.objects.get(metadata__cluster_obj_id=cluster_id).name
+            except (AttributeError, DocumentCluster.DoesNotExist):
+                cluster_name = f"Cluster #{cluster_id}"
+            message_data = {
+                'project': project.name,
+                'cluster': cluster_name,
+                'documents_count': Document.objects.filter(documentcluster__pk=cluster_id).count(),
+            }
+            message_data = notification_type.check_message_data(message_data)
+            redirect_link = {
+                'type': notification_type.redirect_link_type(),
+                'params': {
+                    'project_type': 'batch_analysis'
+                        if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                        else 'contract_analysis',
+                    'project_id': project.pk
+                },
+            }
+            recipients = list(project.get_team().values_list('id', flat=True))
+            notifications.append((message_data, redirect_link, notification_type,
+                                  recipients))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
 
     @staticmethod
     @shared_task(base=ExtendedTask,
@@ -374,6 +416,8 @@ class ReassignProjectClusterDocuments(ExtendedTask):
         p_cl.metadata['points_data'] = [i for i in p_cl.metadata['points_data']
                                         if int(i['document_id']) not in reassigned_document_ids]
         p_cl.save()
+        ReassignProjectClusterDocuments.notify_on_completed_reclustering(reassign_cluster_ids,
+                                                                         new_project_id)
 
 
 class CleanProject(ExtendedTask):

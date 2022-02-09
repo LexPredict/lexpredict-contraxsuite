@@ -31,4 +31,3 @@ from openapi_client.api.task_api import TaskApi
 from openapi_client.api.tus_api import TusApi
 from openapi_client.api.users_api import UsersApi
 from openapi_client.api.v1_api import V1Api
-from openapi_client.api.var_api import VarApi

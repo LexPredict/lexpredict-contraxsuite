@@ -46,9 +46,9 @@ from apps.task.tasks import ExtendedTask
 from apps.similarity.similarity_metrics import make_text_units_query
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -498,8 +498,8 @@ class DocumentChunkSimilarityProcessor:
         :return: TestUnits' text (string) list
         """
         text_query = self.text_unit_query[start:end]
-        texts_set = [t.lower() for t in text_query.values_list('textunittext__text', flat=True)] \
-            if self.ignore_case else list(text_query.values_list('textunittext__text', flat=True))
+        texts_set = [t.lower() for t in text_query.values_list('text', flat=True)] \
+            if self.ignore_case else list(text_query.values_list('text', flat=True))
         return texts_set
 
     @staticmethod

@@ -4287,7 +4287,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Type     Params:         - code: str - Short name for field, max 50 symbols         - title: str - Verbose name for field, max 100 symbols         - field_code_aliases: json - Aliases of field codes for document import purposes         - fields: array of objects like [{id: uid, category: id, order: int}, ...]         - search_fields: array of uids - set of fields to filter/sort on Document list page         - editor_type: str - max 100 symbols (from pre-defined choices)         - metadata: json - optional
+Fill in \&quot;self.action_message\&quot; attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 ```java
@@ -5759,7 +5759,7 @@ public class Example {
 
     DocumentApi apiInstance = new DocumentApi(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this document.
-    String alt = "alt_example"; // String | Get alternative document file if exists
+    String alt = "true"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentDocumentsIdShowGET(id, alt);
       System.out.println(result);
@@ -8586,7 +8586,7 @@ public class Example {
     DocumentApi apiInstance = new DocumentApi(defaultClient);
     String projectPk = "projectPk_example"; // String | 
     String id = "id_example"; // String | A unique integer value identifying this document.
-    String alt = "alt_example"; // String | Get alternative document file if exists
+    String alt = "true"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt);
       System.out.println(result);

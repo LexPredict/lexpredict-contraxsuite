@@ -23,10 +23,10 @@ class TestUploadSession(unittest.TestCase):
     def test_upload_session_create(self):
         with openapi_client.ApiClient(self.auth_configuration) as api_client:
             api_instance = project_api.ProjectApi(api_client)
-            request_data = UploadSessionCreate._from_openapi_data(
+            request_data = UploadSessionCreate(
                 project=self.project_id,
                 created_by=self.user_id,
-                upload_files={f'{uuid.uuid4()}.txt': 100}
+                # upload_files={f'{uuid.uuid4()}.txt': 100}
             )
             resp = api_instance.project_upload_session_post(upload_session_create=request_data)
 

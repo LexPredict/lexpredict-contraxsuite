@@ -30,8 +30,6 @@ from typing import Dict, List, Generator, Any
 
 import ast
 import pandas as pd
-from allauth.socialaccount import providers
-from allauth.socialaccount.models import SocialApp
 
 from django.conf.urls import url
 from django.db import transaction
@@ -53,12 +51,12 @@ from apps.rawdb.field_value_tables import get_annotation_columns, \
 from apps.rawdb.models import SavedFilter
 from apps.rawdb.rawdb.query_parsing import parse_order_by
 from apps.rawdb.rawdb.system_rawdb_config import SystemRawDBConfig
-from apps.rawdb.schemas import DocumentsAPIViewSchema, SocialAccountsAPISchema
+from apps.rawdb.schemas import DocumentsAPIViewSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,33 +70,6 @@ class RawDBConfigAPIView(apps.common.mixins.APILoggingMixin, APIView):
         add_query_syntax = as_bool(request.GET, 'add_query_syntax', False)
         conf = SystemRawDBConfig.get_config(add_query_syntax, request.user)
         return Response(conf)
-
-
-class SocialAccountsAPIView(apps.common.mixins.APILoggingMixin, APIView):
-    permission_classes = (AllowAny,)
-    authentication_classes = []
-    schema = SocialAccountsAPISchema()
-    action = 'retrieve'    # need for schema to treat response as single object, not list
-
-    def get(self, request, *_args, **_kwargs):
-        root_url = request.build_absolute_uri('/')
-        next_val = quote(root_url.rstrip('/') + '/#/?redirect_oauth=true')
-
-        social_apps = SocialApp.objects.all()
-        social_app_data = []
-        for app in social_apps:  # type: SocialApp
-            provider = providers.registry.by_id(app.provider)
-            provider_url = provider.get_login_url(None)
-            provider_url = f'{provider_url.rstrip()}?next={next_val}'
-            social_app_data.append({
-                'name': app.name,
-                'provider': app.provider,
-                'login_url': provider_url
-            })
-
-        return Response({
-            'social_accounts': social_app_data
-        })
 
 
 # --------------------------------------------------------
@@ -232,6 +203,21 @@ class DocumentsAPIView(APIView):
                 ignore_errors=ignore_errors,
                 include_annotation_fields=True)
 
+            query_all_documents: DocumentQueryResults = query_documents(
+                requester=request.user,
+                document_type=document_type,
+                project_ids=project_ids,
+                column_names=['document_id'],
+                saved_filter_ids=saved_filters,
+                column_filters=column_filters,
+                return_documents=return_data,
+                return_reviewed_count=False,
+                return_total_count=False,
+                ignore_errors=ignore_errors,
+                include_annotation_fields=True)
+
+            query_all_document_ids = query_all_documents.documents if query_all_documents is not None else []
+
             if query_results is None:
                 if fmt in {self.FMT_XLSX, self.FMT_CSV} and not return_data:
                     raise APIRequestError('Empty data, nothing to export')
@@ -273,6 +259,11 @@ class DocumentsAPIView(APIView):
             if fmt == self.FMT_XLSX:
                 return query_results.to_xlsx(as_zip=as_zip)
             query_dict = query_results.to_json(time_start=start)
+            query_dict['all_document_ids'] = Document.objects.filter(
+                project_id__in=project_ids).values_list('id', flat=True)
+            query_dict['all_filtered_document_ids'] = [
+                document['document_id'] for document in query_all_document_ids
+            ]
             if columns and 'items' in query_dict:
                 columns_to_remove = []
                 if 'document_id' not in columns:
@@ -283,7 +274,8 @@ class DocumentsAPIView(APIView):
         except APIRequestError as e:
             return e.to_response()
         except Exception as e:
-            return APIRequestError(message='Unable to process request', caused_by=e, http_status_code=500).to_response()
+            return APIRequestError(message='Unable to process request', caused_by=e,
+                                   http_status_code=500).to_response()
 
     @staticmethod
     def expand_items(items: Generator[Dict[str, Any], None, None],
@@ -386,5 +378,4 @@ urlpatterns = [
     url(r'documents/(?P<document_type_code>[^/]+)/$', DocumentsAPIView.as_view(), name='documents'),
     url(r'project_stats/(?P<project_id>\d+)/$', ProjectStatsAPIView.as_view(), name='project_stats'),
     url(r'config/$', RawDBConfigAPIView.as_view(), name='config'),
-    url(r'social_accounts/$', SocialAccountsAPIView.as_view(), name='social_accounts'),
 ]

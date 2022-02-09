@@ -32,9 +32,9 @@ from apps.document.models import Document, TextUnit
 from apps.document.repository.base_text_unit_repository import BaseTextUnitRepository
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -48,6 +48,5 @@ class TextUnitRepository(BaseTextUnitRepository):
         return TextUnit.objects.all() \
             .filter(document=doc) \
             .filter(unit_type=text_unit_type) \
-            .select_related('textunittext') \
             .order_by('location_start', 'pk') \
-            .defer('textunittext__text_tsvector')
+            .defer('text_tsvector')

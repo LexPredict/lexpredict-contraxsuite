@@ -1533,7 +1533,7 @@ Name | Type | Description  | Notes
 
 <a name="projectProjectsIdLocateItemsPOST"></a>
 # **projectProjectsIdLocateItemsPOST**
-> ProjectDetail projectProjectsIdLocateItemsPOST(id, projectDetail)
+> TaskIdResponse projectProjectsIdLocateItemsPOST(id, locateItemsRequest)
 
 
 
@@ -1560,9 +1560,9 @@ public class Example {
 
     ProjectApi apiInstance = new ProjectApi(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this project.
-    ProjectDetail projectDetail = new ProjectDetail(); // ProjectDetail | 
+    LocateItemsRequest locateItemsRequest = new LocateItemsRequest(); // LocateItemsRequest | 
     try {
-      ProjectDetail result = apiInstance.projectProjectsIdLocateItemsPOST(id, projectDetail);
+      TaskIdResponse result = apiInstance.projectProjectsIdLocateItemsPOST(id, locateItemsRequest);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ProjectApi#projectProjectsIdLocateItemsPOST");
@@ -1580,11 +1580,11 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this project. |
- **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+ **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional]
 
 ### Return type
 
-[**ProjectDetail**](ProjectDetail.md)
+[**TaskIdResponse**](TaskIdResponse.md)
 
 ### Authorization
 

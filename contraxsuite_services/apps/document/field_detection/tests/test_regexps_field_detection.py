@@ -36,16 +36,11 @@ from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFie
 from apps.document.models import Document, TextUnit, DocumentFieldDetector, DocumentField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
-
-
-class MockTextUnitText:
-    def __init__(self, text: str):
-        self.text = text
 
 
 class MockTextUnit:
@@ -55,7 +50,7 @@ class MockTextUnit:
                  location_start: int = 0,
                  location_end: int = 100,
                  language: str = 'en'):
-        self.textunittext = MockTextUnitText(text)
+        self.text = text
         self.pk = pk
         self.location_start = location_start
         self.location_end = location_end
@@ -305,4 +300,4 @@ class TestRegexpsOnlyFieldDetectionStrategy(TestCase):
 
     @staticmethod
     def setup_document(text_units: List[MockTextUnit]) -> MockDocument:
-        return MockDocument(full_text='\n'.join([t.textunittext.text for t in text_units]))
+        return MockDocument(full_text='\n'.join([t.text for t in text_units]))

@@ -60,9 +60,9 @@ from apps.extract.models import (
     ProjectTermUsage, ProjectPartyUsage, ProjectGeoEntityUsage, ProjectDefinitionUsage)
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -72,7 +72,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
                    'project__name',
                    'document__name',
                    'document__document_type__title',
-                   'text_unit__textunittext__text',
+                   'text_unit__text',
                    'text_unit_id']
     document_lookup = 'document'
     field_types = dict(count=int)
@@ -80,7 +80,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
     extra_item_map = {}
     search_field = ''
     annotate_after_filter = dict(
-        text_unit__textunittext__text=Left('text_unit__textunittext__text', 300)
+        text_unit__text=Left('text_unit__text', 300)
     )
 
     def get_json_data(self, **kwargs):
@@ -105,7 +105,7 @@ class BaseUsageListView(apps.common.mixins.JqPaginatedListView):
             qs = qs.filter(project_id__in=list(
                 self.request.user.userprojectssavedfilter.projects.values_list('pk', flat=True)))
 
-        return qs.select_related('text_unit', 'text_unit__textunittext')
+        return qs.select_related('text_unit')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -253,7 +253,7 @@ class DocumentTopTermUsageListView(apps.common.mixins.JqPaginatedListView):
         if term_id:
             qs = qs.filter(term_id=term_id)
             res = list(
-                qs.values('term__term', 'text_unit__textunittext__text', 'text_unit_id', 'count').order_by('-count'))
+                qs.values('term__term', 'text_unit__text', 'text_unit_id', 'count').order_by('-count'))
             for item in res:
                 text_unit_id = item.pop('text_unit_id')
                 item['detail_url'] = self.full_reverse(
@@ -273,7 +273,7 @@ class BaseTextUnitUsageListView(apps.common.mixins.JqPaginatedListView):
     model = TextUnit
     template_name = 'document/text_unit_ref_usage_list.html'
     json_fields = ['document_id',
-                   'textunittext__text',
+                   'text',
                    'unit_type',
                    'language',
                    'pk']
@@ -428,7 +428,7 @@ class TextUnitTermUsageListView(BaseTextUnitUsageListView):
 
         if 'textunit__text' in filters:
             filter_val = filters['textunit__text'][0]['value'].replace("'", "''")
-            joins.add('document_textunittext tt on tu.text_unit_id = tt.id')
+            joins.add('document_textunit tt on tu.text_unit_id = tt.id')
             wheres.append((f"tt.text LIKE '{filter_val}%'", filters['textunit__text'][0]['operator'],))
 
         if hasattr(self, 'term_filter'):
@@ -496,7 +496,7 @@ class GeoEntityUsageListView(BaseUsageListView):
                        'project__name',
                        'document__name',
                        'document__document_type__title',
-                       'text_unit__textunittext__text',
+                       'text_unit__text',
                        'text_unit_id']
     json_fields = ['text_unit_id',
                    'entity_id',
@@ -513,7 +513,7 @@ class GeoEntityUsageListView(BaseUsageListView):
         enty_ids = [i['entity_id'] for i in data['data']]
 
         unit_detail = {v[0]: v for v in TextUnit.objects.filter(pk__in=unit_ids).values_list(
-                    'pk', 'textunittext__text', 'document_id',
+                    'pk', 'text', 'document_id',
                     'document__name', 'document__document_type__title', 'document__project__name')}
         enty_detail = {v[0]: v for v in GeoEntity.objects.filter(
             pk__in=enty_ids).values_list('pk', 'name', 'category')}
@@ -526,7 +526,7 @@ class GeoEntityUsageListView(BaseUsageListView):
             unit_pk, unit_text, unit_document_pk, unit_document_name, unit_document_type_title, unit_project = \
                 unit_detail[item['text_unit_id']]
             item['text_unit_id'] = unit_pk
-            item['text_unit__textunittext__text'] = unit_text
+            item['text_unit__text'] = unit_text
             item['document_id'] = unit_document_pk
             item['document__name'] = unit_document_name
             item['document__document_type__title'] = unit_document_type_title
@@ -810,9 +810,9 @@ class DateUsageTimelineView(apps.common.mixins.JqPaginatedListView):
                 if show_text_unit_text:
                     values.append('text')
                     if truncate_text_unit_text:
-                        annotations.update(dict(text=Concat(Left('text_unit__textunittext__text', 100), Value('...'))))
+                        annotations.update(dict(text=Concat(Left('text_unit__text', 100), Value('...'))))
                     else:
-                        annotations.update(dict(text=F('text_unit__textunittext__text')))
+                        annotations.update(dict(text=F('text')))
                 date_list_view = DateUsageListView(request=self.request)
                 date_data = date_list_view.get_queryset() \
                     .annotate(**annotations) \
@@ -1459,7 +1459,7 @@ class DateUsageToICalView(DateUsageListView):
             event = icalendar.Event()
             event.add("summary", "Calendar reminder for document {0}, text unit {1}:\n{2}"
                       .format(du['document__name'], du['text_unit_id'],
-                              du['text_unit__textunittext__text'][:sample_length]))
+                              du['text_unit__text'][:sample_length]))
             event.add("dtstart", du['date'])
             event.add("dtend", du['date'])
             event.add("dtstamp", du['date'])

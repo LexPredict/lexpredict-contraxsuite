@@ -8,6 +8,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **Integer** |  |  [optional] [readonly]
+**uid** | **UUID** |  |  [optional] [readonly]
 **username** | **String** | Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. | 
 **lastName** | **String** |  |  [optional]
 **firstName** | **String** |  |  [optional]

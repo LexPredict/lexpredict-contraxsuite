@@ -55,9 +55,9 @@ from apps.users.models import User, CustomUserObjectPermission
 from apps.users.permissions import *
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -862,7 +862,7 @@ class ProjectClustering(models.Model):
 
     created_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    status = models.CharField(max_length=10, blank=True, null=True)
+    status = models.CharField(default=PENDING, max_length=10, blank=True, null=True)
 
     reason = models.TextField(blank=True, null=True)
 
@@ -882,17 +882,16 @@ class ProjectClustering(models.Model):
     def set_status_by_task(self):
         if not self.task:
             return
-        new_status = self.status
-
-        if self.task.status in {FAILURE, REVOKED}:
-            new_status = FAILURE
-        elif self.status == SUCCESS:
-            new_status = SUCCESS
-        elif self.status in UNREADY_STATES:
-            new_status = PENDING
-        if new_status == self.status:
+        task_status = self.task.status
+        if task_status == self.status:
             return
-        self.status = new_status
+
+        if task_status in {FAILURE, REVOKED}:
+            self.status = FAILURE
+        elif task_status == SUCCESS:
+            self.status = SUCCESS
+        elif task_status in UNREADY_STATES:
+            self.status = PENDING
         self.save(update_fields=['status'])
 
 

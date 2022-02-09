@@ -95,6 +95,7 @@ docs/InlineResponse400.md
 docs/InlineResponse404.md
 docs/InlineResponse4041.md
 docs/LoadFixture.md
+docs/LocateItemsRequest.md
 docs/LoggingAPIViewRequest.md
 docs/LoggingApi.md
 docs/Login.md
@@ -204,7 +205,6 @@ docs/UserProfile.md
 docs/UserStats.md
 docs/UsersApi.md
 docs/V1Api.md
-docs/VarApi.md
 docs/VerifyAuthTokenRequest.md
 docs/VerifyAuthTokenResponse.md
 docs/VerifyEmail.md
@@ -230,7 +230,6 @@ openapi_client/api/task_api.py
 openapi_client/api/tus_api.py
 openapi_client/api/users_api.py
 openapi_client/api/v1_api.py
-openapi_client/api/var_api.py
 openapi_client/api_client.py
 openapi_client/apis/__init__.py
 openapi_client/configuration.py
@@ -323,6 +322,7 @@ openapi_client/model/inline_response400.py
 openapi_client/model/inline_response404.py
 openapi_client/model/inline_response4041.py
 openapi_client/model/load_fixture.py
+openapi_client/model/locate_items_request.py
 openapi_client/model/logging_api_view_request.py
 openapi_client/model/login.py
 openapi_client/model/login_response.py
@@ -434,12 +434,4 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
-test/test_document_note_detail_user.py
-test/test_mark_for_seen_web_notification_request.py
-test/test_mark_for_seen_web_notification_response.py
-test/test_notifications_api.py
-test/test_project_document_similarity_response.py
-test/test_project_document_similarity_response_data.py
-test/test_web_notification_detail.py
-test/test_web_notification_detail_notification.py
 tox.ini

@@ -2,5 +2,7 @@ server.name: kibana
 server.host: "0"
 server.basePath: "${DOCKER_KIBANA_BASE_PATH}"
 elasticsearch.hosts: [ "http://${DOCKER_HOST_NAME_ELASTICSEARCH}:${DOCKER_ELASTICSEARCH_PORT}" ]
-elastalert-kibana-plugin.serverHost: "${DOCKER_HOST_NAME_ELASTALERT_SERVER}"
-elastalert-kibana-plugin.serverPort: ${DOCKER_ELASTALERT_SERVER_PORT}
+
+elastalertKibanaPlugin.serverSsl: false
+elastalertKibanaPlugin.serverHost: "${DOCKER_HOST_NAME_ELASTALERT_SERVER}"
+elastalertKibanaPlugin.serverPort: "${DOCKER_ELASTALERT_SERVER_PORT}"

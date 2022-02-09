@@ -41,14 +41,14 @@ from apps.analyze.ml.sparse_matrix import SparseAllFeaturesTable, SparseSingleFe
 from apps.analyze.ml.transform import Doc2VecTransformer
 from apps.analyze.ml.utils import ProjectsNameFilter
 from apps.analyze.models import DocumentVector, TextUnitVector, MLModel
-from apps.document.models import Document, TextUnit, DocumentText, TextUnitText
+from apps.document.models import Document, TextUnit, DocumentText
 import apps.extract.models as models
 from apps.project.models import Project
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -595,16 +595,14 @@ class TextUnit2VecFeatures(Document2VecFeatures):
             with connection.cursor() as cursor:
                 self._ensure_text_unit_vectors(cursor, document_ids)
             return list(TextUnitVector.objects.filter(document_id__in=document_ids,
-                                                      text_unit__unit_type=self.unit_type,
-                                                      transformer_id=self.transformer.pk).
-                        annotate(location_start=F('text_unit__location_start')).
-                        annotate(location_end=F('text_unit__location_end')))
+                                                      unit_type=self.unit_type,
+                                                      transformer_id=self.transformer.pk))
 
         # self.feature_source == 'text'
         transformer = self.build_doc2vec_model()
-        data = TextUnitText.objects.filter(document_id__in=document_ids,
-                                           text_unit__unit_type=self.unit_type).values_list('text_unit_id', 'text')
-        return Doc2VecTransformer.create_vectors(transformer, data, TextUnitVector, 'text_unit_id')
+        data = TextUnit.objects.filter(document_id__in=document_ids,
+                                       unit_type=self.unit_type).values_list('id', 'text')
+        return Doc2VecTransformer.create_vectors(transformer, data, TextUnitVector, 'id')
 
     def _ensure_text_unit_vectors(self, cursor, document_ids: List[int]):
         # find text units that don't have vectors and create vectors for these units
@@ -622,9 +620,10 @@ class TextUnit2VecFeatures(Document2VecFeatures):
             return
 
         self.log_message(f'{tu_wo_vector_ids} text unit vectors are missing')
-        data = TextUnitText.objects \
-            .filter(text_unit__in=tu_wo_vector_ids) \
-            .values_list('text_unit_id', 'document_id', 'text')
+        data = TextUnit.objects \
+            .filter(id__in=tu_wo_vector_ids) \
+            .values_list('id', 'document_id', 'text', 'unit_type',
+                         'location_start', 'location_end')
         Doc2VecTransformer.create_vectors(
             self.transformer, data, TextUnitVector, 'text_unit_id', save=True)
         self.log_message(f'{len(tu_wo_vector_ids)} text unit vectors have been created')
@@ -635,7 +634,7 @@ class TextUnit2VecFeatures(Document2VecFeatures):
         """
         vectors = self.get_vectors()
         self.log_message(f'get_features() got {len(vectors or [])} vectors')
-        item_names = [f'[{v.location_start}:{v.location_end}]' for v in vectors]
+        item_names = [v.vector_name for v in vectors]
         columns = ['id'] + [f'f{i}' for i in range(len(vectors[0].vector_value))]
         vectors_indexed = [[v.text_unit_id] + list(v.vector_value) for v in vectors]
         feature_df = pd.DataFrame(vectors_indexed, columns=columns)

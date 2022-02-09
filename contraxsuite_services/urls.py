@@ -55,12 +55,12 @@ from apps.common.utils import migrating, get_api_module
 from apps.common.log_utils import ProcessLogger
 from apps.document.field_type_registry import init_field_type_registry
 from apps.users.views import MixedLoginView
-from swagger_view import get_swagger_view, get_openapi_view
+from swagger_view import get_openapi_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -168,20 +168,12 @@ for api_version, this_api_urlpatterns in api_urlpatterns.items():
         url(r'^api/', include((this_api_urlpatterns, api_version))),
     ]
 
-
-# django-rest-swagger urls
-# patched original rest_framework_swagger.views.get_swagger_view
-schema_view = get_swagger_view()
-urlpatterns += [
-    url(r'^api/(?:(?P<group_by>version|app)/)?$', schema_view, name='swagger')
-]
-
 # openapi urls
 urlpatterns += [
     path('api/openapi/', get_openapi_view(), name='openapi-schema'),
-    path('api/swagger-ui/',
+    path('api/docs/',
          TemplateView.as_view(template_name='swagger_ui/base.html'),
-         name='swagger-ui'),
+         name='docs'),
 ]
 
 # API for media files under /media/data directory

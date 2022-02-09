@@ -54,7 +54,7 @@ class TestApiClient(openapi_client.ApiClient):
             raise e
 
 
-@lru_cache(typed=True)
+# @lru_cache(typed=True)
 def login(username: str = None, password: str = None):
     """
     Login a user to get auth token,

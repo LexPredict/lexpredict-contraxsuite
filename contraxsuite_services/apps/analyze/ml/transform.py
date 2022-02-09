@@ -39,15 +39,15 @@ from django.conf import settings
 
 # Project imports
 from apps.analyze.ml.classifier_repository import ClassifierRepositoryBuilder
-from apps.analyze.models import MLModel, TextUnitVector, DocumentVector
+from apps.analyze.models import MLModel, TextUnitVector, DocumentVector, BaseVector
 from apps.common.file_storage import get_file_storage, ContraxsuiteFileStorage
 from apps.common.utils import get_free_mem
 from apps.document.models import DocumentText, TextUnit, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -91,8 +91,8 @@ class Doc2VecTransformer:
         """
         Train doc2vec model from queryset values
 
-        :param data: training data - iterable set of texts
-        :param data: count - count of text fragments
+        :param data: Iterable set of texts used as training data
+        :param count: Number of text fragments
         :return: Doc2Vec trained model
         """
         self.log_message(f'Start training train_doc2vec_model for {count} vectors')
@@ -110,8 +110,8 @@ class Doc2VecTransformer:
                                                           dm=self.dm,
                                                           min_count=self.min_count,
                                                           workers=1)
-            doc2vec_model.build_vocab(self.iterate_source_texsts(count, data))
-            doc2vec_model.train(self.iterate_source_texsts(count, data), total_examples=count,
+            doc2vec_model.build_vocab(self.iterate_source_texts(count, data))
+            doc2vec_model.train(self.iterate_source_texts(count, data), total_examples=count,
                                 epochs=doc2vec_model.iter)
             # finished training a model (=no more updates, only querying), reduce memory usage
             doc2vec_model.delete_temporary_training_data(keep_doctags_vectors=True,
@@ -121,8 +121,11 @@ class Doc2VecTransformer:
 
         return doc2vec_model
 
-    def iterate_source_texsts(self, count, data) -> \
-            Generator[gensim.models.doc2vec.TaggedDocument, None, None]:
+    def iterate_source_texts(
+        self,
+        count: int,
+        data,
+    ) -> Generator[gensim.models.doc2vec.TaggedDocument, None, None]:
         progress = 0
         percent_interval = 1 if count > 5000 else 5 if count > 500 else 10 if count > 100 else 50
         index = -1
@@ -220,12 +223,13 @@ class Doc2VecTransformer:
 
         return doc2vec_model, transformer
 
-    def build_doc2vec_text_unit_model(self,
-                                      text_unit_qs=None,
-                                      project_ids=None,
-                                      text_unit_type="sentence",
-                                      transformer_name=None) -> Tuple[gensim.models.doc2vec.Doc2Vec,
-                                                                      MLModel]:
+    def build_doc2vec_text_unit_model(
+        self,
+        text_unit_qs=None,
+        project_ids=None,
+        text_unit_type="sentence",
+        transformer_name=None
+    ) -> Tuple[gensim.models.doc2vec.Doc2Vec, MLModel]:
         """
         Build a doc2vec model for TextUnits from all text units either for given text unit queryset,
         and for given text unit type.
@@ -242,8 +246,9 @@ class Doc2VecTransformer:
         if project_ids is not None:
             queryset = queryset.filter(project_id__in=project_ids)
 
-        queryset = queryset.annotate(text=F('textunittext__text'))
-        data, count = queryset.values_list('text', flat=True).iterator()
+        values_list = queryset.values_list('text', flat=True)
+        count: int = values_list.count()
+        data = values_list.iterator()
         self.log_message(f'Got {count} text unit texts')
 
         # Django uses DB cursors for iterating. This may be executed behind pgbouncer
@@ -262,9 +267,10 @@ class Doc2VecTransformer:
 
         return doc2vec_model, transformer
 
-    @staticmethod
-    def create_vectors(transformer_obj: MLModel,
-                       data: Iterable[Tuple[Any, str]],
+    @classmethod
+    def create_vectors(cls,
+                       transformer_obj: MLModel,
+                       data: Iterable[Union[Tuple[Any, str], Tuple[Any, int, str, str, int, int]]],
                        vector_db_model,
                        vector_target_id_name: str,
                        save: bool = False,
@@ -301,11 +307,11 @@ class Doc2VecTransformer:
 
         vector_list = []
         for row in data:
-            document_id = None
+            document_id, location_start, location_end, unit_type = None, None, None, None
             if len(row) == 2:
                 target_id, text = row
             else:
-                target_id, document_id, text = row
+                target_id, document_id, text, unit_type, location_start, location_end = row
 
             # Get tokens with LexNLP
             text = text or ''    # prevent from exception with None (like case with unprocessed document)
@@ -322,6 +328,10 @@ class Doc2VecTransformer:
             vector.vector_value = doc2vec_model.infer_vector(text_tokens, alpha=alpha, epochs=epochs)
             if document_id:
                 vector.document_id = document_id
+            if location_start is not None:
+                vector.vector_name = f'[{location_start}:{location_end}]'
+            vector.unit_type = unit_type
+
             vector_list.append(vector)
 
         if save:
@@ -344,7 +354,7 @@ class Doc2VecTransformer:
         if project_ids is not None:
             queryset = queryset.filter(document__project_id__in=project_ids)
 
-        data = queryset.annotate(text=F('textunittext__text')).filter(
+        data = queryset.annotate(text=F('text')).filter(
             unit_type=transformer_obj.text_unit_type).values_list('id', 'text').iterator()
 
         return self.create_vectors(

@@ -15,7 +15,7 @@ Method | HTTP request | Description
 
 
 # **dump_document_config_get**
-> dict dump_document_config_get()
+> bool, date, datetime, dict, float, int, list, str, none_type dump_document_config_get()
 
 
 
@@ -24,6 +24,7 @@ Dump document types, fields, field detectors and  document filters to json.
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -72,7 +73,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**dict**
+**bool, date, datetime, dict, float, int, list, str, none_type**
 
 ### Authorization
 
@@ -85,6 +86,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -102,6 +104,7 @@ Dump document types, fields, field detectors and  document filters to json.
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -164,6 +167,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -181,6 +185,7 @@ Download model fixture
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -247,6 +252,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -254,7 +260,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_get**
-> dict dump_dump_get()
+> bool, date, datetime, dict, float, int, list, str, none_type dump_dump_get()
 
 
 
@@ -263,6 +269,7 @@ Dump all users, email addresses, review statuses, review status groups, app vars
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -309,7 +316,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**dict**
+**bool, date, datetime, dict, float, int, list, str, none_type**
 
 ### Authorization
 
@@ -322,6 +329,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -339,6 +347,7 @@ Dump all users, email addresses, review statuses, review status groups, app vars
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -401,6 +410,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -409,7 +419,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_field_values_get**
-> dict dump_field_values_get()
+> bool, date, datetime, dict, float, int, list, str, none_type dump_field_values_get()
 
 
 
@@ -418,6 +428,7 @@ Dump field values to json.
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -464,7 +475,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**dict**
+**bool, date, datetime, dict, float, int, list, str, none_type**
 
 ### Authorization
 
@@ -477,6 +488,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -494,6 +506,7 @@ Upload field values
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -556,6 +569,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
@@ -573,6 +587,7 @@ Install model fixtures
 ### Example
 
 * Api Key Authentication (AuthToken):
+
 ```python
 import time
 import openapi_client
@@ -637,6 +652,7 @@ Name | Type | Description  | Notes
 
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |

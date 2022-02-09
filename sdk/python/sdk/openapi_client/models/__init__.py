@@ -96,6 +96,7 @@ from openapi_client.model.inline_response400 import InlineResponse400
 from openapi_client.model.inline_response404 import InlineResponse404
 from openapi_client.model.inline_response4041 import InlineResponse4041
 from openapi_client.model.load_fixture import LoadFixture
+from openapi_client.model.locate_items_request import LocateItemsRequest
 from openapi_client.model.logging_api_view_request import LoggingAPIViewRequest
 from openapi_client.model.login import Login
 from openapi_client.model.login_response import LoginResponse

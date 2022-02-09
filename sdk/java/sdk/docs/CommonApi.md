@@ -500,7 +500,7 @@ public class Example {
 
     CommonApi apiInstance = new CommonApi(defaultClient);
     String path = "path_example"; // String | 
-    String action = "download"; // String | Action name
+    String action = "info"; // String | Action name
     try {
       Map<String, Object> result = apiInstance.commonMediaPathGET(path, action);
       System.out.println(result);

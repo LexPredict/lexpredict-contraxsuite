@@ -1,6 +1,6 @@
 # local_config.py should be like this:
 
-HOST_NAME = 'feature.contraxsuite.com'
+HOST_NAME = 'https://feature.contraxsuite.com'
 ADMIN_USER_NAME = 'Administrator'
 ADMIN_USER_PASSWORD = 'Administrator'
 
@@ -10,6 +10,7 @@ ADMIN_USER_PASSWORD = 'Administrator'
 1. start local Contraxsuite (daphne)
 2. replace username/password and output folder path in the command below
 3. cd .. && python3 manage.py get_openapi_schema --username=Administrator --password=Administrator --output_folder=sdk --file_name=openapi_schema.json
+4. OR get it from {host}/api/docs/ page
 
 # So Assume you're in lexpredict-contraxsuite-services folder
 

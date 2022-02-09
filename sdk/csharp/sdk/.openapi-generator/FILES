@@ -97,6 +97,7 @@ docs/InlineResponse400.md
 docs/InlineResponse404.md
 docs/InlineResponse4041.md
 docs/LoadFixture.md
+docs/LocateItemsRequest.md
 docs/LoggingAPIViewRequest.md
 docs/LoggingApi.md
 docs/Login.md
@@ -206,7 +207,6 @@ docs/UserProfile.md
 docs/UserStats.md
 docs/UsersApi.md
 docs/V1Api.md
-docs/VarApi.md
 docs/VerifyAuthTokenRequest.md
 docs/VerifyAuthTokenResponse.md
 docs/VerifyEmail.md
@@ -214,6 +214,15 @@ docs/WebNotificationDetail.md
 docs/WebNotificationDetailNotification.md
 git_push.sh
 mono_nunit_test.sh
+src/Org.OpenAPITools.Test/Api/NotificationsApiTests.cs
+src/Org.OpenAPITools.Test/Model/DocumentNoteDetailUserTests.cs
+src/Org.OpenAPITools.Test/Model/LocateItemsRequestTests.cs
+src/Org.OpenAPITools.Test/Model/MarkForSeenWebNotificationRequestTests.cs
+src/Org.OpenAPITools.Test/Model/MarkForSeenWebNotificationResponseTests.cs
+src/Org.OpenAPITools.Test/Model/ProjectDocumentSimilarityResponseDataTests.cs
+src/Org.OpenAPITools.Test/Model/ProjectDocumentSimilarityResponseTests.cs
+src/Org.OpenAPITools.Test/Model/WebNotificationDetailNotificationTests.cs
+src/Org.OpenAPITools.Test/Model/WebNotificationDetailTests.cs
 src/Org.OpenAPITools.Test/Org.OpenAPITools.Test.csproj
 src/Org.OpenAPITools.Test/packages.config
 src/Org.OpenAPITools/Api/AnalyzeApi.cs
@@ -233,7 +242,6 @@ src/Org.OpenAPITools/Api/TaskApi.cs
 src/Org.OpenAPITools/Api/TusApi.cs
 src/Org.OpenAPITools/Api/UsersApi.cs
 src/Org.OpenAPITools/Api/V1Api.cs
-src/Org.OpenAPITools/Api/VarApi.cs
 src/Org.OpenAPITools/Client/ApiClient.cs
 src/Org.OpenAPITools/Client/ApiException.cs
 src/Org.OpenAPITools/Client/ApiResponse.cs
@@ -330,6 +338,7 @@ src/Org.OpenAPITools/Model/InlineResponse400.cs
 src/Org.OpenAPITools/Model/InlineResponse404.cs
 src/Org.OpenAPITools/Model/InlineResponse4041.cs
 src/Org.OpenAPITools/Model/LoadFixture.cs
+src/Org.OpenAPITools/Model/LocateItemsRequest.cs
 src/Org.OpenAPITools/Model/LoggingAPIViewRequest.cs
 src/Org.OpenAPITools/Model/Login.cs
 src/Org.OpenAPITools/Model/LoginResponse.cs

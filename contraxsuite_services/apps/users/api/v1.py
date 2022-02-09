@@ -48,9 +48,9 @@ from apps.common.schemas import CustomAutoSchema, ObjectToItemResponseMixin, str
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -67,7 +67,7 @@ class UserSerializer(SimpleRelationSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'last_name', 'first_name',
+        fields = ['id', 'uid', 'username', 'last_name', 'first_name',
                   'email', 'is_superuser', 'is_staff', 'is_active',
                   'name', 'initials', 'organization', 'photo', 'permissions', 'groups']
 
@@ -121,9 +121,9 @@ class UserProfileSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'last_name', 'first_name', 'name', 'initials', 'photo',
+        fields = ['uid', 'username', 'last_name', 'first_name', 'name', 'initials', 'photo',
                   'email', 'organization', 'groups']
-        read_only_fields = ('username', 'email', 'initials')
+        read_only_fields = ('uid', 'username', 'email', 'initials')
 
     def save(self, **kwargs):
         initial_photo_name = None

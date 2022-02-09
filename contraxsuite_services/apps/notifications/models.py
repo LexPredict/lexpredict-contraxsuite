@@ -51,9 +51,9 @@ from apps.websocket.channel_message import ChannelMessage
 from apps.websocket import channel_message_types as message_types
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -543,8 +543,7 @@ class WebNotificationStorage:
         from apps.notifications.tasks import send_web_notifications
         self.add(web_notification_message)
         # sometimes redis value has additional bytes, that's why `in` is used
-        is_collecting = pop(self.REDIS_IS_COLLECTING_TASKS_KEY) or ""
-        if 'True' not in is_collecting \
+        if 'True' not in (pop(self.REDIS_IS_COLLECTING_TASKS_KEY) or '') \
                 or llen(self.REDIS_KEY) >= self.CRITICAL_NOTIFICATION_BATCH_SIZE:
             push(self.REDIS_IS_COLLECTING_TASKS_KEY, 'True')
             send_web_notifications.apply_async(countdown=self.SEND_TIME_DELAY_SECONDS)
@@ -612,21 +611,40 @@ class WebNotificationTypes(Enum):
     }
     CLUSTER_IMPORTED = {
         'type': "cluster_imported",
+        'template': 'Cluster "{cluster}", with {documents_count} documents, was imported '
+                    'to project "{project}"',
+        'template_keywords': ['cluster', 'documents_count', 'project'],
+        'link_type': 'project-grid',
     }
     FIELD_VALUE_DETECTION_COMPLETED = {
         'type': "field_value_detection_completed",
+        'template': 'Field Value Detection task has completed for project "{project}"',
+        'template_keywords': ['project', ],
+        'link_type': 'project-grid',
     }
     CUSTOM_TERM_SET_SEARCH_FINISHED = {
         'type': "custom_term_set_search_finished",
+        'template': 'Custom Term Set search has finished for project "{project}"',
+        'template_keywords': ['project', ],
+        'link_type': 'project-grid',
     }
     CUSTOM_COMPANY_TYPE_SEARCH_FINISHED = {
         'type': "custom_company_type_search_finished",
+        'template': 'Custom Company Type search has finished for project "{project}"',
+        'template_keywords': ['project', ],
+        'link_type': 'project-grid',
     }
     DOCUMENT_SIMILARITY_SEARCH_FINISHED = {
         'type': "document_similarity_search_finished",
+        'template': 'Document Similarity Search has finished for project "{project}"',
+        'template_keywords': ['project', ],
+        'link_type': 'project-grid',
     }
     TEXT_UNIT_SIMILARITY_SEARCH_FINISHED = {
         'type': "text_unit_similarity_search_finished",
+        'template': 'Text Unit Similarity Search has finished for project "{project}"',
+        'template_keywords': ['project', ],
+        'link_type': 'project-grid',
     }
 
     @classmethod
@@ -682,12 +700,30 @@ class WebNotificationMessage(models.Model):
     notification_type = models.CharField(max_length=100, db_index=True, null=True, blank=True,
                                          choices=WebNotificationTypes.choices(),
                                          help_text='Notification type')
+    message = models.TextField(blank=True, null=True)
     redirect_link = JSONField(blank=True, null=True)
 
     class Meta:
         verbose_name = 'web notification message'
         verbose_name_plural = 'web notification messages'
         db_table = 'web_notification_message'
+
+    def save(self, *args, **kwargs):
+        # autoupdate message field value
+        if self.pk is not None:
+            try:
+                orig = WebNotificationMessage.objects.get(pk=self.pk)
+            except WebNotificationMessage.DoesNotExist:
+                return
+            if orig.notification_type != self.notification_type \
+                    or orig.message_data != self.message_data:
+                self.message = self.get_notification_message_template().format(**self.message_data)
+        else:
+            self.message = self.get_notification_message_template().format(**self.message_data)
+        super().save(*args, **kwargs)
+
+    def get_notification_message_template(self):
+        return WebNotificationTypes.get_type_by_value(self.notification_type).message_template()
 
     def get_recipients_ids(self):
         return list(self.notifications.all().values_list('recipient_id', flat=True))

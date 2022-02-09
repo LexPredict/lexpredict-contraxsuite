@@ -81,9 +81,9 @@ from apps.common.streaming_utils import csv_gen_from_dicts
 from apps.common.utils import cap_words, export_qs_to_file, download, full_reverse, unpack_dict_columns
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -417,14 +417,12 @@ class AjaxListView(DocumentQsAccessMixin, AjaxResponseMixin, BaseCustomListView)
                     data = data['data']
                 return self.export(data,
                                    source_name=self.get_export_file_name() or
-                                               qs.model.__name__.lower(),
+                                               self.model.__name__.lower(),
                                    fmt=request.GET.get('export_to'))
             return self.render_to_response(qs=qs)
 
         self.object_list = qs
         context = self.get_context_data()
-        if request.GET.get('debug') == 'true':
-            context['json_data'] = self.get_json_data(qs=qs)
         return self.render_to_response(context)
 
     def get_json_data(self, **kwargs):
@@ -814,6 +812,7 @@ class APIFormFieldsMixin:
     complex_ui_element = {'type': 'complex', 'data_type': 'array'}
     optional_ui_attrs = ('max_length', 'max_value', 'min_value')
     default_always_null_fields = ('UUIDField',)
+    exclude_from_tracking_view_actions = ['new_object_fields', 'existing_object_fields']
 
     def get_ui_element(self, field_code, field_class):
         field_class_name = field_class.__class__.__name__
@@ -1123,6 +1122,8 @@ class APIActionMixin:
     Mixin class to track user activity in Action model
     """
     track_view_actions = None    # None - track all, otherwise list view actions like ['list', 'update']
+    exclude_from_tracking_view_actions = None
+    force_disable_track_view_actions = False
     action_name_map = {
         'create': 'created',
         'update': 'changed',
@@ -1150,18 +1151,30 @@ class APIActionMixin:
             return response
 
         content_type = self.get_content_type()
-        user_action = Action.objects.create(
-            user=request.user,
-            name=self.get_action_name(),
-            message=self.get_action_message(),
-            view_action=self.action,
-            object_pk=self.get_object_pk(),
-            content_type=content_type,
-            model_name=self.model_name,
-            app_label=content_type.app_label,
-            request_data=self.get_request_data()
-        )
-        self.user_action = user_action
+        action_messages = self.get_action_message()
+        action_name = self.get_action_name()
+        action_data = {
+            'user': request.user,
+            'name': action_name,
+            'view_action': self.action,
+            'object_pk': self.get_object_pk(),
+            'content_type': content_type,
+            'model_name': self.model_name,
+            'app_label': content_type.app_label,
+            'request_data': self.get_request_data()
+        }
+
+        if not action_messages and (self.action or action_name):
+            self.user_action = Action.objects.create(message=None, **action_data)
+        else:
+            if not hasattr(action_messages, '__iter__') or isinstance(action_messages, str):
+                action_messages = [action_messages]
+            action_messages = [i for i in action_messages if i]
+            user_actions = []
+            for action_message in action_messages:
+                user_actions.append(Action.objects.create(message=action_message, **action_data))
+            self.user_action = user_actions[-1] if user_actions else None
+
         try:
             self.save_action_parent()
         except Exception as e:
@@ -1191,6 +1204,10 @@ class APIActionMixin:
             return False
         if self.track_view_actions is not None and self.action not in self.track_view_actions:
             return False
+        if self.force_disable_track_view_actions:
+            return False
+        if self.exclude_from_tracking_view_actions is not None and self.action in self.exclude_from_tracking_view_actions:
+            return False
         return True
 
     def get_request_data(self):
@@ -1212,6 +1229,11 @@ class APIActionMixin:
                 user_action_object_pk = None
         elif self.lookup_url_kwarg in self.kwargs or self.lookup_field in self.kwargs:
             user_action_object_pk = self.get_object().pk
+
+        if not user_action_object_pk and hasattr(self, 'response'):
+            if hasattr(self.response, 'data'):
+                data = self.response.data or {}
+                user_action_object_pk = data.get('id') or data.get('uid', None)
         return user_action_object_pk
 
     def perform_create(self, serializer):
@@ -1284,7 +1306,12 @@ class APIActionMixin:
         instance.refresh_from_db()
         new_instance_state = self.get_object_state(instance)
         self.object = instance
-        self.action_message = self.get_updated_fields_message(old_instance_state, new_instance_state)
+        self.action_message = []
+        for field in old_instance_state:
+            action_message = self.get_updated_fields_message({field: old_instance_state[field]},
+                                                             {field: new_instance_state[field]})
+            if action_message:
+                self.action_message.append(action_message)
         return response
 
 

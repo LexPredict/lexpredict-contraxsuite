@@ -52,6 +52,7 @@ from apps.celery import app
 from apps.common import redis
 from apps.common.models import Action
 from apps.document import signals
+from apps.document.constants import DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.field_processing.document_vectorizers import document_feature_vector_pipeline
 from apps.document.models import DocumentField, TextUnit, Document
 from apps.extract.models import Party
@@ -68,9 +69,9 @@ from apps.task.tasks import ExtendedTask, remove_punctuation_map, CeleryTaskLogg
 from apps.task.utils.task_utils import TaskUtils
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -194,7 +195,7 @@ class Similarity(ExtendedTask):
         self.log_info('Min similarity: %d' % similarity_threshold)
 
         # get text units with min length 100 signs
-        filters = dict(unit_type='paragraph', textunittext__text__regex=r'.{100}.*')
+        filters = dict(unit_type='paragraph', text__regex=r'.{100}.*')
         if project_id:
             filters['project_id'] = project_id
         text_units = TextUnit.objects.filter(**filters)
@@ -224,7 +225,7 @@ class Similarity(ExtendedTask):
             self.push()
 
             # step #2 - prepare data
-            texts_set = ['\n'.join(d.textunit_set.values_list('textunittext__text', flat=True))
+            texts_set = ['\n'.join(d.textunit_set.values_list('text', flat=True))
                          for d in documents]
             self.push()
 
@@ -269,8 +270,9 @@ class Similarity(ExtendedTask):
             DocumentSimilarity.objects.bulk_create(sim_objs, ignore_conflicts=True)
             total_stored = len(sim_objs)
             self.push()
+            project_ids = list(set(documents.values_list('project_id', flat=True)))
 
-            for project_id in set(documents.values_list('project_id', flat=True)):
+            for project_id in project_ids:
                 Action.objects.create(name='Processed Similarity Tasks',
                                       message=f'{self.name} task for project '
                                               f'"{Project.objects.get(id=project_id)}" is finished',
@@ -280,6 +282,8 @@ class Similarity(ExtendedTask):
                                       model_name='Project',
                                       app_label='project',
                                       object_pk=project_id)
+            self.notify_on_completed_similarity_action(project_ids, kwargs.get('user_id'),
+                                                       "Document")
 
         # similar Text Units
         if search_similar_text_units:
@@ -295,7 +299,7 @@ class Similarity(ExtendedTask):
             self.push()
 
             # step #2 - prepare data
-            texts_set, pks = zip(*text_units.values_list('textunittext__text', 'pk'))
+            texts_set, pks = zip(*text_units.values_list('text', 'pk'))
             self.push()
 
             # step #3
@@ -346,8 +350,42 @@ class Similarity(ExtendedTask):
                                   model_name='Project',
                                   app_label='project',
                                   object_pk=project_id)
+            self.notify_on_completed_similarity_action([project_id], kwargs.get('user_id'),
+                                                       "TEXT_UNIT")
 
         self.log_info(f'{total_stored} records stored')
+
+    @staticmethod
+    def notify_on_completed_similarity_action(project_ids: list,
+                                              user_id: int,
+                                              similarity_type: str):
+        from apps.notifications.models import WebNotificationMessage, WebNotificationTypes
+        notifications = []
+        if similarity_type == 'DOCUMENT':
+            notification_type = WebNotificationTypes.DOCUMENT_SIMILARITY_SEARCH_FINISHED
+        elif similarity_type == 'TEXT_UNIT':
+            notification_type = WebNotificationTypes.TEXT_UNIT_SIMILARITY_SEARCH_FINISHED
+        else:
+            return
+        for project_id in project_ids:
+            project = Project.all_objects.get(id=project_id)
+            message_data = {
+                'project': project.name,
+            }
+            message_data = notification_type.check_message_data(message_data)
+            redirect_link = {
+                'type': notification_type.redirect_link_type(),
+                'params': {
+                    'project_type': 'batch_analysis'
+                        if project.type.code == DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
+                        else 'contract_analysis',
+                    'project_id': project.pk
+                },
+            }
+            recipients = [user_id, ]
+            notifications.append((message_data, redirect_link, notification_type,
+                                  recipients))
+        WebNotificationMessage.bulk_create_notification_messages(notifications)
 
 
 class DocumentSimilarityByFeatures(ExtendedTask):
@@ -441,7 +479,8 @@ class DocumentSimilarityByFeatures(ExtendedTask):
         self.task.metadata['run_id'] = run.id
         self.task.save()
 
-        args = [project_id, kwargs.get('user_id'), self.task.id, self.name, run.id, item_id, SUCCESS]
+        args = [project_id, kwargs.get('user_id'), self.task.id, self.name, run.id, item_id,
+                self.unit_source, SUCCESS]
         self.run_after_sub_tasks_finished('Notify Task Succeed', self.finalize, [tuple(args)])
         args[-1] = FAILURE
         self.run_if_task_or_sub_tasks_failed(self.finalize, args=tuple(args))
@@ -567,7 +606,7 @@ class DocumentSimilarityByFeatures(ExtendedTask):
                  max_retries=3,
                  priority=9)
     def finalize(_self: ExtendedTask, project_id, user_id, task_id, task_name, run_id, item_id,
-                 task_status):
+                 unit_source, task_status):
         _self.log_info('Cleanup redis keys')
         for k in redis.list_keys(f'sim_{task_id}_*'):
             redis.r.delete(k)
@@ -579,6 +618,8 @@ class DocumentSimilarityByFeatures(ExtendedTask):
 
         notify_similarity_task_completed(project_id, user_id, task_id, task_name, run_id, item_id,
                                          task_status)
+        Similarity.notify_on_completed_similarity_action([project_id], user_id,
+                                                         unit_source.upper())
         _self.log_info('Notification sent')
 
     @classmethod
@@ -637,7 +678,7 @@ class TextUnitSimilarityByFeatures(DocumentSimilarityByFeatures):
                     item_id = text_unit_qs.last().id
                     break
                 # if many - get the biggest one
-                item_id = text_unit_qs.annotate(length=Length('textunittext__text')).order_by(
+                item_id = text_unit_qs.annotate(length=Length('text')).order_by(
                     'length').last().id
             if item_id is None:
                 raise RuntimeError('Wrong location range - text units not found')
@@ -748,7 +789,7 @@ class PreconfiguredDocumentSimilaritySearch(ExtendedTask):
         for project_id in set(doc_query.values_list('project_id', flat=True)):
             Action.objects.create(name='Processed Similarity Tasks',
                                   message=f'{self.name} task for project '
-                                          f'"{Project.objects.get(id=project_id)}" is finished',
+                                          f'"{Project.all_objects.get(id=project_id)}" is finished',
                                   user_id=kwargs.get('user_id'),
                                   view_action='update',
                                   content_type=ContentType.objects.get_for_model(Project),
@@ -778,12 +819,16 @@ class DeleteDocumentSimilarityResults(ExtendedTask):
             if not project_id:
                 project_id = run.project_id
 
-        self.delete_task().delete_existing(project_id=project_id, run_id=run_id, purge_existing=purge_existing,
-                                           log_info=self.log_info)
+        try:
+            project_repr = f'project "{Project.all_objects.get(id=project_id)}"'
+        except Project.DoesNotExist:
+            project_repr = 'deleted project'
+
+        self.delete_task().delete_existing(project_id=project_id, run_id=run_id,
+                                           purge_existing=purge_existing, log_info=self.log_info)
 
         Action.objects.create(name='Processed Similarity Tasks',
-                              message=f'{self.name} task for project '
-                                      f'"{Project.all_objects.get(id=project_id)}" is finished',
+                              message=f'{self.name} task for {project_repr} is finished',
                               user_id=kwargs.get('user_id'),
                               view_action='update',
                               content_type=ContentType.objects.get_for_model(Project),

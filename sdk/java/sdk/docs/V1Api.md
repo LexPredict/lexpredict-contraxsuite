@@ -320,7 +320,6 @@ Method | HTTP request | Description
 [**rawdbDocumentsDocumentTypeCodeGET**](V1Api.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**rawdbDocumentsDocumentTypeCodePOST**](V1Api.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
 [**rawdbProjectStatsProjectIdGET**](V1Api.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-[**rawdbSocialAccountsGET**](V1Api.md#rawdbSocialAccountsGET) | **GET** /api/v1/rawdb/social_accounts/ | 
 [**restAuthLoginPOST**](V1Api.md#restAuthLoginPOST) | **POST** /rest-auth/login/ | 
 [**restAuthLogoutGET**](V1Api.md#restAuthLogoutGET) | **GET** /rest-auth/logout/ | 
 [**restAuthLogoutPOST**](V1Api.md#restAuthLogoutPOST) | **POST** /rest-auth/logout/ | 
@@ -372,7 +371,6 @@ Method | HTTP request | Description
 [**usersUsersPOST**](V1Api.md#usersUsersPOST) | **POST** /api/v1/users/users/ | 
 [**usersUsersUserStatsGET**](V1Api.md#usersUsersUserStatsGET) | **GET** /api/v1/users/users/user_stats/ | 
 [**usersVerifyTokenPOST**](V1Api.md#usersVerifyTokenPOST) | **POST** /api/v1/users/verify-token/ | 
-[**varGET**](V1Api.md#varGET) | **GET** /api/{var} | 
 
 
 <a name="analyzeDocumentClusterGET"></a>
@@ -2808,7 +2806,7 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String path = "path_example"; // String | 
-    String action = "download"; // String | Action name
+    String action = "info"; // String | Action name
     try {
       Map<String, Object> result = apiInstance.commonMediaPathGET(path, action);
       System.out.println(result);
@@ -8932,7 +8930,7 @@ Name | Type | Description  | Notes
 
 
 
-Update Document Type     Params:         - code: str - Short name for field, max 50 symbols         - title: str - Verbose name for field, max 100 symbols         - field_code_aliases: json - Aliases of field codes for document import purposes         - fields: array of objects like [{id: uid, category: id, order: int}, ...]         - search_fields: array of uids - set of fields to filter/sort on Document list page         - editor_type: str - max 100 symbols (from pre-defined choices)         - metadata: json - optional
+Fill in \&quot;self.action_message\&quot; attribute to use later to save Action.message (see dispatch method)
 
 ### Example
 ```java
@@ -10404,7 +10402,7 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this document.
-    String alt = "alt_example"; // String | Get alternative document file if exists
+    String alt = "true"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentDocumentsIdShowGET(id, alt);
       System.out.println(result);
@@ -13231,7 +13229,7 @@ public class Example {
     V1Api apiInstance = new V1Api(defaultClient);
     String projectPk = "projectPk_example"; // String | 
     String id = "id_example"; // String | A unique integer value identifying this document.
-    String alt = "alt_example"; // String | Get alternative document file if exists
+    String alt = "true"; // String | Get alternative document file if exists
     try {
       File result = apiInstance.documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt);
       System.out.println(result);
@@ -17729,7 +17727,7 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String path = "path_example"; // String | 
-    String action = "download"; // String | Action name
+    String action = "info"; // String | Action name
     try {
       Map<String, Object> result = apiInstance.mediaDataPathGET(path, action);
       System.out.println(result);
@@ -19371,7 +19369,7 @@ Name | Type | Description  | Notes
 
 <a name="projectProjectsIdLocateItemsPOST"></a>
 # **projectProjectsIdLocateItemsPOST**
-> ProjectDetail projectProjectsIdLocateItemsPOST(id, projectDetail)
+> TaskIdResponse projectProjectsIdLocateItemsPOST(id, locateItemsRequest)
 
 
 
@@ -19398,9 +19396,9 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     String id = "id_example"; // String | A unique integer value identifying this project.
-    ProjectDetail projectDetail = new ProjectDetail(); // ProjectDetail | 
+    LocateItemsRequest locateItemsRequest = new LocateItemsRequest(); // LocateItemsRequest | 
     try {
-      ProjectDetail result = apiInstance.projectProjectsIdLocateItemsPOST(id, projectDetail);
+      TaskIdResponse result = apiInstance.projectProjectsIdLocateItemsPOST(id, locateItemsRequest);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#projectProjectsIdLocateItemsPOST");
@@ -19418,11 +19416,11 @@ public class Example {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**| A unique integer value identifying this project. |
- **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+ **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional]
 
 ### Return type
 
-[**ProjectDetail**](ProjectDetail.md)
+[**TaskIdResponse**](TaskIdResponse.md)
 
 ### Authorization
 
@@ -22159,7 +22157,7 @@ public class Example {
     String columns = "columns_example"; // String | Column names separated by commas
     Boolean associatedText = true; // Boolean | Boolean - show associated text
     Boolean asZip = true; // Boolean | Boolean - export as zip
-    String fmt = "fmt_example"; // String | Export format
+    String fmt = "json"; // String | Export format
     Integer limit = 56; // Integer | Page Size
     String orderBy = "orderBy_example"; // String | Sort order - column names separated by commas
     String savedFilters = "savedFilters_example"; // String | Saved filter ids separated by commas
@@ -22344,69 +22342,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 **Map&lt;String, Object&gt;**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
-
-<a name="rawdbSocialAccountsGET"></a>
-# **rawdbSocialAccountsGET**
-> SocialAccountsResponse rawdbSocialAccountsGET()
-
-
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    try {
-      SocialAccountsResponse result = apiInstance.rawdbSocialAccountsGET();
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#rawdbSocialAccountsGET");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-This endpoint does not need any parameter.
-
-### Return type
-
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
 
 ### Authorization
 
@@ -25913,71 +25848,4 @@ Name | Type | Description  | Notes
 |-------------|-------------|------------------|
 **201** |  |  -  |
 **403** |  |  -  |
-
-<a name="varGET"></a>
-# **varGET**
-> Object varGET(var)
-
-
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    String var = "var_example"; // String | 
-    try {
-      Object result = apiInstance.varGET(var);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#varGET");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **var** | **String**|  |
-
-### Return type
-
-**Object**
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/coreapi+json, application/openapi+json, text/html
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** |  |  -  |
 

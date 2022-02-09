@@ -39,9 +39,9 @@ from apps.document.models import Document, TextUnit
 from apps.analyze.ml.features import DocumentFeatures, TextUnitFeatures, Document2VecFeatures, TextUnit2VecFeatures
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -133,7 +133,7 @@ class ClusterEngine:
 
     def cluster(self):
         """
-        Central method to process incomind data with chosen activated Clustering model
+        Central method to process incoming data with chosen activated clustering model
         :return: ClusterEngine instance with attributes listed in __init__
         """
 
@@ -247,6 +247,7 @@ class ClusterDocuments:
     db_cluster_model_m2m_name = 'documents'
     point_item_id_name = 'document_id'
     point_item_name_field = 'document_name'
+    features_model = DocumentFeatures
 
     def __init__(self,
                  queryset=None,
@@ -277,7 +278,6 @@ class ClusterDocuments:
         :param create_cluster_for_unclustered: create a cluster obj for unclustered items
         :param cluster_options: **kwargs for cluster model
         """
-        self.features_model = DocumentFeatures
         self.project_id = project_id
         self.queryset = queryset
         self.use_tfidf = use_tfidf
@@ -435,7 +435,7 @@ class ClusterDocuments:
 
     def create_db_cluster_object(self, cluster_label_id, cluster_terms, cluster_item_id_list):
         """
-        Store a CLuster in DB, set M2M relation from cluster_item_id_list
+        Store a cluster in DB, set M2M relation from cluster_item_id_list
         :param cluster_label_id: str
         :param cluster_self_name: str
         :param cluster_item_id_list: list of cluster item indexes

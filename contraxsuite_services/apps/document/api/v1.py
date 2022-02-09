@@ -100,9 +100,9 @@ from apps.task.tasks import call_task
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
-__copyright__ = "Copyright 2015-2021, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.1.0/LICENSE"
-__version__ = "2.1.0"
+__copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
+__version__ = "2.2.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -833,7 +833,7 @@ class DocumentViewSet(APILoggingMixin,
 
         cluster_id = self.request.GET.get("cluster_id")
         if cluster_id:
-            qs = qs.filter(cluster_id=int(cluster_id))
+            qs = qs.filter(documentcluster=int(cluster_id))
 
         if self.action == 'for_user':
             qs = qs.filter(assignee=self.request.user, status__group__is_active=True)
@@ -1036,6 +1036,7 @@ class DocumentViewSet(APILoggingMixin,
             }
             return Response(res)
         if request.method in {'POST', 'PUT', 'PATCH'}:
+            self.force_disable_track_view_actions = True
             doc = self.get_object()
             updated_fields = {f for f, fv in field_repo.update_field_values(doc, request.user, request.data)}
             cache_and_detect_field_values(doc=doc, user=request.user, updated_fields=updated_fields)
@@ -1154,7 +1155,7 @@ class DocumentViewSet(APILoggingMixin,
         definitions = DefinitionUsage.objects.filter(text_unit__document=document) \
             .annotate(startOffset=F('text_unit__location_start'),
                       endOffset=F('text_unit__location_end'),
-                      text=F('text_unit__textunittext__text')).values(
+                      text=F('text_unit__text')).values(
             'definition', 'startOffset', 'endOffset', 'text')
         res = []
         grouped = {k: [{vik: viv for vik, viv in vi.items() if vik != 'definition'} for vi in v] for
@@ -1320,8 +1321,6 @@ class DocumentViewSet(APILoggingMixin,
             obj.save(cache_modified_date=True)
 
     def get_action_name(self):
-        if self.action == 'fields':
-            return 'Document Fields Changed'
         if self.action in ['mark_delete', 'unmark_delete']:
             return f'{self.action.split("_")[0].capitalize()} Document Deleted'
         return super().get_action_name()
@@ -1339,6 +1338,9 @@ class DocumentViewSet(APILoggingMixin,
         """
         changes = []
         for field in old_instance_state:
+            if field == 'assign_date':
+                # Create empty actions for already existed ones
+                return ''
             if old_instance_state[field] != new_instance_state[field]:
                 old_field_value = old_instance_state[field]
                 new_field_value = new_instance_state[field]
@@ -1397,7 +1399,7 @@ class TextUnitViewSet(APILoggingMixin,
         elif self.action == 'list':
             raise APIException('Provide djangoql query.')
 
-        qs = qs.select_related('textunittext', 'project', 'document')
+        qs = qs.select_related('project', 'document')
 
         return qs
 
@@ -1827,16 +1829,41 @@ class DocumentFieldViewSet(DocumentFieldViewMixin,
     def get_extra_data(self, qs, initial_qs):
         data = super().get_extra_data(qs, initial_qs)
         data['count_of_filtered_items'] = qs.count()
-        data['count_of_items'] = DocumentField.objects.count()
+        doc_types_for_user = get_objects_for_user(
+            self.request.user, 'document.view_documenttype', DocumentType)
+        data['count_of_items'] = DocumentField.objects.filter(document_type__in=doc_types_for_user).count()
         return data
 
+    def dispatch(self, request, *args, **kwargs):
+        # here we are saving an Action record
+        response = super().dispatch(request, *args, **kwargs)
+        view_action = 'Added' if self.action == 'create' else 'Changed' if self.action in ['update', 'partial_update'] \
+            else 'Deleted' if self.action == 'destroy' else None
+        if not view_action:
+            return response
+
+        field: DocumentField = self.new_instance
+        if not field and 'pk' in kwargs:
+            object_pk = self.kwargs['pk']
+            field = DocumentField.objects.filter(pk=object_pk).first()
+        if not field:
+            return response
+        if self.action == 'destroy':
+            field.save_document_removed_action(view_action, self.request.user, self.request.data)
+        else:
+            field.save_document_action(view_action, self.request.user, self.request.data)
+        return response
+
     def destroy(self, request, *args, **kwargs):
+        field = DocumentField.objects.filter(pk=kwargs['pk']).first()
         errors = {}
         UsersTasksValidationAdmin.validate_running_tasks(request, errors)
         if errors:
             raise DRFValidationError(errors)
-
-        return super().destroy(request, *args, **kwargs)
+        result = super().destroy(request, *args, **kwargs)
+        if field:
+            field.save_document_removed_action('Deleted', request.user, request.data)
+        return result
 
     def perform_destroy(self, instance):
         instance.delete()
@@ -2308,7 +2335,8 @@ class DocumentFieldDetectorViewSet(DocumentFieldDetectorViewMixin,
                                    JqListAPIMixin,
                                    APIFormFieldsMixin,
                                    APIResponseMixin,
-                                   viewsets.ModelViewSet):
+                                   viewsets.ModelViewSet,
+                                   APIActionMixin):
     """
     list: Document Field List
     retrieve: Retrieve Document Field
@@ -2341,6 +2369,23 @@ class DocumentFieldDetectorViewSet(DocumentFieldDetectorViewMixin,
     options_serializer = DocumentFieldDetectorCreateSerializer
     response_unifier_serializer = DocumentFieldDetectorDetailSerializer
 
+    def dispatch(self, request, *args, **kwargs):
+        # here we are saving an Action record
+        response = super().dispatch(request, *args, **kwargs)
+        view_action = 'Added' if self.action == 'create' else 'Changed' if self.action in ['update', 'partial_update'] \
+            else 'Deleted' if self.action == 'destroy' else None
+        if not view_action:
+            return response
+
+        detector: DocumentFieldDetector = self.new_instance
+        if not detector:
+            try:
+                detector = DocumentFieldDetector.objects.get(pk=self.kwargs.get('pk', None))
+            except DocumentFieldDetector.DoesNotExist:
+                return response
+        self.save_doc_detector_action(detector, view_action)
+        return response
+
     def get_serializer_class(self):
         if self.action in ('create', 'update', 'partial_update'):
             return DocumentFieldDetectorCreateSerializer
@@ -2349,16 +2394,22 @@ class DocumentFieldDetectorViewSet(DocumentFieldDetectorViewMixin,
     def get_extra_data(self, qs, initial_qs):
         data = super().get_extra_data(qs, initial_qs)
         data['count_of_filtered_items'] = qs.count()
-        data['count_of_items'] = DocumentFieldDetector.objects.count()
+        doc_types_for_user = get_objects_for_user(
+            self.request.user, 'document.view_documenttype', DocumentType)
+        data['count_of_items'] = DocumentFieldDetector.objects.filter(field__document_type__in=doc_types_for_user).count()
         return data
 
     def destroy(self, request, *args, **kwargs):
+        detector = DocumentFieldDetector.objects.filter(pk=kwargs['pk']).first()
         errors = {}
         UsersTasksValidationAdmin.validate_running_tasks(request, errors)
         if errors:
             raise DRFValidationError(errors)
-
+        self.save_doc_detector_action(detector, 'Deleted')
         return super().destroy(request, *args, **kwargs)
+
+    def save_doc_detector_action(self, detector: DocumentFieldDetector, view_action: str):
+        detector.save_document_action(view_action, self.request.user, self.request.data)
 
 
 # --------------------------------------------------------
@@ -2642,6 +2693,7 @@ class DocumentTypeViewSet(DocumentTypeViewMixin,
                           JqListAPIMixin,
                           APIResponseMixin,
                           APIFormFieldsMixin,
+                          APIActionMixin,
                           viewsets.ModelViewSet):
     """
     list: Document Type List\n
@@ -2757,7 +2809,9 @@ class DocumentTypeViewSet(DocumentTypeViewMixin,
     def get_extra_data(self, qs, initial_qs):
         data = super().get_extra_data(qs, initial_qs)
         data['count_of_filtered_items'] = qs.count()
-        data['count_of_items'] = DocumentType.objects.count()
+        doc_types_for_user = get_objects_for_user(
+            self.request.user, 'document.view_documenttype', DocumentType)
+        data['count_of_items'] = doc_types_for_user.count()
         return data
 
     def destroy(self, request, *args, **kwargs):
@@ -2792,7 +2846,7 @@ class DocumentTypeViewSet(DocumentTypeViewMixin,
                        user_id=self.request.user.id)
         else:
             instance.delete()
-        signals.document_type_deleted.send(self.__class__, user=None, document_type=instance)
+            signals.document_type_deleted.send(self.__class__, user=None, document_type=instance)
 
     def get_fields_data(self):
         """
@@ -3039,11 +3093,10 @@ def do_save_document_field_value(request_data: Dict, user) -> \
 
     if 'pk' in request_data and request_data['pk']:
         ant_model = FieldAnnotation.objects.filter(pk=request_data['pk']).first()  # type: FieldAnnotation
-        if ant_model:
-            document = ant_model.document
-        else:
+        if not ant_model:
             raise Exception('do_save_document_field_value: ' +
                             f'FieldAnnotation(pk={request_data["pk"]}) was not found')
+        document = ant_model.document
     elif 'document' in request_data:
         document = DocumentRepository().get_document_by_id(request_data['document'])
     else:
@@ -3059,28 +3112,16 @@ def do_save_document_field_value(request_data: Dict, user) -> \
 
     if 'selection' in request_data:
         # we got location of the annotation as coordinates
-        selection = request_data['selection']
         location_start, location_end = DocumentPDFRepresentation.get_text_location_by_coords_for_doc(
-            document.pk, selection)
+            document.pk, request_data['selection'])
     else:
-        location_start = request_data.get('location_start')
-        location_end = request_data.get('location_end')
+        location_start, location_end = request_data.get('location_start'), request_data.get('location_end')
 
     location_text = None
     if location_start is not None and location_end is not None:
         location_text = document.full_text[location_start:location_end]
     if annotation_value and isinstance(annotation_value, str):
         location_text = annotation_value
-
-    all_fields = document.document_type.fields \
-        .prefetch_related(Prefetch('depends_on_fields', queryset=DocumentField.objects.only('uid')))
-    all_fields = list(all_fields)
-    current_field_values = {f.code: None for f in all_fields}
-    actual_field_values = field_repo.get_field_code_to_python_value(
-        document_type_id=document.document_type.pk,
-        doc_id=document.pk,
-        field_codes_only=None)
-    current_field_values.update(actual_field_values)
 
     # try to detect field value
     new_field_value_dto = None  # type: Optional[FieldValueDTO]
@@ -3239,7 +3280,19 @@ class AnnotationViewSet(viewsets.ModelViewSet):
         return Response(res)
 
     def create(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
+        try:
+            data = dict(request.data)
+            if 'pk' in kwargs and 'document' not in kwargs:
+                data['document'] = kwargs['pk']
+            doc, field, res = do_save_document_field_value(data, request.user)
+            cache_and_detect_field_values(doc,
+                                          user=request.user,
+                                          updated_fields={field})
+            self.save_action(doc, field, value=res['value'])
+        except Exception as e:
+            res = render_error_json(None, e)
+
+        return Response(res)
 
     @action(detail=False, methods=['put'], schema=AnnotationUpdateSchema())
     def annotate(self, request, *args, **kwargs):
@@ -3258,28 +3311,36 @@ class AnnotationViewSet(viewsets.ModelViewSet):
         """
         Save user action in Action model for document object
         """
-        if action_title is None:
-            if self.action == 'create':
-                action_title = 'Added'
-            elif self.action in ['update', 'partial_update', 'annotate']:
-                action_title = 'Changed'
-            elif self.action == 'destroy':
-                action_title = 'Deleted'
-            elif self.action == 'batch':
-                # handle batch action in batch method
-                pass
-        value_tip = f', value: "{value}"' if value else ''
+        if action_title is not None or self.action == 'batch':
+            # handle batch action in batch method and
+            # pass already defined action_title
+            pass
+        elif self.action == 'create':
+            action_title = 'Added'
+        elif self.action in ['update', 'partial_update', 'annotate']:
+            action_title = 'Changed'
+        elif self.action == 'destroy':
+            action_title = 'Deleted'
         date = now()
-        Action.objects.create(
-            name=f'Field Value {action_title}',
-            message=f'Field Value for field "{field.code}" {action_title}{value_tip}',
-            user=self.request.user,
-            date=date,
-            object_pk=document.id,
-            content_type=ContentType.objects.get_for_model(Document),
-            model_name='Document',
-            app_label='document',
-            request_data=self.request.data)
+        action_data = {
+            'user': self.request.user,
+            'date': date,
+            'object_pk': document.id,
+            'content_type': ContentType.objects.get_for_model(Document),
+            'model_name': 'Document',
+            'app_label': 'document',
+            'request_data': self.request.data
+        }
+        if field.type != RelatedInfoField.type_code:
+            if value:
+                new_value = f'"{value}"' if value else '""'
+                message = f'Value for "{field.title}" changed to {new_value}'
+                action_name = f'Field Value Changed'
+            else:
+                message = f'Value for "{field.title}" removed'
+                action_name = f'Field Value Removed'
+            Action.objects.create(message=message, name=action_name, **action_data)
+
         document.modified_by = self.request.user
         document.modified_date = date
         document.save(cache_modified_date=True)
@@ -3326,7 +3387,7 @@ class AnnotationViewSet(viewsets.ModelViewSet):
                     doc, field, deleted_field_value = do_delete_document_field_value(pk, request.user)
                     documents_to_cache[doc].add(field)
                     res.append({'operation_uid': operation_uid, 'status': 'success', 'data': deleted_field_value})
-                    self.save_action(doc, field, action_title='Deleted', value=deleted_field_value['value'])
+                    self.save_action(doc, field, action_title='Deleted')
                 elif action == 'save':
                     data = cmd['data']
                     doc, field, saved_field_value = do_save_document_field_value(data, request.user)
@@ -3811,10 +3872,17 @@ class AnnotationsInDocumentViewSet(viewsets.ModelViewSet):
         view_action = 'Added' if self.action == 'create' else 'Changed' if self.action in ['update', 'partial_update'] \
             else 'Deleted' if self.action == 'destroy' else None
         if view_action:
+            field_code = self.request.data.get('field', '')
             date = now()
+            if view_action == 'Added':
+                message = f'Annotation added to "{field_code}"'
+            elif view_action == 'Deleted':
+                message = f'Annotation removed from "{field_code}"'
+            else:
+                message = f'Annotation {view_action.lower()}'
             db_action = Action.objects.create(
                 name=f'Annotation {view_action}',
-                message=f'Annotation {view_action}',
+                message=message,
                 user=self.request.user,
                 date=date,
                 object_pk=self.kwargs['document_pk'],
@@ -4160,7 +4228,6 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewS
         return false_ann_qs
 
     def get_assignee_data(self, qs: QuerySet):
-
         df = pd.DataFrame(qs)
         if not df.empty:
             df = df.groupby(['assignee_id', 'assignee_name']).agg(
@@ -4234,7 +4301,9 @@ class DocumentFieldAnnotationViewSet(JqListAPIMixin, viewsets.ReadOnlyModelViewS
 
         # finally sort UNION queryset
         union_qs = self.sort_queryset(union_qs)
-        self.get_assignee_data(union_qs)
+        union_qs_with_assignee = true_ann_qs.filter(assignee__isnull=False).values(*columns).union(
+            false_ann_qs.filter(assignee__isnull=False).values(*columns))
+        self.get_assignee_data(union_qs_with_assignee)
 
         return union_qs
 

@@ -14,11 +14,11 @@ export DOCKER_WEBDAV_IMAGE=bytemark/webdav:2.4
 export DOCKER_MINIO_IMAGE=minio/minio:RELEASE.2020-01-03T19-12-21Z
 export DOCKER_MLFLOW_TRACKING_IMAGE=lexpredict/mlflow-tracking-server:1.6.0-1
 export DOCKER_CURATOR_IMAGE=lexpredict/es-curator-cron:5.8.1-1
-export DOCKER_ELASTICSEARCH_IMAGE=docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
+export DOCKER_ELASTICSEARCH_IMAGE=elasticsearch:7.16.2
 export DOCKER_ELASTALERT_IMAGE=bitsensor/elastalert:3.0.0-beta.1
-export DOCKER_KIBANA_IMAGE=lexpredict/lexpredict-kibana:7.5.0
-export DOCKER_FILEBEAT_IMAGE=docker.elastic.co/beats/filebeat-oss:7.5.2
-export DOCKER_METRICBEAT_IMAGE=docker.elastic.co/beats/metricbeat-oss:7.5.2
+export DOCKER_KIBANA_IMAGE=lexpredict/lexpredict-kibana:7.16.2
+export DOCKER_FILEBEAT_IMAGE=elastic/filebeat:7.16.2
+export DOCKER_METRICBEAT_IMAGE=elastic/metricbeat:7.16.2
 export DOCKER_RABBITMQ_IMAGE=rabbitmq:3.8-management
 export DOCKER_PGBOUNCER_IMAGE=edoburu/pgbouncer:1.15.0
 
