@@ -69,6 +69,10 @@ kombu==4.6.11
 langid==1.1.6
 matplotlib==3.3.0
 markdown==3.2.2
+
+# needed for Jinja
+MarkupSafe==2.0.1
+
 mlflow==1.17.0
 networkx==2.4
 nltk==3.5

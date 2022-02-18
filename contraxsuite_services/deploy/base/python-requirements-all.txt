@@ -70,6 +70,10 @@ jupyterlab-server==2.4.0
 kombu==4.6.11
 matplotlib==3.3.0
 markdown==3.2.2
+
+# needed for Jinja
+MarkupSafe==2.0.1
+
 mlflow==1.17.0
 mock==4.0.2
 networkx==2.4
