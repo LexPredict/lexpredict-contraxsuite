@@ -5,13 +5,13 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**RunName** | **string** |  | [optional] 
-**SearchSimilarDocuments** | **bool?** |  | [optional] 
-**SearchSimilarTextUnits** | **bool?** |  | [optional] 
-**SimilarityThreshold** | **int?** | Min. Similarity Value 50-100% | [optional] [default to 75]
-**Project** | **string** |  | [optional] 
-**UseIdf** | **bool?** |  | [optional] 
-**Delete** | **bool?** |  | [optional] 
+**RunName** | **string** |  | 
+**SearchSimilarDocuments** | **bool** |  | 
+**SearchSimilarTextUnits** | **bool** |  | 
+**SimilarityThreshold** | **int?** |  | [optional] [default to 75]
+**Project** | **string** |  | 
+**UseIdf** | **bool** |  | 
+**Delete** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

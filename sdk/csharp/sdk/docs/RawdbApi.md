@@ -113,15 +113,15 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new RawdbApi(Configuration.Default);
-            var documentTypeCode = documentTypeCode_example;  // string | 
-            var projectIds = projectIds_example;  // string | Project ids separated by commas (optional) 
-            var columns = columns_example;  // string | Column names separated by commas (optional) 
+            var documentTypeCode = "documentTypeCode_example";  // string | 
+            var projectIds = "projectIds_example";  // string | Project ids separated by commas (optional) 
+            var columns = "columns_example";  // string | Column names separated by commas (optional) 
             var associatedText = true;  // bool? | Boolean - show associated text (optional) 
             var asZip = true;  // bool? | Boolean - export as zip (optional) 
-            var fmt = fmt_example;  // string | Export format (optional) 
+            var fmt = "json";  // string | Export format (optional) 
             var limit = 56;  // int? | Page Size (optional) 
-            var orderBy = orderBy_example;  // string | Sort order - column names separated by commas (optional) 
-            var savedFilters = savedFilters_example;  // string | Saved filter ids separated by commas (optional) 
+            var orderBy = "orderBy_example";  // string | Sort order - column names separated by commas (optional) 
+            var savedFilters = "savedFilters_example";  // string | Saved filter ids separated by commas (optional) 
             var saveFilter = true;  // bool? | Save filter (optional) 
             var returnReviewed = true;  // bool? | Return Reviewed documents count (optional) 
             var returnTotal = true;  // bool? | Return total documents count (optional) 
@@ -221,7 +221,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new RawdbApi(Configuration.Default);
-            var documentTypeCode = documentTypeCode_example;  // string | 
+            var documentTypeCode = "documentTypeCode_example";  // string | 
             var rawdbDocumentsPOSTRequest = new RawdbDocumentsPOSTRequest(); // RawdbDocumentsPOSTRequest |  (optional) 
 
             try
@@ -301,7 +301,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new RawdbApi(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
 
             try
             {

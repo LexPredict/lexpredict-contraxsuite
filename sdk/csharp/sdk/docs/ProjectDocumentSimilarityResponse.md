@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**Data** | [**List&lt;ProjectDocumentSimilarityResponseData&gt;**](ProjectDocumentSimilarityResponseData.md) |  | 
+**Data** | [**List&lt;ProjectDocumentSimilarityResponseDataInner&gt;**](ProjectDocumentSimilarityResponseDataInner.md) |  | 
 **DocumentAId** | **int?** |  | [optional] 
 **DocumentAName** | **string** |  | [optional] 
 **TotalRecords** | **int** |  | [optional] 

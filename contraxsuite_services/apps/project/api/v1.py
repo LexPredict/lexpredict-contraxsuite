@@ -70,7 +70,6 @@ from apps.common.log_utils import render_error
 from apps.common.logger import CsLogger
 from apps.common.models import Action, ReviewStatus, AppVarStorage
 from apps.common.schemas import object_list_content
-from apps.common.sql_commons import dict_fetch_all
 from apps.common.url_utils import as_bool
 from apps.common.utils import get_api_module, safe_to_int, cap_words
 from apps.document.async_tasks.detect_field_values_task import DetectFieldValues
@@ -94,8 +93,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -710,9 +709,9 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             # add {status_name_pcnt: decimal} column
             status_pcnt_col_name = get_ann_name(status_col_name, suffix='pcnt')
             annotations[status_pcnt_col_name] = Case(
-                    When(Q(documents_total=0), then=0),
-                    default=100.0 * F(status_col_name) / F('documents_total'),
-                    output_field=decimal_field)
+                When(Q(documents_total=0), then=0),
+                default=100.0 * F(status_col_name) / F('documents_total'),
+                output_field=decimal_field)
 
         for clause_status_name, is_rejected in clause_statuses:
             # add {status_name: int} column
@@ -724,9 +723,9 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             # add {status_name_pcnt: decimal} column
             status_pcnt_col_name = get_ann_name(status_col_name, suffix='pcnt')
             annotations[status_pcnt_col_name] = Case(
-                    When(Q(clauses_total=0), then=0),
-                    default=100.0 * F(status_col_name) / F('clauses_total'),
-                    output_field=decimal_field)
+                When(Q(clauses_total=0), then=0),
+                default=100.0 * F(status_col_name) / F('clauses_total'),
+                output_field=decimal_field)
 
         qs = qs.annotate(**annotations)
         columns = ['name', 'type'] + list(annotations.keys())
@@ -1291,8 +1290,19 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                 task_id
         """
         document_ids = self.get_document_ids(request)
+        total_documents_count = len(document_ids)
+        inactive_documents = Document.objects.filter(id__in=document_ids, status__is_active=False).values_list('id', 'name')
+        inactive_document_ids = [i[0] for i in inactive_documents]
+        inactive_document_names = [i[1] for i in inactive_documents]
+        document_ids = set(document_ids) - set(inactive_document_ids)
+
         if not document_ids:
-            raise APIException('document_ids not found')
+            if inactive_document_ids:
+                data = {'message': 'The documents were not updated because all documents you have selected '
+                                   'are marked as Completed or Excluded'}
+                return Response(data=data, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                raise APIException('document_ids not found')
         fields_data = request.data.get('fields_data')
         if not fields_data:
             raise APIException('fields_data not found')
@@ -1306,13 +1316,21 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
             user_id=request.user.pk)
 
         # TODO: move into task? OR just count an attempt?
-        msg_tip = ', '.join([f'"{field_code}" to "{value}"' for field_code, value in fields_data.items()])
+        msg_tip = ', '.join([
+            f'"{field_code}" to "{", ".join(value) if isinstance(value, list) else value}"'
+            for field_code, value in fields_data.items()
+        ])
         self.save_mass_action(action_name='Field Value Changed',
                               action_message=f'Document fields bulk changed: {msg_tip}',
                               document_ids=document_ids,
                               request_data=request.data['fields_data'])
 
-        return Response({'task_id': task_id})
+        return Response({'task_id': task_id,
+                         'total_documents_count': total_documents_count,
+                         'active_documents_count': len(document_ids),
+                         'inactive_documents_count': len(inactive_document_ids),
+                         'inactive_document_ids': inactive_document_ids,
+                         'inactive_document_names': inactive_document_names})
 
     @action(detail=True, methods=['post'], schema=AssignProjectDocumentsSchema())
     def assign_documents(self, request, **kwargs):
@@ -1394,6 +1412,8 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         document_ids = self.get_document_ids(request)
         documents = Document.objects.filter(project=project, pk__in=document_ids)
+        prev_document_statuses = list(Document.all_objects.filter(
+            id__in=document_ids).values_list('id', 'status__name'))
 
         import apps.document.repository.document_field_repository as dfr
         field_repo = dfr.DocumentFieldRepository()
@@ -1424,10 +1444,25 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
 
         plan_process_documents_status_changed(document_ids, status_id, request.user.pk)
 
-        # TODO: move into task? OR just count an attempt?
-        self.save_mass_action(action_name='Status Changed',
-                              action_message=f'Document status bulk changed to "{review_status.name}"',
-                              document_ids=document_ids)
+        actions = []
+        date = now()
+        for doc_id, status_name in prev_document_statuses:
+            actions.append(
+                Action(name='Status Changed',
+                       message=f'Document status changed from "{status_name}" '
+                               f'to "{review_status.name}"',
+                       view_action=self.action,
+                       user=self.request.user,
+                       date=date,
+                       content_type=ContentType.objects.get_for_model(Document),
+                       object_pk=doc_id,
+                       model_name='Document',
+                       app_label='document',
+                       request_data=self.request.data)
+            )
+        Action.objects.bulk_create(actions)
+        Document.objects.filter(pk__in=document_ids).update(modified_by=self.request.user,
+                                                            modified_date=date)
         return Response({'success': ret})
 
     def get_annotations_queryset(self, only_true_annotations=False):
@@ -1554,7 +1589,15 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         ant_uids = [i for i in ant_uids if i not in except_true_ann and i not in except_false_ann]
         if not ant_uids:
             # all documents with changed annotations are in completed status
-            return Response({'success': 0, 'message': 'The document(s) status does not allow changing annotations'})
+            return Response({'success': 0,
+                             'message': 'All selected clauses belong to completed document(s) and won\'t be updated'})
+        elif request.data.get('force') is not True and (except_false_ann.exists() or except_true_ann.exists()):
+            return Response(
+                status=400,
+                data={'success': 0,
+                      'message': 'Some or all of the selected clauses are in documents marked '
+                                 '"Completed" and/or "Excluded". '
+                                 'The status of these clauses won\'t be changed. Continue?'})
 
         run_sync = run_mode == 'sync'
         if not run_sync:
@@ -1601,17 +1644,20 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
         if not user_projects.exists():
             return Response([])
 
+        # ToDo: optimize the query as it contains so many document ids
         sql = '''
             SELECT
               p1.id project_id,
               p1.name project_name,
               CASE WHEN p1.type_id = %s THEN TRUE ELSE FALSE END AS is_generic,
+              -- Select count of extracted documents;
               (SELECT count(d1.id)
                FROM document_document d1
                WHERE d1.id in ({document_ids}) 
                    AND d1.delete_pending = FALSE
                    AND d1.processed = TRUE 
                    AND d1.project_id = p1.id) extracted_doc_count,
+              -- Select count of reviewed documents;
               (SELECT count(d2.id)
                FROM document_document d2
                WHERE d2.id in ({document_ids}) 
@@ -1622,6 +1668,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                         FROM common_reviewstatus rs INNER JOIN common_reviewstatusgroup rsg
                                             ON rs.group_id = rsg.id
                                         WHERE rsg.is_active = FALSE)) reviewed_doc_count,
+              -- Select count of clusters;
               CASE
                  WHEN p1.type_id = %s 
                      THEN (SELECT COUNT(*) 
@@ -1634,6 +1681,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                                                               ORDER BY id DESC
                                                               LIMIT 1))
                      ELSE NULL END AS clusters_count,
+              -- Select count of clusters documents;
               CASE
                  WHEN p1.type_id = %s 
                      THEN (SELECT array(SELECT COUNT(*)
@@ -1651,6 +1699,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                            ORDER BY adc.id ASC))
                      ELSE NULL END AS clusters_documents_count
             FROM project_project p1
+            -- Sort by newest project actions
             INNER JOIN common_action ca
                 ON NOT p1.delete_pending AND ca.content_type_id = %s AND ca.user_id = %s AND ca.object_pk = p1.id :: VARCHAR
             WHERE p1.delete_pending = FALSE AND p1.id in ({project_ids})
@@ -1683,7 +1732,7 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
                     'clusters': None if clusters is None else {
                         'clusters_count': clusters,
                         'clusters_documents_count': sorted(clusters_documents, reverse=True)
-                                                    if clusters_documents else None
+                        if clusters_documents else None
                     }
                 })
 
@@ -1751,29 +1800,33 @@ class ProjectViewSet(apps.common.mixins.APILoggingMixin,
     @classmethod
     def _get_similarity_process_allowed(cls, feature_src_len: int, threshold: int) -> Tuple[bool, str]:
         from apps.analyze.app_vars import SIMILARITY_MAX_BASE, SIMILARITY_MAX_RECORDS
-        if feature_src_len < 2 or feature_src_len > SIMILARITY_MAX_BASE.val():
-            return False, f'Provided {feature_src_len} source records, but only {SIMILARITY_MAX_BASE.val()} are allowed'
-        estimation = DocumentSimilarityByFeatures.estimate_similarity_records_count(feature_src_len, threshold)
+        tip = 'Please increase Relevance Threshold to reduce number of records that will ' \
+              'be created by this task.'
+        if feature_src_len < 2:
+            return False, f'There are {feature_src_len} source records. The minimum number of ' \
+                          f'allowed records is 2.'
+        if feature_src_len > SIMILARITY_MAX_BASE.val():
+            return False, f'There are {feature_src_len} source records. The maximum number of ' \
+                          f'allowed records is {SIMILARITY_MAX_BASE.val()}. {tip}'
+        estimation = DocumentSimilarityByFeatures.estimate_similarity_records_count(feature_src_len,
+                                                                                    threshold)
         if estimation < SIMILARITY_MAX_RECORDS.val():
             return True, ''
-        return False, f'Expected {estimation} similarity records but only {SIMILARITY_MAX_RECORDS.val()} ' + \
-                       'records are allowed'
-
-    # actions
+        return False, f'Expected {estimation} similarity records. The maximum number of allowed ' \
+                      f'records is {SIMILARITY_MAX_RECORDS.val()}. {tip} '
 
     def save_action_parent(self):
         # sync created/modified fields with action object
         if self.action in ['retrieve', 'cluster']:
             return
-        obj = self.user_action.object if self.user_action else None
-        if not obj:
-            return
-        if self.action == 'create':
-            obj.created_by = self.user_action.user
-            obj.created_date = self.user_action.date
-        obj.modified_by = self.user_action.user
-        obj.modified_date = self.user_action.date
-        obj.save()
+        if self.user_action and self.user_action.object:
+            obj = self.user_action.object
+            if self.action == 'create':
+                obj.created_by = self.user_action.user
+                obj.created_date = self.user_action.date
+            obj.modified_by = self.user_action.user
+            obj.modified_date = self.user_action.date
+            obj.save()
 
     @staticmethod
     def get_object_state(obj):
@@ -2112,7 +2165,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
             if force_rename is None:
                 from apps.document.app_vars import ALLOW_DUPLICATE_DOCS
-                force_rename = not ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
+                force_rename = ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
 
             do_upload_files = {}
             upload_unique_files = []
@@ -2228,7 +2281,7 @@ class UploadSessionViewSet(UploadSessionPermissionViewMixin,
 
         project = session.project
         from apps.document.app_vars import ALLOW_DUPLICATE_DOCS
-        force_rename = force or not ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
+        force_rename = force or ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
 
         if review_file or force_rename:
             can_upload_status = self.can_upload_file(project, file_name, file_size, session.pk)

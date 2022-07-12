@@ -7,6 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Uid** | **Guid** |  | [optional] [readonly] 
 **DocumentType** | **string** |  | 
+**DocumentTypeTitle** | **string** |  | [optional] [readonly] 
 **Code** | **string** | Field codes must be lowercase, should start with  a Latin letter, and contain only Latin letters, digits, underscores. Field codes must be unique to every Document Type. | 
 **LongCode** | **string** |  | [optional] 
 **Title** | **string** |  | 

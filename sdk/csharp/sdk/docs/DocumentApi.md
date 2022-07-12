@@ -85,6 +85,7 @@ Method | HTTP request | Description
 [**DocumentDocumentsIdPATCH**](DocumentApi.md#documentdocumentsidpatch) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdPUT**](DocumentApi.md#documentdocumentsidput) | **PUT** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdPdfReprGET**](DocumentApi.md#documentdocumentsidpdfreprget) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
+[**DocumentDocumentsIdSetAnnotatorCoordDifferencePOST**](DocumentApi.md#documentdocumentsidsetannotatorcoorddifferencepost) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ | 
 [**DocumentDocumentsIdShowGET**](DocumentApi.md#documentdocumentsidshowget) | **GET** /api/v1/document/documents/{id}/show/ | 
 [**DocumentDocumentsIdSimilarGET**](DocumentApi.md#documentdocumentsidsimilarget) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**DocumentDocumentsMarkDeletePOST**](DocumentApi.md#documentdocumentsmarkdeletepost) | **POST** /api/v1/document/documents/mark_delete/ | 
@@ -125,6 +126,7 @@ Method | HTTP request | Description
 [**DocumentProjectProjectPkDocumentsIdPATCH**](DocumentApi.md#documentprojectprojectpkdocumentsidpatch) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdPUT**](DocumentApi.md#documentprojectprojectpkdocumentsidput) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdPdfReprGET**](DocumentApi.md#documentprojectprojectpkdocumentsidpdfreprget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
+[**DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST**](DocumentApi.md#documentprojectprojectpkdocumentsidsetannotatorcoorddifferencepost) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ | 
 [**DocumentProjectProjectPkDocumentsIdShowGET**](DocumentApi.md#documentprojectprojectpkdocumentsidshowget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
 [**DocumentProjectProjectPkDocumentsIdSimilarGET**](DocumentApi.md#documentprojectprojectpkdocumentsidsimilarget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**DocumentProjectProjectPkDocumentsMarkDeletePOST**](DocumentApi.md#documentprojectprojectpkdocumentsmarkdeletepost) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
@@ -400,7 +402,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation.
 
             try
             {
@@ -479,7 +481,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation.
 
             try
             {
@@ -559,7 +561,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation.
             var annotation = new Annotation(); // Annotation |  (optional) 
 
             try
@@ -959,7 +961,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1197,7 +1199,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
 
             try
             {
@@ -1276,7 +1278,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -1356,7 +1358,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1438,7 +1440,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
             var documentFieldCategoryCreate = new DocumentFieldCategoryCreate(); // DocumentFieldCategoryCreate |  (optional) 
 
             try
@@ -1520,7 +1522,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
             var documentFieldCategoryCreate = new DocumentFieldCategoryCreate(); // DocumentFieldCategoryCreate |  (optional) 
 
             try
@@ -1918,7 +1920,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
 
             try
             {
@@ -1997,7 +1999,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
 
             try
             {
@@ -2077,7 +2079,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2159,7 +2161,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
             var documentFieldDetectorCreate = new DocumentFieldDetectorCreate(); // DocumentFieldDetectorCreate |  (optional) 
 
             try
@@ -2241,7 +2243,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
             var documentFieldDetectorCreate = new DocumentFieldDetectorCreate(); // DocumentFieldDetectorCreate |  (optional) 
 
             try
@@ -2403,7 +2405,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field value.
+            var id = "id_example";  // string | A unique integer value identifying this field value.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2799,7 +2801,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var documentTypeUid = documentTypeUid_example;  // string | Filter by document type uid (optional) 
+            var documentTypeUid = "documentTypeUid_example";  // string | Filter by document type uid (optional) 
 
             try
             {
@@ -2879,7 +2881,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var checkDocumentFieldFormulaRequest = new CheckDocumentFieldFormulaRequest(); // CheckDocumentFieldFormulaRequest |  (optional) 
 
             try
@@ -2961,7 +2963,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var cloneDocumentFieldRequest = new CloneDocumentFieldRequest(); // CloneDocumentFieldRequest |  (optional) 
 
             try
@@ -3043,7 +3045,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
 
             try
             {
@@ -3122,7 +3124,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
 
             try
             {
@@ -3202,7 +3204,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -3284,7 +3286,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate |  (optional) 
 
             try
@@ -3366,7 +3368,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate |  (optional) 
 
             try
@@ -3448,7 +3450,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var documentFieldDetail = new DocumentFieldDetail(); // DocumentFieldDetail |  (optional) 
 
             try
@@ -3531,8 +3533,8 @@ namespace Example
 
             var apiInstance = new DocumentApi(Configuration.Default);
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
-            var projectId = projectId_example;  // string | Filter by project id (optional) 
-            var documentId = documentId_example;  // string | Filter by document id (optional) 
+            var projectId = "projectId_example";  // string | Filter by project id (optional) 
+            var documentId = "documentId_example";  // string | Filter by document id (optional) 
             var force = true;  // bool? | For deleted documents as well (optional) 
             var exportTo = true;  // bool? | Export data (optional) 
 
@@ -3618,7 +3620,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
 
             try
             {
@@ -3697,7 +3699,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -3779,7 +3781,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
             var documentNoteDetail = new DocumentNoteDetail(); // DocumentNoteDetail |  (optional) 
 
             try
@@ -3861,7 +3863,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
             var documentNoteUpdate = new DocumentNoteUpdate(); // DocumentNoteUpdate |  (optional) 
 
             try
@@ -4487,7 +4489,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var cloneDocumentTypeRequest = new CloneDocumentTypeRequest(); // CloneDocumentTypeRequest |  (optional) 
 
             try
@@ -4569,7 +4571,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
 
             try
             {
@@ -4646,8 +4648,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
-            var targetVersion = targetVersion_example;  // string | Version number (optional) 
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
+            var targetVersion = "targetVersion_example";  // string | Version number (optional) 
 
             try
             {
@@ -4728,7 +4730,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
 
             try
             {
@@ -4808,7 +4810,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -4890,7 +4892,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var documentTypeCreate = new DocumentTypeCreate(); // DocumentTypeCreate |  (optional) 
 
             try
@@ -4972,7 +4974,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var documentTypeCreate = new DocumentTypeCreate(); // DocumentTypeCreate |  (optional) 
 
             try
@@ -5054,7 +5056,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var documentTypeDetail = new DocumentTypeDetail(); // DocumentTypeDetail |  (optional) 
 
             try
@@ -5212,8 +5214,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var documentIds = documentIds_example;  // string | Filter by Document ids separated by commas (optional) 
-            var excludeDocumentIds = excludeDocumentIds_example;  // string | Exclude Document ids separated by commas (optional) 
+            var documentIds = "documentIds_example";  // string | Filter by Document ids separated by commas (optional) 
+            var excludeDocumentIds = "excludeDocumentIds_example";  // string | Exclude Document ids separated by commas (optional) 
 
             try
             {
@@ -5371,7 +5373,7 @@ namespace Example
             var apiInstance = new DocumentApi(Configuration.Default);
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
             var clusterId = 56;  // int? | Cluster id to filter by (optional) 
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -5451,7 +5453,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -5537,7 +5539,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -5616,7 +5618,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -5696,7 +5698,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -5776,7 +5778,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -5854,7 +5856,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -5932,7 +5934,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -6012,7 +6014,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -6092,7 +6094,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -6172,7 +6174,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -6252,7 +6254,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -6332,7 +6334,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -6410,7 +6412,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -6492,7 +6494,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentsForUser = new DocumentsForUser(); // DocumentsForUser |  (optional) 
 
             try
@@ -6572,7 +6574,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -6622,6 +6624,86 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## DocumentDocumentsIdSetAnnotatorCoordDifferencePOST
+
+> DocumentSetAnnotatorCoordinatesDifferenceResponse DocumentDocumentsIdSetAnnotatorCoordDifferencePOST (string id, DocumentSetAnnotatorCoordinatesDifferenceRequest documentSetAnnotatorCoordinatesDifferenceRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdSetAnnotatorCoordDifferencePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var documentSetAnnotatorCoordinatesDifferenceRequest = new DocumentSetAnnotatorCoordinatesDifferenceRequest(); // DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional) 
+
+            try
+            {
+                DocumentSetAnnotatorCoordinatesDifferenceResponse result = apiInstance.DocumentDocumentsIdSetAnnotatorCoordDifferencePOST(id, documentSetAnnotatorCoordinatesDifferenceRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentDocumentsIdSetAnnotatorCoordDifferencePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+ **documentSetAnnotatorCoordinatesDifferenceRequest** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional] 
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## DocumentDocumentsIdShowGET
 
 > System.IO.Stream DocumentDocumentsIdShowGET (string id, string alt = null)
@@ -6650,8 +6732,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var alt = "true";  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -6732,7 +6814,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -7134,7 +7216,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
 
             try
             {
@@ -7213,7 +7295,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7293,7 +7375,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
             var fieldAnnotationStatus = new FieldAnnotationStatus(); // FieldAnnotationStatus |  (optional) 
 
             try
@@ -7375,7 +7457,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
             var fieldAnnotationStatus = new FieldAnnotationStatus(); // FieldAnnotationStatus |  (optional) 
 
             try
@@ -7535,7 +7617,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7617,7 +7699,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7699,8 +7781,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var uid = uid_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var uid = "uid_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7783,7 +7865,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7865,8 +7947,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this field value.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this field value.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7947,8 +8029,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
 
             try
             {
@@ -8027,9 +8109,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -8108,9 +8190,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -8190,9 +8272,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
             var annotationInDocument = new AnnotationInDocument(); // AnnotationInDocument |  (optional) 
 
             try
@@ -8274,9 +8356,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
             var annotationInDocument = new AnnotationInDocument(); // AnnotationInDocument |  (optional) 
 
             try
@@ -8358,8 +8440,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
             var annotationInDocument = new AnnotationInDocument(); // AnnotationInDocument |  (optional) 
 
             try
@@ -8440,9 +8522,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentIds = documentIds_example;  // string | Filter by Document ids separated by commas (optional) 
-            var excludeDocumentIds = excludeDocumentIds_example;  // string | Exclude Document ids separated by commas (optional) 
+            var projectPk = "projectPk_example";  // string | 
+            var documentIds = "documentIds_example";  // string | Filter by Document ids separated by commas (optional) 
+            var excludeDocumentIds = "excludeDocumentIds_example";  // string | Exclude Document ids separated by commas (optional) 
 
             try
             {
@@ -8523,7 +8605,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
 
             try
             {
@@ -8603,10 +8685,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
             var clusterId = 56;  // int? | Cluster id to filter by (optional) 
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -8687,8 +8769,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -8775,8 +8857,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -8856,8 +8938,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -8938,8 +9020,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -9020,8 +9102,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -9100,8 +9182,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -9180,8 +9262,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -9262,8 +9344,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -9344,8 +9426,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -9426,8 +9508,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -9508,8 +9590,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -9590,8 +9672,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -9670,8 +9752,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -9754,8 +9836,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentsForUser = new DocumentsForUser(); // DocumentsForUser |  (optional) 
 
             try
@@ -9836,8 +9918,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -9888,6 +9970,88 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST
+
+> DocumentSetAnnotatorCoordinatesDifferenceResponse DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST (string projectPk, string id, DocumentSetAnnotatorCoordinatesDifferenceRequest documentSetAnnotatorCoordinatesDifferenceRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new DocumentApi(Configuration.Default);
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var documentSetAnnotatorCoordinatesDifferenceRequest = new DocumentSetAnnotatorCoordinatesDifferenceRequest(); // DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional) 
+
+            try
+            {
+                DocumentSetAnnotatorCoordinatesDifferenceResponse result = apiInstance.DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST(projectPk, id, documentSetAnnotatorCoordinatesDifferenceRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling DocumentApi.DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+ **documentSetAnnotatorCoordinatesDifferenceRequest** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional] 
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## DocumentProjectProjectPkDocumentsIdShowGET
 
 > System.IO.Stream DocumentProjectProjectPkDocumentsIdShowGET (string projectPk, string id, string alt = null)
@@ -9916,9 +10080,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var alt = "true";  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -10000,8 +10164,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -10086,7 +10250,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var markUnmarkForDeleteDocumentsRequest = new MarkUnmarkForDeleteDocumentsRequest(); // MarkUnmarkForDeleteDocumentsRequest |  (optional) 
 
             try
@@ -10166,7 +10330,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var documentsForUser = new DocumentsForUser(); // DocumentsForUser |  (optional) 
 
             try
@@ -10248,7 +10412,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var markUnmarkForDeleteDocumentsRequest = new MarkUnmarkForDeleteDocumentsRequest(); // MarkUnmarkForDeleteDocumentsRequest |  (optional) 
 
             try
@@ -10404,7 +10568,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -10484,8 +10648,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new DocumentApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit.
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this text unit.
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {

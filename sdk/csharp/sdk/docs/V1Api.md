@@ -38,6 +38,7 @@ Method | HTTP request | Description
 [**CommonAppVariablesListGET**](V1Api.md#commonappvariableslistget) | **GET** /api/v1/common/app-variables/list/ | 
 [**CommonAppVariablesProjectProjectIdGET**](V1Api.md#commonappvariablesprojectprojectidget) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
 [**CommonAppVariablesProjectProjectIdPUT**](V1Api.md#commonappvariablesprojectprojectidput) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
+[**CommonLogoGET**](V1Api.md#commonlogoget) | **GET** /api/v1/common/logo/ | 
 [**CommonMediaPathGET**](V1Api.md#commonmediapathget) | **GET** /api/v1/common/media/{path}/ | 
 [**CommonMenuGroupsFormFieldsGET**](V1Api.md#commonmenugroupsformfieldsget) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**CommonMenuGroupsGET**](V1Api.md#commonmenugroupsget) | **GET** /api/v1/common/menu-groups/ | 
@@ -148,6 +149,7 @@ Method | HTTP request | Description
 [**DocumentDocumentsIdPATCH**](V1Api.md#documentdocumentsidpatch) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdPUT**](V1Api.md#documentdocumentsidput) | **PUT** /api/v1/document/documents/{id}/ | 
 [**DocumentDocumentsIdPdfReprGET**](V1Api.md#documentdocumentsidpdfreprget) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
+[**DocumentDocumentsIdSetAnnotatorCoordDifferencePOST**](V1Api.md#documentdocumentsidsetannotatorcoorddifferencepost) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ | 
 [**DocumentDocumentsIdShowGET**](V1Api.md#documentdocumentsidshowget) | **GET** /api/v1/document/documents/{id}/show/ | 
 [**DocumentDocumentsIdSimilarGET**](V1Api.md#documentdocumentsidsimilarget) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**DocumentDocumentsMarkDeletePOST**](V1Api.md#documentdocumentsmarkdeletepost) | **POST** /api/v1/document/documents/mark_delete/ | 
@@ -188,6 +190,7 @@ Method | HTTP request | Description
 [**DocumentProjectProjectPkDocumentsIdPATCH**](V1Api.md#documentprojectprojectpkdocumentsidpatch) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdPUT**](V1Api.md#documentprojectprojectpkdocumentsidput) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**DocumentProjectProjectPkDocumentsIdPdfReprGET**](V1Api.md#documentprojectprojectpkdocumentsidpdfreprget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
+[**DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST**](V1Api.md#documentprojectprojectpkdocumentsidsetannotatorcoorddifferencepost) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ | 
 [**DocumentProjectProjectPkDocumentsIdShowGET**](V1Api.md#documentprojectprojectpkdocumentsidshowget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
 [**DocumentProjectProjectPkDocumentsIdSimilarGET**](V1Api.md#documentprojectprojectpkdocumentsidsimilarget) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**DocumentProjectProjectPkDocumentsMarkDeletePOST**](V1Api.md#documentprojectprojectpkdocumentsmarkdeletepost) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
@@ -326,8 +329,6 @@ Method | HTTP request | Description
 [**RestAuthPasswordChangePOST**](V1Api.md#restauthpasswordchangepost) | **POST** /rest-auth/password/change/ | 
 [**RestAuthPasswordResetConfirmPOST**](V1Api.md#restauthpasswordresetconfirmpost) | **POST** /rest-auth/password/reset/confirm/ | 
 [**RestAuthPasswordResetPOST**](V1Api.md#restauthpasswordresetpost) | **POST** /rest-auth/password/reset/ | 
-[**RestAuthRegistrationPOST**](V1Api.md#restauthregistrationpost) | **POST** /rest-auth/registration/ | 
-[**RestAuthRegistrationVerifyEmailPOST**](V1Api.md#restauthregistrationverifyemailpost) | **POST** /rest-auth/registration/verify-email/ | 
 [**SimilarityDocumentSimilarityByFeaturesGET**](V1Api.md#similaritydocumentsimilaritybyfeaturesget) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
 [**SimilarityDocumentSimilarityByFeaturesPOST**](V1Api.md#similaritydocumentsimilaritybyfeaturespost) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 [**SimilarityPartySimilarityGET**](V1Api.md#similaritypartysimilarityget) | **GET** /api/v1/similarity/party-similarity/ | 
@@ -361,7 +362,11 @@ Method | HTTP request | Description
 [**TaskUpdateElasticIndexPOST**](V1Api.md#taskupdateelasticindexpost) | **POST** /api/v1/task/update-elastic-index/ | 
 [**TusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusuploadsessionuploadsessioniduploadguidpatch) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**TusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusuploadsessionuploadsessioniduploadpost) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-[**UsersSocialAccountsGET**](V1Api.md#userssocialaccountsget) | **GET** /api/v1/users/social_accounts/ | 
+[**UsersClientIdsGET**](V1Api.md#usersclientidsget) | **GET** /api/v1/users/client-ids/ | 
+[**UsersElevatePOST**](V1Api.md#userselevatepost) | **POST** /api/v1/users/elevate/ | 
+[**UsersGooglePOST**](V1Api.md#usersgooglepost) | **POST** /api/v1/users/google/ | 
+[**UsersOffice365POST**](V1Api.md#usersoffice365post) | **POST** /api/v1/users/office365/ | 
+[**UsersOktaPOST**](V1Api.md#usersoktapost) | **POST** /api/v1/users/okta/ | 
 [**UsersUsersFormFieldsGET**](V1Api.md#usersusersformfieldsget) | **GET** /api/v1/users/users/form-fields/ | 
 [**UsersUsersGET**](V1Api.md#usersusersget) | **GET** /api/v1/users/users/ | 
 [**UsersUsersIdFormFieldsGET**](V1Api.md#usersusersidformfieldsget) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -484,7 +489,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document cluster.
+            var id = "id_example";  // string | A unique integer value identifying this document cluster.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -566,7 +571,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document cluster.
+            var id = "id_example";  // string | A unique integer value identifying this document cluster.
             var documentClusterUpdate = new DocumentClusterUpdate(); // DocumentClusterUpdate |  (optional) 
 
             try
@@ -648,7 +653,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document cluster.
+            var id = "id_example";  // string | A unique integer value identifying this document cluster.
             var documentClusterUpdate = new DocumentClusterUpdate(); // DocumentClusterUpdate |  (optional) 
 
             try
@@ -1312,7 +1317,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var unitSource = "unitSource_example";  // string | document / text_unit (optional) 
             var projectId = 56;  // int? | Project ID (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -1396,8 +1401,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this similarity run.
-            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this similarity run.
+            var unitSource = "unitSource_example";  // string | document / text_unit (optional) 
             var projectId = 56;  // int? | Project ID (optional) 
 
             try
@@ -1479,8 +1484,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this similarity run.
-            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this similarity run.
+            var unitSource = "unitSource_example";  // string | document / text_unit (optional) 
             var projectId = 56;  // int? | Project ID (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -1645,7 +1650,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classification.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classification.
 
             try
             {
@@ -1724,7 +1729,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classification.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classification.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1966,7 +1971,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier suggestion.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier suggestion.
 
             try
             {
@@ -2043,7 +2048,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier suggestion.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier suggestion.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2205,7 +2210,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier.
 
             try
             {
@@ -2282,7 +2287,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2604,8 +2609,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
-            var q = q_example;  // string | Typeahead string
+            var fieldName = "fieldName_example";  // string | 
+            var q = "q_example";  // string | Typeahead string
 
             try
             {
@@ -2772,7 +2777,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this action.
+            var id = "id_example";  // string | A unique integer value identifying this action.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -2860,7 +2865,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var name = name_example;  // string | App var name (optional) 
+            var name = "name_example";  // string | App var name (optional) 
 
             try
             {
@@ -3018,7 +3023,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
 
             try
             {
@@ -3098,7 +3103,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
             var projectAppVar = new List<ProjectAppVar>(); // List<ProjectAppVar> |  (optional) 
 
             try
@@ -3150,6 +3155,84 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## CommonLogoGET
+
+> Dictionary&lt;string, Object&gt; CommonLogoGET (string action = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class CommonLogoGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var action = "info";  // string | Action name (optional)  (default to download)
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.CommonLogoGET(action);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.CommonLogoGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **action** | **string**| Action name | [optional] [default to download]
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json, */*
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## CommonMediaPathGET
 
 > Dictionary&lt;string, Object&gt; CommonMediaPathGET (string path, string action = null)
@@ -3180,8 +3263,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var path = path_example;  // string | 
-            var action = action_example;  // string | Action name (optional)  (default to download)
+            var path = "path_example";  // string | 
+            var action = "info";  // string | Action name (optional)  (default to download)
 
             try
             {
@@ -3414,7 +3497,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -3493,7 +3576,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -3573,7 +3656,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -3653,7 +3736,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuGroup = new MenuGroup(); // MenuGroup |  (optional) 
 
             try
@@ -3735,7 +3818,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuGroup = new MenuGroup(); // MenuGroup |  (optional) 
 
             try
@@ -4049,7 +4132,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -4128,7 +4211,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -4208,7 +4291,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -4288,7 +4371,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuItem = new MenuItem(); // MenuItem |  (optional) 
 
             try
@@ -4370,7 +4453,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuItem = new MenuItem(); // MenuItem |  (optional) 
 
             try
@@ -4612,7 +4695,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
 
             try
             {
@@ -4691,7 +4774,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -4773,7 +4856,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -4855,7 +4938,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -5097,7 +5180,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
 
             try
             {
@@ -5176,7 +5259,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -5258,7 +5341,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -5340,7 +5423,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -5736,7 +5819,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation.
 
             try
             {
@@ -5815,7 +5898,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation.
 
             try
             {
@@ -5895,7 +5978,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation.
             var annotation = new Annotation(); // Annotation |  (optional) 
 
             try
@@ -6295,7 +6378,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -6533,7 +6616,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
 
             try
             {
@@ -6612,7 +6695,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -6692,7 +6775,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -6774,7 +6857,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
             var documentFieldCategoryCreate = new DocumentFieldCategoryCreate(); // DocumentFieldCategoryCreate |  (optional) 
 
             try
@@ -6856,7 +6939,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document field category.
+            var id = "id_example";  // string | A unique integer value identifying this document field category.
             var documentFieldCategoryCreate = new DocumentFieldCategoryCreate(); // DocumentFieldCategoryCreate |  (optional) 
 
             try
@@ -7254,7 +7337,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
 
             try
             {
@@ -7333,7 +7416,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
 
             try
             {
@@ -7413,7 +7496,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -7495,7 +7578,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
             var documentFieldDetectorCreate = new DocumentFieldDetectorCreate(); // DocumentFieldDetectorCreate |  (optional) 
 
             try
@@ -7577,7 +7660,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field detector.
+            var uid = "uid_example";  // string | A UUID string identifying this document field detector.
             var documentFieldDetectorCreate = new DocumentFieldDetectorCreate(); // DocumentFieldDetectorCreate |  (optional) 
 
             try
@@ -7739,7 +7822,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field value.
+            var id = "id_example";  // string | A unique integer value identifying this field value.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -8135,7 +8218,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var documentTypeUid = documentTypeUid_example;  // string | Filter by document type uid (optional) 
+            var documentTypeUid = "documentTypeUid_example";  // string | Filter by document type uid (optional) 
 
             try
             {
@@ -8215,7 +8298,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var checkDocumentFieldFormulaRequest = new CheckDocumentFieldFormulaRequest(); // CheckDocumentFieldFormulaRequest |  (optional) 
 
             try
@@ -8297,7 +8380,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var cloneDocumentFieldRequest = new CloneDocumentFieldRequest(); // CloneDocumentFieldRequest |  (optional) 
 
             try
@@ -8379,7 +8462,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
 
             try
             {
@@ -8458,7 +8541,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
 
             try
             {
@@ -8538,7 +8621,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -8620,7 +8703,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate |  (optional) 
 
             try
@@ -8702,7 +8785,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var documentFieldCreate = new DocumentFieldCreate(); // DocumentFieldCreate |  (optional) 
 
             try
@@ -8784,7 +8867,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document field.
+            var uid = "uid_example";  // string | A UUID string identifying this document field.
             var documentFieldDetail = new DocumentFieldDetail(); // DocumentFieldDetail |  (optional) 
 
             try
@@ -8867,8 +8950,8 @@ namespace Example
 
             var apiInstance = new V1Api(Configuration.Default);
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
-            var projectId = projectId_example;  // string | Filter by project id (optional) 
-            var documentId = documentId_example;  // string | Filter by document id (optional) 
+            var projectId = "projectId_example";  // string | Filter by project id (optional) 
+            var documentId = "documentId_example";  // string | Filter by document id (optional) 
             var force = true;  // bool? | For deleted documents as well (optional) 
             var exportTo = true;  // bool? | Export data (optional) 
 
@@ -8954,7 +9037,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
 
             try
             {
@@ -9033,7 +9116,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -9115,7 +9198,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
             var documentNoteDetail = new DocumentNoteDetail(); // DocumentNoteDetail |  (optional) 
 
             try
@@ -9197,7 +9280,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document note.
+            var id = "id_example";  // string | A unique integer value identifying this document note.
             var documentNoteUpdate = new DocumentNoteUpdate(); // DocumentNoteUpdate |  (optional) 
 
             try
@@ -9823,7 +9906,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var cloneDocumentTypeRequest = new CloneDocumentTypeRequest(); // CloneDocumentTypeRequest |  (optional) 
 
             try
@@ -9905,7 +9988,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
 
             try
             {
@@ -9982,8 +10065,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
-            var targetVersion = targetVersion_example;  // string | Version number (optional) 
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
+            var targetVersion = "targetVersion_example";  // string | Version number (optional) 
 
             try
             {
@@ -10064,7 +10147,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | 
+            var uid = "uid_example";  // string | 
 
             try
             {
@@ -10144,7 +10227,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -10226,7 +10309,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var documentTypeCreate = new DocumentTypeCreate(); // DocumentTypeCreate |  (optional) 
 
             try
@@ -10308,7 +10391,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var documentTypeCreate = new DocumentTypeCreate(); // DocumentTypeCreate |  (optional) 
 
             try
@@ -10390,7 +10473,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this document type.
+            var uid = "uid_example";  // string | A UUID string identifying this document type.
             var documentTypeDetail = new DocumentTypeDetail(); // DocumentTypeDetail |  (optional) 
 
             try
@@ -10548,8 +10631,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var documentIds = documentIds_example;  // string | Filter by Document ids separated by commas (optional) 
-            var excludeDocumentIds = excludeDocumentIds_example;  // string | Exclude Document ids separated by commas (optional) 
+            var documentIds = "documentIds_example";  // string | Filter by Document ids separated by commas (optional) 
+            var excludeDocumentIds = "excludeDocumentIds_example";  // string | Exclude Document ids separated by commas (optional) 
 
             try
             {
@@ -10707,7 +10790,7 @@ namespace Example
             var apiInstance = new V1Api(Configuration.Default);
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
             var clusterId = 56;  // int? | Cluster id to filter by (optional) 
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -10787,7 +10870,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -10873,7 +10956,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -10952,7 +11035,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -11032,7 +11115,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -11112,7 +11195,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -11190,7 +11273,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -11268,7 +11351,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -11348,7 +11431,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -11428,7 +11511,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -11508,7 +11591,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -11588,7 +11671,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -11668,7 +11751,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -11746,7 +11829,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -11828,7 +11911,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentsForUser = new DocumentsForUser(); // DocumentsForUser |  (optional) 
 
             try
@@ -11908,7 +11991,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -11958,6 +12041,86 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## DocumentDocumentsIdSetAnnotatorCoordDifferencePOST
+
+> DocumentSetAnnotatorCoordinatesDifferenceResponse DocumentDocumentsIdSetAnnotatorCoordDifferencePOST (string id, DocumentSetAnnotatorCoordinatesDifferenceRequest documentSetAnnotatorCoordinatesDifferenceRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentDocumentsIdSetAnnotatorCoordDifferencePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var documentSetAnnotatorCoordinatesDifferenceRequest = new DocumentSetAnnotatorCoordinatesDifferenceRequest(); // DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional) 
+
+            try
+            {
+                DocumentSetAnnotatorCoordinatesDifferenceResponse result = apiInstance.DocumentDocumentsIdSetAnnotatorCoordDifferencePOST(id, documentSetAnnotatorCoordinatesDifferenceRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentDocumentsIdSetAnnotatorCoordDifferencePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **string**| A unique integer value identifying this document. | 
+ **documentSetAnnotatorCoordinatesDifferenceRequest** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional] 
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## DocumentDocumentsIdShowGET
 
 > System.IO.Stream DocumentDocumentsIdShowGET (string id, string alt = null)
@@ -11986,8 +12149,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var alt = "true";  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -12068,7 +12231,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -12470,7 +12633,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
 
             try
             {
@@ -12549,7 +12712,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -12629,7 +12792,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
             var fieldAnnotationStatus = new FieldAnnotationStatus(); // FieldAnnotationStatus |  (optional) 
 
             try
@@ -12711,7 +12874,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this field annotation status.
+            var id = "id_example";  // string | A unique integer value identifying this field annotation status.
             var fieldAnnotationStatus = new FieldAnnotationStatus(); // FieldAnnotationStatus |  (optional) 
 
             try
@@ -12871,7 +13034,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -12953,7 +13116,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -13035,8 +13198,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var uid = uid_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var uid = "uid_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -13119,7 +13282,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -13201,8 +13364,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this field value.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this field value.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -13283,8 +13446,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
 
             try
             {
@@ -13363,9 +13526,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -13444,9 +13607,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -13526,9 +13689,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
             var annotationInDocument = new AnnotationInDocument(); // AnnotationInDocument |  (optional) 
 
             try
@@ -13610,9 +13773,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
-            var id = id_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
+            var id = "id_example";  // string | 
             var annotationInDocument = new AnnotationInDocument(); // AnnotationInDocument |  (optional) 
 
             try
@@ -13694,8 +13857,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentPk = documentPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
+            var documentPk = "documentPk_example";  // string | 
             var annotationInDocument = new AnnotationInDocument(); // AnnotationInDocument |  (optional) 
 
             try
@@ -13776,9 +13939,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var documentIds = documentIds_example;  // string | Filter by Document ids separated by commas (optional) 
-            var excludeDocumentIds = excludeDocumentIds_example;  // string | Exclude Document ids separated by commas (optional) 
+            var projectPk = "projectPk_example";  // string | 
+            var documentIds = "documentIds_example";  // string | Filter by Document ids separated by commas (optional) 
+            var excludeDocumentIds = "excludeDocumentIds_example";  // string | Exclude Document ids separated by commas (optional) 
 
             try
             {
@@ -13859,7 +14022,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
 
             try
             {
@@ -13939,10 +14102,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
             var clusterId = 56;  // int? | Cluster id to filter by (optional) 
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -14023,8 +14186,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -14111,8 +14274,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -14192,8 +14355,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -14274,8 +14437,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -14356,8 +14519,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -14436,8 +14599,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -14516,8 +14679,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -14598,8 +14761,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -14680,8 +14843,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -14762,8 +14925,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -14844,8 +15007,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -14926,8 +15089,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -15006,8 +15169,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentDetail = new DocumentDetail(); // DocumentDetail |  (optional) 
 
             try
@@ -15090,8 +15253,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var documentsForUser = new DocumentsForUser(); // DocumentsForUser |  (optional) 
 
             try
@@ -15172,8 +15335,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
 
             try
             {
@@ -15224,6 +15387,88 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST
+
+> DocumentSetAnnotatorCoordinatesDifferenceResponse DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST (string projectPk, string id, DocumentSetAnnotatorCoordinatesDifferenceRequest documentSetAnnotatorCoordinatesDifferenceRequest = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var documentSetAnnotatorCoordinatesDifferenceRequest = new DocumentSetAnnotatorCoordinatesDifferenceRequest(); // DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional) 
+
+            try
+            {
+                DocumentSetAnnotatorCoordinatesDifferenceResponse result = apiInstance.DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST(projectPk, id, documentSetAnnotatorCoordinatesDifferenceRequest);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.DocumentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **projectPk** | **string**|  | 
+ **id** | **string**| A unique integer value identifying this document. | 
+ **documentSetAnnotatorCoordinatesDifferenceRequest** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional] 
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## DocumentProjectProjectPkDocumentsIdShowGET
 
 > System.IO.Stream DocumentProjectProjectPkDocumentsIdShowGET (string projectPk, string id, string alt = null)
@@ -15252,9 +15497,9 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
-            var alt = alt_example;  // string | Get alternative document file if exists (optional) 
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
+            var alt = "true";  // string | Get alternative document file if exists (optional) 
 
             try
             {
@@ -15336,8 +15581,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
-            var id = id_example;  // string | A unique integer value identifying this document.
+            var projectPk = "projectPk_example";  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this document.
             var textMaxLength = 56;  // int? | document b text max length, 0 to get all text (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -15422,7 +15667,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var markUnmarkForDeleteDocumentsRequest = new MarkUnmarkForDeleteDocumentsRequest(); // MarkUnmarkForDeleteDocumentsRequest |  (optional) 
 
             try
@@ -15502,7 +15747,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var documentsForUser = new DocumentsForUser(); // DocumentsForUser |  (optional) 
 
             try
@@ -15584,7 +15829,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectPk = projectPk_example;  // string | 
+            var projectPk = "projectPk_example";  // string | 
             var markUnmarkForDeleteDocumentsRequest = new MarkUnmarkForDeleteDocumentsRequest(); // MarkUnmarkForDeleteDocumentsRequest |  (optional) 
 
             try
@@ -15740,7 +15985,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -15820,8 +16065,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit.
-            var q = q_example;  // string | Search parameters for djangoQL (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this text unit.
+            var q = "q_example";  // string | Search parameters for djangoQL (optional) 
 
             try
             {
@@ -15874,7 +16119,7 @@ Name | Type | Description  | Notes
 
 ## DumpDocumentConfigGET
 
-> OneOfarrayfile DumpDocumentConfigGET (bool? download = null, string documentTypeCodes = null)
+> DumpDocumentConfigGET200Response DumpDocumentConfigGET (bool? download = null, string documentTypeCodes = null)
 
 
 
@@ -15903,11 +16148,11 @@ namespace Example
 
             var apiInstance = new V1Api(Configuration.Default);
             var download = true;  // bool? | Download as file (optional) 
-            var documentTypeCodes = documentTypeCodes_example;  // string | Document Type codes separated by comma (optional) 
+            var documentTypeCodes = "documentTypeCodes_example";  // string | Document Type codes separated by comma (optional) 
 
             try
             {
-                OneOfarrayfile result = apiInstance.DumpDocumentConfigGET(download, documentTypeCodes);
+                DumpDocumentConfigGET200Response result = apiInstance.DumpDocumentConfigGET(download, documentTypeCodes);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -15931,7 +16176,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -16118,7 +16363,7 @@ Name | Type | Description  | Notes
 
 ## DumpDumpGET
 
-> OneOfarrayfile DumpDumpGET (bool? download = null)
+> DumpDocumentConfigGET200Response DumpDumpGET (bool? download = null)
 
 
 
@@ -16150,7 +16395,7 @@ namespace Example
 
             try
             {
-                OneOfarrayfile result = apiInstance.DumpDumpGET(download);
+                DumpDocumentConfigGET200Response result = apiInstance.DumpDumpGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -16173,7 +16418,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -16280,7 +16525,7 @@ Name | Type | Description  | Notes
 
 ## DumpFieldValuesGET
 
-> OneOfarrayfile DumpFieldValuesGET (bool? download = null)
+> DumpDocumentConfigGET200Response DumpFieldValuesGET (bool? download = null)
 
 
 
@@ -16312,7 +16557,7 @@ namespace Example
 
             try
             {
-                OneOfarrayfile result = apiInstance.DumpFieldValuesGET(download);
+                DumpDocumentConfigGET200Response result = apiInstance.DumpFieldValuesGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -16335,7 +16580,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -18423,7 +18668,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this geo entity.
+            var id = "id_example";  // string | A unique integer value identifying this geo entity.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -18505,7 +18750,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this geo entity.
+            var id = "id_example";  // string | A unique integer value identifying this geo entity.
             var geoEntityUpdate = new GeoEntityUpdate(); // GeoEntityUpdate |  (optional) 
 
             try
@@ -18823,7 +19068,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this party.
+            var id = "id_example";  // string | A unique integer value identifying this party.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -19999,7 +20244,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
+            var fieldName = "fieldName_example";  // string | 
 
             try
             {
@@ -20079,7 +20324,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
+            var fieldName = "fieldName_example";  // string | 
 
             try
             {
@@ -20159,7 +20404,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
+            var fieldName = "fieldName_example";  // string | 
 
             try
             {
@@ -20477,8 +20722,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var path = path_example;  // string | 
-            var action = action_example;  // string | Action name (optional)  (default to download)
+            var path = "path_example";  // string | 
+            var action = "info";  // string | Action name (optional)  (default to download)
 
             try
             {
@@ -20795,7 +21040,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project clustering.
+            var id = "id_example";  // string | A unique integer value identifying this project clustering.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -21031,7 +21276,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -21113,7 +21358,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -21193,7 +21438,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var assignProjectAnnotationsRequest = new AssignProjectAnnotationsRequest(); // AssignProjectAnnotationsRequest |  (optional) 
 
             try
@@ -21276,7 +21521,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var assignProjectDocumentRequest = new AssignProjectDocumentRequest(); // AssignProjectDocumentRequest |  (optional) 
 
             try
@@ -21359,7 +21604,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var assignProjectDocumentsRequest = new AssignProjectDocumentsRequest(); // AssignProjectDocumentsRequest |  (optional) 
 
             try
@@ -21442,7 +21687,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -21520,7 +21765,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
 
             try
@@ -21602,7 +21847,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var cleanupProjectRequest = new CleanupProjectRequest(); // CleanupProjectRequest |  (optional) 
 
             try
@@ -21683,7 +21928,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -21771,7 +22016,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var clusterProjectRequest = new ClusterProjectRequest(); // ClusterProjectRequest |  (optional) 
 
             try
@@ -21854,7 +22099,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectClusteringId = 56;  // int? | Get by project_clustering_id (optional) 
 
             try
@@ -21937,7 +22182,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -22014,7 +22259,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -22091,7 +22336,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -22168,7 +22413,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var detectProjectFieldValuesRequest = new DetectProjectFieldValuesRequest(); // DetectProjectFieldValuesRequest |  (optional) 
 
             try
@@ -22250,7 +22495,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -22330,7 +22575,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -22410,7 +22655,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var locateItemsRequest = new LocateItemsRequest(); // LocateItemsRequest |  (optional) 
 
             try
@@ -22492,7 +22737,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var markUnmarkForDeleteProjectsRequest = new MarkUnmarkForDeleteProjectsRequest(); // MarkUnmarkForDeleteProjectsRequest |  (optional) 
 
             try
@@ -22574,7 +22819,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectUpdate = new ProjectUpdate(); // ProjectUpdate |  (optional) 
 
             try
@@ -22656,7 +22901,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectUpdate = new ProjectUpdate(); // ProjectUpdate |  (optional) 
 
             try
@@ -22738,7 +22983,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -22816,7 +23061,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectSearchSimilarDocumentsRequest = new ProjectSearchSimilarDocumentsRequest(); // ProjectSearchSimilarDocumentsRequest |  (optional) 
 
             try
@@ -22896,7 +23141,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectSearchSimilarTextUnitsRequest = new ProjectSearchSimilarTextUnitsRequest(); // ProjectSearchSimilarTextUnitsRequest |  (optional) 
 
             try
@@ -22978,7 +23223,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var sendClusterToProjectRequest = new SendClusterToProjectRequest(); // SendClusterToProjectRequest |  (optional) 
 
             try
@@ -23034,7 +23279,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdSetAnnotationStatusPOST
 
-> OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse ProjectProjectsIdSetAnnotationStatusPOST (string id, SetProjectAnnotationsStatusRequest setProjectAnnotationsStatusRequest = null)
+> ProjectProjectsIdSetAnnotationStatusPOST200Response ProjectProjectsIdSetAnnotationStatusPOST (string id, SetProjectAnnotationsStatusRequest setProjectAnnotationsStatusRequest = null)
 
 
 
@@ -23062,12 +23307,12 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var setProjectAnnotationsStatusRequest = new SetProjectAnnotationsStatusRequest(); // SetProjectAnnotationsStatusRequest |  (optional) 
 
             try
             {
-                OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse result = apiInstance.ProjectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
+                ProjectProjectsIdSetAnnotationStatusPOST200Response result = apiInstance.ProjectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -23091,7 +23336,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse**](OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse.md)
+[**ProjectProjectsIdSetAnnotationStatusPOST200Response**](ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
 
 ### Authorization
 
@@ -23144,7 +23389,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var setProjectDocumentsStatusRequest = new SetProjectDocumentsStatusRequest(); // SetProjectDocumentsStatusRequest |  (optional) 
 
             try
@@ -23224,7 +23469,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -23310,8 +23555,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
-            var taskId = taskId_example;  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this project.
+            var taskId = "taskId_example";  // string | 
             var recordsLimit = 56;  // int? |  (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -23394,7 +23639,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -23476,7 +23721,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var markUnmarkForDeleteProjectsRequest = new MarkUnmarkForDeleteProjectsRequest(); // MarkUnmarkForDeleteProjectsRequest |  (optional) 
 
             try
@@ -23530,7 +23775,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdUpdateDocumentFieldsPOST
 
-> TaskIdResponse ProjectProjectsIdUpdateDocumentFieldsPOST (string id, UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = null)
+> UpdateProjectDocumentsFieldsResponse ProjectProjectsIdUpdateDocumentFieldsPOST (string id, UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = null)
 
 
 
@@ -23558,12 +23803,12 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest |  (optional) 
 
             try
             {
-                TaskIdResponse result = apiInstance.ProjectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+                UpdateProjectDocumentsFieldsResponse result = apiInstance.ProjectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -23587,7 +23832,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**UpdateProjectDocumentsFieldsResponse**](UpdateProjectDocumentsFieldsResponse.md)
 
 ### Authorization
 
@@ -23721,7 +23966,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectIds = projectIds_example;  // string | Project ids separated by commas (optional) 
+            var projectIds = "projectIds_example";  // string | Project ids separated by commas (optional) 
 
             try
             {
@@ -24041,7 +24286,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
 
             try
             {
@@ -24120,7 +24365,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -24202,7 +24447,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
             var taskQueue = new TaskQueue(); // TaskQueue |  (optional) 
 
             try
@@ -24284,7 +24529,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
             var taskQueue = new TaskQueue(); // TaskQueue |  (optional) 
 
             try
@@ -24606,7 +24851,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectId = projectId_example;  // string | Project id (optional) 
+            var projectId = "projectId_example";  // string | Project id (optional) 
 
             try
             {
@@ -24686,7 +24931,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionDetail = new UploadSessionDetail(); // UploadSessionDetail |  (optional) 
 
             try
@@ -24768,7 +25013,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionBatchUploadRequest = new UploadSessionBatchUploadRequest(); // UploadSessionBatchUploadRequest |  (optional) 
 
             try
@@ -24850,7 +25095,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
 
             try
             {
@@ -24929,7 +25174,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
 
             try
             {
@@ -25008,7 +25253,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionDeleteFileRequest = new UploadSessionDeleteFileRequest(); // UploadSessionDeleteFileRequest |  (optional) 
 
             try
@@ -25091,13 +25336,13 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var contentLength = 56;  // int | Content Length
-            var fileName = fileName_example;  // string | Content Length
+            var fileName = "fileName_example";  // string | Content Length
             var force = true;  // bool? | Force upload (optional) 
             var directoryPath = true;  // bool? | Directory Path (optional) 
             var force2 = true;  // bool? | Force upload (optional) 
-            var body = BINARY_DATA_HERE;  // System.IO.Stream |  (optional) 
+            var body = new System.IO.MemoryStream(System.IO.File.ReadAllBytes("/path/to/file.txt"));  // System.IO.Stream |  (optional) 
 
             try
             {
@@ -25186,7 +25431,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -25268,7 +25513,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionUpdate = new UploadSessionUpdate(); // UploadSessionUpdate |  (optional) 
 
             try
@@ -25350,7 +25595,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
 
             try
             {
@@ -25430,13 +25675,13 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var fileName = true;  // bool | File Name
-            var fileEncoding = fileEncoding_example;  // string | File Encoding
+            var fileEncoding = "fileEncoding_example";  // string | File Encoding
             var force = true;  // bool? | Force upload (optional) 
             var reviewFile = true;  // bool? | Review File (optional) 
             var directoryPath = true;  // bool? | Directory Path (optional) 
-            var body = BINARY_DATA_HERE;  // System.IO.Stream |  (optional) 
+            var body = new System.IO.MemoryStream(System.IO.File.ReadAllBytes("/path/to/file.txt"));  // System.IO.Stream |  (optional) 
 
             try
             {
@@ -25596,15 +25841,15 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var documentTypeCode = documentTypeCode_example;  // string | 
-            var projectIds = projectIds_example;  // string | Project ids separated by commas (optional) 
-            var columns = columns_example;  // string | Column names separated by commas (optional) 
+            var documentTypeCode = "documentTypeCode_example";  // string | 
+            var projectIds = "projectIds_example";  // string | Project ids separated by commas (optional) 
+            var columns = "columns_example";  // string | Column names separated by commas (optional) 
             var associatedText = true;  // bool? | Boolean - show associated text (optional) 
             var asZip = true;  // bool? | Boolean - export as zip (optional) 
-            var fmt = fmt_example;  // string | Export format (optional) 
+            var fmt = "json";  // string | Export format (optional) 
             var limit = 56;  // int? | Page Size (optional) 
-            var orderBy = orderBy_example;  // string | Sort order - column names separated by commas (optional) 
-            var savedFilters = savedFilters_example;  // string | Saved filter ids separated by commas (optional) 
+            var orderBy = "orderBy_example";  // string | Sort order - column names separated by commas (optional) 
+            var savedFilters = "savedFilters_example";  // string | Saved filter ids separated by commas (optional) 
             var saveFilter = true;  // bool? | Save filter (optional) 
             var returnReviewed = true;  // bool? | Return Reviewed documents count (optional) 
             var returnTotal = true;  // bool? | Return total documents count (optional) 
@@ -25704,7 +25949,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var documentTypeCode = documentTypeCode_example;  // string | 
+            var documentTypeCode = "documentTypeCode_example";  // string | 
             var rawdbDocumentsPOSTRequest = new RawdbDocumentsPOSTRequest(); // RawdbDocumentsPOSTRequest |  (optional) 
 
             try
@@ -25784,7 +26029,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
 
             try
             {
@@ -26288,162 +26533,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**RestAuthCommonResponse**](RestAuthCommonResponse.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
-- **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **201** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## RestAuthRegistrationPOST
-
-> Register RestAuthRegistrationPOST (Register register = null)
-
-
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class RestAuthRegistrationPOSTExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var register = new Register(); // Register |  (optional) 
-
-            try
-            {
-                Register result = apiInstance.RestAuthRegistrationPOST(register);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.RestAuthRegistrationPOST: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **register** | [**Register**](Register.md)|  | [optional] 
-
-### Return type
-
-[**Register**](Register.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
-- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
-- **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **201** |  |  -  |
-
-[[Back to top]](#)
-[[Back to API list]](../README.md#documentation-for-api-endpoints)
-[[Back to Model list]](../README.md#documentation-for-models)
-[[Back to README]](../README.md)
-
-
-## RestAuthRegistrationVerifyEmailPOST
-
-> VerifyEmail RestAuthRegistrationVerifyEmailPOST (VerifyEmail verifyEmail = null)
-
-
-
-### Example
-
-```csharp
-using System.Collections.Generic;
-using System.Diagnostics;
-using Org.OpenAPITools.Api;
-using Org.OpenAPITools.Client;
-using Org.OpenAPITools.Model;
-
-namespace Example
-{
-    public class RestAuthRegistrationVerifyEmailPOSTExample
-    {
-        public static void Main()
-        {
-            Configuration.Default.BasePath = "http://localhost";
-            // Configure API key authorization: AuthToken
-            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
-            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
-
-            var apiInstance = new V1Api(Configuration.Default);
-            var verifyEmail = new VerifyEmail(); // VerifyEmail |  (optional) 
-
-            try
-            {
-                VerifyEmail result = apiInstance.RestAuthRegistrationVerifyEmailPOST(verifyEmail);
-                Debug.WriteLine(result);
-            }
-            catch (ApiException e)
-            {
-                Debug.Print("Exception when calling V1Api.RestAuthRegistrationVerifyEmailPOST: " + e.Message );
-                Debug.Print("Status Code: "+ e.ErrorCode);
-                Debug.Print(e.StackTrace);
-            }
-        }
-    }
-}
-```
-
-### Parameters
-
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **verifyEmail** | [**VerifyEmail**](VerifyEmail.md)|  | [optional] 
-
-### Return type
-
-[**VerifyEmail**](VerifyEmail.md)
 
 ### Authorization
 
@@ -27902,7 +27991,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var requestId = requestId_example;  // string | 
+            var requestId = "requestId_example";  // string | 
             var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
 
             try
@@ -28298,7 +28387,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var taskId = taskId_example;  // string | 
+            var taskId = "taskId_example";  // string | 
             var recordsLimit = 56;  // int? |  (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -28382,7 +28471,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var taskId = taskId_example;  // string |  (optional) 
+            var taskId = "taskId_example";  // string |  (optional) 
 
             try
             {
@@ -28543,7 +28632,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique value identifying this task.
+            var id = "id_example";  // string | A unique value identifying this task.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -28623,7 +28712,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -28703,7 +28792,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -28913,7 +29002,7 @@ Name | Type | Description  | Notes
 
 ## TusUploadSessionUploadSessionIdUploadGuidPATCH
 
-> InlineResponse400 TusUploadSessionUploadSessionIdUploadGuidPATCH (string uploadSessionId, string guid, int uploadOffset, string tusResumable, bool? force = null, System.IO.Stream body = null)
+> TusUploadSessionUploadSessionIdUploadPOST400Response TusUploadSessionUploadSessionIdUploadGuidPATCH (string uploadSessionId, string guid, int uploadOffset, string tusResumable, bool? force = null, System.IO.Stream body = null)
 
 
 
@@ -28941,16 +29030,16 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uploadSessionId = uploadSessionId_example;  // string | 
-            var guid = guid_example;  // string | 
+            var uploadSessionId = "uploadSessionId_example";  // string | 
+            var guid = "guid_example";  // string | 
             var uploadOffset = 56;  // int | Upload offset, bytes.
-            var tusResumable = tusResumable_example;  // string | 1.0.0
+            var tusResumable = "tusResumable_example";  // string | 1.0.0
             var force = true;  // bool? | Upload a file even if it exists. (optional) 
-            var body = BINARY_DATA_HERE;  // System.IO.Stream |  (optional) 
+            var body = new System.IO.MemoryStream(System.IO.File.ReadAllBytes("/path/to/file.txt"));  // System.IO.Stream |  (optional) 
 
             try
             {
-                InlineResponse400 result = apiInstance.TusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
+                TusUploadSessionUploadSessionIdUploadPOST400Response result = apiInstance.TusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -28978,7 +29067,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InlineResponse400**](InlineResponse400.md)
+[**TusUploadSessionUploadSessionIdUploadPOST400Response**](TusUploadSessionUploadSessionIdUploadPOST400Response.md)
 
 ### Authorization
 
@@ -29034,10 +29123,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var uploadSessionId = uploadSessionId_example;  // string | 
+            var uploadSessionId = "uploadSessionId_example";  // string | 
             var uploadLength = 56;  // int | File length.
-            var uploadMetadata = uploadMetadata_example;  // string | Upload metadata include file name, relative path, etc.
-            var tusResumable = tusResumable_example;  // string | 1.0.0
+            var uploadMetadata = "uploadMetadata_example";  // string | Upload metadata include file name, relative path, etc.
+            var tusResumable = "tusResumable_example";  // string | 1.0.0
             var force = true;  // bool? | Upload a file even if it exists. (optional) 
             var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
 
@@ -29094,9 +29183,9 @@ void (empty response body)
 [[Back to README]](../README.md)
 
 
-## UsersSocialAccountsGET
+## UsersClientIdsGET
 
-> SocialAccountsResponse UsersSocialAccountsGET ()
+> List&lt;SocialClientList&gt; UsersClientIdsGET ()
 
 
 
@@ -29111,7 +29200,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class UsersSocialAccountsGETExample
+    public class UsersClientIdsGETExample
     {
         public static void Main()
         {
@@ -29125,12 +29214,12 @@ namespace Example
 
             try
             {
-                SocialAccountsResponse result = apiInstance.UsersSocialAccountsGET();
+                List<SocialClientList> result = apiInstance.UsersClientIdsGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling V1Api.UsersSocialAccountsGET: " + e.Message );
+                Debug.Print("Exception when calling V1Api.UsersClientIdsGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -29145,7 +29234,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
+[**List&lt;SocialClientList&gt;**](SocialClientList.md)
 
 ### Authorization
 
@@ -29161,6 +29250,326 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersElevatePOST
+
+> SocialLogin UsersElevatePOST (AccessTokenSchema accessTokenSchema = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Elevate in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://elmqa.elevateservices.com/services/oauth/authorize`     with correct `client_id`, `redirect_url`, and `response_type=token`; 2. After elevate auth user will be redirected to callback url; 3. Pass the `access_token` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersElevatePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var accessTokenSchema = new AccessTokenSchema(); // AccessTokenSchema |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersElevatePOST(accessTokenSchema);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.UsersElevatePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **accessTokenSchema** | [**AccessTokenSchema**](AccessTokenSchema.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersGooglePOST
+
+> SocialLogin UsersGooglePOST (Code code = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Google in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://accounts.google.com/o/oauth2/v2/auth`     with correct `client_id`, `redirect_url`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersGooglePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var code = new Code(); // Code |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersGooglePOST(code);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.UsersGooglePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersOffice365POST
+
+> SocialLogin UsersOffice365POST (Code code = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Microsoft office365 in CLM.  The login algorithm is next:  1. Redirect to microsoft auth page `https://login.microsoftonline.com/consumers|common/oauth2/v2.0/authorize`     with correct `client_id`, `redirect_url`, `response_type`, and `scope`; 2. After microsoft auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersOffice365POSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var code = new Code(); // Code |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersOffice365POST(code);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.UsersOffice365POST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersOktaPOST
+
+> SocialLogin UsersOktaPOST (Code code = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Okta in CLM.  The login algorithm is next:  1. Redirect to okta auth page `https://{{your domain}}.okta.com/oauth2/default/v1/authorize`     with correct `client_id`, `redirect_url`, `scope`, and `state`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersOktaPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new V1Api(Configuration.Default);
+            var code = new Code(); // Code |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersOktaPOST(code);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling V1Api.UsersOktaPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -29354,7 +29763,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -29434,7 +29843,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -29516,7 +29925,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
             var userProfile = new UserProfile(); // UserProfile |  (optional) 
 
             try
@@ -29598,7 +30007,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new V1Api(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
             var userProfile = new UserProfile(); // UserProfile |  (optional) 
 
             try

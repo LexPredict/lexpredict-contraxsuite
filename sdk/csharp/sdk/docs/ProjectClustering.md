@@ -6,7 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Pk** | **int** |  | [optional] [readonly] 
-**DocumentClusters** | [**List&lt;ProjectClusteringDocumentClusters&gt;**](ProjectClusteringDocumentClusters.md) |  | [optional] [readonly] 
+**DocumentClusters** | [**List&lt;ProjectClusteringDocumentClustersInner&gt;**](ProjectClusteringDocumentClustersInner.md) |  | [optional] [readonly] 
 **Metadata** | **Object** |  | [optional] 
 **CreatedDate** | **DateTime** |  | [optional] [readonly] 
 **Status** | **string** |  | [optional] [readonly] 

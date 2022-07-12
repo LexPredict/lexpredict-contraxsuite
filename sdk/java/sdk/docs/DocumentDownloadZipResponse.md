@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**taskId** | **UUID** |  | 
-**detail** | **String** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**taskId** | **UUID** |  |  |
+|**detail** | **String** |  |  |
 
 
 

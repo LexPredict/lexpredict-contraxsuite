@@ -32,8 +32,8 @@ from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, \
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -232,8 +232,13 @@ class UpdateProjectDocumentsFieldsSchema(CustomAutoSchema):
         fields_data = serializers.DictField(required=True, child=serializers.CharField())
         on_existing_value = serializers.CharField(required=False)
 
+    class UpdateProjectDocumentsFieldsResponseSerializer(serializers.Serializer):
+        task_id = serializers.UUIDField()
+        inactive_document_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=True)
+        inactive_document_names = serializers.ListField(child=serializers.CharField(), allow_empty=True)
+
     request_serializer = UpdateProjectDocumentsFieldsRequestSerializer()
-    response_serializer = TaskIdResponseSerializer()
+    response_serializer = UpdateProjectDocumentsFieldsResponseSerializer()
 
     def get_responses(self, path, method):
         res = super().get_responses(path, method)
@@ -329,6 +334,7 @@ class SetProjectAnnotationsStatusSchema(CustomAutoSchema):
         all = serializers.BooleanField(required=False)
         annotation_ids = serializers.ListField(required=False, child=serializers.IntegerField())
         no_annotation_ids = serializers.ListField(required=False, child=serializers.IntegerField())
+        force = serializers.BooleanField(required=False)
 
     class SetProjectAnnotationsStatusAsyncResponseSerializer(serializers.Serializer):
         task_id = serializers.UUIDField()

@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**code** | **String** |  | 
-**title** | **String** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**code** | **String** |  |  |
+|**title** | **String** |  |  |
 
 
 

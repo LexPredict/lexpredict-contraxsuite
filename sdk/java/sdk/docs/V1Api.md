@@ -2,375 +2,380 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**analyzeDocumentClusterGET**](V1Api.md#analyzeDocumentClusterGET) | **GET** /api/v1/analyze/document-cluster/ | 
-[**analyzeDocumentClusterIdGET**](V1Api.md#analyzeDocumentClusterIdGET) | **GET** /api/v1/analyze/document-cluster/{id}/ | 
-[**analyzeDocumentClusterIdPATCH**](V1Api.md#analyzeDocumentClusterIdPATCH) | **PATCH** /api/v1/analyze/document-cluster/{id}/ | 
-[**analyzeDocumentClusterIdPUT**](V1Api.md#analyzeDocumentClusterIdPUT) | **PUT** /api/v1/analyze/document-cluster/{id}/ | 
-[**analyzeDocumentSimilarityListGET**](V1Api.md#analyzeDocumentSimilarityListGET) | **GET** /api/v1/analyze/document-similarity/list/ | 
-[**analyzeDocumentTransformerListGET**](V1Api.md#analyzeDocumentTransformerListGET) | **GET** /api/v1/analyze/document-transformer/list/ | 
-[**analyzeMlModelListGET**](V1Api.md#analyzeMlModelListGET) | **GET** /api/v1/analyze/ml-model/list/ | 
-[**analyzePartySimilarityListGET**](V1Api.md#analyzePartySimilarityListGET) | **GET** /api/v1/analyze/party-similarity/list/ | 
-[**analyzeProjectDocumentSimilarityListGET**](V1Api.md#analyzeProjectDocumentSimilarityListGET) | **GET** /api/v1/analyze/project-document-similarity/list/ | 
-[**analyzeProjectTextUnitSimilarityListGET**](V1Api.md#analyzeProjectTextUnitSimilarityListGET) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ | 
-[**analyzeProjectTextUnitSimilarityListPOST**](V1Api.md#analyzeProjectTextUnitSimilarityListPOST) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ | 
-[**analyzeSimilarityRunsGET**](V1Api.md#analyzeSimilarityRunsGET) | **GET** /api/v1/analyze/similarity-runs/ | 
-[**analyzeSimilarityRunsIdDELETE**](V1Api.md#analyzeSimilarityRunsIdDELETE) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ | 
-[**analyzeSimilarityRunsIdGET**](V1Api.md#analyzeSimilarityRunsIdGET) | **GET** /api/v1/analyze/similarity-runs/{id}/ | 
-[**analyzeTextUnitClassificationsGET**](V1Api.md#analyzeTextUnitClassificationsGET) | **GET** /api/v1/analyze/text-unit-classifications/ | 
-[**analyzeTextUnitClassificationsIdDELETE**](V1Api.md#analyzeTextUnitClassificationsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ | 
-[**analyzeTextUnitClassificationsIdGET**](V1Api.md#analyzeTextUnitClassificationsIdGET) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ | 
-[**analyzeTextUnitClassificationsPOST**](V1Api.md#analyzeTextUnitClassificationsPOST) | **POST** /api/v1/analyze/text-unit-classifications/ | 
-[**analyzeTextUnitClassifierSuggestionsGET**](V1Api.md#analyzeTextUnitClassifierSuggestionsGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/ | 
-[**analyzeTextUnitClassifierSuggestionsIdDELETE**](V1Api.md#analyzeTextUnitClassifierSuggestionsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ | 
-[**analyzeTextUnitClassifierSuggestionsIdGET**](V1Api.md#analyzeTextUnitClassifierSuggestionsIdGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ | 
-[**analyzeTextUnitClassifiersGET**](V1Api.md#analyzeTextUnitClassifiersGET) | **GET** /api/v1/analyze/text-unit-classifiers/ | 
-[**analyzeTextUnitClassifiersIdDELETE**](V1Api.md#analyzeTextUnitClassifiersIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifiers/{id}/ | 
-[**analyzeTextUnitClassifiersIdGET**](V1Api.md#analyzeTextUnitClassifiersIdGET) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ | 
-[**analyzeTextUnitClusterListGET**](V1Api.md#analyzeTextUnitClusterListGET) | **GET** /api/v1/analyze/text-unit-cluster/list/ | 
-[**analyzeTextUnitSimilarityListGET**](V1Api.md#analyzeTextUnitSimilarityListGET) | **GET** /api/v1/analyze/text-unit-similarity/list/ | 
-[**analyzeTextUnitTransformerListGET**](V1Api.md#analyzeTextUnitTransformerListGET) | **GET** /api/v1/analyze/text-unit-transformer/list/ | 
-[**analyzeTypeaheadTextUnitClassificationFieldNameGET**](V1Api.md#analyzeTypeaheadTextUnitClassificationFieldNameGET) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ | 
-[**commonActionsGET**](V1Api.md#commonActionsGET) | **GET** /api/v1/common/actions/ | 
-[**commonActionsIdGET**](V1Api.md#commonActionsIdGET) | **GET** /api/v1/common/actions/{id}/ | 
-[**commonAppVariablesGET**](V1Api.md#commonAppVariablesGET) | **GET** /api/v1/common/app-variables/ | 
-[**commonAppVariablesListGET**](V1Api.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ | 
-[**commonAppVariablesProjectProjectIdGET**](V1Api.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
-[**commonAppVariablesProjectProjectIdPUT**](V1Api.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
-[**commonMediaPathGET**](V1Api.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ | 
-[**commonMenuGroupsFormFieldsGET**](V1Api.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ | 
-[**commonMenuGroupsGET**](V1Api.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ | 
-[**commonMenuGroupsIdDELETE**](V1Api.md#commonMenuGroupsIdDELETE) | **DELETE** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsIdFormFieldsGET**](V1Api.md#commonMenuGroupsIdFormFieldsGET) | **GET** /api/v1/common/menu-groups/{id}/form-fields/ | 
-[**commonMenuGroupsIdGET**](V1Api.md#commonMenuGroupsIdGET) | **GET** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsIdPATCH**](V1Api.md#commonMenuGroupsIdPATCH) | **PATCH** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsIdPUT**](V1Api.md#commonMenuGroupsIdPUT) | **PUT** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsPOST**](V1Api.md#commonMenuGroupsPOST) | **POST** /api/v1/common/menu-groups/ | 
-[**commonMenuItemsFormFieldsGET**](V1Api.md#commonMenuItemsFormFieldsGET) | **GET** /api/v1/common/menu-items/form-fields/ | 
-[**commonMenuItemsGET**](V1Api.md#commonMenuItemsGET) | **GET** /api/v1/common/menu-items/ | 
-[**commonMenuItemsIdDELETE**](V1Api.md#commonMenuItemsIdDELETE) | **DELETE** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsIdFormFieldsGET**](V1Api.md#commonMenuItemsIdFormFieldsGET) | **GET** /api/v1/common/menu-items/{id}/form-fields/ | 
-[**commonMenuItemsIdGET**](V1Api.md#commonMenuItemsIdGET) | **GET** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsIdPATCH**](V1Api.md#commonMenuItemsIdPATCH) | **PATCH** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsIdPUT**](V1Api.md#commonMenuItemsIdPUT) | **PUT** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsPOST**](V1Api.md#commonMenuItemsPOST) | **POST** /api/v1/common/menu-items/ | 
-[**commonReviewStatusGroupsGET**](V1Api.md#commonReviewStatusGroupsGET) | **GET** /api/v1/common/review-status-groups/ | 
-[**commonReviewStatusGroupsIdDELETE**](V1Api.md#commonReviewStatusGroupsIdDELETE) | **DELETE** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsIdGET**](V1Api.md#commonReviewStatusGroupsIdGET) | **GET** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsIdPATCH**](V1Api.md#commonReviewStatusGroupsIdPATCH) | **PATCH** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsIdPUT**](V1Api.md#commonReviewStatusGroupsIdPUT) | **PUT** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsPOST**](V1Api.md#commonReviewStatusGroupsPOST) | **POST** /api/v1/common/review-status-groups/ | 
-[**commonReviewStatusesGET**](V1Api.md#commonReviewStatusesGET) | **GET** /api/v1/common/review-statuses/ | 
-[**commonReviewStatusesIdDELETE**](V1Api.md#commonReviewStatusesIdDELETE) | **DELETE** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesIdGET**](V1Api.md#commonReviewStatusesIdGET) | **GET** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesIdPATCH**](V1Api.md#commonReviewStatusesIdPATCH) | **PATCH** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesIdPUT**](V1Api.md#commonReviewStatusesIdPUT) | **PUT** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesPOST**](V1Api.md#commonReviewStatusesPOST) | **POST** /api/v1/common/review-statuses/ | 
-[**documentAnnotationsAnnotatePUT**](V1Api.md#documentAnnotationsAnnotatePUT) | **PUT** /api/v1/document/annotations/annotate/ | 
-[**documentAnnotationsBatchPUT**](V1Api.md#documentAnnotationsBatchPUT) | **PUT** /api/v1/document/annotations/batch/ | 
-[**documentAnnotationsGET**](V1Api.md#documentAnnotationsGET) | **GET** /api/v1/document/annotations/ | 
-[**documentAnnotationsIdDELETE**](V1Api.md#documentAnnotationsIdDELETE) | **DELETE** /api/v1/document/annotations/{id}/ | 
-[**documentAnnotationsIdGET**](V1Api.md#documentAnnotationsIdGET) | **GET** /api/v1/document/annotations/{id}/ | 
-[**documentAnnotationsIdPUT**](V1Api.md#documentAnnotationsIdPUT) | **PUT** /api/v1/document/annotations/{id}/ | 
-[**documentAnnotationsPOST**](V1Api.md#documentAnnotationsPOST) | **POST** /api/v1/document/annotations/ | 
-[**documentAnnotationsSuggestPOST**](V1Api.md#documentAnnotationsSuggestPOST) | **POST** /api/v1/document/annotations/suggest/ | 
-[**documentDocumentFieldAnnotationsForUserGET**](V1Api.md#documentDocumentFieldAnnotationsForUserGET) | **GET** /api/v1/document/document-field-annotations/for-user/ | 
-[**documentDocumentFieldAnnotationsGET**](V1Api.md#documentDocumentFieldAnnotationsGET) | **GET** /api/v1/document/document-field-annotations/ | 
-[**documentDocumentFieldAnnotationsUidGET**](V1Api.md#documentDocumentFieldAnnotationsUidGET) | **GET** /api/v1/document/document-field-annotations/{uid}/ | 
-[**documentDocumentFieldCategoriesFormFieldsGET**](V1Api.md#documentDocumentFieldCategoriesFormFieldsGET) | **GET** /api/v1/document/document-field-categories/form-fields/ | 
-[**documentDocumentFieldCategoriesGET**](V1Api.md#documentDocumentFieldCategoriesGET) | **GET** /api/v1/document/document-field-categories/ | 
-[**documentDocumentFieldCategoriesIdDELETE**](V1Api.md#documentDocumentFieldCategoriesIdDELETE) | **DELETE** /api/v1/document/document-field-categories/{id}/ | 
-[**documentDocumentFieldCategoriesIdFormFieldsGET**](V1Api.md#documentDocumentFieldCategoriesIdFormFieldsGET) | **GET** /api/v1/document/document-field-categories/{id}/form-fields/ | 
-[**documentDocumentFieldCategoriesIdGET**](V1Api.md#documentDocumentFieldCategoriesIdGET) | **GET** /api/v1/document/document-field-categories/{id}/ | 
-[**documentDocumentFieldCategoriesIdPATCH**](V1Api.md#documentDocumentFieldCategoriesIdPATCH) | **PATCH** /api/v1/document/document-field-categories/{id}/ | 
-[**documentDocumentFieldCategoriesIdPUT**](V1Api.md#documentDocumentFieldCategoriesIdPUT) | **PUT** /api/v1/document/document-field-categories/{id}/ | 
-[**documentDocumentFieldCategoriesPOST**](V1Api.md#documentDocumentFieldCategoriesPOST) | **POST** /api/v1/document/document-field-categories/ | 
-[**documentDocumentFieldDetectorsFormFieldsGET**](V1Api.md#documentDocumentFieldDetectorsFormFieldsGET) | **GET** /api/v1/document/document-field-detectors/form-fields/ | 
-[**documentDocumentFieldDetectorsGET**](V1Api.md#documentDocumentFieldDetectorsGET) | **GET** /api/v1/document/document-field-detectors/ | 
-[**documentDocumentFieldDetectorsPOST**](V1Api.md#documentDocumentFieldDetectorsPOST) | **POST** /api/v1/document/document-field-detectors/ | 
-[**documentDocumentFieldDetectorsUidDELETE**](V1Api.md#documentDocumentFieldDetectorsUidDELETE) | **DELETE** /api/v1/document/document-field-detectors/{uid}/ | 
-[**documentDocumentFieldDetectorsUidFormFieldsGET**](V1Api.md#documentDocumentFieldDetectorsUidFormFieldsGET) | **GET** /api/v1/document/document-field-detectors/{uid}/form-fields/ | 
-[**documentDocumentFieldDetectorsUidGET**](V1Api.md#documentDocumentFieldDetectorsUidGET) | **GET** /api/v1/document/document-field-detectors/{uid}/ | 
-[**documentDocumentFieldDetectorsUidPATCH**](V1Api.md#documentDocumentFieldDetectorsUidPATCH) | **PATCH** /api/v1/document/document-field-detectors/{uid}/ | 
-[**documentDocumentFieldDetectorsUidPUT**](V1Api.md#documentDocumentFieldDetectorsUidPUT) | **PUT** /api/v1/document/document-field-detectors/{uid}/ | 
-[**documentDocumentFieldValuesGET**](V1Api.md#documentDocumentFieldValuesGET) | **GET** /api/v1/document/document-field-values/ | 
-[**documentDocumentFieldValuesIdGET**](V1Api.md#documentDocumentFieldValuesIdGET) | **GET** /api/v1/document/document-field-values/{id}/ | 
-[**documentDocumentFieldsCheckFieldFormulaPOST**](V1Api.md#documentDocumentFieldsCheckFieldFormulaPOST) | **POST** /api/v1/document/document-fields/check_field_formula/ | 
-[**documentDocumentFieldsFormFieldsGET**](V1Api.md#documentDocumentFieldsFormFieldsGET) | **GET** /api/v1/document/document-fields/form-fields/ | 
-[**documentDocumentFieldsGET**](V1Api.md#documentDocumentFieldsGET) | **GET** /api/v1/document/document-fields/ | 
-[**documentDocumentFieldsPOST**](V1Api.md#documentDocumentFieldsPOST) | **POST** /api/v1/document/document-fields/ | 
-[**documentDocumentFieldsStatsGET**](V1Api.md#documentDocumentFieldsStatsGET) | **GET** /api/v1/document/document-fields/stats/ | 
-[**documentDocumentFieldsUidCheckFormulaPOST**](V1Api.md#documentDocumentFieldsUidCheckFormulaPOST) | **POST** /api/v1/document/document-fields/{uid}/check_formula/ | 
-[**documentDocumentFieldsUidClonePOST**](V1Api.md#documentDocumentFieldsUidClonePOST) | **POST** /api/v1/document/document-fields/{uid}/clone/ | 
-[**documentDocumentFieldsUidDELETE**](V1Api.md#documentDocumentFieldsUidDELETE) | **DELETE** /api/v1/document/document-fields/{uid}/ | 
-[**documentDocumentFieldsUidFormFieldsGET**](V1Api.md#documentDocumentFieldsUidFormFieldsGET) | **GET** /api/v1/document/document-fields/{uid}/form-fields/ | 
-[**documentDocumentFieldsUidGET**](V1Api.md#documentDocumentFieldsUidGET) | **GET** /api/v1/document/document-fields/{uid}/ | 
-[**documentDocumentFieldsUidPATCH**](V1Api.md#documentDocumentFieldsUidPATCH) | **PATCH** /api/v1/document/document-fields/{uid}/ | 
-[**documentDocumentFieldsUidPUT**](V1Api.md#documentDocumentFieldsUidPUT) | **PUT** /api/v1/document/document-fields/{uid}/ | 
-[**documentDocumentFieldsUidPreDeletePOST**](V1Api.md#documentDocumentFieldsUidPreDeletePOST) | **POST** /api/v1/document/document-fields/{uid}/pre_delete/ | 
-[**documentDocumentNotesGET**](V1Api.md#documentDocumentNotesGET) | **GET** /api/v1/document/document-notes/ | 
-[**documentDocumentNotesIdDELETE**](V1Api.md#documentDocumentNotesIdDELETE) | **DELETE** /api/v1/document/document-notes/{id}/ | 
-[**documentDocumentNotesIdGET**](V1Api.md#documentDocumentNotesIdGET) | **GET** /api/v1/document/document-notes/{id}/ | 
-[**documentDocumentNotesIdPATCH**](V1Api.md#documentDocumentNotesIdPATCH) | **PATCH** /api/v1/document/document-notes/{id}/ | 
-[**documentDocumentNotesIdPUT**](V1Api.md#documentDocumentNotesIdPUT) | **PUT** /api/v1/document/document-notes/{id}/ | 
-[**documentDocumentNotesPOST**](V1Api.md#documentDocumentNotesPOST) | **POST** /api/v1/document/document-notes/ | 
-[**documentDocumentTypesFormFieldsGET**](V1Api.md#documentDocumentTypesFormFieldsGET) | **GET** /api/v1/document/document-types/form-fields/ | 
-[**documentDocumentTypesGET**](V1Api.md#documentDocumentTypesGET) | **GET** /api/v1/document/document-types/ | 
-[**documentDocumentTypesImportDocTypePUT**](V1Api.md#documentDocumentTypesImportDocTypePUT) | **PUT** /api/v1/document/document-types/import_doc_type/ | 
-[**documentDocumentTypesPOST**](V1Api.md#documentDocumentTypesPOST) | **POST** /api/v1/document/document-types/ | 
-[**documentDocumentTypesSchemeMigrationsGET**](V1Api.md#documentDocumentTypesSchemeMigrationsGET) | **GET** /api/v1/document/document-types/scheme_migrations/ | 
-[**documentDocumentTypesStatsGET**](V1Api.md#documentDocumentTypesStatsGET) | **GET** /api/v1/document/document-types/stats/ | 
-[**documentDocumentTypesUidClonePOST**](V1Api.md#documentDocumentTypesUidClonePOST) | **POST** /api/v1/document/document-types/{uid}/clone/ | 
-[**documentDocumentTypesUidDELETE**](V1Api.md#documentDocumentTypesUidDELETE) | **DELETE** /api/v1/document/document-types/{uid}/ | 
-[**documentDocumentTypesUidExportDocTypeGET**](V1Api.md#documentDocumentTypesUidExportDocTypeGET) | **GET** /api/v1/document/document-types/{uid}/export_doc_type/ | 
-[**documentDocumentTypesUidFormFieldsGET**](V1Api.md#documentDocumentTypesUidFormFieldsGET) | **GET** /api/v1/document/document-types/{uid}/form-fields/ | 
-[**documentDocumentTypesUidGET**](V1Api.md#documentDocumentTypesUidGET) | **GET** /api/v1/document/document-types/{uid}/ | 
-[**documentDocumentTypesUidPATCH**](V1Api.md#documentDocumentTypesUidPATCH) | **PATCH** /api/v1/document/document-types/{uid}/ | 
-[**documentDocumentTypesUidPUT**](V1Api.md#documentDocumentTypesUidPUT) | **PUT** /api/v1/document/document-types/{uid}/ | 
-[**documentDocumentTypesUidPreDeletePOST**](V1Api.md#documentDocumentTypesUidPreDeletePOST) | **POST** /api/v1/document/document-types/{uid}/pre_delete/ | 
-[**documentDocumentTypesUserProjectTypesGET**](V1Api.md#documentDocumentTypesUserProjectTypesGET) | **GET** /api/v1/document/document-types/user_project_types/ | 
-[**documentDocumentsDownloadZipGET**](V1Api.md#documentDocumentsDownloadZipGET) | **GET** /api/v1/document/documents/download_zip/ | 
-[**documentDocumentsForUserGET**](V1Api.md#documentDocumentsForUserGET) | **GET** /api/v1/document/documents/for-user/ | 
-[**documentDocumentsGET**](V1Api.md#documentDocumentsGET) | **GET** /api/v1/document/documents/ | 
-[**documentDocumentsIdActionsGET**](V1Api.md#documentDocumentsIdActionsGET) | **GET** /api/v1/document/documents/{id}/actions/ | 
-[**documentDocumentsIdDELETE**](V1Api.md#documentDocumentsIdDELETE) | **DELETE** /api/v1/document/documents/{id}/ | 
-[**documentDocumentsIdDataGET**](V1Api.md#documentDocumentsIdDataGET) | **GET** /api/v1/document/documents/{id}/data/ | 
-[**documentDocumentsIdDefinitionsGET**](V1Api.md#documentDocumentsIdDefinitionsGET) | **GET** /api/v1/document/documents/{id}/definitions/ | 
-[**documentDocumentsIdExtractionGET**](V1Api.md#documentDocumentsIdExtractionGET) | **GET** /api/v1/document/documents/{id}/extraction/ | 
-[**documentDocumentsIdFieldsGET**](V1Api.md#documentDocumentsIdFieldsGET) | **GET** /api/v1/document/documents/{id}/fields/ | 
-[**documentDocumentsIdFieldsPATCH**](V1Api.md#documentDocumentsIdFieldsPATCH) | **PATCH** /api/v1/document/documents/{id}/fields/ | 
-[**documentDocumentsIdFieldsPOST**](V1Api.md#documentDocumentsIdFieldsPOST) | **POST** /api/v1/document/documents/{id}/fields/ | 
-[**documentDocumentsIdFieldsPUT**](V1Api.md#documentDocumentsIdFieldsPUT) | **PUT** /api/v1/document/documents/{id}/fields/ | 
-[**documentDocumentsIdFullTextGET**](V1Api.md#documentDocumentsIdFullTextGET) | **GET** /api/v1/document/documents/{id}/full_text/ | 
-[**documentDocumentsIdGET**](V1Api.md#documentDocumentsIdGET) | **GET** /api/v1/document/documents/{id}/ | 
-[**documentDocumentsIdHasPdfInfoGET**](V1Api.md#documentDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/documents/{id}/has_pdf_info/ | 
-[**documentDocumentsIdPATCH**](V1Api.md#documentDocumentsIdPATCH) | **PATCH** /api/v1/document/documents/{id}/ | 
-[**documentDocumentsIdPUT**](V1Api.md#documentDocumentsIdPUT) | **PUT** /api/v1/document/documents/{id}/ | 
-[**documentDocumentsIdPdfReprGET**](V1Api.md#documentDocumentsIdPdfReprGET) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
-[**documentDocumentsIdShowGET**](V1Api.md#documentDocumentsIdShowGET) | **GET** /api/v1/document/documents/{id}/show/ | 
-[**documentDocumentsIdSimilarGET**](V1Api.md#documentDocumentsIdSimilarGET) | **GET** /api/v1/document/documents/{id}/similar/ | 
-[**documentDocumentsMarkDeletePOST**](V1Api.md#documentDocumentsMarkDeletePOST) | **POST** /api/v1/document/documents/mark_delete/ | 
-[**documentDocumentsPOST**](V1Api.md#documentDocumentsPOST) | **POST** /api/v1/document/documents/ | 
-[**documentDocumentsUnmarkDeletePOST**](V1Api.md#documentDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/documents/unmark_delete/ | 
-[**documentFieldAnnotationStatusesGET**](V1Api.md#documentFieldAnnotationStatusesGET) | **GET** /api/v1/document/field-annotation-statuses/ | 
-[**documentFieldAnnotationStatusesIdDELETE**](V1Api.md#documentFieldAnnotationStatusesIdDELETE) | **DELETE** /api/v1/document/field-annotation-statuses/{id}/ | 
-[**documentFieldAnnotationStatusesIdGET**](V1Api.md#documentFieldAnnotationStatusesIdGET) | **GET** /api/v1/document/field-annotation-statuses/{id}/ | 
-[**documentFieldAnnotationStatusesIdPATCH**](V1Api.md#documentFieldAnnotationStatusesIdPATCH) | **PATCH** /api/v1/document/field-annotation-statuses/{id}/ | 
-[**documentFieldAnnotationStatusesIdPUT**](V1Api.md#documentFieldAnnotationStatusesIdPUT) | **PUT** /api/v1/document/field-annotation-statuses/{id}/ | 
-[**documentFieldAnnotationStatusesPOST**](V1Api.md#documentFieldAnnotationStatusesPOST) | **POST** /api/v1/document/field-annotation-statuses/ | 
-[**documentProjectProjectPkDocumentFieldAnnotationsForUserGET**](V1Api.md#documentProjectProjectPkDocumentFieldAnnotationsForUserGET) | **GET** /api/v1/document/project/{project_pk}/document-field-annotations/for-user/ | 
-[**documentProjectProjectPkDocumentFieldAnnotationsGET**](V1Api.md#documentProjectProjectPkDocumentFieldAnnotationsGET) | **GET** /api/v1/document/project/{project_pk}/document-field-annotations/ | 
-[**documentProjectProjectPkDocumentFieldAnnotationsUidGET**](V1Api.md#documentProjectProjectPkDocumentFieldAnnotationsUidGET) | **GET** /api/v1/document/project/{project_pk}/document-field-annotations/{uid}/ | 
-[**documentProjectProjectPkDocumentFieldValuesGET**](V1Api.md#documentProjectProjectPkDocumentFieldValuesGET) | **GET** /api/v1/document/project/{project_pk}/document-field-values/ | 
-[**documentProjectProjectPkDocumentFieldValuesIdGET**](V1Api.md#documentProjectProjectPkDocumentFieldValuesIdGET) | **GET** /api/v1/document/project/{project_pk}/document-field-values/{id}/ | 
-[**documentProjectProjectPkDocumentsDocumentPkAnnotationsGET**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/ | 
-[**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE) | **DELETE** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ | 
-[**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET) | **GET** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ | 
-[**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ | 
-[**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ | 
-[**documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/ | 
-[**documentProjectProjectPkDocumentsDownloadZipGET**](V1Api.md#documentProjectProjectPkDocumentsDownloadZipGET) | **GET** /api/v1/document/project/{project_pk}/documents/download_zip/ | 
-[**documentProjectProjectPkDocumentsForUserGET**](V1Api.md#documentProjectProjectPkDocumentsForUserGET) | **GET** /api/v1/document/project/{project_pk}/documents/for-user/ | 
-[**documentProjectProjectPkDocumentsGET**](V1Api.md#documentProjectProjectPkDocumentsGET) | **GET** /api/v1/document/project/{project_pk}/documents/ | 
-[**documentProjectProjectPkDocumentsIdActionsGET**](V1Api.md#documentProjectProjectPkDocumentsIdActionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/actions/ | 
-[**documentProjectProjectPkDocumentsIdDELETE**](V1Api.md#documentProjectProjectPkDocumentsIdDELETE) | **DELETE** /api/v1/document/project/{project_pk}/documents/{id}/ | 
-[**documentProjectProjectPkDocumentsIdDataGET**](V1Api.md#documentProjectProjectPkDocumentsIdDataGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/data/ | 
-[**documentProjectProjectPkDocumentsIdDefinitionsGET**](V1Api.md#documentProjectProjectPkDocumentsIdDefinitionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/definitions/ | 
-[**documentProjectProjectPkDocumentsIdExtractionGET**](V1Api.md#documentProjectProjectPkDocumentsIdExtractionGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/extraction/ | 
-[**documentProjectProjectPkDocumentsIdFieldsGET**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
-[**documentProjectProjectPkDocumentsIdFieldsPATCH**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
-[**documentProjectProjectPkDocumentsIdFieldsPOST**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
-[**documentProjectProjectPkDocumentsIdFieldsPUT**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/fields/ | 
-[**documentProjectProjectPkDocumentsIdFullTextGET**](V1Api.md#documentProjectProjectPkDocumentsIdFullTextGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/full_text/ | 
-[**documentProjectProjectPkDocumentsIdGET**](V1Api.md#documentProjectProjectPkDocumentsIdGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/ | 
-[**documentProjectProjectPkDocumentsIdHasPdfInfoGET**](V1Api.md#documentProjectProjectPkDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/has_pdf_info/ | 
-[**documentProjectProjectPkDocumentsIdPATCH**](V1Api.md#documentProjectProjectPkDocumentsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
-[**documentProjectProjectPkDocumentsIdPUT**](V1Api.md#documentProjectProjectPkDocumentsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
-[**documentProjectProjectPkDocumentsIdPdfReprGET**](V1Api.md#documentProjectProjectPkDocumentsIdPdfReprGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
-[**documentProjectProjectPkDocumentsIdShowGET**](V1Api.md#documentProjectProjectPkDocumentsIdShowGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
-[**documentProjectProjectPkDocumentsIdSimilarGET**](V1Api.md#documentProjectProjectPkDocumentsIdSimilarGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
-[**documentProjectProjectPkDocumentsMarkDeletePOST**](V1Api.md#documentProjectProjectPkDocumentsMarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
-[**documentProjectProjectPkDocumentsPOST**](V1Api.md#documentProjectProjectPkDocumentsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/ | 
-[**documentProjectProjectPkDocumentsUnmarkDeletePOST**](V1Api.md#documentProjectProjectPkDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/unmark_delete/ | 
-[**documentStatsGET**](V1Api.md#documentStatsGET) | **GET** /api/v1/document/stats/ | 
-[**documentTextunitsGET**](V1Api.md#documentTextunitsGET) | **GET** /api/v1/document/textunits/ | 
-[**documentTextunitsIdGET**](V1Api.md#documentTextunitsIdGET) | **GET** /api/v1/document/textunits/{id}/ | 
-[**dumpDocumentConfigGET**](V1Api.md#dumpDocumentConfigGET) | **GET** /api/v1/dump/document-config/ | 
-[**dumpDocumentConfigPUT**](V1Api.md#dumpDocumentConfigPUT) | **PUT** /api/v1/dump/document-config/ | 
-[**dumpDumpFixturePOST**](V1Api.md#dumpDumpFixturePOST) | **POST** /api/v1/dump/dump-fixture/ | 
-[**dumpDumpGET**](V1Api.md#dumpDumpGET) | **GET** /api/v1/dump/dump/ | 
-[**dumpDumpPUT**](V1Api.md#dumpDumpPUT) | **PUT** /api/v1/dump/dump/ | 
-[**dumpFieldValuesGET**](V1Api.md#dumpFieldValuesGET) | **GET** /api/v1/dump/field-values/ | 
-[**dumpFieldValuesPUT**](V1Api.md#dumpFieldValuesPUT) | **PUT** /api/v1/dump/field-values/ | 
-[**dumpLoadFixturePOST**](V1Api.md#dumpLoadFixturePOST) | **POST** /api/v1/dump/load-fixture/ | 
-[**extractAmountUsageGET**](V1Api.md#extractAmountUsageGET) | **GET** /api/v1/extract/amount-usage/ | 
-[**extractAmountUsageTopGET**](V1Api.md#extractAmountUsageTopGET) | **GET** /api/v1/extract/amount-usage/top/ | 
-[**extractCitationUsageGET**](V1Api.md#extractCitationUsageGET) | **GET** /api/v1/extract/citation-usage/ | 
-[**extractCitationUsageTopGET**](V1Api.md#extractCitationUsageTopGET) | **GET** /api/v1/extract/citation-usage/top/ | 
-[**extractCopyrightUsageGET**](V1Api.md#extractCopyrightUsageGET) | **GET** /api/v1/extract/copyright-usage/ | 
-[**extractCopyrightUsageTopGET**](V1Api.md#extractCopyrightUsageTopGET) | **GET** /api/v1/extract/copyright-usage/top/ | 
-[**extractCourtUsageGET**](V1Api.md#extractCourtUsageGET) | **GET** /api/v1/extract/court-usage/ | 
-[**extractCourtUsageTopGET**](V1Api.md#extractCourtUsageTopGET) | **GET** /api/v1/extract/court-usage/top/ | 
-[**extractCurrencyUsageGET**](V1Api.md#extractCurrencyUsageGET) | **GET** /api/v1/extract/currency-usage/ | 
-[**extractCurrencyUsageTopGET**](V1Api.md#extractCurrencyUsageTopGET) | **GET** /api/v1/extract/currency-usage/top/ | 
-[**extractDateDurationUsageGET**](V1Api.md#extractDateDurationUsageGET) | **GET** /api/v1/extract/date-duration-usage/ | 
-[**extractDateDurationUsageTopGET**](V1Api.md#extractDateDurationUsageTopGET) | **GET** /api/v1/extract/date-duration-usage/top/ | 
-[**extractDateUsageCalendarChartGET**](V1Api.md#extractDateUsageCalendarChartGET) | **GET** /api/v1/extract/date-usage/calendar-chart/ | 
-[**extractDateUsageGET**](V1Api.md#extractDateUsageGET) | **GET** /api/v1/extract/date-usage/ | 
-[**extractDateUsageTimelineChartGET**](V1Api.md#extractDateUsageTimelineChartGET) | **GET** /api/v1/extract/date-usage/timeline-chart/ | 
-[**extractDateUsageToIcalGET**](V1Api.md#extractDateUsageToIcalGET) | **GET** /api/v1/extract/date-usage/to-ical/ | 
-[**extractDateUsageTopGET**](V1Api.md#extractDateUsageTopGET) | **GET** /api/v1/extract/date-usage/top/ | 
-[**extractDefinitionUsageGET**](V1Api.md#extractDefinitionUsageGET) | **GET** /api/v1/extract/definition-usage/ | 
-[**extractDefinitionUsageTopGET**](V1Api.md#extractDefinitionUsageTopGET) | **GET** /api/v1/extract/definition-usage/top/ | 
-[**extractDistanceUsageGET**](V1Api.md#extractDistanceUsageGET) | **GET** /api/v1/extract/distance-usage/ | 
-[**extractDistanceUsageTopGET**](V1Api.md#extractDistanceUsageTopGET) | **GET** /api/v1/extract/distance-usage/top/ | 
-[**extractGeoAliasUsageGET**](V1Api.md#extractGeoAliasUsageGET) | **GET** /api/v1/extract/geo-alias-usage/ | 
-[**extractGeoAliasUsageTopGET**](V1Api.md#extractGeoAliasUsageTopGET) | **GET** /api/v1/extract/geo-alias-usage/top/ | 
-[**extractGeoEntitiesGET**](V1Api.md#extractGeoEntitiesGET) | **GET** /api/v1/extract/geo-entities/ | 
-[**extractGeoEntitiesIdGET**](V1Api.md#extractGeoEntitiesIdGET) | **GET** /api/v1/extract/geo-entities/{id}/ | 
-[**extractGeoEntitiesIdPUT**](V1Api.md#extractGeoEntitiesIdPUT) | **PUT** /api/v1/extract/geo-entities/{id}/ | 
-[**extractGeoEntityUsageGET**](V1Api.md#extractGeoEntityUsageGET) | **GET** /api/v1/extract/geo-entity-usage/ | 
-[**extractGeoEntityUsageTopGET**](V1Api.md#extractGeoEntityUsageTopGET) | **GET** /api/v1/extract/geo-entity-usage/top/ | 
-[**extractPartiesGET**](V1Api.md#extractPartiesGET) | **GET** /api/v1/extract/parties/ | 
-[**extractPartiesIdGET**](V1Api.md#extractPartiesIdGET) | **GET** /api/v1/extract/parties/{id}/ | 
-[**extractPartyNetworkChartGET**](V1Api.md#extractPartyNetworkChartGET) | **GET** /api/v1/extract/party/network-chart/ | 
-[**extractPartyUsageGET**](V1Api.md#extractPartyUsageGET) | **GET** /api/v1/extract/party-usage/ | 
-[**extractPartyUsageTopGET**](V1Api.md#extractPartyUsageTopGET) | **GET** /api/v1/extract/party-usage/top/ | 
-[**extractPercentUsageGET**](V1Api.md#extractPercentUsageGET) | **GET** /api/v1/extract/percent-usage/ | 
-[**extractPercentUsageTopGET**](V1Api.md#extractPercentUsageTopGET) | **GET** /api/v1/extract/percent-usage/top/ | 
-[**extractRatioUsageGET**](V1Api.md#extractRatioUsageGET) | **GET** /api/v1/extract/ratio-usage/ | 
-[**extractRatioUsageTopGET**](V1Api.md#extractRatioUsageTopGET) | **GET** /api/v1/extract/ratio-usage/top/ | 
-[**extractRegulationUsageGET**](V1Api.md#extractRegulationUsageGET) | **GET** /api/v1/extract/regulation-usage/ | 
-[**extractRegulationUsageTopGET**](V1Api.md#extractRegulationUsageTopGET) | **GET** /api/v1/extract/regulation-usage/top/ | 
-[**extractTermTagsGET**](V1Api.md#extractTermTagsGET) | **GET** /api/v1/extract/term-tags/ | 
-[**extractTermUsageGET**](V1Api.md#extractTermUsageGET) | **GET** /api/v1/extract/term-usage/ | 
-[**extractTermUsageTopGET**](V1Api.md#extractTermUsageTopGET) | **GET** /api/v1/extract/term-usage/top/ | 
-[**extractTrademarkUsageGET**](V1Api.md#extractTrademarkUsageGET) | **GET** /api/v1/extract/trademark-usage/ | 
-[**extractTrademarkUsageTopGET**](V1Api.md#extractTrademarkUsageTopGET) | **GET** /api/v1/extract/trademark-usage/top/ | 
-[**extractTypeaheadGeoEntityUsageFieldNameGET**](V1Api.md#extractTypeaheadGeoEntityUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/geo-entity-usage/{field_name}/ | 
-[**extractTypeaheadPartyUsageFieldNameGET**](V1Api.md#extractTypeaheadPartyUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/party-usage/{field_name}/ | 
-[**extractTypeaheadTermUsageFieldNameGET**](V1Api.md#extractTypeaheadTermUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/term-usage/{field_name}/ | 
-[**extractUrlUsageGET**](V1Api.md#extractUrlUsageGET) | **GET** /api/v1/extract/url-usage/ | 
-[**extractUrlUsageTopGET**](V1Api.md#extractUrlUsageTopGET) | **GET** /api/v1/extract/url-usage/top/ | 
-[**loggingLogMessagePOST**](V1Api.md#loggingLogMessagePOST) | **POST** /api/v1/logging/log_message/ | 
-[**mediaDataPathGET**](V1Api.md#mediaDataPathGET) | **GET** /api/media-data/{path}/ | 
-[**notificationsWebNotificationsGET**](V1Api.md#notificationsWebNotificationsGET) | **GET** /api/v1/notifications/web-notifications/ | 
-[**notificationsWebNotificationsMarkSeenPOST**](V1Api.md#notificationsWebNotificationsMarkSeenPOST) | **POST** /api/v1/notifications/web-notifications/mark_seen/ | 
-[**projectProjectClusteringGET**](V1Api.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ | 
-[**projectProjectClusteringIdGET**](V1Api.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ | 
-[**projectProjectsFormFieldsGET**](V1Api.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ | 
-[**projectProjectsGET**](V1Api.md#projectProjectsGET) | **GET** /api/v1/project/projects/ | 
-[**projectProjectsIdActiveTasksGET**](V1Api.md#projectProjectsIdActiveTasksGET) | **GET** /api/v1/project/projects/{id}/active_tasks/ | 
-[**projectProjectsIdAnnotationsAssigneesGET**](V1Api.md#projectProjectsIdAnnotationsAssigneesGET) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ | 
-[**projectProjectsIdAssignAnnotationsPOST**](V1Api.md#projectProjectsIdAssignAnnotationsPOST) | **POST** /api/v1/project/projects/{id}/assign_annotations/ | 
-[**projectProjectsIdAssignDocumentPOST**](V1Api.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
-[**projectProjectsIdAssignDocumentsPOST**](V1Api.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
-[**projectProjectsIdAssigneesGET**](V1Api.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ | 
-[**projectProjectsIdCheckSimilarityProcessAllowedPOST**](V1Api.md#projectProjectsIdCheckSimilarityProcessAllowedPOST) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
-[**projectProjectsIdCleanupPOST**](V1Api.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
-[**projectProjectsIdClusterActionsGET**](V1Api.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
-[**projectProjectsIdClusterPOST**](V1Api.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ | 
-[**projectProjectsIdClusteringStatusGET**](V1Api.md#projectProjectsIdClusteringStatusGET) | **GET** /api/v1/project/projects/{id}/clustering-status/ | 
-[**projectProjectsIdDELETE**](V1Api.md#projectProjectsIdDELETE) | **DELETE** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdDeleteDocumentSimilarityResultsDELETE**](V1Api.md#projectProjectsIdDeleteDocumentSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ | 
-[**projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](V1Api.md#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ | 
-[**projectProjectsIdDetectFieldValuesPOST**](V1Api.md#projectProjectsIdDetectFieldValuesPOST) | **POST** /api/v1/project/projects/{id}/detect_field_values/ | 
-[**projectProjectsIdFormFieldsGET**](V1Api.md#projectProjectsIdFormFieldsGET) | **GET** /api/v1/project/projects/{id}/form-fields/ | 
-[**projectProjectsIdGET**](V1Api.md#projectProjectsIdGET) | **GET** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdLocateItemsPOST**](V1Api.md#projectProjectsIdLocateItemsPOST) | **POST** /api/v1/project/projects/{id}/locate_items/ | 
-[**projectProjectsIdMarkDeletePOST**](V1Api.md#projectProjectsIdMarkDeletePOST) | **POST** /api/v1/project/projects/{id}/mark_delete/ | 
-[**projectProjectsIdPATCH**](V1Api.md#projectProjectsIdPATCH) | **PATCH** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdPUT**](V1Api.md#projectProjectsIdPUT) | **PUT** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdProgressGET**](V1Api.md#projectProjectsIdProgressGET) | **GET** /api/v1/project/projects/{id}/progress/ | 
-[**projectProjectsIdSearchSimilarDocumentsPOST**](V1Api.md#projectProjectsIdSearchSimilarDocumentsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ | 
-[**projectProjectsIdSearchSimilarTextUnitsPOST**](V1Api.md#projectProjectsIdSearchSimilarTextUnitsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ | 
-[**projectProjectsIdSendClustersToProjectPOST**](V1Api.md#projectProjectsIdSendClustersToProjectPOST) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ | 
-[**projectProjectsIdSetAnnotationStatusPOST**](V1Api.md#projectProjectsIdSetAnnotationStatusPOST) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ | 
-[**projectProjectsIdSetStatusPOST**](V1Api.md#projectProjectsIdSetStatusPOST) | **POST** /api/v1/project/projects/{id}/set_status/ | 
-[**projectProjectsIdSettingsActionsGET**](V1Api.md#projectProjectsIdSettingsActionsGET) | **GET** /api/v1/project/projects/{id}/settings_actions/ | 
-[**projectProjectsIdTaskTaskIdTaskLogsGET**](V1Api.md#projectProjectsIdTaskTaskIdTaskLogsGET) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ | 
-[**projectProjectsIdTasksGET**](V1Api.md#projectProjectsIdTasksGET) | **GET** /api/v1/project/projects/{id}/tasks/ | 
-[**projectProjectsIdUnmarkDeletePOST**](V1Api.md#projectProjectsIdUnmarkDeletePOST) | **POST** /api/v1/project/projects/{id}/unmark_delete/ | 
-[**projectProjectsIdUpdateDocumentFieldsPOST**](V1Api.md#projectProjectsIdUpdateDocumentFieldsPOST) | **POST** /api/v1/project/projects/{id}/update_document_fields/ | 
-[**projectProjectsPOST**](V1Api.md#projectProjectsPOST) | **POST** /api/v1/project/projects/ | 
-[**projectProjectsProjectStatsGET**](V1Api.md#projectProjectsProjectStatsGET) | **GET** /api/v1/project/projects/project_stats/ | 
-[**projectProjectsRecentGET**](V1Api.md#projectProjectsRecentGET) | **GET** /api/v1/project/projects/recent/ | 
-[**projectProjectsSelectProjectsPOST**](V1Api.md#projectProjectsSelectProjectsPOST) | **POST** /api/v1/project/projects/select_projects/ | 
-[**projectTaskQueuesGET**](V1Api.md#projectTaskQueuesGET) | **GET** /api/v1/project/task-queues/ | 
-[**projectTaskQueuesIdDELETE**](V1Api.md#projectTaskQueuesIdDELETE) | **DELETE** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesIdGET**](V1Api.md#projectTaskQueuesIdGET) | **GET** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesIdPATCH**](V1Api.md#projectTaskQueuesIdPATCH) | **PATCH** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesIdPUT**](V1Api.md#projectTaskQueuesIdPUT) | **PUT** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesPOST**](V1Api.md#projectTaskQueuesPOST) | **POST** /api/v1/project/task-queues/ | 
-[**projectUploadSessionGET**](V1Api.md#projectUploadSessionGET) | **GET** /api/v1/project/upload-session/ | 
-[**projectUploadSessionPOST**](V1Api.md#projectUploadSessionPOST) | **POST** /api/v1/project/upload-session/ | 
-[**projectUploadSessionStatusGET**](V1Api.md#projectUploadSessionStatusGET) | **GET** /api/v1/project/upload-session/status/ | 
-[**projectUploadSessionUidBatchUploadPOST**](V1Api.md#projectUploadSessionUidBatchUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/_batch_upload/ | 
-[**projectUploadSessionUidBatchUploadPOST_0**](V1Api.md#projectUploadSessionUidBatchUploadPOST_0) | **POST** /api/v1/project/upload-session/{uid}/batch_upload/ | 
-[**projectUploadSessionUidCancelDELETE**](V1Api.md#projectUploadSessionUidCancelDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/cancel/ | 
-[**projectUploadSessionUidDELETE**](V1Api.md#projectUploadSessionUidDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/ | 
-[**projectUploadSessionUidDeleteFileDELETE**](V1Api.md#projectUploadSessionUidDeleteFileDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ | 
-[**projectUploadSessionUidFilesPOST**](V1Api.md#projectUploadSessionUidFilesPOST) | **POST** /api/v1/project/upload-session/{uid}/files/ | 
-[**projectUploadSessionUidGET**](V1Api.md#projectUploadSessionUidGET) | **GET** /api/v1/project/upload-session/{uid}/ | 
-[**projectUploadSessionUidPATCH**](V1Api.md#projectUploadSessionUidPATCH) | **PATCH** /api/v1/project/upload-session/{uid}/ | 
-[**projectUploadSessionUidProgressGET**](V1Api.md#projectUploadSessionUidProgressGET) | **GET** /api/v1/project/upload-session/{uid}/progress/ | 
-[**projectUploadSessionUidUploadPOST**](V1Api.md#projectUploadSessionUidUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/upload/ | 
-[**rawdbConfigGET**](V1Api.md#rawdbConfigGET) | **GET** /api/v1/rawdb/config/ | 
-[**rawdbDocumentsDocumentTypeCodeGET**](V1Api.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
-[**rawdbDocumentsDocumentTypeCodePOST**](V1Api.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
-[**rawdbProjectStatsProjectIdGET**](V1Api.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
-[**restAuthLoginPOST**](V1Api.md#restAuthLoginPOST) | **POST** /rest-auth/login/ | 
-[**restAuthLogoutGET**](V1Api.md#restAuthLogoutGET) | **GET** /rest-auth/logout/ | 
-[**restAuthLogoutPOST**](V1Api.md#restAuthLogoutPOST) | **POST** /rest-auth/logout/ | 
-[**restAuthPasswordChangePOST**](V1Api.md#restAuthPasswordChangePOST) | **POST** /rest-auth/password/change/ | 
-[**restAuthPasswordResetConfirmPOST**](V1Api.md#restAuthPasswordResetConfirmPOST) | **POST** /rest-auth/password/reset/confirm/ | 
-[**restAuthPasswordResetPOST**](V1Api.md#restAuthPasswordResetPOST) | **POST** /rest-auth/password/reset/ | 
-[**restAuthRegistrationPOST**](V1Api.md#restAuthRegistrationPOST) | **POST** /rest-auth/registration/ | 
-[**restAuthRegistrationVerifyEmailPOST**](V1Api.md#restAuthRegistrationVerifyEmailPOST) | **POST** /rest-auth/registration/verify-email/ | 
-[**similarityDocumentSimilarityByFeaturesGET**](V1Api.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
-[**similarityDocumentSimilarityByFeaturesPOST**](V1Api.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
-[**similarityPartySimilarityGET**](V1Api.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ | 
-[**similarityPartySimilarityPOST**](V1Api.md#similarityPartySimilarityPOST) | **POST** /api/v1/similarity/party-similarity/ | 
-[**similarityProjectDocumentsSimilarityByVectorsGET**](V1Api.md#similarityProjectDocumentsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
-[**similarityProjectDocumentsSimilarityByVectorsPOST**](V1Api.md#similarityProjectDocumentsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
-[**similarityProjectTextUnitsSimilarityByVectorsGET**](V1Api.md#similarityProjectTextUnitsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
-[**similarityProjectTextUnitsSimilarityByVectorsPOST**](V1Api.md#similarityProjectTextUnitsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
-[**similaritySimilarityGET**](V1Api.md#similaritySimilarityGET) | **GET** /api/v1/similarity/similarity/ | 
-[**similaritySimilarityPOST**](V1Api.md#similaritySimilarityPOST) | **POST** /api/v1/similarity/similarity/ | 
-[**similarityTextUnitSimilarityByFeaturesGET**](V1Api.md#similarityTextUnitSimilarityByFeaturesGET) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ | 
-[**similarityTextUnitSimilarityByFeaturesPOST**](V1Api.md#similarityTextUnitSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ | 
-[**taskCleanTasksPOST**](V1Api.md#taskCleanTasksPOST) | **POST** /api/v1/task/clean-tasks/ | 
-[**taskLoadDictionariesPOST**](V1Api.md#taskLoadDictionariesPOST) | **POST** /api/v1/task/load-dictionaries/ | 
-[**taskLoadDocumentsGET**](V1Api.md#taskLoadDocumentsGET) | **GET** /api/v1/task/load-documents/ | 
-[**taskLoadDocumentsPOST**](V1Api.md#taskLoadDocumentsPOST) | **POST** /api/v1/task/load-documents/ | 
-[**taskLocateGET**](V1Api.md#taskLocateGET) | **GET** /api/v1/task/locate/ | 
-[**taskLocatePOST**](V1Api.md#taskLocatePOST) | **POST** /api/v1/task/locate/ | 
-[**taskProcessTextExtractionResultsRequestIdPOST**](V1Api.md#taskProcessTextExtractionResultsRequestIdPOST) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ | 
-[**taskPurgeTaskPOST**](V1Api.md#taskPurgeTaskPOST) | **POST** /api/v1/task/purge-task/ | 
-[**taskRecallTaskGET**](V1Api.md#taskRecallTaskGET) | **GET** /api/v1/task/recall-task/ | 
-[**taskRecallTaskPOST**](V1Api.md#taskRecallTaskPOST) | **POST** /api/v1/task/recall-task/ | 
-[**taskReindexroutinesCheckSchedulePOST**](V1Api.md#taskReindexroutinesCheckSchedulePOST) | **POST** /api/v1/task/reindexroutines/check_schedule | 
-[**taskTaskLogGET**](V1Api.md#taskTaskLogGET) | **GET** /api/v1/task/task-log/ | 
-[**taskTaskStatusGET**](V1Api.md#taskTaskStatusGET) | **GET** /api/v1/task/task-status/ | 
-[**taskTasksGET**](V1Api.md#taskTasksGET) | **GET** /api/v1/task/tasks/ | 
-[**taskTasksIdGET**](V1Api.md#taskTasksIdGET) | **GET** /api/v1/task/tasks/{id}/ | 
-[**taskTasksProjectProjectIdActiveTasksGET**](V1Api.md#taskTasksProjectProjectIdActiveTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ | 
-[**taskTasksProjectProjectIdTasksGET**](V1Api.md#taskTasksProjectProjectIdTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ | 
-[**taskUpdateElasticIndexGET**](V1Api.md#taskUpdateElasticIndexGET) | **GET** /api/v1/task/update-elastic-index/ | 
-[**taskUpdateElasticIndexPOST**](V1Api.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ | 
-[**tusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
-[**tusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-[**usersSocialAccountsGET**](V1Api.md#usersSocialAccountsGET) | **GET** /api/v1/users/social_accounts/ | 
-[**usersUsersFormFieldsGET**](V1Api.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ | 
-[**usersUsersGET**](V1Api.md#usersUsersGET) | **GET** /api/v1/users/users/ | 
-[**usersUsersIdFormFieldsGET**](V1Api.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ | 
-[**usersUsersIdGET**](V1Api.md#usersUsersIdGET) | **GET** /api/v1/users/users/{id}/ | 
-[**usersUsersIdPATCH**](V1Api.md#usersUsersIdPATCH) | **PATCH** /api/v1/users/users/{id}/ | 
-[**usersUsersIdPUT**](V1Api.md#usersUsersIdPUT) | **PUT** /api/v1/users/users/{id}/ | 
-[**usersUsersPOST**](V1Api.md#usersUsersPOST) | **POST** /api/v1/users/users/ | 
-[**usersUsersUserStatsGET**](V1Api.md#usersUsersUserStatsGET) | **GET** /api/v1/users/users/user_stats/ | 
-[**usersVerifyTokenPOST**](V1Api.md#usersVerifyTokenPOST) | **POST** /api/v1/users/verify-token/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**analyzeDocumentClusterGET**](V1Api.md#analyzeDocumentClusterGET) | **GET** /api/v1/analyze/document-cluster/ |  |
+| [**analyzeDocumentClusterIdGET**](V1Api.md#analyzeDocumentClusterIdGET) | **GET** /api/v1/analyze/document-cluster/{id}/ |  |
+| [**analyzeDocumentClusterIdPATCH**](V1Api.md#analyzeDocumentClusterIdPATCH) | **PATCH** /api/v1/analyze/document-cluster/{id}/ |  |
+| [**analyzeDocumentClusterIdPUT**](V1Api.md#analyzeDocumentClusterIdPUT) | **PUT** /api/v1/analyze/document-cluster/{id}/ |  |
+| [**analyzeDocumentSimilarityListGET**](V1Api.md#analyzeDocumentSimilarityListGET) | **GET** /api/v1/analyze/document-similarity/list/ |  |
+| [**analyzeDocumentTransformerListGET**](V1Api.md#analyzeDocumentTransformerListGET) | **GET** /api/v1/analyze/document-transformer/list/ |  |
+| [**analyzeMlModelListGET**](V1Api.md#analyzeMlModelListGET) | **GET** /api/v1/analyze/ml-model/list/ |  |
+| [**analyzePartySimilarityListGET**](V1Api.md#analyzePartySimilarityListGET) | **GET** /api/v1/analyze/party-similarity/list/ |  |
+| [**analyzeProjectDocumentSimilarityListGET**](V1Api.md#analyzeProjectDocumentSimilarityListGET) | **GET** /api/v1/analyze/project-document-similarity/list/ |  |
+| [**analyzeProjectTextUnitSimilarityListGET**](V1Api.md#analyzeProjectTextUnitSimilarityListGET) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ |  |
+| [**analyzeProjectTextUnitSimilarityListPOST**](V1Api.md#analyzeProjectTextUnitSimilarityListPOST) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ |  |
+| [**analyzeSimilarityRunsGET**](V1Api.md#analyzeSimilarityRunsGET) | **GET** /api/v1/analyze/similarity-runs/ |  |
+| [**analyzeSimilarityRunsIdDELETE**](V1Api.md#analyzeSimilarityRunsIdDELETE) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ |  |
+| [**analyzeSimilarityRunsIdGET**](V1Api.md#analyzeSimilarityRunsIdGET) | **GET** /api/v1/analyze/similarity-runs/{id}/ |  |
+| [**analyzeTextUnitClassificationsGET**](V1Api.md#analyzeTextUnitClassificationsGET) | **GET** /api/v1/analyze/text-unit-classifications/ |  |
+| [**analyzeTextUnitClassificationsIdDELETE**](V1Api.md#analyzeTextUnitClassificationsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ |  |
+| [**analyzeTextUnitClassificationsIdGET**](V1Api.md#analyzeTextUnitClassificationsIdGET) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ |  |
+| [**analyzeTextUnitClassificationsPOST**](V1Api.md#analyzeTextUnitClassificationsPOST) | **POST** /api/v1/analyze/text-unit-classifications/ |  |
+| [**analyzeTextUnitClassifierSuggestionsGET**](V1Api.md#analyzeTextUnitClassifierSuggestionsGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/ |  |
+| [**analyzeTextUnitClassifierSuggestionsIdDELETE**](V1Api.md#analyzeTextUnitClassifierSuggestionsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ |  |
+| [**analyzeTextUnitClassifierSuggestionsIdGET**](V1Api.md#analyzeTextUnitClassifierSuggestionsIdGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ |  |
+| [**analyzeTextUnitClassifiersGET**](V1Api.md#analyzeTextUnitClassifiersGET) | **GET** /api/v1/analyze/text-unit-classifiers/ |  |
+| [**analyzeTextUnitClassifiersIdDELETE**](V1Api.md#analyzeTextUnitClassifiersIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifiers/{id}/ |  |
+| [**analyzeTextUnitClassifiersIdGET**](V1Api.md#analyzeTextUnitClassifiersIdGET) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ |  |
+| [**analyzeTextUnitClusterListGET**](V1Api.md#analyzeTextUnitClusterListGET) | **GET** /api/v1/analyze/text-unit-cluster/list/ |  |
+| [**analyzeTextUnitSimilarityListGET**](V1Api.md#analyzeTextUnitSimilarityListGET) | **GET** /api/v1/analyze/text-unit-similarity/list/ |  |
+| [**analyzeTextUnitTransformerListGET**](V1Api.md#analyzeTextUnitTransformerListGET) | **GET** /api/v1/analyze/text-unit-transformer/list/ |  |
+| [**analyzeTypeaheadTextUnitClassificationFieldNameGET**](V1Api.md#analyzeTypeaheadTextUnitClassificationFieldNameGET) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ |  |
+| [**commonActionsGET**](V1Api.md#commonActionsGET) | **GET** /api/v1/common/actions/ |  |
+| [**commonActionsIdGET**](V1Api.md#commonActionsIdGET) | **GET** /api/v1/common/actions/{id}/ |  |
+| [**commonAppVariablesGET**](V1Api.md#commonAppVariablesGET) | **GET** /api/v1/common/app-variables/ |  |
+| [**commonAppVariablesListGET**](V1Api.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ |  |
+| [**commonAppVariablesProjectProjectIdGET**](V1Api.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ |  |
+| [**commonAppVariablesProjectProjectIdPUT**](V1Api.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ |  |
+| [**commonLogoGET**](V1Api.md#commonLogoGET) | **GET** /api/v1/common/logo/ |  |
+| [**commonMediaPathGET**](V1Api.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ |  |
+| [**commonMenuGroupsFormFieldsGET**](V1Api.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ |  |
+| [**commonMenuGroupsGET**](V1Api.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ |  |
+| [**commonMenuGroupsIdDELETE**](V1Api.md#commonMenuGroupsIdDELETE) | **DELETE** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsIdFormFieldsGET**](V1Api.md#commonMenuGroupsIdFormFieldsGET) | **GET** /api/v1/common/menu-groups/{id}/form-fields/ |  |
+| [**commonMenuGroupsIdGET**](V1Api.md#commonMenuGroupsIdGET) | **GET** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsIdPATCH**](V1Api.md#commonMenuGroupsIdPATCH) | **PATCH** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsIdPUT**](V1Api.md#commonMenuGroupsIdPUT) | **PUT** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsPOST**](V1Api.md#commonMenuGroupsPOST) | **POST** /api/v1/common/menu-groups/ |  |
+| [**commonMenuItemsFormFieldsGET**](V1Api.md#commonMenuItemsFormFieldsGET) | **GET** /api/v1/common/menu-items/form-fields/ |  |
+| [**commonMenuItemsGET**](V1Api.md#commonMenuItemsGET) | **GET** /api/v1/common/menu-items/ |  |
+| [**commonMenuItemsIdDELETE**](V1Api.md#commonMenuItemsIdDELETE) | **DELETE** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsIdFormFieldsGET**](V1Api.md#commonMenuItemsIdFormFieldsGET) | **GET** /api/v1/common/menu-items/{id}/form-fields/ |  |
+| [**commonMenuItemsIdGET**](V1Api.md#commonMenuItemsIdGET) | **GET** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsIdPATCH**](V1Api.md#commonMenuItemsIdPATCH) | **PATCH** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsIdPUT**](V1Api.md#commonMenuItemsIdPUT) | **PUT** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsPOST**](V1Api.md#commonMenuItemsPOST) | **POST** /api/v1/common/menu-items/ |  |
+| [**commonReviewStatusGroupsGET**](V1Api.md#commonReviewStatusGroupsGET) | **GET** /api/v1/common/review-status-groups/ |  |
+| [**commonReviewStatusGroupsIdDELETE**](V1Api.md#commonReviewStatusGroupsIdDELETE) | **DELETE** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsIdGET**](V1Api.md#commonReviewStatusGroupsIdGET) | **GET** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsIdPATCH**](V1Api.md#commonReviewStatusGroupsIdPATCH) | **PATCH** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsIdPUT**](V1Api.md#commonReviewStatusGroupsIdPUT) | **PUT** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsPOST**](V1Api.md#commonReviewStatusGroupsPOST) | **POST** /api/v1/common/review-status-groups/ |  |
+| [**commonReviewStatusesGET**](V1Api.md#commonReviewStatusesGET) | **GET** /api/v1/common/review-statuses/ |  |
+| [**commonReviewStatusesIdDELETE**](V1Api.md#commonReviewStatusesIdDELETE) | **DELETE** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesIdGET**](V1Api.md#commonReviewStatusesIdGET) | **GET** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesIdPATCH**](V1Api.md#commonReviewStatusesIdPATCH) | **PATCH** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesIdPUT**](V1Api.md#commonReviewStatusesIdPUT) | **PUT** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesPOST**](V1Api.md#commonReviewStatusesPOST) | **POST** /api/v1/common/review-statuses/ |  |
+| [**documentAnnotationsAnnotatePUT**](V1Api.md#documentAnnotationsAnnotatePUT) | **PUT** /api/v1/document/annotations/annotate/ |  |
+| [**documentAnnotationsBatchPUT**](V1Api.md#documentAnnotationsBatchPUT) | **PUT** /api/v1/document/annotations/batch/ |  |
+| [**documentAnnotationsGET**](V1Api.md#documentAnnotationsGET) | **GET** /api/v1/document/annotations/ |  |
+| [**documentAnnotationsIdDELETE**](V1Api.md#documentAnnotationsIdDELETE) | **DELETE** /api/v1/document/annotations/{id}/ |  |
+| [**documentAnnotationsIdGET**](V1Api.md#documentAnnotationsIdGET) | **GET** /api/v1/document/annotations/{id}/ |  |
+| [**documentAnnotationsIdPUT**](V1Api.md#documentAnnotationsIdPUT) | **PUT** /api/v1/document/annotations/{id}/ |  |
+| [**documentAnnotationsPOST**](V1Api.md#documentAnnotationsPOST) | **POST** /api/v1/document/annotations/ |  |
+| [**documentAnnotationsSuggestPOST**](V1Api.md#documentAnnotationsSuggestPOST) | **POST** /api/v1/document/annotations/suggest/ |  |
+| [**documentDocumentFieldAnnotationsForUserGET**](V1Api.md#documentDocumentFieldAnnotationsForUserGET) | **GET** /api/v1/document/document-field-annotations/for-user/ |  |
+| [**documentDocumentFieldAnnotationsGET**](V1Api.md#documentDocumentFieldAnnotationsGET) | **GET** /api/v1/document/document-field-annotations/ |  |
+| [**documentDocumentFieldAnnotationsUidGET**](V1Api.md#documentDocumentFieldAnnotationsUidGET) | **GET** /api/v1/document/document-field-annotations/{uid}/ |  |
+| [**documentDocumentFieldCategoriesFormFieldsGET**](V1Api.md#documentDocumentFieldCategoriesFormFieldsGET) | **GET** /api/v1/document/document-field-categories/form-fields/ |  |
+| [**documentDocumentFieldCategoriesGET**](V1Api.md#documentDocumentFieldCategoriesGET) | **GET** /api/v1/document/document-field-categories/ |  |
+| [**documentDocumentFieldCategoriesIdDELETE**](V1Api.md#documentDocumentFieldCategoriesIdDELETE) | **DELETE** /api/v1/document/document-field-categories/{id}/ |  |
+| [**documentDocumentFieldCategoriesIdFormFieldsGET**](V1Api.md#documentDocumentFieldCategoriesIdFormFieldsGET) | **GET** /api/v1/document/document-field-categories/{id}/form-fields/ |  |
+| [**documentDocumentFieldCategoriesIdGET**](V1Api.md#documentDocumentFieldCategoriesIdGET) | **GET** /api/v1/document/document-field-categories/{id}/ |  |
+| [**documentDocumentFieldCategoriesIdPATCH**](V1Api.md#documentDocumentFieldCategoriesIdPATCH) | **PATCH** /api/v1/document/document-field-categories/{id}/ |  |
+| [**documentDocumentFieldCategoriesIdPUT**](V1Api.md#documentDocumentFieldCategoriesIdPUT) | **PUT** /api/v1/document/document-field-categories/{id}/ |  |
+| [**documentDocumentFieldCategoriesPOST**](V1Api.md#documentDocumentFieldCategoriesPOST) | **POST** /api/v1/document/document-field-categories/ |  |
+| [**documentDocumentFieldDetectorsFormFieldsGET**](V1Api.md#documentDocumentFieldDetectorsFormFieldsGET) | **GET** /api/v1/document/document-field-detectors/form-fields/ |  |
+| [**documentDocumentFieldDetectorsGET**](V1Api.md#documentDocumentFieldDetectorsGET) | **GET** /api/v1/document/document-field-detectors/ |  |
+| [**documentDocumentFieldDetectorsPOST**](V1Api.md#documentDocumentFieldDetectorsPOST) | **POST** /api/v1/document/document-field-detectors/ |  |
+| [**documentDocumentFieldDetectorsUidDELETE**](V1Api.md#documentDocumentFieldDetectorsUidDELETE) | **DELETE** /api/v1/document/document-field-detectors/{uid}/ |  |
+| [**documentDocumentFieldDetectorsUidFormFieldsGET**](V1Api.md#documentDocumentFieldDetectorsUidFormFieldsGET) | **GET** /api/v1/document/document-field-detectors/{uid}/form-fields/ |  |
+| [**documentDocumentFieldDetectorsUidGET**](V1Api.md#documentDocumentFieldDetectorsUidGET) | **GET** /api/v1/document/document-field-detectors/{uid}/ |  |
+| [**documentDocumentFieldDetectorsUidPATCH**](V1Api.md#documentDocumentFieldDetectorsUidPATCH) | **PATCH** /api/v1/document/document-field-detectors/{uid}/ |  |
+| [**documentDocumentFieldDetectorsUidPUT**](V1Api.md#documentDocumentFieldDetectorsUidPUT) | **PUT** /api/v1/document/document-field-detectors/{uid}/ |  |
+| [**documentDocumentFieldValuesGET**](V1Api.md#documentDocumentFieldValuesGET) | **GET** /api/v1/document/document-field-values/ |  |
+| [**documentDocumentFieldValuesIdGET**](V1Api.md#documentDocumentFieldValuesIdGET) | **GET** /api/v1/document/document-field-values/{id}/ |  |
+| [**documentDocumentFieldsCheckFieldFormulaPOST**](V1Api.md#documentDocumentFieldsCheckFieldFormulaPOST) | **POST** /api/v1/document/document-fields/check_field_formula/ |  |
+| [**documentDocumentFieldsFormFieldsGET**](V1Api.md#documentDocumentFieldsFormFieldsGET) | **GET** /api/v1/document/document-fields/form-fields/ |  |
+| [**documentDocumentFieldsGET**](V1Api.md#documentDocumentFieldsGET) | **GET** /api/v1/document/document-fields/ |  |
+| [**documentDocumentFieldsPOST**](V1Api.md#documentDocumentFieldsPOST) | **POST** /api/v1/document/document-fields/ |  |
+| [**documentDocumentFieldsStatsGET**](V1Api.md#documentDocumentFieldsStatsGET) | **GET** /api/v1/document/document-fields/stats/ |  |
+| [**documentDocumentFieldsUidCheckFormulaPOST**](V1Api.md#documentDocumentFieldsUidCheckFormulaPOST) | **POST** /api/v1/document/document-fields/{uid}/check_formula/ |  |
+| [**documentDocumentFieldsUidClonePOST**](V1Api.md#documentDocumentFieldsUidClonePOST) | **POST** /api/v1/document/document-fields/{uid}/clone/ |  |
+| [**documentDocumentFieldsUidDELETE**](V1Api.md#documentDocumentFieldsUidDELETE) | **DELETE** /api/v1/document/document-fields/{uid}/ |  |
+| [**documentDocumentFieldsUidFormFieldsGET**](V1Api.md#documentDocumentFieldsUidFormFieldsGET) | **GET** /api/v1/document/document-fields/{uid}/form-fields/ |  |
+| [**documentDocumentFieldsUidGET**](V1Api.md#documentDocumentFieldsUidGET) | **GET** /api/v1/document/document-fields/{uid}/ |  |
+| [**documentDocumentFieldsUidPATCH**](V1Api.md#documentDocumentFieldsUidPATCH) | **PATCH** /api/v1/document/document-fields/{uid}/ |  |
+| [**documentDocumentFieldsUidPUT**](V1Api.md#documentDocumentFieldsUidPUT) | **PUT** /api/v1/document/document-fields/{uid}/ |  |
+| [**documentDocumentFieldsUidPreDeletePOST**](V1Api.md#documentDocumentFieldsUidPreDeletePOST) | **POST** /api/v1/document/document-fields/{uid}/pre_delete/ |  |
+| [**documentDocumentNotesGET**](V1Api.md#documentDocumentNotesGET) | **GET** /api/v1/document/document-notes/ |  |
+| [**documentDocumentNotesIdDELETE**](V1Api.md#documentDocumentNotesIdDELETE) | **DELETE** /api/v1/document/document-notes/{id}/ |  |
+| [**documentDocumentNotesIdGET**](V1Api.md#documentDocumentNotesIdGET) | **GET** /api/v1/document/document-notes/{id}/ |  |
+| [**documentDocumentNotesIdPATCH**](V1Api.md#documentDocumentNotesIdPATCH) | **PATCH** /api/v1/document/document-notes/{id}/ |  |
+| [**documentDocumentNotesIdPUT**](V1Api.md#documentDocumentNotesIdPUT) | **PUT** /api/v1/document/document-notes/{id}/ |  |
+| [**documentDocumentNotesPOST**](V1Api.md#documentDocumentNotesPOST) | **POST** /api/v1/document/document-notes/ |  |
+| [**documentDocumentTypesFormFieldsGET**](V1Api.md#documentDocumentTypesFormFieldsGET) | **GET** /api/v1/document/document-types/form-fields/ |  |
+| [**documentDocumentTypesGET**](V1Api.md#documentDocumentTypesGET) | **GET** /api/v1/document/document-types/ |  |
+| [**documentDocumentTypesImportDocTypePUT**](V1Api.md#documentDocumentTypesImportDocTypePUT) | **PUT** /api/v1/document/document-types/import_doc_type/ |  |
+| [**documentDocumentTypesPOST**](V1Api.md#documentDocumentTypesPOST) | **POST** /api/v1/document/document-types/ |  |
+| [**documentDocumentTypesSchemeMigrationsGET**](V1Api.md#documentDocumentTypesSchemeMigrationsGET) | **GET** /api/v1/document/document-types/scheme_migrations/ |  |
+| [**documentDocumentTypesStatsGET**](V1Api.md#documentDocumentTypesStatsGET) | **GET** /api/v1/document/document-types/stats/ |  |
+| [**documentDocumentTypesUidClonePOST**](V1Api.md#documentDocumentTypesUidClonePOST) | **POST** /api/v1/document/document-types/{uid}/clone/ |  |
+| [**documentDocumentTypesUidDELETE**](V1Api.md#documentDocumentTypesUidDELETE) | **DELETE** /api/v1/document/document-types/{uid}/ |  |
+| [**documentDocumentTypesUidExportDocTypeGET**](V1Api.md#documentDocumentTypesUidExportDocTypeGET) | **GET** /api/v1/document/document-types/{uid}/export_doc_type/ |  |
+| [**documentDocumentTypesUidFormFieldsGET**](V1Api.md#documentDocumentTypesUidFormFieldsGET) | **GET** /api/v1/document/document-types/{uid}/form-fields/ |  |
+| [**documentDocumentTypesUidGET**](V1Api.md#documentDocumentTypesUidGET) | **GET** /api/v1/document/document-types/{uid}/ |  |
+| [**documentDocumentTypesUidPATCH**](V1Api.md#documentDocumentTypesUidPATCH) | **PATCH** /api/v1/document/document-types/{uid}/ |  |
+| [**documentDocumentTypesUidPUT**](V1Api.md#documentDocumentTypesUidPUT) | **PUT** /api/v1/document/document-types/{uid}/ |  |
+| [**documentDocumentTypesUidPreDeletePOST**](V1Api.md#documentDocumentTypesUidPreDeletePOST) | **POST** /api/v1/document/document-types/{uid}/pre_delete/ |  |
+| [**documentDocumentTypesUserProjectTypesGET**](V1Api.md#documentDocumentTypesUserProjectTypesGET) | **GET** /api/v1/document/document-types/user_project_types/ |  |
+| [**documentDocumentsDownloadZipGET**](V1Api.md#documentDocumentsDownloadZipGET) | **GET** /api/v1/document/documents/download_zip/ |  |
+| [**documentDocumentsForUserGET**](V1Api.md#documentDocumentsForUserGET) | **GET** /api/v1/document/documents/for-user/ |  |
+| [**documentDocumentsGET**](V1Api.md#documentDocumentsGET) | **GET** /api/v1/document/documents/ |  |
+| [**documentDocumentsIdActionsGET**](V1Api.md#documentDocumentsIdActionsGET) | **GET** /api/v1/document/documents/{id}/actions/ |  |
+| [**documentDocumentsIdDELETE**](V1Api.md#documentDocumentsIdDELETE) | **DELETE** /api/v1/document/documents/{id}/ |  |
+| [**documentDocumentsIdDataGET**](V1Api.md#documentDocumentsIdDataGET) | **GET** /api/v1/document/documents/{id}/data/ |  |
+| [**documentDocumentsIdDefinitionsGET**](V1Api.md#documentDocumentsIdDefinitionsGET) | **GET** /api/v1/document/documents/{id}/definitions/ |  |
+| [**documentDocumentsIdExtractionGET**](V1Api.md#documentDocumentsIdExtractionGET) | **GET** /api/v1/document/documents/{id}/extraction/ |  |
+| [**documentDocumentsIdFieldsGET**](V1Api.md#documentDocumentsIdFieldsGET) | **GET** /api/v1/document/documents/{id}/fields/ |  |
+| [**documentDocumentsIdFieldsPATCH**](V1Api.md#documentDocumentsIdFieldsPATCH) | **PATCH** /api/v1/document/documents/{id}/fields/ |  |
+| [**documentDocumentsIdFieldsPOST**](V1Api.md#documentDocumentsIdFieldsPOST) | **POST** /api/v1/document/documents/{id}/fields/ |  |
+| [**documentDocumentsIdFieldsPUT**](V1Api.md#documentDocumentsIdFieldsPUT) | **PUT** /api/v1/document/documents/{id}/fields/ |  |
+| [**documentDocumentsIdFullTextGET**](V1Api.md#documentDocumentsIdFullTextGET) | **GET** /api/v1/document/documents/{id}/full_text/ |  |
+| [**documentDocumentsIdGET**](V1Api.md#documentDocumentsIdGET) | **GET** /api/v1/document/documents/{id}/ |  |
+| [**documentDocumentsIdHasPdfInfoGET**](V1Api.md#documentDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/documents/{id}/has_pdf_info/ |  |
+| [**documentDocumentsIdPATCH**](V1Api.md#documentDocumentsIdPATCH) | **PATCH** /api/v1/document/documents/{id}/ |  |
+| [**documentDocumentsIdPUT**](V1Api.md#documentDocumentsIdPUT) | **PUT** /api/v1/document/documents/{id}/ |  |
+| [**documentDocumentsIdPdfReprGET**](V1Api.md#documentDocumentsIdPdfReprGET) | **GET** /api/v1/document/documents/{id}/pdf_repr/ |  |
+| [**documentDocumentsIdSetAnnotatorCoordDifferencePOST**](V1Api.md#documentDocumentsIdSetAnnotatorCoordDifferencePOST) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ |  |
+| [**documentDocumentsIdShowGET**](V1Api.md#documentDocumentsIdShowGET) | **GET** /api/v1/document/documents/{id}/show/ |  |
+| [**documentDocumentsIdSimilarGET**](V1Api.md#documentDocumentsIdSimilarGET) | **GET** /api/v1/document/documents/{id}/similar/ |  |
+| [**documentDocumentsMarkDeletePOST**](V1Api.md#documentDocumentsMarkDeletePOST) | **POST** /api/v1/document/documents/mark_delete/ |  |
+| [**documentDocumentsPOST**](V1Api.md#documentDocumentsPOST) | **POST** /api/v1/document/documents/ |  |
+| [**documentDocumentsUnmarkDeletePOST**](V1Api.md#documentDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/documents/unmark_delete/ |  |
+| [**documentFieldAnnotationStatusesGET**](V1Api.md#documentFieldAnnotationStatusesGET) | **GET** /api/v1/document/field-annotation-statuses/ |  |
+| [**documentFieldAnnotationStatusesIdDELETE**](V1Api.md#documentFieldAnnotationStatusesIdDELETE) | **DELETE** /api/v1/document/field-annotation-statuses/{id}/ |  |
+| [**documentFieldAnnotationStatusesIdGET**](V1Api.md#documentFieldAnnotationStatusesIdGET) | **GET** /api/v1/document/field-annotation-statuses/{id}/ |  |
+| [**documentFieldAnnotationStatusesIdPATCH**](V1Api.md#documentFieldAnnotationStatusesIdPATCH) | **PATCH** /api/v1/document/field-annotation-statuses/{id}/ |  |
+| [**documentFieldAnnotationStatusesIdPUT**](V1Api.md#documentFieldAnnotationStatusesIdPUT) | **PUT** /api/v1/document/field-annotation-statuses/{id}/ |  |
+| [**documentFieldAnnotationStatusesPOST**](V1Api.md#documentFieldAnnotationStatusesPOST) | **POST** /api/v1/document/field-annotation-statuses/ |  |
+| [**documentProjectProjectPkDocumentFieldAnnotationsForUserGET**](V1Api.md#documentProjectProjectPkDocumentFieldAnnotationsForUserGET) | **GET** /api/v1/document/project/{project_pk}/document-field-annotations/for-user/ |  |
+| [**documentProjectProjectPkDocumentFieldAnnotationsGET**](V1Api.md#documentProjectProjectPkDocumentFieldAnnotationsGET) | **GET** /api/v1/document/project/{project_pk}/document-field-annotations/ |  |
+| [**documentProjectProjectPkDocumentFieldAnnotationsUidGET**](V1Api.md#documentProjectProjectPkDocumentFieldAnnotationsUidGET) | **GET** /api/v1/document/project/{project_pk}/document-field-annotations/{uid}/ |  |
+| [**documentProjectProjectPkDocumentFieldValuesGET**](V1Api.md#documentProjectProjectPkDocumentFieldValuesGET) | **GET** /api/v1/document/project/{project_pk}/document-field-values/ |  |
+| [**documentProjectProjectPkDocumentFieldValuesIdGET**](V1Api.md#documentProjectProjectPkDocumentFieldValuesIdGET) | **GET** /api/v1/document/project/{project_pk}/document-field-values/{id}/ |  |
+| [**documentProjectProjectPkDocumentsDocumentPkAnnotationsGET**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/ |  |
+| [**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE) | **DELETE** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ |  |
+| [**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET) | **GET** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ |  |
+| [**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ |  |
+| [**documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/{id}/ |  |
+| [**documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST**](V1Api.md#documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/{document_pk}/annotations/ |  |
+| [**documentProjectProjectPkDocumentsDownloadZipGET**](V1Api.md#documentProjectProjectPkDocumentsDownloadZipGET) | **GET** /api/v1/document/project/{project_pk}/documents/download_zip/ |  |
+| [**documentProjectProjectPkDocumentsForUserGET**](V1Api.md#documentProjectProjectPkDocumentsForUserGET) | **GET** /api/v1/document/project/{project_pk}/documents/for-user/ |  |
+| [**documentProjectProjectPkDocumentsGET**](V1Api.md#documentProjectProjectPkDocumentsGET) | **GET** /api/v1/document/project/{project_pk}/documents/ |  |
+| [**documentProjectProjectPkDocumentsIdActionsGET**](V1Api.md#documentProjectProjectPkDocumentsIdActionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/actions/ |  |
+| [**documentProjectProjectPkDocumentsIdDELETE**](V1Api.md#documentProjectProjectPkDocumentsIdDELETE) | **DELETE** /api/v1/document/project/{project_pk}/documents/{id}/ |  |
+| [**documentProjectProjectPkDocumentsIdDataGET**](V1Api.md#documentProjectProjectPkDocumentsIdDataGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/data/ |  |
+| [**documentProjectProjectPkDocumentsIdDefinitionsGET**](V1Api.md#documentProjectProjectPkDocumentsIdDefinitionsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/definitions/ |  |
+| [**documentProjectProjectPkDocumentsIdExtractionGET**](V1Api.md#documentProjectProjectPkDocumentsIdExtractionGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/extraction/ |  |
+| [**documentProjectProjectPkDocumentsIdFieldsGET**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/fields/ |  |
+| [**documentProjectProjectPkDocumentsIdFieldsPATCH**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/fields/ |  |
+| [**documentProjectProjectPkDocumentsIdFieldsPOST**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/fields/ |  |
+| [**documentProjectProjectPkDocumentsIdFieldsPUT**](V1Api.md#documentProjectProjectPkDocumentsIdFieldsPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/fields/ |  |
+| [**documentProjectProjectPkDocumentsIdFullTextGET**](V1Api.md#documentProjectProjectPkDocumentsIdFullTextGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/full_text/ |  |
+| [**documentProjectProjectPkDocumentsIdGET**](V1Api.md#documentProjectProjectPkDocumentsIdGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/ |  |
+| [**documentProjectProjectPkDocumentsIdHasPdfInfoGET**](V1Api.md#documentProjectProjectPkDocumentsIdHasPdfInfoGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/has_pdf_info/ |  |
+| [**documentProjectProjectPkDocumentsIdPATCH**](V1Api.md#documentProjectProjectPkDocumentsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ |  |
+| [**documentProjectProjectPkDocumentsIdPUT**](V1Api.md#documentProjectProjectPkDocumentsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ |  |
+| [**documentProjectProjectPkDocumentsIdPdfReprGET**](V1Api.md#documentProjectProjectPkDocumentsIdPdfReprGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ |  |
+| [**documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST**](V1Api.md#documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ |  |
+| [**documentProjectProjectPkDocumentsIdShowGET**](V1Api.md#documentProjectProjectPkDocumentsIdShowGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ |  |
+| [**documentProjectProjectPkDocumentsIdSimilarGET**](V1Api.md#documentProjectProjectPkDocumentsIdSimilarGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ |  |
+| [**documentProjectProjectPkDocumentsMarkDeletePOST**](V1Api.md#documentProjectProjectPkDocumentsMarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ |  |
+| [**documentProjectProjectPkDocumentsPOST**](V1Api.md#documentProjectProjectPkDocumentsPOST) | **POST** /api/v1/document/project/{project_pk}/documents/ |  |
+| [**documentProjectProjectPkDocumentsUnmarkDeletePOST**](V1Api.md#documentProjectProjectPkDocumentsUnmarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/unmark_delete/ |  |
+| [**documentStatsGET**](V1Api.md#documentStatsGET) | **GET** /api/v1/document/stats/ |  |
+| [**documentTextunitsGET**](V1Api.md#documentTextunitsGET) | **GET** /api/v1/document/textunits/ |  |
+| [**documentTextunitsIdGET**](V1Api.md#documentTextunitsIdGET) | **GET** /api/v1/document/textunits/{id}/ |  |
+| [**dumpDocumentConfigGET**](V1Api.md#dumpDocumentConfigGET) | **GET** /api/v1/dump/document-config/ |  |
+| [**dumpDocumentConfigPUT**](V1Api.md#dumpDocumentConfigPUT) | **PUT** /api/v1/dump/document-config/ |  |
+| [**dumpDumpFixturePOST**](V1Api.md#dumpDumpFixturePOST) | **POST** /api/v1/dump/dump-fixture/ |  |
+| [**dumpDumpGET**](V1Api.md#dumpDumpGET) | **GET** /api/v1/dump/dump/ |  |
+| [**dumpDumpPUT**](V1Api.md#dumpDumpPUT) | **PUT** /api/v1/dump/dump/ |  |
+| [**dumpFieldValuesGET**](V1Api.md#dumpFieldValuesGET) | **GET** /api/v1/dump/field-values/ |  |
+| [**dumpFieldValuesPUT**](V1Api.md#dumpFieldValuesPUT) | **PUT** /api/v1/dump/field-values/ |  |
+| [**dumpLoadFixturePOST**](V1Api.md#dumpLoadFixturePOST) | **POST** /api/v1/dump/load-fixture/ |  |
+| [**extractAmountUsageGET**](V1Api.md#extractAmountUsageGET) | **GET** /api/v1/extract/amount-usage/ |  |
+| [**extractAmountUsageTopGET**](V1Api.md#extractAmountUsageTopGET) | **GET** /api/v1/extract/amount-usage/top/ |  |
+| [**extractCitationUsageGET**](V1Api.md#extractCitationUsageGET) | **GET** /api/v1/extract/citation-usage/ |  |
+| [**extractCitationUsageTopGET**](V1Api.md#extractCitationUsageTopGET) | **GET** /api/v1/extract/citation-usage/top/ |  |
+| [**extractCopyrightUsageGET**](V1Api.md#extractCopyrightUsageGET) | **GET** /api/v1/extract/copyright-usage/ |  |
+| [**extractCopyrightUsageTopGET**](V1Api.md#extractCopyrightUsageTopGET) | **GET** /api/v1/extract/copyright-usage/top/ |  |
+| [**extractCourtUsageGET**](V1Api.md#extractCourtUsageGET) | **GET** /api/v1/extract/court-usage/ |  |
+| [**extractCourtUsageTopGET**](V1Api.md#extractCourtUsageTopGET) | **GET** /api/v1/extract/court-usage/top/ |  |
+| [**extractCurrencyUsageGET**](V1Api.md#extractCurrencyUsageGET) | **GET** /api/v1/extract/currency-usage/ |  |
+| [**extractCurrencyUsageTopGET**](V1Api.md#extractCurrencyUsageTopGET) | **GET** /api/v1/extract/currency-usage/top/ |  |
+| [**extractDateDurationUsageGET**](V1Api.md#extractDateDurationUsageGET) | **GET** /api/v1/extract/date-duration-usage/ |  |
+| [**extractDateDurationUsageTopGET**](V1Api.md#extractDateDurationUsageTopGET) | **GET** /api/v1/extract/date-duration-usage/top/ |  |
+| [**extractDateUsageCalendarChartGET**](V1Api.md#extractDateUsageCalendarChartGET) | **GET** /api/v1/extract/date-usage/calendar-chart/ |  |
+| [**extractDateUsageGET**](V1Api.md#extractDateUsageGET) | **GET** /api/v1/extract/date-usage/ |  |
+| [**extractDateUsageTimelineChartGET**](V1Api.md#extractDateUsageTimelineChartGET) | **GET** /api/v1/extract/date-usage/timeline-chart/ |  |
+| [**extractDateUsageToIcalGET**](V1Api.md#extractDateUsageToIcalGET) | **GET** /api/v1/extract/date-usage/to-ical/ |  |
+| [**extractDateUsageTopGET**](V1Api.md#extractDateUsageTopGET) | **GET** /api/v1/extract/date-usage/top/ |  |
+| [**extractDefinitionUsageGET**](V1Api.md#extractDefinitionUsageGET) | **GET** /api/v1/extract/definition-usage/ |  |
+| [**extractDefinitionUsageTopGET**](V1Api.md#extractDefinitionUsageTopGET) | **GET** /api/v1/extract/definition-usage/top/ |  |
+| [**extractDistanceUsageGET**](V1Api.md#extractDistanceUsageGET) | **GET** /api/v1/extract/distance-usage/ |  |
+| [**extractDistanceUsageTopGET**](V1Api.md#extractDistanceUsageTopGET) | **GET** /api/v1/extract/distance-usage/top/ |  |
+| [**extractGeoAliasUsageGET**](V1Api.md#extractGeoAliasUsageGET) | **GET** /api/v1/extract/geo-alias-usage/ |  |
+| [**extractGeoAliasUsageTopGET**](V1Api.md#extractGeoAliasUsageTopGET) | **GET** /api/v1/extract/geo-alias-usage/top/ |  |
+| [**extractGeoEntitiesGET**](V1Api.md#extractGeoEntitiesGET) | **GET** /api/v1/extract/geo-entities/ |  |
+| [**extractGeoEntitiesIdGET**](V1Api.md#extractGeoEntitiesIdGET) | **GET** /api/v1/extract/geo-entities/{id}/ |  |
+| [**extractGeoEntitiesIdPUT**](V1Api.md#extractGeoEntitiesIdPUT) | **PUT** /api/v1/extract/geo-entities/{id}/ |  |
+| [**extractGeoEntityUsageGET**](V1Api.md#extractGeoEntityUsageGET) | **GET** /api/v1/extract/geo-entity-usage/ |  |
+| [**extractGeoEntityUsageTopGET**](V1Api.md#extractGeoEntityUsageTopGET) | **GET** /api/v1/extract/geo-entity-usage/top/ |  |
+| [**extractPartiesGET**](V1Api.md#extractPartiesGET) | **GET** /api/v1/extract/parties/ |  |
+| [**extractPartiesIdGET**](V1Api.md#extractPartiesIdGET) | **GET** /api/v1/extract/parties/{id}/ |  |
+| [**extractPartyNetworkChartGET**](V1Api.md#extractPartyNetworkChartGET) | **GET** /api/v1/extract/party/network-chart/ |  |
+| [**extractPartyUsageGET**](V1Api.md#extractPartyUsageGET) | **GET** /api/v1/extract/party-usage/ |  |
+| [**extractPartyUsageTopGET**](V1Api.md#extractPartyUsageTopGET) | **GET** /api/v1/extract/party-usage/top/ |  |
+| [**extractPercentUsageGET**](V1Api.md#extractPercentUsageGET) | **GET** /api/v1/extract/percent-usage/ |  |
+| [**extractPercentUsageTopGET**](V1Api.md#extractPercentUsageTopGET) | **GET** /api/v1/extract/percent-usage/top/ |  |
+| [**extractRatioUsageGET**](V1Api.md#extractRatioUsageGET) | **GET** /api/v1/extract/ratio-usage/ |  |
+| [**extractRatioUsageTopGET**](V1Api.md#extractRatioUsageTopGET) | **GET** /api/v1/extract/ratio-usage/top/ |  |
+| [**extractRegulationUsageGET**](V1Api.md#extractRegulationUsageGET) | **GET** /api/v1/extract/regulation-usage/ |  |
+| [**extractRegulationUsageTopGET**](V1Api.md#extractRegulationUsageTopGET) | **GET** /api/v1/extract/regulation-usage/top/ |  |
+| [**extractTermTagsGET**](V1Api.md#extractTermTagsGET) | **GET** /api/v1/extract/term-tags/ |  |
+| [**extractTermUsageGET**](V1Api.md#extractTermUsageGET) | **GET** /api/v1/extract/term-usage/ |  |
+| [**extractTermUsageTopGET**](V1Api.md#extractTermUsageTopGET) | **GET** /api/v1/extract/term-usage/top/ |  |
+| [**extractTrademarkUsageGET**](V1Api.md#extractTrademarkUsageGET) | **GET** /api/v1/extract/trademark-usage/ |  |
+| [**extractTrademarkUsageTopGET**](V1Api.md#extractTrademarkUsageTopGET) | **GET** /api/v1/extract/trademark-usage/top/ |  |
+| [**extractTypeaheadGeoEntityUsageFieldNameGET**](V1Api.md#extractTypeaheadGeoEntityUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/geo-entity-usage/{field_name}/ |  |
+| [**extractTypeaheadPartyUsageFieldNameGET**](V1Api.md#extractTypeaheadPartyUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/party-usage/{field_name}/ |  |
+| [**extractTypeaheadTermUsageFieldNameGET**](V1Api.md#extractTypeaheadTermUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/term-usage/{field_name}/ |  |
+| [**extractUrlUsageGET**](V1Api.md#extractUrlUsageGET) | **GET** /api/v1/extract/url-usage/ |  |
+| [**extractUrlUsageTopGET**](V1Api.md#extractUrlUsageTopGET) | **GET** /api/v1/extract/url-usage/top/ |  |
+| [**loggingLogMessagePOST**](V1Api.md#loggingLogMessagePOST) | **POST** /api/v1/logging/log_message/ |  |
+| [**mediaDataPathGET**](V1Api.md#mediaDataPathGET) | **GET** /api/media-data/{path}/ |  |
+| [**notificationsWebNotificationsGET**](V1Api.md#notificationsWebNotificationsGET) | **GET** /api/v1/notifications/web-notifications/ |  |
+| [**notificationsWebNotificationsMarkSeenPOST**](V1Api.md#notificationsWebNotificationsMarkSeenPOST) | **POST** /api/v1/notifications/web-notifications/mark_seen/ |  |
+| [**projectProjectClusteringGET**](V1Api.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ |  |
+| [**projectProjectClusteringIdGET**](V1Api.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ |  |
+| [**projectProjectsFormFieldsGET**](V1Api.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ |  |
+| [**projectProjectsGET**](V1Api.md#projectProjectsGET) | **GET** /api/v1/project/projects/ |  |
+| [**projectProjectsIdActiveTasksGET**](V1Api.md#projectProjectsIdActiveTasksGET) | **GET** /api/v1/project/projects/{id}/active_tasks/ |  |
+| [**projectProjectsIdAnnotationsAssigneesGET**](V1Api.md#projectProjectsIdAnnotationsAssigneesGET) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ |  |
+| [**projectProjectsIdAssignAnnotationsPOST**](V1Api.md#projectProjectsIdAssignAnnotationsPOST) | **POST** /api/v1/project/projects/{id}/assign_annotations/ |  |
+| [**projectProjectsIdAssignDocumentPOST**](V1Api.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ |  |
+| [**projectProjectsIdAssignDocumentsPOST**](V1Api.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ |  |
+| [**projectProjectsIdAssigneesGET**](V1Api.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ |  |
+| [**projectProjectsIdCheckSimilarityProcessAllowedPOST**](V1Api.md#projectProjectsIdCheckSimilarityProcessAllowedPOST) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ |  |
+| [**projectProjectsIdCleanupPOST**](V1Api.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ |  |
+| [**projectProjectsIdClusterActionsGET**](V1Api.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ |  |
+| [**projectProjectsIdClusterPOST**](V1Api.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ |  |
+| [**projectProjectsIdClusteringStatusGET**](V1Api.md#projectProjectsIdClusteringStatusGET) | **GET** /api/v1/project/projects/{id}/clustering-status/ |  |
+| [**projectProjectsIdDELETE**](V1Api.md#projectProjectsIdDELETE) | **DELETE** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdDeleteDocumentSimilarityResultsDELETE**](V1Api.md#projectProjectsIdDeleteDocumentSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ |  |
+| [**projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](V1Api.md#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ |  |
+| [**projectProjectsIdDetectFieldValuesPOST**](V1Api.md#projectProjectsIdDetectFieldValuesPOST) | **POST** /api/v1/project/projects/{id}/detect_field_values/ |  |
+| [**projectProjectsIdFormFieldsGET**](V1Api.md#projectProjectsIdFormFieldsGET) | **GET** /api/v1/project/projects/{id}/form-fields/ |  |
+| [**projectProjectsIdGET**](V1Api.md#projectProjectsIdGET) | **GET** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdLocateItemsPOST**](V1Api.md#projectProjectsIdLocateItemsPOST) | **POST** /api/v1/project/projects/{id}/locate_items/ |  |
+| [**projectProjectsIdMarkDeletePOST**](V1Api.md#projectProjectsIdMarkDeletePOST) | **POST** /api/v1/project/projects/{id}/mark_delete/ |  |
+| [**projectProjectsIdPATCH**](V1Api.md#projectProjectsIdPATCH) | **PATCH** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdPUT**](V1Api.md#projectProjectsIdPUT) | **PUT** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdProgressGET**](V1Api.md#projectProjectsIdProgressGET) | **GET** /api/v1/project/projects/{id}/progress/ |  |
+| [**projectProjectsIdSearchSimilarDocumentsPOST**](V1Api.md#projectProjectsIdSearchSimilarDocumentsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ |  |
+| [**projectProjectsIdSearchSimilarTextUnitsPOST**](V1Api.md#projectProjectsIdSearchSimilarTextUnitsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ |  |
+| [**projectProjectsIdSendClustersToProjectPOST**](V1Api.md#projectProjectsIdSendClustersToProjectPOST) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ |  |
+| [**projectProjectsIdSetAnnotationStatusPOST**](V1Api.md#projectProjectsIdSetAnnotationStatusPOST) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ |  |
+| [**projectProjectsIdSetStatusPOST**](V1Api.md#projectProjectsIdSetStatusPOST) | **POST** /api/v1/project/projects/{id}/set_status/ |  |
+| [**projectProjectsIdSettingsActionsGET**](V1Api.md#projectProjectsIdSettingsActionsGET) | **GET** /api/v1/project/projects/{id}/settings_actions/ |  |
+| [**projectProjectsIdTaskTaskIdTaskLogsGET**](V1Api.md#projectProjectsIdTaskTaskIdTaskLogsGET) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ |  |
+| [**projectProjectsIdTasksGET**](V1Api.md#projectProjectsIdTasksGET) | **GET** /api/v1/project/projects/{id}/tasks/ |  |
+| [**projectProjectsIdUnmarkDeletePOST**](V1Api.md#projectProjectsIdUnmarkDeletePOST) | **POST** /api/v1/project/projects/{id}/unmark_delete/ |  |
+| [**projectProjectsIdUpdateDocumentFieldsPOST**](V1Api.md#projectProjectsIdUpdateDocumentFieldsPOST) | **POST** /api/v1/project/projects/{id}/update_document_fields/ |  |
+| [**projectProjectsPOST**](V1Api.md#projectProjectsPOST) | **POST** /api/v1/project/projects/ |  |
+| [**projectProjectsProjectStatsGET**](V1Api.md#projectProjectsProjectStatsGET) | **GET** /api/v1/project/projects/project_stats/ |  |
+| [**projectProjectsRecentGET**](V1Api.md#projectProjectsRecentGET) | **GET** /api/v1/project/projects/recent/ |  |
+| [**projectProjectsSelectProjectsPOST**](V1Api.md#projectProjectsSelectProjectsPOST) | **POST** /api/v1/project/projects/select_projects/ |  |
+| [**projectTaskQueuesGET**](V1Api.md#projectTaskQueuesGET) | **GET** /api/v1/project/task-queues/ |  |
+| [**projectTaskQueuesIdDELETE**](V1Api.md#projectTaskQueuesIdDELETE) | **DELETE** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesIdGET**](V1Api.md#projectTaskQueuesIdGET) | **GET** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesIdPATCH**](V1Api.md#projectTaskQueuesIdPATCH) | **PATCH** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesIdPUT**](V1Api.md#projectTaskQueuesIdPUT) | **PUT** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesPOST**](V1Api.md#projectTaskQueuesPOST) | **POST** /api/v1/project/task-queues/ |  |
+| [**projectUploadSessionGET**](V1Api.md#projectUploadSessionGET) | **GET** /api/v1/project/upload-session/ |  |
+| [**projectUploadSessionPOST**](V1Api.md#projectUploadSessionPOST) | **POST** /api/v1/project/upload-session/ |  |
+| [**projectUploadSessionStatusGET**](V1Api.md#projectUploadSessionStatusGET) | **GET** /api/v1/project/upload-session/status/ |  |
+| [**projectUploadSessionUidBatchUploadPOST**](V1Api.md#projectUploadSessionUidBatchUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/_batch_upload/ |  |
+| [**projectUploadSessionUidBatchUploadPOST_0**](V1Api.md#projectUploadSessionUidBatchUploadPOST_0) | **POST** /api/v1/project/upload-session/{uid}/batch_upload/ |  |
+| [**projectUploadSessionUidCancelDELETE**](V1Api.md#projectUploadSessionUidCancelDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/cancel/ |  |
+| [**projectUploadSessionUidDELETE**](V1Api.md#projectUploadSessionUidDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/ |  |
+| [**projectUploadSessionUidDeleteFileDELETE**](V1Api.md#projectUploadSessionUidDeleteFileDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ |  |
+| [**projectUploadSessionUidFilesPOST**](V1Api.md#projectUploadSessionUidFilesPOST) | **POST** /api/v1/project/upload-session/{uid}/files/ |  |
+| [**projectUploadSessionUidGET**](V1Api.md#projectUploadSessionUidGET) | **GET** /api/v1/project/upload-session/{uid}/ |  |
+| [**projectUploadSessionUidPATCH**](V1Api.md#projectUploadSessionUidPATCH) | **PATCH** /api/v1/project/upload-session/{uid}/ |  |
+| [**projectUploadSessionUidProgressGET**](V1Api.md#projectUploadSessionUidProgressGET) | **GET** /api/v1/project/upload-session/{uid}/progress/ |  |
+| [**projectUploadSessionUidUploadPOST**](V1Api.md#projectUploadSessionUidUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/upload/ |  |
+| [**rawdbConfigGET**](V1Api.md#rawdbConfigGET) | **GET** /api/v1/rawdb/config/ |  |
+| [**rawdbDocumentsDocumentTypeCodeGET**](V1Api.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ |  |
+| [**rawdbDocumentsDocumentTypeCodePOST**](V1Api.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ |  |
+| [**rawdbProjectStatsProjectIdGET**](V1Api.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ |  |
+| [**restAuthLoginPOST**](V1Api.md#restAuthLoginPOST) | **POST** /rest-auth/login/ |  |
+| [**restAuthLogoutGET**](V1Api.md#restAuthLogoutGET) | **GET** /rest-auth/logout/ |  |
+| [**restAuthLogoutPOST**](V1Api.md#restAuthLogoutPOST) | **POST** /rest-auth/logout/ |  |
+| [**restAuthPasswordChangePOST**](V1Api.md#restAuthPasswordChangePOST) | **POST** /rest-auth/password/change/ |  |
+| [**restAuthPasswordResetConfirmPOST**](V1Api.md#restAuthPasswordResetConfirmPOST) | **POST** /rest-auth/password/reset/confirm/ |  |
+| [**restAuthPasswordResetPOST**](V1Api.md#restAuthPasswordResetPOST) | **POST** /rest-auth/password/reset/ |  |
+| [**similarityDocumentSimilarityByFeaturesGET**](V1Api.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ |  |
+| [**similarityDocumentSimilarityByFeaturesPOST**](V1Api.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ |  |
+| [**similarityPartySimilarityGET**](V1Api.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ |  |
+| [**similarityPartySimilarityPOST**](V1Api.md#similarityPartySimilarityPOST) | **POST** /api/v1/similarity/party-similarity/ |  |
+| [**similarityProjectDocumentsSimilarityByVectorsGET**](V1Api.md#similarityProjectDocumentsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ |  |
+| [**similarityProjectDocumentsSimilarityByVectorsPOST**](V1Api.md#similarityProjectDocumentsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ |  |
+| [**similarityProjectTextUnitsSimilarityByVectorsGET**](V1Api.md#similarityProjectTextUnitsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ |  |
+| [**similarityProjectTextUnitsSimilarityByVectorsPOST**](V1Api.md#similarityProjectTextUnitsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ |  |
+| [**similaritySimilarityGET**](V1Api.md#similaritySimilarityGET) | **GET** /api/v1/similarity/similarity/ |  |
+| [**similaritySimilarityPOST**](V1Api.md#similaritySimilarityPOST) | **POST** /api/v1/similarity/similarity/ |  |
+| [**similarityTextUnitSimilarityByFeaturesGET**](V1Api.md#similarityTextUnitSimilarityByFeaturesGET) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ |  |
+| [**similarityTextUnitSimilarityByFeaturesPOST**](V1Api.md#similarityTextUnitSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ |  |
+| [**taskCleanTasksPOST**](V1Api.md#taskCleanTasksPOST) | **POST** /api/v1/task/clean-tasks/ |  |
+| [**taskLoadDictionariesPOST**](V1Api.md#taskLoadDictionariesPOST) | **POST** /api/v1/task/load-dictionaries/ |  |
+| [**taskLoadDocumentsGET**](V1Api.md#taskLoadDocumentsGET) | **GET** /api/v1/task/load-documents/ |  |
+| [**taskLoadDocumentsPOST**](V1Api.md#taskLoadDocumentsPOST) | **POST** /api/v1/task/load-documents/ |  |
+| [**taskLocateGET**](V1Api.md#taskLocateGET) | **GET** /api/v1/task/locate/ |  |
+| [**taskLocatePOST**](V1Api.md#taskLocatePOST) | **POST** /api/v1/task/locate/ |  |
+| [**taskProcessTextExtractionResultsRequestIdPOST**](V1Api.md#taskProcessTextExtractionResultsRequestIdPOST) | **POST** /api/v1/task/process_text_extraction_results/{request_id}/ |  |
+| [**taskPurgeTaskPOST**](V1Api.md#taskPurgeTaskPOST) | **POST** /api/v1/task/purge-task/ |  |
+| [**taskRecallTaskGET**](V1Api.md#taskRecallTaskGET) | **GET** /api/v1/task/recall-task/ |  |
+| [**taskRecallTaskPOST**](V1Api.md#taskRecallTaskPOST) | **POST** /api/v1/task/recall-task/ |  |
+| [**taskReindexroutinesCheckSchedulePOST**](V1Api.md#taskReindexroutinesCheckSchedulePOST) | **POST** /api/v1/task/reindexroutines/check_schedule |  |
+| [**taskTaskLogGET**](V1Api.md#taskTaskLogGET) | **GET** /api/v1/task/task-log/ |  |
+| [**taskTaskStatusGET**](V1Api.md#taskTaskStatusGET) | **GET** /api/v1/task/task-status/ |  |
+| [**taskTasksGET**](V1Api.md#taskTasksGET) | **GET** /api/v1/task/tasks/ |  |
+| [**taskTasksIdGET**](V1Api.md#taskTasksIdGET) | **GET** /api/v1/task/tasks/{id}/ |  |
+| [**taskTasksProjectProjectIdActiveTasksGET**](V1Api.md#taskTasksProjectProjectIdActiveTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/active-tasks/ |  |
+| [**taskTasksProjectProjectIdTasksGET**](V1Api.md#taskTasksProjectProjectIdTasksGET) | **GET** /api/v1/task/tasks/project/{project_id}/tasks/ |  |
+| [**taskUpdateElasticIndexGET**](V1Api.md#taskUpdateElasticIndexGET) | **GET** /api/v1/task/update-elastic-index/ |  |
+| [**taskUpdateElasticIndexPOST**](V1Api.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ |  |
+| [**tusUploadSessionUploadSessionIdUploadGuidPATCH**](V1Api.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ |  |
+| [**tusUploadSessionUploadSessionIdUploadPOST**](V1Api.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ |  |
+| [**usersClientIdsGET**](V1Api.md#usersClientIdsGET) | **GET** /api/v1/users/client-ids/ |  |
+| [**usersElevatePOST**](V1Api.md#usersElevatePOST) | **POST** /api/v1/users/elevate/ |  |
+| [**usersGooglePOST**](V1Api.md#usersGooglePOST) | **POST** /api/v1/users/google/ |  |
+| [**usersOffice365POST**](V1Api.md#usersOffice365POST) | **POST** /api/v1/users/office365/ |  |
+| [**usersOktaPOST**](V1Api.md#usersOktaPOST) | **POST** /api/v1/users/okta/ |  |
+| [**usersUsersFormFieldsGET**](V1Api.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ |  |
+| [**usersUsersGET**](V1Api.md#usersUsersGET) | **GET** /api/v1/users/users/ |  |
+| [**usersUsersIdFormFieldsGET**](V1Api.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ |  |
+| [**usersUsersIdGET**](V1Api.md#usersUsersIdGET) | **GET** /api/v1/users/users/{id}/ |  |
+| [**usersUsersIdPATCH**](V1Api.md#usersUsersIdPATCH) | **PATCH** /api/v1/users/users/{id}/ |  |
+| [**usersUsersIdPUT**](V1Api.md#usersUsersIdPUT) | **PUT** /api/v1/users/users/{id}/ |  |
+| [**usersUsersPOST**](V1Api.md#usersUsersPOST) | **POST** /api/v1/users/users/ |  |
+| [**usersUsersUserStatsGET**](V1Api.md#usersUsersUserStatsGET) | **GET** /api/v1/users/users/user_stats/ |  |
+| [**usersVerifyTokenPOST**](V1Api.md#usersVerifyTokenPOST) | **POST** /api/v1/users/verify-token/ |  |
 
 
 <a name="analyzeDocumentClusterGET"></a>
@@ -420,9 +425,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -440,7 +445,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentClusterIdGET"></a>
 # **analyzeDocumentClusterIdGET**
@@ -490,10 +495,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document cluster. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document cluster. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -511,7 +516,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentClusterIdPATCH"></a>
 # **analyzeDocumentClusterIdPATCH**
@@ -561,10 +566,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document cluster. |
- **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document cluster. | |
+| **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -582,7 +587,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentClusterIdPUT"></a>
 # **analyzeDocumentClusterIdPUT**
@@ -632,10 +637,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document cluster. |
- **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document cluster. | |
+| **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -653,7 +658,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentSimilarityListGET"></a>
 # **analyzeDocumentSimilarityListGET**
@@ -702,9 +707,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -722,7 +727,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentTransformerListGET"></a>
 # **analyzeDocumentTransformerListGET**
@@ -771,9 +776,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -791,7 +796,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeMlModelListGET"></a>
 # **analyzeMlModelListGET**
@@ -840,9 +845,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -860,7 +865,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzePartySimilarityListGET"></a>
 # **analyzePartySimilarityListGET**
@@ -909,9 +914,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -929,7 +934,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeProjectDocumentSimilarityListGET"></a>
 # **analyzeProjectDocumentSimilarityListGET**
@@ -981,12 +986,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
- **runId** | **Integer**| run id or document id required | [optional]
- **documentId** | **Integer**| run id or document id required | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional] |
+| **runId** | **Integer**| run id or document id required | [optional] |
+| **documentId** | **Integer**| run id or document id required | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1004,7 +1009,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeProjectTextUnitSimilarityListGET"></a>
 # **analyzeProjectTextUnitSimilarityListGET**
@@ -1061,17 +1066,17 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
- **textMaxLength** | **Integer**| text unit b text max length, 0 to get all text | [optional]
- **runId** | **Integer**| run id or text unit id required | [optional]
- **lastRun** | **Boolean**| run id or last_run or text unit id required | [optional]
- **textUnitId** | **Integer**| run id or text unit id required | [optional]
- **documentId** | **Integer**| document ID | [optional]
- **locationStart** | **Integer**| start of chosen text block in a Document | [optional]
- **locationEnd** | **Integer**| end of chosen text block in a Document | [optional]
- **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
+| **textMaxLength** | **Integer**| text unit b text max length, 0 to get all text | [optional] |
+| **runId** | **Integer**| run id or text unit id required | [optional] |
+| **lastRun** | **Boolean**| run id or last_run or text unit id required | [optional] |
+| **textUnitId** | **Integer**| run id or text unit id required | [optional] |
+| **documentId** | **Integer**| document ID | [optional] |
+| **locationStart** | **Integer**| start of chosen text block in a Document | [optional] |
+| **locationEnd** | **Integer**| end of chosen text block in a Document | [optional] |
+| **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional] |
 
 ### Return type
 
@@ -1089,7 +1094,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeProjectTextUnitSimilarityListPOST"></a>
 # **analyzeProjectTextUnitSimilarityListPOST**
@@ -1138,9 +1143,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -1158,7 +1163,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="analyzeSimilarityRunsGET"></a>
 # **analyzeSimilarityRunsGET**
@@ -1209,11 +1214,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **unitSource** | **String**| document / text_unit | [optional]
- **projectId** | **Integer**| Project ID | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **unitSource** | **String**| document / text_unit | [optional] |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1231,7 +1236,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeSimilarityRunsIdDELETE"></a>
 # **analyzeSimilarityRunsIdDELETE**
@@ -1281,11 +1286,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this similarity run. |
- **unitSource** | **String**| document / text_unit | [optional]
- **projectId** | **Integer**| Project ID | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this similarity run. | |
+| **unitSource** | **String**| document / text_unit | [optional] |
+| **projectId** | **Integer**| Project ID | [optional] |
 
 ### Return type
 
@@ -1303,7 +1308,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeSimilarityRunsIdGET"></a>
 # **analyzeSimilarityRunsIdGET**
@@ -1355,12 +1360,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this similarity run. |
- **unitSource** | **String**| document / text_unit | [optional]
- **projectId** | **Integer**| Project ID | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this similarity run. | |
+| **unitSource** | **String**| document / text_unit | [optional] |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1378,7 +1383,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsGET"></a>
 # **analyzeTextUnitClassificationsGET**
@@ -1427,9 +1432,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1447,7 +1452,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsIdDELETE"></a>
 # **analyzeTextUnitClassificationsIdDELETE**
@@ -1495,9 +1500,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classification. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classification. | |
 
 ### Return type
 
@@ -1515,7 +1520,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsIdGET"></a>
 # **analyzeTextUnitClassificationsIdGET**
@@ -1565,10 +1570,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classification. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classification. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1586,7 +1591,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsPOST"></a>
 # **analyzeTextUnitClassificationsPOST**
@@ -1635,9 +1640,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **textUnitClassificationCreate** | [**TextUnitClassificationCreate**](TextUnitClassificationCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **textUnitClassificationCreate** | [**TextUnitClassificationCreate**](TextUnitClassificationCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -1655,7 +1660,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="analyzeTextUnitClassifierSuggestionsGET"></a>
 # **analyzeTextUnitClassifierSuggestionsGET**
@@ -1704,9 +1709,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1724,7 +1729,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassifierSuggestionsIdDELETE"></a>
 # **analyzeTextUnitClassifierSuggestionsIdDELETE**
@@ -1772,9 +1777,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier suggestion. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier suggestion. | |
 
 ### Return type
 
@@ -1792,11 +1797,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeTextUnitClassifierSuggestionsIdGET"></a>
 # **analyzeTextUnitClassifierSuggestionsIdGET**
 > TextUnitClassifierSuggestion analyzeTextUnitClassifierSuggestionsIdGET(id, jqFilters)
+
+
 
 
 
@@ -1840,10 +1847,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier suggestion. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier suggestion. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1861,7 +1868,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassifiersGET"></a>
 # **analyzeTextUnitClassifiersGET**
@@ -1910,9 +1917,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1930,7 +1937,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassifiersIdDELETE"></a>
 # **analyzeTextUnitClassifiersIdDELETE**
@@ -1978,9 +1985,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier. | |
 
 ### Return type
 
@@ -1998,11 +2005,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeTextUnitClassifiersIdGET"></a>
 # **analyzeTextUnitClassifiersIdGET**
 > TextUnitClassifier analyzeTextUnitClassifiersIdGET(id, jqFilters)
+
+
 
 
 
@@ -2046,10 +2055,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2067,7 +2076,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClusterListGET"></a>
 # **analyzeTextUnitClusterListGET**
@@ -2116,9 +2125,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2136,7 +2145,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitSimilarityListGET"></a>
 # **analyzeTextUnitSimilarityListGET**
@@ -2185,9 +2194,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2205,7 +2214,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitTransformerListGET"></a>
 # **analyzeTextUnitTransformerListGET**
@@ -2254,9 +2263,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2274,7 +2283,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTypeaheadTextUnitClassificationFieldNameGET"></a>
 # **analyzeTypeaheadTextUnitClassificationFieldNameGET**
@@ -2324,10 +2333,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
- **q** | **String**| Typeahead string |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
+| **q** | **String**| Typeahead string | |
 
 ### Return type
 
@@ -2345,7 +2354,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonActionsGET"></a>
 # **commonActionsGET**
@@ -2397,12 +2406,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2420,7 +2429,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonActionsIdGET"></a>
 # **commonActionsIdGET**
@@ -2473,13 +2482,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this action. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this action. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2497,7 +2506,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesGET"></a>
 # **commonAppVariablesGET**
@@ -2546,9 +2555,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **name** | **String**| App var name | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **name** | **String**| App var name | [optional] |
 
 ### Return type
 
@@ -2566,11 +2575,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesListGET"></a>
 # **commonAppVariablesListGET**
 > List&lt;AppVar&gt; commonAppVariablesListGET(jqFilters)
+
+
 
 
 
@@ -2613,9 +2624,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2633,7 +2644,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesProjectProjectIdGET"></a>
 # **commonAppVariablesProjectProjectIdGET**
@@ -2682,9 +2693,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
 
 ### Return type
 
@@ -2702,7 +2713,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesProjectProjectIdPUT"></a>
 # **commonAppVariablesProjectProjectIdPUT**
@@ -2752,10 +2763,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
- **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
+| **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional] |
 
 ### Return type
 
@@ -2773,7 +2784,76 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
+
+<a name="commonLogoGET"></a>
+# **commonLogoGET**
+> Map&lt;String, Object&gt; commonLogoGET(action)
+
+
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String action = "info"; // String | Action name
+    try {
+      Map<String, Object> result = apiInstance.commonLogoGET(action);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#commonLogoGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **action** | **String**| Action name | [optional] [default to download] [enum: info, download] |
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, */*
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 <a name="commonMediaPathGET"></a>
 # **commonMediaPathGET**
@@ -2823,10 +2903,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **path** | **String**|  |
- **action** | **String**| Action name | [optional] [default to download] [enum: info, download]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **path** | **String**|  | |
+| **action** | **String**| Action name | [optional] [default to download] [enum: info, download] |
 
 ### Return type
 
@@ -2844,7 +2924,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsFormFieldsGET"></a>
 # **commonMenuGroupsFormFieldsGET**
@@ -2909,7 +2989,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsGET"></a>
 # **commonMenuGroupsGET**
@@ -2974,7 +3054,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdDELETE"></a>
 # **commonMenuGroupsIdDELETE**
@@ -3022,9 +3102,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -3042,7 +3122,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonMenuGroupsIdFormFieldsGET"></a>
 # **commonMenuGroupsIdFormFieldsGET**
@@ -3091,9 +3171,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -3111,7 +3191,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdGET"></a>
 # **commonMenuGroupsIdGET**
@@ -3160,9 +3240,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -3180,7 +3260,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdPATCH"></a>
 # **commonMenuGroupsIdPATCH**
@@ -3230,10 +3310,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -3251,7 +3331,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdPUT"></a>
 # **commonMenuGroupsIdPUT**
@@ -3301,10 +3381,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -3322,7 +3402,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsPOST"></a>
 # **commonMenuGroupsPOST**
@@ -3371,9 +3451,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -3391,7 +3471,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="commonMenuItemsFormFieldsGET"></a>
 # **commonMenuItemsFormFieldsGET**
@@ -3456,7 +3536,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsGET"></a>
 # **commonMenuItemsGET**
@@ -3521,7 +3601,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdDELETE"></a>
 # **commonMenuItemsIdDELETE**
@@ -3569,9 +3649,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -3589,7 +3669,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonMenuItemsIdFormFieldsGET"></a>
 # **commonMenuItemsIdFormFieldsGET**
@@ -3638,9 +3718,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -3658,7 +3738,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdGET"></a>
 # **commonMenuItemsIdGET**
@@ -3707,9 +3787,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -3727,7 +3807,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdPATCH"></a>
 # **commonMenuItemsIdPATCH**
@@ -3777,10 +3857,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional] |
 
 ### Return type
 
@@ -3798,7 +3878,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdPUT"></a>
 # **commonMenuItemsIdPUT**
@@ -3848,10 +3928,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional] |
 
 ### Return type
 
@@ -3869,7 +3949,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsPOST"></a>
 # **commonMenuItemsPOST**
@@ -3918,9 +3998,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional] |
 
 ### Return type
 
@@ -3938,7 +4018,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="commonReviewStatusGroupsGET"></a>
 # **commonReviewStatusGroupsGET**
@@ -3987,9 +4067,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -4007,7 +4087,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdDELETE"></a>
 # **commonReviewStatusGroupsIdDELETE**
@@ -4055,9 +4135,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
 
 ### Return type
 
@@ -4075,7 +4155,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdGET"></a>
 # **commonReviewStatusGroupsIdGET**
@@ -4125,10 +4205,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -4146,7 +4226,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdPATCH"></a>
 # **commonReviewStatusGroupsIdPATCH**
@@ -4196,10 +4276,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
- **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
+| **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -4217,7 +4297,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdPUT"></a>
 # **commonReviewStatusGroupsIdPUT**
@@ -4267,10 +4347,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
- **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
+| **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -4288,7 +4368,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsPOST"></a>
 # **commonReviewStatusGroupsPOST**
@@ -4337,9 +4417,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -4357,7 +4437,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="commonReviewStatusesGET"></a>
 # **commonReviewStatusesGET**
@@ -4406,9 +4486,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -4426,7 +4506,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesIdDELETE"></a>
 # **commonReviewStatusesIdDELETE**
@@ -4474,9 +4554,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
 
 ### Return type
 
@@ -4494,7 +4574,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonReviewStatusesIdGET"></a>
 # **commonReviewStatusesIdGET**
@@ -4544,10 +4624,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -4565,7 +4645,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesIdPATCH"></a>
 # **commonReviewStatusesIdPATCH**
@@ -4615,10 +4695,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
- **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
+| **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -4636,7 +4716,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesIdPUT"></a>
 # **commonReviewStatusesIdPUT**
@@ -4686,10 +4766,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
- **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
+| **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -4707,7 +4787,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesPOST"></a>
 # **commonReviewStatusesPOST**
@@ -4756,9 +4836,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -4776,11 +4856,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentAnnotationsAnnotatePUT"></a>
 # **documentAnnotationsAnnotatePUT**
 > AnnotationUpdateResponse documentAnnotationsAnnotatePUT(annotation)
+
+
 
 
 
@@ -4823,9 +4905,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **annotation** | [**Annotation**](Annotation.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **annotation** | [**Annotation**](Annotation.md)|  | [optional] |
 
 ### Return type
 
@@ -4843,7 +4925,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentAnnotationsBatchPUT"></a>
 # **documentAnnotationsBatchPUT**
@@ -4892,9 +4974,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **annotationBatchRequest** | [**List&lt;AnnotationBatchRequest&gt;**](AnnotationBatchRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **annotationBatchRequest** | [**List&lt;AnnotationBatchRequest&gt;**](AnnotationBatchRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -4912,7 +4994,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentAnnotationsGET"></a>
 # **documentAnnotationsGET**
@@ -4977,7 +5059,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentAnnotationsIdDELETE"></a>
 # **documentAnnotationsIdDELETE**
@@ -5025,9 +5107,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation. | |
 
 ### Return type
 
@@ -5045,7 +5127,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentAnnotationsIdGET"></a>
 # **documentAnnotationsIdGET**
@@ -5094,9 +5176,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation. | |
 
 ### Return type
 
@@ -5114,7 +5196,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentAnnotationsIdPUT"></a>
 # **documentAnnotationsIdPUT**
@@ -5164,10 +5246,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation. |
- **annotation** | [**Annotation**](Annotation.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation. | |
+| **annotation** | [**Annotation**](Annotation.md)|  | [optional] |
 
 ### Return type
 
@@ -5185,7 +5267,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentAnnotationsPOST"></a>
 # **documentAnnotationsPOST**
@@ -5234,9 +5316,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **annotation** | [**Annotation**](Annotation.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **annotation** | [**Annotation**](Annotation.md)|  | [optional] |
 
 ### Return type
 
@@ -5254,7 +5336,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentAnnotationsSuggestPOST"></a>
 # **documentAnnotationsSuggestPOST**
@@ -5303,9 +5385,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **annotationSuggestRequest** | [**AnnotationSuggestRequest**](AnnotationSuggestRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **annotationSuggestRequest** | [**AnnotationSuggestRequest**](AnnotationSuggestRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -5323,11 +5405,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentFieldAnnotationsForUserGET"></a>
 # **documentDocumentFieldAnnotationsForUserGET**
 > DocumentFieldAnnotation documentDocumentFieldAnnotationsForUserGET(jqFilters)
+
+
 
 
 
@@ -5370,9 +5454,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -5390,7 +5474,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldAnnotationsGET"></a>
 # **documentDocumentFieldAnnotationsGET**
@@ -5439,9 +5523,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -5459,7 +5543,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldAnnotationsUidGET"></a>
 # **documentDocumentFieldAnnotationsUidGET**
@@ -5509,10 +5593,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -5530,7 +5614,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesFormFieldsGET"></a>
 # **documentDocumentFieldCategoriesFormFieldsGET**
@@ -5595,7 +5679,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesGET"></a>
 # **documentDocumentFieldCategoriesGET**
@@ -5644,9 +5728,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -5664,7 +5748,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesIdDELETE"></a>
 # **documentDocumentFieldCategoriesIdDELETE**
@@ -5712,9 +5796,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document field category. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document field category. | |
 
 ### Return type
 
@@ -5732,7 +5816,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesIdFormFieldsGET"></a>
 # **documentDocumentFieldCategoriesIdFormFieldsGET**
@@ -5781,9 +5865,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -5801,7 +5885,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesIdGET"></a>
 # **documentDocumentFieldCategoriesIdGET**
@@ -5851,10 +5935,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document field category. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document field category. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -5872,7 +5956,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesIdPATCH"></a>
 # **documentDocumentFieldCategoriesIdPATCH**
@@ -5922,10 +6006,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document field category. |
- **documentFieldCategoryCreate** | [**DocumentFieldCategoryCreate**](DocumentFieldCategoryCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document field category. | |
+| **documentFieldCategoryCreate** | [**DocumentFieldCategoryCreate**](DocumentFieldCategoryCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -5943,7 +6027,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesIdPUT"></a>
 # **documentDocumentFieldCategoriesIdPUT**
@@ -5993,10 +6077,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document field category. |
- **documentFieldCategoryCreate** | [**DocumentFieldCategoryCreate**](DocumentFieldCategoryCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document field category. | |
+| **documentFieldCategoryCreate** | [**DocumentFieldCategoryCreate**](DocumentFieldCategoryCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -6014,7 +6098,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldCategoriesPOST"></a>
 # **documentDocumentFieldCategoriesPOST**
@@ -6063,9 +6147,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentFieldCategoryCreate** | [**DocumentFieldCategoryCreate**](DocumentFieldCategoryCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentFieldCategoryCreate** | [**DocumentFieldCategoryCreate**](DocumentFieldCategoryCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -6083,7 +6167,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsFormFieldsGET"></a>
 # **documentDocumentFieldDetectorsFormFieldsGET**
@@ -6148,7 +6232,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsGET"></a>
 # **documentDocumentFieldDetectorsGET**
@@ -6197,9 +6281,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -6217,7 +6301,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsPOST"></a>
 # **documentDocumentFieldDetectorsPOST**
@@ -6266,9 +6350,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentFieldDetectorCreate** | [**DocumentFieldDetectorCreate**](DocumentFieldDetectorCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentFieldDetectorCreate** | [**DocumentFieldDetectorCreate**](DocumentFieldDetectorCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -6286,7 +6370,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsUidDELETE"></a>
 # **documentDocumentFieldDetectorsUidDELETE**
@@ -6334,9 +6418,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field detector. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field detector. | |
 
 ### Return type
 
@@ -6354,7 +6438,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsUidFormFieldsGET"></a>
 # **documentDocumentFieldDetectorsUidFormFieldsGET**
@@ -6403,9 +6487,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**|  | |
 
 ### Return type
 
@@ -6423,7 +6507,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsUidGET"></a>
 # **documentDocumentFieldDetectorsUidGET**
@@ -6473,10 +6557,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field detector. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field detector. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -6494,7 +6578,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsUidPATCH"></a>
 # **documentDocumentFieldDetectorsUidPATCH**
@@ -6544,10 +6628,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field detector. |
- **documentFieldDetectorCreate** | [**DocumentFieldDetectorCreate**](DocumentFieldDetectorCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field detector. | |
+| **documentFieldDetectorCreate** | [**DocumentFieldDetectorCreate**](DocumentFieldDetectorCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -6565,7 +6649,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldDetectorsUidPUT"></a>
 # **documentDocumentFieldDetectorsUidPUT**
@@ -6615,10 +6699,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field detector. |
- **documentFieldDetectorCreate** | [**DocumentFieldDetectorCreate**](DocumentFieldDetectorCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field detector. | |
+| **documentFieldDetectorCreate** | [**DocumentFieldDetectorCreate**](DocumentFieldDetectorCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -6636,7 +6720,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldValuesGET"></a>
 # **documentDocumentFieldValuesGET**
@@ -6685,9 +6769,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -6705,7 +6789,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldValuesIdGET"></a>
 # **documentDocumentFieldValuesIdGET**
@@ -6755,10 +6839,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field value. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field value. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -6776,7 +6860,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsCheckFieldFormulaPOST"></a>
 # **documentDocumentFieldsCheckFieldFormulaPOST**
@@ -6825,9 +6909,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **checkNewDocumentFieldFormulaRequest** | [**CheckNewDocumentFieldFormulaRequest**](CheckNewDocumentFieldFormulaRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **checkNewDocumentFieldFormulaRequest** | [**CheckNewDocumentFieldFormulaRequest**](CheckNewDocumentFieldFormulaRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -6845,7 +6929,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentFieldsFormFieldsGET"></a>
 # **documentDocumentFieldsFormFieldsGET**
@@ -6910,7 +6994,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsGET"></a>
 # **documentDocumentFieldsGET**
@@ -6959,9 +7043,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -6979,7 +7063,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsPOST"></a>
 # **documentDocumentFieldsPOST**
@@ -7028,9 +7112,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -7048,11 +7132,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentFieldsStatsGET"></a>
 # **documentDocumentFieldsStatsGET**
 > List&lt;DocumentFieldStatsResponse&gt; documentDocumentFieldsStatsGET(documentTypeUid)
+
+
 
 
 
@@ -7095,9 +7181,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeUid** | **String**| Filter by document type uid | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeUid** | **String**| Filter by document type uid | [optional] |
 
 ### Return type
 
@@ -7115,7 +7201,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsUidCheckFormulaPOST"></a>
 # **documentDocumentFieldsUidCheckFormulaPOST**
@@ -7165,10 +7251,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
- **checkDocumentFieldFormulaRequest** | [**CheckDocumentFieldFormulaRequest**](CheckDocumentFieldFormulaRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
+| **checkDocumentFieldFormulaRequest** | [**CheckDocumentFieldFormulaRequest**](CheckDocumentFieldFormulaRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -7186,7 +7272,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsUidClonePOST"></a>
 # **documentDocumentFieldsUidClonePOST**
@@ -7236,10 +7322,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
- **cloneDocumentFieldRequest** | [**CloneDocumentFieldRequest**](CloneDocumentFieldRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
+| **cloneDocumentFieldRequest** | [**CloneDocumentFieldRequest**](CloneDocumentFieldRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -7257,7 +7343,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentFieldsUidDELETE"></a>
 # **documentDocumentFieldsUidDELETE**
@@ -7305,9 +7391,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
 
 ### Return type
 
@@ -7325,7 +7411,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentDocumentFieldsUidFormFieldsGET"></a>
 # **documentDocumentFieldsUidFormFieldsGET**
@@ -7374,9 +7460,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**|  | |
 
 ### Return type
 
@@ -7394,7 +7480,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsUidGET"></a>
 # **documentDocumentFieldsUidGET**
@@ -7444,10 +7530,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -7465,7 +7551,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsUidPATCH"></a>
 # **documentDocumentFieldsUidPATCH**
@@ -7515,10 +7601,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
- **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
+| **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -7536,7 +7622,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsUidPUT"></a>
 # **documentDocumentFieldsUidPUT**
@@ -7586,10 +7672,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
- **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
+| **documentFieldCreate** | [**DocumentFieldCreate**](DocumentFieldCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -7607,7 +7693,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentFieldsUidPreDeletePOST"></a>
 # **documentDocumentFieldsUidPreDeletePOST**
@@ -7657,10 +7743,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document field. |
- **documentFieldDetail** | [**DocumentFieldDetail**](DocumentFieldDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document field. | |
+| **documentFieldDetail** | [**DocumentFieldDetail**](DocumentFieldDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -7678,7 +7764,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentNotesGET"></a>
 # **documentDocumentNotesGET**
@@ -7731,13 +7817,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
- **projectId** | **String**| Filter by project id | [optional]
- **documentId** | **String**| Filter by document id | [optional]
- **force** | **Boolean**| For deleted documents as well | [optional]
- **exportTo** | **Boolean**| Export data | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
+| **projectId** | **String**| Filter by project id | [optional] |
+| **documentId** | **String**| Filter by document id | [optional] |
+| **force** | **Boolean**| For deleted documents as well | [optional] |
+| **exportTo** | **Boolean**| Export data | [optional] |
 
 ### Return type
 
@@ -7755,7 +7841,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentNotesIdDELETE"></a>
 # **documentDocumentNotesIdDELETE**
@@ -7803,9 +7889,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document note. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document note. | |
 
 ### Return type
 
@@ -7823,7 +7909,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentDocumentNotesIdGET"></a>
 # **documentDocumentNotesIdGET**
@@ -7873,10 +7959,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document note. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document note. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -7894,7 +7980,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentNotesIdPATCH"></a>
 # **documentDocumentNotesIdPATCH**
@@ -7944,10 +8030,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document note. |
- **documentNoteDetail** | [**DocumentNoteDetail**](DocumentNoteDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document note. | |
+| **documentNoteDetail** | [**DocumentNoteDetail**](DocumentNoteDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -7965,7 +8051,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentNotesIdPUT"></a>
 # **documentDocumentNotesIdPUT**
@@ -8015,10 +8101,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document note. |
- **documentNoteUpdate** | [**DocumentNoteUpdate**](DocumentNoteUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document note. | |
+| **documentNoteUpdate** | [**DocumentNoteUpdate**](DocumentNoteUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -8036,7 +8122,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentNotesPOST"></a>
 # **documentDocumentNotesPOST**
@@ -8085,9 +8171,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentNoteCreate** | [**DocumentNoteCreate**](DocumentNoteCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentNoteCreate** | [**DocumentNoteCreate**](DocumentNoteCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -8105,7 +8191,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentTypesFormFieldsGET"></a>
 # **documentDocumentTypesFormFieldsGET**
@@ -8170,7 +8256,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesGET"></a>
 # **documentDocumentTypesGET**
@@ -8219,9 +8305,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -8239,11 +8325,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesImportDocTypePUT"></a>
 # **documentDocumentTypesImportDocTypePUT**
 > DocumentTypeImportResponse documentDocumentTypesImportDocTypePUT(documentTypeImportRequest)
+
+
 
 
 
@@ -8286,9 +8374,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeImportRequest** | [**DocumentTypeImportRequest**](DocumentTypeImportRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeImportRequest** | [**DocumentTypeImportRequest**](DocumentTypeImportRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -8306,7 +8394,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesPOST"></a>
 # **documentDocumentTypesPOST**
@@ -8355,9 +8443,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeCreate** | [**DocumentTypeCreate**](DocumentTypeCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeCreate** | [**DocumentTypeCreate**](DocumentTypeCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -8375,7 +8463,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentTypesSchemeMigrationsGET"></a>
 # **documentDocumentTypesSchemeMigrationsGET**
@@ -8440,11 +8528,13 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesStatsGET"></a>
 # **documentDocumentTypesStatsGET**
 > List&lt;DocumentTypeStats&gt; documentDocumentTypesStatsGET()
+
+
 
 
 
@@ -8503,7 +8593,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUidClonePOST"></a>
 # **documentDocumentTypesUidClonePOST**
@@ -8553,10 +8643,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
- **cloneDocumentTypeRequest** | [**CloneDocumentTypeRequest**](CloneDocumentTypeRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
+| **cloneDocumentTypeRequest** | [**CloneDocumentTypeRequest**](CloneDocumentTypeRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -8574,7 +8664,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentTypesUidDELETE"></a>
 # **documentDocumentTypesUidDELETE**
@@ -8622,9 +8712,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
 
 ### Return type
 
@@ -8642,11 +8732,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentDocumentTypesUidExportDocTypeGET"></a>
 # **documentDocumentTypesUidExportDocTypeGET**
 > File documentDocumentTypesUidExportDocTypeGET(uid, targetVersion)
+
+
 
 
 
@@ -8690,10 +8782,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
- **targetVersion** | **String**| Version number | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
+| **targetVersion** | **String**| Version number | [optional] |
 
 ### Return type
 
@@ -8711,7 +8803,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUidFormFieldsGET"></a>
 # **documentDocumentTypesUidFormFieldsGET**
@@ -8760,9 +8852,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**|  | |
 
 ### Return type
 
@@ -8780,7 +8872,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUidGET"></a>
 # **documentDocumentTypesUidGET**
@@ -8830,10 +8922,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -8851,7 +8943,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUidPATCH"></a>
 # **documentDocumentTypesUidPATCH**
@@ -8901,10 +8993,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
- **documentTypeCreate** | [**DocumentTypeCreate**](DocumentTypeCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
+| **documentTypeCreate** | [**DocumentTypeCreate**](DocumentTypeCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -8922,7 +9014,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUidPUT"></a>
 # **documentDocumentTypesUidPUT**
@@ -8972,10 +9064,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
- **documentTypeCreate** | [**DocumentTypeCreate**](DocumentTypeCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
+| **documentTypeCreate** | [**DocumentTypeCreate**](DocumentTypeCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -8993,7 +9085,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUidPreDeletePOST"></a>
 # **documentDocumentTypesUidPreDeletePOST**
@@ -9043,10 +9135,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this document type. |
- **documentTypeDetail** | [**DocumentTypeDetail**](DocumentTypeDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this document type. | |
+| **documentTypeDetail** | [**DocumentTypeDetail**](DocumentTypeDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -9064,11 +9156,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentTypesUserProjectTypesGET"></a>
 # **documentDocumentTypesUserProjectTypesGET**
 > DocumentTypeDetail documentDocumentTypesUserProjectTypesGET(jqFilters)
+
+
 
 
 
@@ -9111,9 +9205,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -9131,11 +9225,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsDownloadZipGET"></a>
 # **documentDocumentsDownloadZipGET**
 > DocumentDownloadZipResponse documentDocumentsDownloadZipGET(documentIds, excludeDocumentIds)
+
+
 
 
 
@@ -9179,10 +9275,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentIds** | **String**| Filter by Document ids separated by commas | [optional]
- **excludeDocumentIds** | **String**| Exclude Document ids separated by commas | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentIds** | **String**| Filter by Document ids separated by commas | [optional] |
+| **excludeDocumentIds** | **String**| Exclude Document ids separated by commas | [optional] |
 
 ### Return type
 
@@ -9200,12 +9296,14 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="documentDocumentsForUserGET"></a>
 # **documentDocumentsForUserGET**
 > DocumentsForUserResponse documentDocumentsForUserGET()
+
+
 
 
 
@@ -9264,7 +9362,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsGET"></a>
 # **documentDocumentsGET**
@@ -9315,11 +9413,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
- **clusterId** | **Integer**| Cluster id to filter by | [optional]
- **q** | **String**| Search parameters for djangoQL | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
+| **clusterId** | **Integer**| Cluster id to filter by | [optional] |
+| **q** | **String**| Search parameters for djangoQL | [optional] |
 
 ### Return type
 
@@ -9337,11 +9435,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdActionsGET"></a>
 # **documentDocumentsIdActionsGET**
 > DocumentsForUser documentDocumentsIdActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
 
 
 
@@ -9388,13 +9488,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -9412,11 +9512,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdDELETE"></a>
 # **documentDocumentsIdDELETE**
 > documentDocumentsIdDELETE(id)
+
+
 
 
 
@@ -9458,9 +9560,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -9478,7 +9580,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentDocumentsIdDataGET"></a>
 # **documentDocumentsIdDataGET**
@@ -9528,10 +9630,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -9549,11 +9651,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdDefinitionsGET"></a>
 # **documentDocumentsIdDefinitionsGET**
 > List&lt;DocumentDefinitions&gt; documentDocumentsIdDefinitionsGET(id)
+
+
 
 
 
@@ -9596,9 +9700,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -9616,7 +9720,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdExtractionGET"></a>
 # **documentDocumentsIdExtractionGET**
@@ -9665,9 +9769,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -9685,11 +9789,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdFieldsGET"></a>
 # **documentDocumentsIdFieldsGET**
 > Map&lt;String, Object&gt; documentDocumentsIdFieldsGET(id)
+
+
 
 
 
@@ -9732,9 +9838,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -9752,11 +9858,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdFieldsPATCH"></a>
 # **documentDocumentsIdFieldsPATCH**
 > DocumentDetail documentDocumentsIdFieldsPATCH(id, documentDetail)
+
+
 
 
 
@@ -9800,10 +9908,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -9821,11 +9929,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdFieldsPOST"></a>
 # **documentDocumentsIdFieldsPOST**
 > DocumentDetail documentDocumentsIdFieldsPOST(id, documentDetail)
+
+
 
 
 
@@ -9869,10 +9979,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -9890,11 +10000,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentsIdFieldsPUT"></a>
 # **documentDocumentsIdFieldsPUT**
 > DocumentDetail documentDocumentsIdFieldsPUT(id, documentDetail)
+
+
 
 
 
@@ -9938,10 +10050,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -9959,11 +10071,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdFullTextGET"></a>
 # **documentDocumentsIdFullTextGET**
 > String documentDocumentsIdFullTextGET(id)
+
+
 
 
 
@@ -10006,9 +10120,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -10026,7 +10140,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdGET"></a>
 # **documentDocumentsIdGET**
@@ -10076,10 +10190,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -10097,11 +10211,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdHasPdfInfoGET"></a>
 # **documentDocumentsIdHasPdfInfoGET**
 > Boolean documentDocumentsIdHasPdfInfoGET(id)
+
+
 
 
 
@@ -10144,9 +10260,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -10164,11 +10280,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdPATCH"></a>
 # **documentDocumentsIdPATCH**
 > DocumentDetail documentDocumentsIdPATCH(id, documentDetail)
+
+
 
 
 
@@ -10212,10 +10330,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -10233,7 +10351,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdPUT"></a>
 # **documentDocumentsIdPUT**
@@ -10283,10 +10401,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional] |
 
 ### Return type
 
@@ -10304,11 +10422,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdPdfReprGET"></a>
 # **documentDocumentsIdPdfReprGET**
 > DocumentPDFRepr documentDocumentsIdPdfReprGET(id)
+
+
 
 
 
@@ -10351,9 +10471,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -10371,11 +10491,84 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
+
+<a name="documentDocumentsIdSetAnnotatorCoordDifferencePOST"></a>
+# **documentDocumentsIdSetAnnotatorCoordDifferencePOST**
+> DocumentSetAnnotatorCoordinatesDifferenceResponse documentDocumentsIdSetAnnotatorCoordDifferencePOST(id, documentSetAnnotatorCoordinatesDifferenceRequest)
+
+
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    DocumentSetAnnotatorCoordinatesDifferenceRequest documentSetAnnotatorCoordinatesDifferenceRequest = new DocumentSetAnnotatorCoordinatesDifferenceRequest(); // DocumentSetAnnotatorCoordinatesDifferenceRequest | 
+    try {
+      DocumentSetAnnotatorCoordinatesDifferenceResponse result = apiInstance.documentDocumentsIdSetAnnotatorCoordDifferencePOST(id, documentSetAnnotatorCoordinatesDifferenceRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentDocumentsIdSetAnnotatorCoordDifferencePOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentSetAnnotatorCoordinatesDifferenceRequest** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional] |
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 <a name="documentDocumentsIdShowGET"></a>
 # **documentDocumentsIdShowGET**
 > File documentDocumentsIdShowGET(id, alt)
+
+
 
 
 
@@ -10419,10 +10612,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt] |
 
 ### Return type
 
@@ -10440,7 +10633,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsIdSimilarGET"></a>
 # **documentDocumentsIdSimilarGET**
@@ -10491,11 +10684,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document. |
- **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document. | |
+| **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -10513,7 +10706,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentDocumentsMarkDeletePOST"></a>
 # **documentDocumentsMarkDeletePOST**
@@ -10562,9 +10755,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -10582,11 +10775,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentsPOST"></a>
 # **documentDocumentsPOST**
 > DocumentsForUser documentDocumentsPOST(documentsForUser)
+
+
 
 
 
@@ -10629,9 +10824,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional] |
 
 ### Return type
 
@@ -10649,7 +10844,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentDocumentsUnmarkDeletePOST"></a>
 # **documentDocumentsUnmarkDeletePOST**
@@ -10698,9 +10893,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -10718,7 +10913,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentFieldAnnotationStatusesGET"></a>
 # **documentFieldAnnotationStatusesGET**
@@ -10767,9 +10962,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -10787,7 +10982,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentFieldAnnotationStatusesIdDELETE"></a>
 # **documentFieldAnnotationStatusesIdDELETE**
@@ -10835,9 +11030,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation status. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation status. | |
 
 ### Return type
 
@@ -10855,7 +11050,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentFieldAnnotationStatusesIdGET"></a>
 # **documentFieldAnnotationStatusesIdGET**
@@ -10905,10 +11100,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation status. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation status. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -10926,11 +11121,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentFieldAnnotationStatusesIdPATCH"></a>
 # **documentFieldAnnotationStatusesIdPATCH**
 > FieldAnnotationStatus documentFieldAnnotationStatusesIdPATCH(id, fieldAnnotationStatus)
+
+
 
 
 
@@ -10974,10 +11171,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation status. |
- **fieldAnnotationStatus** | [**FieldAnnotationStatus**](FieldAnnotationStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation status. | |
+| **fieldAnnotationStatus** | [**FieldAnnotationStatus**](FieldAnnotationStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -10995,7 +11192,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentFieldAnnotationStatusesIdPUT"></a>
 # **documentFieldAnnotationStatusesIdPUT**
@@ -11045,10 +11242,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this field annotation status. |
- **fieldAnnotationStatus** | [**FieldAnnotationStatus**](FieldAnnotationStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this field annotation status. | |
+| **fieldAnnotationStatus** | [**FieldAnnotationStatus**](FieldAnnotationStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -11066,7 +11263,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentFieldAnnotationStatusesPOST"></a>
 # **documentFieldAnnotationStatusesPOST**
@@ -11115,9 +11312,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldAnnotationStatus** | [**FieldAnnotationStatus**](FieldAnnotationStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldAnnotationStatus** | [**FieldAnnotationStatus**](FieldAnnotationStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -11135,11 +11332,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentFieldAnnotationsForUserGET"></a>
 # **documentProjectProjectPkDocumentFieldAnnotationsForUserGET**
 > DocumentFieldAnnotation documentProjectProjectPkDocumentFieldAnnotationsForUserGET(projectPk, jqFilters)
+
+
 
 
 
@@ -11183,10 +11382,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -11204,7 +11403,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentFieldAnnotationsGET"></a>
 # **documentProjectProjectPkDocumentFieldAnnotationsGET**
@@ -11254,10 +11453,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -11275,7 +11474,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentFieldAnnotationsUidGET"></a>
 # **documentProjectProjectPkDocumentFieldAnnotationsUidGET**
@@ -11326,11 +11525,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **uid** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **uid** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -11348,7 +11547,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentFieldValuesGET"></a>
 # **documentProjectProjectPkDocumentFieldValuesGET**
@@ -11398,10 +11597,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -11419,7 +11618,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentFieldValuesIdGET"></a>
 # **documentProjectProjectPkDocumentFieldValuesIdGET**
@@ -11470,11 +11669,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this field value. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this field value. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -11492,11 +11691,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDocumentPkAnnotationsGET"></a>
 # **documentProjectProjectPkDocumentsDocumentPkAnnotationsGET**
 > List&lt;AnnotationInDocument&gt; documentProjectProjectPkDocumentsDocumentPkAnnotationsGET(projectPk, documentPk)
+
+
 
 
 
@@ -11540,10 +11741,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentPk** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentPk** | **String**|  | |
 
 ### Return type
 
@@ -11561,11 +11762,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE"></a>
 # **documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE**
 > documentProjectProjectPkDocumentsDocumentPkAnnotationsIdDELETE(projectPk, documentPk, id)
+
+
 
 
 
@@ -11609,11 +11812,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentPk** | **String**|  |
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentPk** | **String**|  | |
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -11631,11 +11834,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET"></a>
 # **documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET**
 > AnnotationInDocument documentProjectProjectPkDocumentsDocumentPkAnnotationsIdGET(projectPk, documentPk, id)
+
+
 
 
 
@@ -11680,11 +11885,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentPk** | **String**|  |
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentPk** | **String**|  | |
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -11702,11 +11907,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH"></a>
 # **documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH**
 > AnnotationInDocument documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPATCH(projectPk, documentPk, id, annotationInDocument)
+
+
 
 
 
@@ -11752,12 +11959,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentPk** | **String**|  |
- **id** | **String**|  |
- **annotationInDocument** | [**AnnotationInDocument**](AnnotationInDocument.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentPk** | **String**|  | |
+| **id** | **String**|  | |
+| **annotationInDocument** | [**AnnotationInDocument**](AnnotationInDocument.md)|  | [optional] |
 
 ### Return type
 
@@ -11775,11 +11982,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT"></a>
 # **documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT**
 > AnnotationInDocument documentProjectProjectPkDocumentsDocumentPkAnnotationsIdPUT(projectPk, documentPk, id, annotationInDocument)
+
+
 
 
 
@@ -11825,12 +12034,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentPk** | **String**|  |
- **id** | **String**|  |
- **annotationInDocument** | [**AnnotationInDocument**](AnnotationInDocument.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentPk** | **String**|  | |
+| **id** | **String**|  | |
+| **annotationInDocument** | [**AnnotationInDocument**](AnnotationInDocument.md)|  | [optional] |
 
 ### Return type
 
@@ -11848,11 +12057,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST"></a>
 # **documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST**
 > AnnotationInDocument documentProjectProjectPkDocumentsDocumentPkAnnotationsPOST(projectPk, documentPk, annotationInDocument)
+
+
 
 
 
@@ -11897,11 +12108,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentPk** | **String**|  |
- **annotationInDocument** | [**AnnotationInDocument**](AnnotationInDocument.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentPk** | **String**|  | |
+| **annotationInDocument** | [**AnnotationInDocument**](AnnotationInDocument.md)|  | [optional] |
 
 ### Return type
 
@@ -11919,11 +12130,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsDownloadZipGET"></a>
 # **documentProjectProjectPkDocumentsDownloadZipGET**
 > DocumentDownloadZipResponse documentProjectProjectPkDocumentsDownloadZipGET(projectPk, documentIds, excludeDocumentIds)
+
+
 
 
 
@@ -11968,11 +12181,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentIds** | **String**| Filter by Document ids separated by commas | [optional]
- **excludeDocumentIds** | **String**| Exclude Document ids separated by commas | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentIds** | **String**| Filter by Document ids separated by commas | [optional] |
+| **excludeDocumentIds** | **String**| Exclude Document ids separated by commas | [optional] |
 
 ### Return type
 
@@ -11990,12 +12203,14 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsForUserGET"></a>
 # **documentProjectProjectPkDocumentsForUserGET**
 > DocumentsForUserResponse documentProjectProjectPkDocumentsForUserGET(projectPk)
+
+
 
 
 
@@ -12038,9 +12253,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
 
 ### Return type
 
@@ -12058,7 +12273,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsGET"></a>
 # **documentProjectProjectPkDocumentsGET**
@@ -12110,12 +12325,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
- **clusterId** | **Integer**| Cluster id to filter by | [optional]
- **q** | **String**| Search parameters for djangoQL | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
+| **clusterId** | **Integer**| Cluster id to filter by | [optional] |
+| **q** | **String**| Search parameters for djangoQL | [optional] |
 
 ### Return type
 
@@ -12133,11 +12348,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdActionsGET"></a>
 # **documentProjectProjectPkDocumentsIdActionsGET**
 > DocumentsForUser documentProjectProjectPkDocumentsIdActionsGET(projectPk, id, projectId, documentId, viewActions, jqFilters)
+
+
 
 
 
@@ -12185,14 +12402,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -12210,11 +12427,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdDELETE"></a>
 # **documentProjectProjectPkDocumentsIdDELETE**
 > documentProjectProjectPkDocumentsIdDELETE(projectPk, id)
+
+
 
 
 
@@ -12257,10 +12476,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -12278,7 +12497,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdDataGET"></a>
 # **documentProjectProjectPkDocumentsIdDataGET**
@@ -12329,11 +12548,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -12351,11 +12570,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdDefinitionsGET"></a>
 # **documentProjectProjectPkDocumentsIdDefinitionsGET**
 > List&lt;DocumentDefinitions&gt; documentProjectProjectPkDocumentsIdDefinitionsGET(projectPk, id)
+
+
 
 
 
@@ -12399,10 +12620,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -12420,7 +12641,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdExtractionGET"></a>
 # **documentProjectProjectPkDocumentsIdExtractionGET**
@@ -12470,10 +12691,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -12491,11 +12712,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdFieldsGET"></a>
 # **documentProjectProjectPkDocumentsIdFieldsGET**
 > Map&lt;String, Object&gt; documentProjectProjectPkDocumentsIdFieldsGET(projectPk, id)
+
+
 
 
 
@@ -12539,10 +12762,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -12560,11 +12783,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdFieldsPATCH"></a>
 # **documentProjectProjectPkDocumentsIdFieldsPATCH**
 > DocumentDetail documentProjectProjectPkDocumentsIdFieldsPATCH(projectPk, id, documentDetail)
+
+
 
 
 
@@ -12609,11 +12834,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -12631,11 +12856,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdFieldsPOST"></a>
 # **documentProjectProjectPkDocumentsIdFieldsPOST**
 > DocumentDetail documentProjectProjectPkDocumentsIdFieldsPOST(projectPk, id, documentDetail)
+
+
 
 
 
@@ -12680,11 +12907,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -12702,11 +12929,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdFieldsPUT"></a>
 # **documentProjectProjectPkDocumentsIdFieldsPUT**
 > DocumentDetail documentProjectProjectPkDocumentsIdFieldsPUT(projectPk, id, documentDetail)
+
+
 
 
 
@@ -12751,11 +12980,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -12773,11 +13002,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdFullTextGET"></a>
 # **documentProjectProjectPkDocumentsIdFullTextGET**
 > String documentProjectProjectPkDocumentsIdFullTextGET(projectPk, id)
+
+
 
 
 
@@ -12821,10 +13052,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -12842,7 +13073,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdGET"></a>
 # **documentProjectProjectPkDocumentsIdGET**
@@ -12893,11 +13124,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -12915,11 +13146,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdHasPdfInfoGET"></a>
 # **documentProjectProjectPkDocumentsIdHasPdfInfoGET**
 > Boolean documentProjectProjectPkDocumentsIdHasPdfInfoGET(projectPk, id)
+
+
 
 
 
@@ -12963,10 +13196,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -12984,11 +13217,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdPATCH"></a>
 # **documentProjectProjectPkDocumentsIdPATCH**
 > DocumentDetail documentProjectProjectPkDocumentsIdPATCH(projectPk, id, documentDetail)
+
+
 
 
 
@@ -13033,11 +13268,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentDetail** | [**DocumentDetail**](DocumentDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -13055,7 +13290,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdPUT"></a>
 # **documentProjectProjectPkDocumentsIdPUT**
@@ -13106,11 +13341,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional] |
 
 ### Return type
 
@@ -13128,11 +13363,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdPdfReprGET"></a>
 # **documentProjectProjectPkDocumentsIdPdfReprGET**
 > DocumentPDFRepr documentProjectProjectPkDocumentsIdPdfReprGET(projectPk, id)
+
+
 
 
 
@@ -13176,10 +13413,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
 
 ### Return type
 
@@ -13197,11 +13434,86 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
+
+<a name="documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST"></a>
+# **documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST**
+> DocumentSetAnnotatorCoordinatesDifferenceResponse documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST(projectPk, id, documentSetAnnotatorCoordinatesDifferenceRequest)
+
+
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    String projectPk = "projectPk_example"; // String | 
+    String id = "id_example"; // String | A unique integer value identifying this document.
+    DocumentSetAnnotatorCoordinatesDifferenceRequest documentSetAnnotatorCoordinatesDifferenceRequest = new DocumentSetAnnotatorCoordinatesDifferenceRequest(); // DocumentSetAnnotatorCoordinatesDifferenceRequest | 
+    try {
+      DocumentSetAnnotatorCoordinatesDifferenceResponse result = apiInstance.documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST(projectPk, id, documentSetAnnotatorCoordinatesDifferenceRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **documentSetAnnotatorCoordinatesDifferenceRequest** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional] |
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdShowGET"></a>
 # **documentProjectProjectPkDocumentsIdShowGET**
 > File documentProjectProjectPkDocumentsIdShowGET(projectPk, id, alt)
+
+
 
 
 
@@ -13246,11 +13558,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **alt** | **String**| Get alternative document file if exists | [optional] [enum: true, alt, alt_for_pdf, initial, strict_alt] |
 
 ### Return type
 
@@ -13268,7 +13580,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsIdSimilarGET"></a>
 # **documentProjectProjectPkDocumentsIdSimilarGET**
@@ -13320,12 +13632,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **id** | **String**| A unique integer value identifying this document. |
- **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **id** | **String**| A unique integer value identifying this document. | |
+| **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -13343,7 +13655,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsMarkDeletePOST"></a>
 # **documentProjectProjectPkDocumentsMarkDeletePOST**
@@ -13393,10 +13705,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -13414,11 +13726,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsPOST"></a>
 # **documentProjectProjectPkDocumentsPOST**
 > DocumentsForUser documentProjectProjectPkDocumentsPOST(projectPk, documentsForUser)
+
+
 
 
 
@@ -13462,10 +13776,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **documentsForUser** | [**DocumentsForUser**](DocumentsForUser.md)|  | [optional] |
 
 ### Return type
 
@@ -13483,7 +13797,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentProjectProjectPkDocumentsUnmarkDeletePOST"></a>
 # **documentProjectProjectPkDocumentsUnmarkDeletePOST**
@@ -13533,10 +13847,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectPk** | **String**|  |
- **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectPk** | **String**|  | |
+| **markUnmarkForDeleteDocumentsRequest** | [**MarkUnmarkForDeleteDocumentsRequest**](MarkUnmarkForDeleteDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -13554,11 +13868,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="documentStatsGET"></a>
 # **documentStatsGET**
 > Map&lt;String, Object&gt; documentStatsGET()
+
+
 
 
 
@@ -13617,7 +13933,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentTextunitsGET"></a>
 # **documentTextunitsGET**
@@ -13666,9 +13982,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **q** | **String**| Search parameters for djangoQL | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **q** | **String**| Search parameters for djangoQL | [optional] |
 
 ### Return type
 
@@ -13686,7 +14002,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="documentTextunitsIdGET"></a>
 # **documentTextunitsIdGET**
@@ -13736,10 +14052,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit. |
- **q** | **String**| Search parameters for djangoQL | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit. | |
+| **q** | **String**| Search parameters for djangoQL | [optional] |
 
 ### Return type
 
@@ -13757,11 +14073,11 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="dumpDocumentConfigGET"></a>
 # **dumpDocumentConfigGET**
-> OneOfarrayfile dumpDocumentConfigGET(download, documentTypeCodes)
+> DumpDocumentConfigGET200Response dumpDocumentConfigGET(download, documentTypeCodes)
 
 
 
@@ -13792,7 +14108,7 @@ public class Example {
     Boolean download = true; // Boolean | Download as file
     String documentTypeCodes = "documentTypeCodes_example"; // String | Document Type codes separated by comma
     try {
-      OneOfarrayfile result = apiInstance.dumpDocumentConfigGET(download, documentTypeCodes);
+      DumpDocumentConfigGET200Response result = apiInstance.dumpDocumentConfigGET(download, documentTypeCodes);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpDocumentConfigGET");
@@ -13807,14 +14123,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **download** | **Boolean**| Download as file | [optional]
- **documentTypeCodes** | **String**| Document Type codes separated by comma | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **download** | **Boolean**| Download as file | [optional] |
+| **documentTypeCodes** | **String**| Document Type codes separated by comma | [optional] |
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -13828,8 +14144,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpDocumentConfigPUT"></a>
 # **dumpDocumentConfigPUT**
@@ -13861,7 +14177,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<>()); // List<Map<String, Object>> | 
     try {
       String result = apiInstance.dumpDocumentConfigPUT(requestBody);
       System.out.println(result);
@@ -13878,9 +14194,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional] |
 
 ### Return type
 
@@ -13898,8 +14214,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpDumpFixturePOST"></a>
 # **dumpDumpFixturePOST**
@@ -13948,9 +14264,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **dumpFixture** | [**DumpFixture**](DumpFixture.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **dumpFixture** | [**DumpFixture**](DumpFixture.md)|  | [optional] |
 
 ### Return type
 
@@ -13968,11 +14284,11 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="dumpDumpGET"></a>
 # **dumpDumpGET**
-> OneOfarrayfile dumpDumpGET(download)
+> DumpDocumentConfigGET200Response dumpDumpGET(download)
 
 
 
@@ -14002,7 +14318,7 @@ public class Example {
     V1Api apiInstance = new V1Api(defaultClient);
     Boolean download = true; // Boolean | Download as file
     try {
-      OneOfarrayfile result = apiInstance.dumpDumpGET(download);
+      DumpDocumentConfigGET200Response result = apiInstance.dumpDumpGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpDumpGET");
@@ -14017,13 +14333,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **download** | **Boolean**| Download as file | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **download** | **Boolean**| Download as file | [optional] |
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -14037,8 +14353,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpDumpPUT"></a>
 # **dumpDumpPUT**
@@ -14070,7 +14386,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<>()); // List<Map<String, Object>> | 
     try {
       String result = apiInstance.dumpDumpPUT(requestBody);
       System.out.println(result);
@@ -14087,9 +14403,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional] |
 
 ### Return type
 
@@ -14107,12 +14423,12 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpFieldValuesGET"></a>
 # **dumpFieldValuesGET**
-> OneOfarrayfile dumpFieldValuesGET(download)
+> DumpDocumentConfigGET200Response dumpFieldValuesGET(download)
 
 
 
@@ -14142,7 +14458,7 @@ public class Example {
     V1Api apiInstance = new V1Api(defaultClient);
     Boolean download = true; // Boolean | Download as file
     try {
-      OneOfarrayfile result = apiInstance.dumpFieldValuesGET(download);
+      DumpDocumentConfigGET200Response result = apiInstance.dumpFieldValuesGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#dumpFieldValuesGET");
@@ -14157,13 +14473,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **download** | **Boolean**| Download as file | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **download** | **Boolean**| Download as file | [optional] |
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -14177,8 +14493,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpFieldValuesPUT"></a>
 # **dumpFieldValuesPUT**
@@ -14210,7 +14526,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     V1Api apiInstance = new V1Api(defaultClient);
-    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<>()); // List<Map<String, Object>> | 
     try {
       String result = apiInstance.dumpFieldValuesPUT(requestBody);
       System.out.println(result);
@@ -14227,9 +14543,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional] |
 
 ### Return type
 
@@ -14247,8 +14563,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpLoadFixturePOST"></a>
 # **dumpLoadFixturePOST**
@@ -14297,9 +14613,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **loadFixture** | [**LoadFixture**](LoadFixture.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **loadFixture** | [**LoadFixture**](LoadFixture.md)|  | [optional] |
 
 ### Return type
 
@@ -14317,8 +14633,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="extractAmountUsageGET"></a>
 # **extractAmountUsageGET**
@@ -14367,9 +14683,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -14387,7 +14703,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractAmountUsageTopGET"></a>
 # **extractAmountUsageTopGET**
@@ -14452,7 +14768,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCitationUsageGET"></a>
 # **extractCitationUsageGET**
@@ -14501,9 +14817,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -14521,7 +14837,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCitationUsageTopGET"></a>
 # **extractCitationUsageTopGET**
@@ -14586,7 +14902,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCopyrightUsageGET"></a>
 # **extractCopyrightUsageGET**
@@ -14635,9 +14951,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -14655,7 +14971,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCopyrightUsageTopGET"></a>
 # **extractCopyrightUsageTopGET**
@@ -14720,7 +15036,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCourtUsageGET"></a>
 # **extractCourtUsageGET**
@@ -14769,9 +15085,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -14789,7 +15105,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCourtUsageTopGET"></a>
 # **extractCourtUsageTopGET**
@@ -14854,7 +15170,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCurrencyUsageGET"></a>
 # **extractCurrencyUsageGET**
@@ -14903,9 +15219,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -14923,7 +15239,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCurrencyUsageTopGET"></a>
 # **extractCurrencyUsageTopGET**
@@ -14988,7 +15304,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateDurationUsageGET"></a>
 # **extractDateDurationUsageGET**
@@ -15037,9 +15353,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15057,7 +15373,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateDurationUsageTopGET"></a>
 # **extractDateDurationUsageTopGET**
@@ -15122,7 +15438,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageCalendarChartGET"></a>
 # **extractDateUsageCalendarChartGET**
@@ -15187,7 +15503,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageGET"></a>
 # **extractDateUsageGET**
@@ -15236,9 +15552,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15256,7 +15572,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageTimelineChartGET"></a>
 # **extractDateUsageTimelineChartGET**
@@ -15321,7 +15637,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageToIcalGET"></a>
 # **extractDateUsageToIcalGET**
@@ -15370,9 +15686,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15390,7 +15706,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageTopGET"></a>
 # **extractDateUsageTopGET**
@@ -15455,7 +15771,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDefinitionUsageGET"></a>
 # **extractDefinitionUsageGET**
@@ -15504,9 +15820,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15524,7 +15840,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDefinitionUsageTopGET"></a>
 # **extractDefinitionUsageTopGET**
@@ -15589,7 +15905,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDistanceUsageGET"></a>
 # **extractDistanceUsageGET**
@@ -15638,9 +15954,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15658,7 +15974,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDistanceUsageTopGET"></a>
 # **extractDistanceUsageTopGET**
@@ -15723,7 +16039,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoAliasUsageGET"></a>
 # **extractGeoAliasUsageGET**
@@ -15772,9 +16088,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15792,7 +16108,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoAliasUsageTopGET"></a>
 # **extractGeoAliasUsageTopGET**
@@ -15857,7 +16173,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntitiesGET"></a>
 # **extractGeoEntitiesGET**
@@ -15906,9 +16222,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15926,7 +16242,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntitiesIdGET"></a>
 # **extractGeoEntitiesIdGET**
@@ -15976,10 +16292,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this geo entity. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this geo entity. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -15997,7 +16313,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntitiesIdPUT"></a>
 # **extractGeoEntitiesIdPUT**
@@ -16047,10 +16363,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this geo entity. |
- **geoEntityUpdate** | [**GeoEntityUpdate**](GeoEntityUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this geo entity. | |
+| **geoEntityUpdate** | [**GeoEntityUpdate**](GeoEntityUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -16068,7 +16384,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntityUsageGET"></a>
 # **extractGeoEntityUsageGET**
@@ -16117,9 +16433,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16137,7 +16453,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntityUsageTopGET"></a>
 # **extractGeoEntityUsageTopGET**
@@ -16202,7 +16518,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartiesGET"></a>
 # **extractPartiesGET**
@@ -16251,9 +16567,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16271,7 +16587,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartiesIdGET"></a>
 # **extractPartiesIdGET**
@@ -16321,10 +16637,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this party. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this party. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16342,7 +16658,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartyNetworkChartGET"></a>
 # **extractPartyNetworkChartGET**
@@ -16391,9 +16707,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16411,7 +16727,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartyUsageGET"></a>
 # **extractPartyUsageGET**
@@ -16460,9 +16776,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16480,7 +16796,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartyUsageTopGET"></a>
 # **extractPartyUsageTopGET**
@@ -16545,7 +16861,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPercentUsageGET"></a>
 # **extractPercentUsageGET**
@@ -16594,9 +16910,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16614,7 +16930,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPercentUsageTopGET"></a>
 # **extractPercentUsageTopGET**
@@ -16679,7 +16995,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRatioUsageGET"></a>
 # **extractRatioUsageGET**
@@ -16728,9 +17044,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16748,7 +17064,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRatioUsageTopGET"></a>
 # **extractRatioUsageTopGET**
@@ -16813,7 +17129,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRegulationUsageGET"></a>
 # **extractRegulationUsageGET**
@@ -16862,9 +17178,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -16882,7 +17198,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRegulationUsageTopGET"></a>
 # **extractRegulationUsageTopGET**
@@ -16947,11 +17263,13 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTermTagsGET"></a>
 # **extractTermTagsGET**
 > List&lt;TermTag&gt; extractTermTagsGET(jqFilters)
+
+
 
 
 
@@ -16994,9 +17312,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -17014,7 +17332,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTermUsageGET"></a>
 # **extractTermUsageGET**
@@ -17063,9 +17381,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -17083,7 +17401,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTermUsageTopGET"></a>
 # **extractTermUsageTopGET**
@@ -17148,7 +17466,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTrademarkUsageGET"></a>
 # **extractTrademarkUsageGET**
@@ -17197,9 +17515,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -17217,7 +17535,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTrademarkUsageTopGET"></a>
 # **extractTrademarkUsageTopGET**
@@ -17282,7 +17600,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTypeaheadGeoEntityUsageFieldNameGET"></a>
 # **extractTypeaheadGeoEntityUsageFieldNameGET**
@@ -17331,9 +17649,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
 
 ### Return type
 
@@ -17351,7 +17669,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTypeaheadPartyUsageFieldNameGET"></a>
 # **extractTypeaheadPartyUsageFieldNameGET**
@@ -17400,9 +17718,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
 
 ### Return type
 
@@ -17420,7 +17738,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTypeaheadTermUsageFieldNameGET"></a>
 # **extractTypeaheadTermUsageFieldNameGET**
@@ -17469,9 +17787,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
 
 ### Return type
 
@@ -17489,7 +17807,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractUrlUsageGET"></a>
 # **extractUrlUsageGET**
@@ -17538,9 +17856,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -17558,7 +17876,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractUrlUsageTopGET"></a>
 # **extractUrlUsageTopGET**
@@ -17623,7 +17941,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="loggingLogMessagePOST"></a>
 # **loggingLogMessagePOST**
@@ -17672,9 +17990,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **loggingAPIViewRequest** | [**LoggingAPIViewRequest**](LoggingAPIViewRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **loggingAPIViewRequest** | [**LoggingAPIViewRequest**](LoggingAPIViewRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -17692,9 +18010,9 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**500** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
 
 <a name="mediaDataPathGET"></a>
 # **mediaDataPathGET**
@@ -17744,10 +18062,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **path** | **String**|  |
- **action** | **String**| Action name | [optional] [default to download] [enum: info, download]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **path** | **String**|  | |
+| **action** | **String**| Action name | [optional] [default to download] [enum: info, download] |
 
 ### Return type
 
@@ -17765,7 +18083,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="notificationsWebNotificationsGET"></a>
 # **notificationsWebNotificationsGET**
@@ -17830,7 +18148,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="notificationsWebNotificationsMarkSeenPOST"></a>
 # **notificationsWebNotificationsMarkSeenPOST**
@@ -17879,9 +18197,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **markForSeenWebNotificationRequest** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **markForSeenWebNotificationRequest** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -17899,7 +18217,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectClusteringGET"></a>
 # **projectProjectClusteringGET**
@@ -17948,9 +18266,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -17968,7 +18286,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectClusteringIdGET"></a>
 # **projectProjectClusteringIdGET**
@@ -18018,10 +18336,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project clustering. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project clustering. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -18039,7 +18357,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsFormFieldsGET"></a>
 # **projectProjectsFormFieldsGET**
@@ -18104,7 +18422,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsGET"></a>
 # **projectProjectsGET**
@@ -18153,9 +18471,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -18173,11 +18491,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdActiveTasksGET"></a>
 # **projectProjectsIdActiveTasksGET**
 > List&lt;ProjectActiveTasks&gt; projectProjectsIdActiveTasksGET(id, jqFilters)
+
+
 
 
 
@@ -18221,10 +18541,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -18242,7 +18562,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdAnnotationsAssigneesGET"></a>
 # **projectProjectsIdAnnotationsAssigneesGET**
@@ -18291,9 +18611,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -18311,7 +18631,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdAssignAnnotationsPOST"></a>
 # **projectProjectsIdAssignAnnotationsPOST**
@@ -18361,10 +18681,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **assignProjectAnnotationsRequest** | [**AssignProjectAnnotationsRequest**](AssignProjectAnnotationsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **assignProjectAnnotationsRequest** | [**AssignProjectAnnotationsRequest**](AssignProjectAnnotationsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -18382,8 +18702,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**404** |  |  -  |
+| **201** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdAssignDocumentPOST"></a>
 # **projectProjectsIdAssignDocumentPOST**
@@ -18433,10 +18753,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **assignProjectDocumentRequest** | [**AssignProjectDocumentRequest**](AssignProjectDocumentRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **assignProjectDocumentRequest** | [**AssignProjectDocumentRequest**](AssignProjectDocumentRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -18454,8 +18774,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdAssignDocumentsPOST"></a>
 # **projectProjectsIdAssignDocumentsPOST**
@@ -18505,10 +18825,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **assignProjectDocumentsRequest** | [**AssignProjectDocumentsRequest**](AssignProjectDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **assignProjectDocumentsRequest** | [**AssignProjectDocumentsRequest**](AssignProjectDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -18526,8 +18846,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdAssigneesGET"></a>
 # **projectProjectsIdAssigneesGET**
@@ -18576,9 +18896,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -18596,11 +18916,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdCheckSimilarityProcessAllowedPOST"></a>
 # **projectProjectsIdCheckSimilarityProcessAllowedPOST**
 > ProjectDetail projectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail)
+
+
 
 
 
@@ -18644,10 +18966,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -18665,7 +18987,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdCleanupPOST"></a>
 # **projectProjectsIdCleanupPOST**
@@ -18715,10 +19037,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **cleanupProjectRequest** | [**CleanupProjectRequest**](CleanupProjectRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **cleanupProjectRequest** | [**CleanupProjectRequest**](CleanupProjectRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -18736,12 +19058,14 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**200** |  |  -  |
+| **201** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdClusterActionsGET"></a>
 # **projectProjectsIdClusterActionsGET**
 > ProjectDetail projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
 
 
 
@@ -18788,13 +19112,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -18812,7 +19136,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdClusterPOST"></a>
 # **projectProjectsIdClusterPOST**
@@ -18862,10 +19186,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **clusterProjectRequest** | [**ClusterProjectRequest**](ClusterProjectRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **clusterProjectRequest** | [**ClusterProjectRequest**](ClusterProjectRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -18883,8 +19207,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**400** |  |  -  |
+| **201** |  |  -  |
+| **400** |  |  -  |
 
 <a name="projectProjectsIdClusteringStatusGET"></a>
 # **projectProjectsIdClusteringStatusGET**
@@ -18934,10 +19258,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectClusteringId** | **Integer**| Get by project_clustering_id | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectClusteringId** | **Integer**| Get by project_clustering_id | [optional] |
 
 ### Return type
 
@@ -18955,8 +19279,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdDELETE"></a>
 # **projectProjectsIdDELETE**
@@ -19004,9 +19328,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -19024,11 +19348,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectProjectsIdDeleteDocumentSimilarityResultsDELETE"></a>
 # **projectProjectsIdDeleteDocumentSimilarityResultsDELETE**
 > projectProjectsIdDeleteDocumentSimilarityResultsDELETE(id)
+
+
 
 
 
@@ -19070,9 +19396,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -19090,11 +19416,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectProjectsIdDeleteTextUnitSimilarityResultsDELETE"></a>
 # **projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**
 > projectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id)
+
+
 
 
 
@@ -19136,9 +19464,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -19156,11 +19484,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectProjectsIdDetectFieldValuesPOST"></a>
 # **projectProjectsIdDetectFieldValuesPOST**
 > TaskIdResponse projectProjectsIdDetectFieldValuesPOST(id, detectProjectFieldValuesRequest)
+
+
 
 
 
@@ -19204,10 +19534,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **detectProjectFieldValuesRequest** | [**DetectProjectFieldValuesRequest**](DetectProjectFieldValuesRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **detectProjectFieldValuesRequest** | [**DetectProjectFieldValuesRequest**](DetectProjectFieldValuesRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -19225,7 +19555,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdFormFieldsGET"></a>
 # **projectProjectsIdFormFieldsGET**
@@ -19274,9 +19604,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -19294,7 +19624,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdGET"></a>
 # **projectProjectsIdGET**
@@ -19344,10 +19674,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -19365,11 +19695,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdLocateItemsPOST"></a>
 # **projectProjectsIdLocateItemsPOST**
 > TaskIdResponse projectProjectsIdLocateItemsPOST(id, locateItemsRequest)
+
+
 
 
 
@@ -19413,10 +19745,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -19434,7 +19766,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdMarkDeletePOST"></a>
 # **projectProjectsIdMarkDeletePOST**
@@ -19484,10 +19816,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -19505,7 +19837,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdPATCH"></a>
 # **projectProjectsIdPATCH**
@@ -19555,10 +19887,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -19576,7 +19908,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdPUT"></a>
 # **projectProjectsIdPUT**
@@ -19626,10 +19958,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -19647,7 +19979,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdProgressGET"></a>
 # **projectProjectsIdProgressGET**
@@ -19696,9 +20028,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -19716,11 +20048,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdSearchSimilarDocumentsPOST"></a>
 # **projectProjectsIdSearchSimilarDocumentsPOST**
 > TaskIdResponse projectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest)
+
+
 
 
 
@@ -19764,10 +20098,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -19785,11 +20119,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdSearchSimilarTextUnitsPOST"></a>
 # **projectProjectsIdSearchSimilarTextUnitsPOST**
 > TaskIdResponse projectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest)
+
+
 
 
 
@@ -19833,10 +20169,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -19854,7 +20190,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdSendClustersToProjectPOST"></a>
 # **projectProjectsIdSendClustersToProjectPOST**
@@ -19904,10 +20240,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **sendClusterToProjectRequest** | [**SendClusterToProjectRequest**](SendClusterToProjectRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **sendClusterToProjectRequest** | [**SendClusterToProjectRequest**](SendClusterToProjectRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -19925,13 +20261,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**200** |  |  -  |
-**400** |  |  -  |
+| **201** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="projectProjectsIdSetAnnotationStatusPOST"></a>
 # **projectProjectsIdSetAnnotationStatusPOST**
-> OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest)
+> ProjectProjectsIdSetAnnotationStatusPOST200Response projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest)
 
 
 
@@ -19962,7 +20298,7 @@ public class Example {
     String id = "id_example"; // String | A unique integer value identifying this project.
     SetProjectAnnotationsStatusRequest setProjectAnnotationsStatusRequest = new SetProjectAnnotationsStatusRequest(); // SetProjectAnnotationsStatusRequest | 
     try {
-      OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse result = apiInstance.projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
+      ProjectProjectsIdSetAnnotationStatusPOST200Response result = apiInstance.projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#projectProjectsIdSetAnnotationStatusPOST");
@@ -19977,14 +20313,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **setProjectAnnotationsStatusRequest** | [**SetProjectAnnotationsStatusRequest**](SetProjectAnnotationsStatusRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **setProjectAnnotationsStatusRequest** | [**SetProjectAnnotationsStatusRequest**](SetProjectAnnotationsStatusRequest.md)|  | [optional] |
 
 ### Return type
 
-[**OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse**](OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse.md)
+[**ProjectProjectsIdSetAnnotationStatusPOST200Response**](ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
 
 ### Authorization
 
@@ -19998,7 +20334,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdSetStatusPOST"></a>
 # **projectProjectsIdSetStatusPOST**
@@ -20048,10 +20384,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **setProjectDocumentsStatusRequest** | [**SetProjectDocumentsStatusRequest**](SetProjectDocumentsStatusRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **setProjectDocumentsStatusRequest** | [**SetProjectDocumentsStatusRequest**](SetProjectDocumentsStatusRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -20069,11 +20405,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdSettingsActionsGET"></a>
 # **projectProjectsIdSettingsActionsGET**
 > ProjectDetail projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
 
 
 
@@ -20120,13 +20458,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -20144,11 +20482,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdTaskTaskIdTaskLogsGET"></a>
 # **projectProjectsIdTaskTaskIdTaskLogsGET**
 > TaskLogResponse projectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters)
+
+
 
 
 
@@ -20194,12 +20534,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **taskId** | **String**|  |
- **recordsLimit** | **Integer**|  | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **taskId** | **String**|  | |
+| **recordsLimit** | **Integer**|  | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -20217,11 +20557,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdTasksGET"></a>
 # **projectProjectsIdTasksGET**
 > List&lt;ProjectTasks&gt; projectProjectsIdTasksGET(id, jqFilters)
+
+
 
 
 
@@ -20265,10 +20607,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -20286,7 +20628,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdUnmarkDeletePOST"></a>
 # **projectProjectsIdUnmarkDeletePOST**
@@ -20336,10 +20678,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -20357,11 +20699,11 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdUpdateDocumentFieldsPOST"></a>
 # **projectProjectsIdUpdateDocumentFieldsPOST**
-> TaskIdResponse projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest)
+> UpdateProjectDocumentsFieldsResponse projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest)
 
 
 
@@ -20392,7 +20734,7 @@ public class Example {
     String id = "id_example"; // String | A unique integer value identifying this project.
     UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest | 
     try {
-      TaskIdResponse result = apiInstance.projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+      UpdateProjectDocumentsFieldsResponse result = apiInstance.projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#projectProjectsIdUpdateDocumentFieldsPOST");
@@ -20407,14 +20749,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional] |
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**UpdateProjectDocumentsFieldsResponse**](UpdateProjectDocumentsFieldsResponse.md)
 
 ### Authorization
 
@@ -20428,8 +20770,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsPOST"></a>
 # **projectProjectsPOST**
@@ -20478,9 +20820,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectCreate** | [**ProjectCreate**](ProjectCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectCreate** | [**ProjectCreate**](ProjectCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -20498,7 +20840,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsProjectStatsGET"></a>
 # **projectProjectsProjectStatsGET**
@@ -20547,9 +20889,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectIds** | **String**| Project ids separated by commas | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectIds** | **String**| Project ids separated by commas | [optional] |
 
 ### Return type
 
@@ -20567,7 +20909,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsRecentGET"></a>
 # **projectProjectsRecentGET**
@@ -20616,9 +20958,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **n** | **Integer**| Max rows number | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **n** | **Integer**| Max rows number | [optional] |
 
 ### Return type
 
@@ -20636,7 +20978,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsSelectProjectsPOST"></a>
 # **projectProjectsSelectProjectsPOST**
@@ -20685,9 +21027,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **selectProjectsRequest** | [**SelectProjectsRequest**](SelectProjectsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **selectProjectsRequest** | [**SelectProjectsRequest**](SelectProjectsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -20705,7 +21047,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectTaskQueuesGET"></a>
 # **projectTaskQueuesGET**
@@ -20754,9 +21096,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -20774,7 +21116,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesIdDELETE"></a>
 # **projectTaskQueuesIdDELETE**
@@ -20822,9 +21164,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
 
 ### Return type
 
@@ -20842,7 +21184,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectTaskQueuesIdGET"></a>
 # **projectTaskQueuesIdGET**
@@ -20892,10 +21234,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -20913,7 +21255,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesIdPATCH"></a>
 # **projectTaskQueuesIdPATCH**
@@ -20963,10 +21305,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
- **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
+| **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional] |
 
 ### Return type
 
@@ -20984,7 +21326,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesIdPUT"></a>
 # **projectTaskQueuesIdPUT**
@@ -21034,10 +21376,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
- **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
+| **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional] |
 
 ### Return type
 
@@ -21055,7 +21397,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesPOST"></a>
 # **projectTaskQueuesPOST**
@@ -21104,9 +21446,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional] |
 
 ### Return type
 
@@ -21124,7 +21466,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionGET"></a>
 # **projectUploadSessionGET**
@@ -21173,9 +21515,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -21193,7 +21535,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionPOST"></a>
 # **projectUploadSessionPOST**
@@ -21242,9 +21584,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -21262,7 +21604,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionStatusGET"></a>
 # **projectUploadSessionStatusGET**
@@ -21311,9 +21653,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**| Project id | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**| Project id | [optional] |
 
 ### Return type
 
@@ -21331,7 +21673,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidBatchUploadPOST"></a>
 # **projectUploadSessionUidBatchUploadPOST**
@@ -21381,10 +21723,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionDetail** | [**UploadSessionDetail**](UploadSessionDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionDetail** | [**UploadSessionDetail**](UploadSessionDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -21402,7 +21744,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionUidBatchUploadPOST_0"></a>
 # **projectUploadSessionUidBatchUploadPOST_0**
@@ -21452,10 +21794,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionBatchUploadRequest** | [**UploadSessionBatchUploadRequest**](UploadSessionBatchUploadRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionBatchUploadRequest** | [**UploadSessionBatchUploadRequest**](UploadSessionBatchUploadRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -21473,7 +21815,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionUidCancelDELETE"></a>
 # **projectUploadSessionUidCancelDELETE**
@@ -21521,9 +21863,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
 
 ### Return type
 
@@ -21541,7 +21883,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectUploadSessionUidDELETE"></a>
 # **projectUploadSessionUidDELETE**
@@ -21589,9 +21931,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
 
 ### Return type
 
@@ -21609,7 +21951,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectUploadSessionUidDeleteFileDELETE"></a>
 # **projectUploadSessionUidDeleteFileDELETE**
@@ -21659,10 +22001,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionDeleteFileRequest** | [**UploadSessionDeleteFileRequest**](UploadSessionDeleteFileRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionDeleteFileRequest** | [**UploadSessionDeleteFileRequest**](UploadSessionDeleteFileRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -21680,14 +22022,16 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
-**200** |  |  -  |
-**404** |  |  -  |
-**500** |  |  -  |
+| **204** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
+| **500** |  |  -  |
 
 <a name="projectUploadSessionUidFilesPOST"></a>
 # **projectUploadSessionUidFilesPOST**
 > ProjectUploadSessionFilesResponse projectUploadSessionUidFilesPOST(uid, contentLength, fileName, force, directoryPath, force2, body)
+
+
 
 
 
@@ -21736,15 +22080,15 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **contentLength** | **Integer**| Content Length |
- **fileName** | **String**| Content Length |
- **force** | **Boolean**| Force upload | [optional]
- **directoryPath** | **Boolean**| Directory Path | [optional]
- **force2** | **Boolean**| Force upload | [optional]
- **body** | **File**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **contentLength** | **Integer**| Content Length | |
+| **fileName** | **String**| Content Length | |
+| **force** | **Boolean**| Force upload | [optional] |
+| **directoryPath** | **Boolean**| Directory Path | [optional] |
+| **force2** | **Boolean**| Force upload | [optional] |
+| **body** | **File**|  | [optional] |
 
 ### Return type
 
@@ -21762,10 +22106,10 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**204** |  |  -  |
-**400** |  |  -  |
-**500** |  |  -  |
+| **201** |  |  -  |
+| **204** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
 
 <a name="projectUploadSessionUidGET"></a>
 # **projectUploadSessionUidGET**
@@ -21815,10 +22159,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -21836,7 +22180,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidPATCH"></a>
 # **projectUploadSessionUidPATCH**
@@ -21886,10 +22230,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -21907,7 +22251,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidProgressGET"></a>
 # **projectUploadSessionUidProgressGET**
@@ -21956,9 +22300,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
 
 ### Return type
 
@@ -21976,7 +22320,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidUploadPOST"></a>
 # **projectUploadSessionUidUploadPOST**
@@ -22031,15 +22375,15 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **fileName** | **Boolean**| File Name |
- **fileEncoding** | **String**| File Encoding |
- **force** | **Boolean**| Force upload | [optional]
- **reviewFile** | **Boolean**| Review File | [optional]
- **directoryPath** | **Boolean**| Directory Path | [optional]
- **body** | **File**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **fileName** | **Boolean**| File Name | |
+| **fileEncoding** | **String**| File Encoding | |
+| **force** | **Boolean**| Force upload | [optional] |
+| **reviewFile** | **Boolean**| Review File | [optional] |
+| **directoryPath** | **Boolean**| Directory Path | [optional] |
+| **body** | **File**|  | [optional] |
 
 ### Return type
 
@@ -22057,13 +22401,15 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**500** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
 
 <a name="rawdbConfigGET"></a>
 # **rawdbConfigGET**
 > Map&lt;String, Object&gt; rawdbConfigGET()
+
+
 
 
 
@@ -22122,11 +22468,13 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="rawdbDocumentsDocumentTypeCodeGET"></a>
 # **rawdbDocumentsDocumentTypeCodeGET**
 > Map&lt;String, Object&gt; rawdbDocumentsDocumentTypeCodeGET(documentTypeCode, projectIds, columns, associatedText, asZip, fmt, limit, orderBy, savedFilters, saveFilter, returnReviewed, returnTotal, returnData, ignoreErrors, filters)
+
+
 
 
 
@@ -22183,23 +22531,23 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeCode** | **String**|  |
- **projectIds** | **String**| Project ids separated by commas | [optional]
- **columns** | **String**| Column names separated by commas | [optional]
- **associatedText** | **Boolean**| Boolean - show associated text | [optional]
- **asZip** | **Boolean**| Boolean - export as zip | [optional]
- **fmt** | **String**| Export format | [optional] [enum: json, csv, xlsx]
- **limit** | **Integer**| Page Size | [optional]
- **orderBy** | **String**| Sort order - column names separated by commas | [optional]
- **savedFilters** | **String**| Saved filter ids separated by commas | [optional]
- **saveFilter** | **Boolean**| Save filter | [optional]
- **returnReviewed** | **Boolean**| Return Reviewed documents count | [optional]
- **returnTotal** | **Boolean**| Return total documents count | [optional]
- **returnData** | **Boolean**| Return data | [optional]
- **ignoreErrors** | **Boolean**| Ignore errors | [optional]
- **filters** | [**Map&lt;String, String&gt;**](String.md)| Filter params | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeCode** | **String**|  | |
+| **projectIds** | **String**| Project ids separated by commas | [optional] |
+| **columns** | **String**| Column names separated by commas | [optional] |
+| **associatedText** | **Boolean**| Boolean - show associated text | [optional] |
+| **asZip** | **Boolean**| Boolean - export as zip | [optional] |
+| **fmt** | **String**| Export format | [optional] [enum: json, csv, xlsx] |
+| **limit** | **Integer**| Page Size | [optional] |
+| **orderBy** | **String**| Sort order - column names separated by commas | [optional] |
+| **savedFilters** | **String**| Saved filter ids separated by commas | [optional] |
+| **saveFilter** | **Boolean**| Save filter | [optional] |
+| **returnReviewed** | **Boolean**| Return Reviewed documents count | [optional] |
+| **returnTotal** | **Boolean**| Return total documents count | [optional] |
+| **returnData** | **Boolean**| Return data | [optional] |
+| **ignoreErrors** | **Boolean**| Ignore errors | [optional] |
+| **filters** | [**Map&lt;String, String&gt;**](String.md)| Filter params | [optional] |
 
 ### Return type
 
@@ -22217,7 +22565,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="rawdbDocumentsDocumentTypeCodePOST"></a>
 # **rawdbDocumentsDocumentTypeCodePOST**
@@ -22267,10 +22615,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeCode** | **String**|  |
- **rawdbDocumentsPOSTRequest** | [**RawdbDocumentsPOSTRequest**](RawdbDocumentsPOSTRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeCode** | **String**|  | |
+| **rawdbDocumentsPOSTRequest** | [**RawdbDocumentsPOSTRequest**](RawdbDocumentsPOSTRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -22288,11 +22636,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="rawdbProjectStatsProjectIdGET"></a>
 # **rawdbProjectStatsProjectIdGET**
 > Map&lt;String, Object&gt; rawdbProjectStatsProjectIdGET(projectId)
+
+
 
 
 
@@ -22335,9 +22685,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
 
 ### Return type
 
@@ -22355,7 +22705,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="restAuthLoginPOST"></a>
 # **restAuthLoginPOST**
@@ -22404,9 +22754,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **login** | [**Login**](Login.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **login** | [**Login**](Login.md)|  | [optional] |
 
 ### Return type
 
@@ -22424,7 +22774,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="restAuthLogoutGET"></a>
 # **restAuthLogoutGET**
@@ -22489,7 +22839,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="restAuthLogoutPOST"></a>
 # **restAuthLogoutPOST**
@@ -22538,9 +22888,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -22558,7 +22908,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="restAuthPasswordChangePOST"></a>
 # **restAuthPasswordChangePOST**
@@ -22607,9 +22957,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **customPasswordChange** | [**CustomPasswordChange**](CustomPasswordChange.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **customPasswordChange** | [**CustomPasswordChange**](CustomPasswordChange.md)|  | [optional] |
 
 ### Return type
 
@@ -22627,7 +22977,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="restAuthPasswordResetConfirmPOST"></a>
 # **restAuthPasswordResetConfirmPOST**
@@ -22676,9 +23026,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **customPasswordResetConfirm** | [**CustomPasswordResetConfirm**](CustomPasswordResetConfirm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **customPasswordResetConfirm** | [**CustomPasswordResetConfirm**](CustomPasswordResetConfirm.md)|  | [optional] |
 
 ### Return type
 
@@ -22696,7 +23046,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="restAuthPasswordResetPOST"></a>
 # **restAuthPasswordResetPOST**
@@ -22745,9 +23095,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **customPasswordReset** | [**CustomPasswordReset**](CustomPasswordReset.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **customPasswordReset** | [**CustomPasswordReset**](CustomPasswordReset.md)|  | [optional] |
 
 ### Return type
 
@@ -22765,141 +23115,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-
-<a name="restAuthRegistrationPOST"></a>
-# **restAuthRegistrationPOST**
-> Register restAuthRegistrationPOST(register)
-
-
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    Register register = new Register(); // Register | 
-    try {
-      Register result = apiInstance.restAuthRegistrationPOST(register);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#restAuthRegistrationPOST");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **register** | [**Register**](Register.md)|  | [optional]
-
-### Return type
-
-[**Register**](Register.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**201** |  |  -  |
-
-<a name="restAuthRegistrationVerifyEmailPOST"></a>
-# **restAuthRegistrationVerifyEmailPOST**
-> VerifyEmail restAuthRegistrationVerifyEmailPOST(verifyEmail)
-
-
-
-### Example
-```java
-// Import classes:
-import org.openapitools.client.ApiClient;
-import org.openapitools.client.ApiException;
-import org.openapitools.client.Configuration;
-import org.openapitools.client.auth.*;
-import org.openapitools.client.models.*;
-import org.openapitools.client.api.V1Api;
-
-public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
-    
-    // Configure API key authorization: AuthToken
-    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
-    AuthToken.setApiKey("YOUR API KEY");
-    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-    //AuthToken.setApiKeyPrefix("Token");
-
-    V1Api apiInstance = new V1Api(defaultClient);
-    VerifyEmail verifyEmail = new VerifyEmail(); // VerifyEmail | 
-    try {
-      VerifyEmail result = apiInstance.restAuthRegistrationVerifyEmailPOST(verifyEmail);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#restAuthRegistrationVerifyEmailPOST");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
-    }
-  }
-}
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **verifyEmail** | [**VerifyEmail**](VerifyEmail.md)|  | [optional]
-
-### Return type
-
-[**VerifyEmail**](VerifyEmail.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="similarityDocumentSimilarityByFeaturesGET"></a>
 # **similarityDocumentSimilarityByFeaturesGET**
@@ -22964,7 +23180,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityDocumentSimilarityByFeaturesPOST"></a>
 # **similarityDocumentSimilarityByFeaturesPOST**
@@ -23013,9 +23229,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional] |
 
 ### Return type
 
@@ -23033,7 +23249,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityPartySimilarityGET"></a>
 # **similarityPartySimilarityGET**
@@ -23098,7 +23314,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityPartySimilarityPOST"></a>
 # **similarityPartySimilarityPOST**
@@ -23147,9 +23363,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional] |
 
 ### Return type
 
@@ -23167,7 +23383,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectDocumentsSimilarityByVectorsGET"></a>
 # **similarityProjectDocumentsSimilarityByVectorsGET**
@@ -23232,7 +23448,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectDocumentsSimilarityByVectorsPOST"></a>
 # **similarityProjectDocumentsSimilarityByVectorsPOST**
@@ -23281,9 +23497,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional] |
 
 ### Return type
 
@@ -23301,7 +23517,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectTextUnitsSimilarityByVectorsGET"></a>
 # **similarityProjectTextUnitsSimilarityByVectorsGET**
@@ -23366,7 +23582,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectTextUnitsSimilarityByVectorsPOST"></a>
 # **similarityProjectTextUnitsSimilarityByVectorsPOST**
@@ -23415,9 +23631,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional] |
 
 ### Return type
 
@@ -23435,7 +23651,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similaritySimilarityGET"></a>
 # **similaritySimilarityGET**
@@ -23500,7 +23716,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similaritySimilarityPOST"></a>
 # **similaritySimilarityPOST**
@@ -23549,9 +23765,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional] |
 
 ### Return type
 
@@ -23569,7 +23785,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityTextUnitSimilarityByFeaturesGET"></a>
 # **similarityTextUnitSimilarityByFeaturesGET**
@@ -23634,7 +23850,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityTextUnitSimilarityByFeaturesPOST"></a>
 # **similarityTextUnitSimilarityByFeaturesPOST**
@@ -23683,9 +23899,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional] |
 
 ### Return type
 
@@ -23703,7 +23919,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskCleanTasksPOST"></a>
 # **taskCleanTasksPOST**
@@ -23752,9 +23968,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -23772,7 +23988,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskLoadDictionariesPOST"></a>
 # **taskLoadDictionariesPOST**
@@ -23821,9 +24037,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -23841,7 +24057,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskLoadDocumentsGET"></a>
 # **taskLoadDocumentsGET**
@@ -23906,7 +24122,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskLoadDocumentsPOST"></a>
 # **taskLoadDocumentsPOST**
@@ -23955,9 +24171,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -23975,7 +24191,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskLocateGET"></a>
 # **taskLocateGET**
@@ -24040,7 +24256,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskLocatePOST"></a>
 # **taskLocatePOST**
@@ -24089,9 +24305,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -24109,11 +24325,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskProcessTextExtractionResultsRequestIdPOST"></a>
 # **taskProcessTextExtractionResultsRequestIdPOST**
 > Object taskProcessTextExtractionResultsRequestIdPOST(requestId, requestBody)
+
+
 
 
 
@@ -24157,10 +24375,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestId** | **String**|  |
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestId** | **String**|  | |
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -24178,7 +24396,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="taskPurgeTaskPOST"></a>
 # **taskPurgeTaskPOST**
@@ -24227,9 +24445,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -24247,7 +24465,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskRecallTaskGET"></a>
 # **taskRecallTaskGET**
@@ -24312,7 +24530,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskRecallTaskPOST"></a>
 # **taskRecallTaskPOST**
@@ -24361,9 +24579,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -24381,11 +24599,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskReindexroutinesCheckSchedulePOST"></a>
 # **taskReindexroutinesCheckSchedulePOST**
 > Object taskReindexroutinesCheckSchedulePOST(requestBody)
+
+
 
 
 
@@ -24428,9 +24648,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -24448,7 +24668,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="taskTaskLogGET"></a>
 # **taskTaskLogGET**
@@ -24499,11 +24719,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **taskId** | **String**|  |
- **recordsLimit** | **Integer**|  | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **taskId** | **String**|  | |
+| **recordsLimit** | **Integer**|  | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -24521,7 +24741,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskTaskStatusGET"></a>
 # **taskTaskStatusGET**
@@ -24570,9 +24790,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **taskId** | **String**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **taskId** | **String**|  | [optional] |
 
 ### Return type
 
@@ -24590,8 +24810,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="taskTasksGET"></a>
 # **taskTasksGET**
@@ -24640,9 +24860,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -24660,7 +24880,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskTasksIdGET"></a>
 # **taskTasksIdGET**
@@ -24710,10 +24930,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique value identifying this task. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique value identifying this task. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -24731,11 +24951,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskTasksProjectProjectIdActiveTasksGET"></a>
 # **taskTasksProjectProjectIdActiveTasksGET**
 > List&lt;ProjectActiveTasks&gt; taskTasksProjectProjectIdActiveTasksGET(projectId, jqFilters)
+
+
 
 
 
@@ -24779,10 +25001,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -24800,11 +25022,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskTasksProjectProjectIdTasksGET"></a>
 # **taskTasksProjectProjectIdTasksGET**
 > List&lt;ProjectTasks&gt; taskTasksProjectProjectIdTasksGET(projectId, jqFilters)
+
+
 
 
 
@@ -24848,10 +25072,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -24869,7 +25093,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskUpdateElasticIndexGET"></a>
 # **taskUpdateElasticIndexGET**
@@ -24934,7 +25158,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="taskUpdateElasticIndexPOST"></a>
 # **taskUpdateElasticIndexPOST**
@@ -24983,9 +25207,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -25003,11 +25227,11 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="tusUploadSessionUploadSessionIdUploadGuidPATCH"></a>
 # **tusUploadSessionUploadSessionIdUploadGuidPATCH**
-> InlineResponse400 tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body)
+> TusUploadSessionUploadSessionIdUploadPOST400Response tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body)
 
 
 
@@ -25042,7 +25266,7 @@ public class Example {
     Boolean force = true; // Boolean | Upload a file even if it exists.
     File body = new File("/path/to/file"); // File | 
     try {
-      InlineResponse400 result = apiInstance.tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
+      TusUploadSessionUploadSessionIdUploadPOST400Response result = apiInstance.tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling V1Api#tusUploadSessionUploadSessionIdUploadGuidPATCH");
@@ -25057,18 +25281,18 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uploadSessionId** | **String**|  |
- **guid** | **String**|  |
- **uploadOffset** | **Integer**| Upload offset, bytes. |
- **tusResumable** | **String**| 1.0.0 |
- **force** | **Boolean**| Upload a file even if it exists. | [optional]
- **body** | **File**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uploadSessionId** | **String**|  | |
+| **guid** | **String**|  | |
+| **uploadOffset** | **Integer**| Upload offset, bytes. | |
+| **tusResumable** | **String**| 1.0.0 | |
+| **force** | **Boolean**| Upload a file even if it exists. | [optional] |
+| **body** | **File**|  | [optional] |
 
 ### Return type
 
-[**InlineResponse400**](InlineResponse400.md)
+[**TusUploadSessionUploadSessionIdUploadPOST400Response**](TusUploadSessionUploadSessionIdUploadPOST400Response.md)
 
 ### Authorization
 
@@ -25082,10 +25306,10 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  * Upload-Offset -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
-**400** |  |  -  |
-**460** |  |  -  |
-**500** |  |  -  |
+| **204** |  |  * Upload-Offset -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
+| **400** |  |  -  |
+| **460** |  |  -  |
+| **500** |  |  -  |
 
 <a name="tusUploadSessionUploadSessionIdUploadPOST"></a>
 # **tusUploadSessionUploadSessionIdUploadPOST**
@@ -25138,14 +25362,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uploadSessionId** | **String**|  |
- **uploadLength** | **Integer**| File length. |
- **uploadMetadata** | **String**| Upload metadata include file name, relative path, etc. |
- **tusResumable** | **String**| 1.0.0 |
- **force** | **Boolean**| Upload a file even if it exists. | [optional]
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uploadSessionId** | **String**|  | |
+| **uploadLength** | **Integer**| File length. | |
+| **uploadMetadata** | **String**| Upload metadata include file name, relative path, etc. | |
+| **tusResumable** | **String**| 1.0.0 | |
+| **force** | **Boolean**| Upload a file even if it exists. | [optional] |
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -25163,12 +25387,14 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
-**400** |  |  -  |
+| **201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
+| **400** |  |  -  |
 
-<a name="usersSocialAccountsGET"></a>
-# **usersSocialAccountsGET**
-> SocialAccountsResponse usersSocialAccountsGET()
+<a name="usersClientIdsGET"></a>
+# **usersClientIdsGET**
+> List&lt;SocialClientList&gt; usersClientIdsGET()
+
+
 
 
 
@@ -25195,10 +25421,10 @@ public class Example {
 
     V1Api apiInstance = new V1Api(defaultClient);
     try {
-      SocialAccountsResponse result = apiInstance.usersSocialAccountsGET();
+      List<SocialClientList> result = apiInstance.usersClientIdsGET();
       System.out.println(result);
     } catch (ApiException e) {
-      System.err.println("Exception when calling V1Api#usersSocialAccountsGET");
+      System.err.println("Exception when calling V1Api#usersClientIdsGET");
       System.err.println("Status code: " + e.getCode());
       System.err.println("Reason: " + e.getResponseBody());
       System.err.println("Response headers: " + e.getResponseHeaders());
@@ -25213,7 +25439,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
+[**List&lt;SocialClientList&gt;**](SocialClientList.md)
 
 ### Authorization
 
@@ -25227,7 +25453,283 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
+
+<a name="usersElevatePOST"></a>
+# **usersElevatePOST**
+> SocialLogin usersElevatePOST(accessTokenSchema)
+
+
+
+Authenticate user (register first if the profile doesn&#39;t exist) via Elevate in CLM.  The login algorithm is next:  1. Redirect to google auth page &#x60;https://elmqa.elevateservices.com/services/oauth/authorize&#x60;     with correct &#x60;client_id&#x60;, &#x60;redirect_url&#x60;, and &#x60;response_type&#x3D;token&#x60;; 2. After elevate auth user will be redirected to callback url; 3. Pass the &#x60;access_token&#x60; from query params to this endpoint.
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    AccessTokenSchema accessTokenSchema = new AccessTokenSchema(); // AccessTokenSchema | 
+    try {
+      SocialLogin result = apiInstance.usersElevatePOST(accessTokenSchema);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#usersElevatePOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **accessTokenSchema** | [**AccessTokenSchema**](AccessTokenSchema.md)|  | [optional] |
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+<a name="usersGooglePOST"></a>
+# **usersGooglePOST**
+> SocialLogin usersGooglePOST(code)
+
+
+
+Authenticate user (register first if the profile doesn&#39;t exist) via Google in CLM.  The login algorithm is next:  1. Redirect to google auth page &#x60;https://accounts.google.com/o/oauth2/v2/auth&#x60;     with correct &#x60;client_id&#x60;, &#x60;redirect_url&#x60;; 2. After google auth user will be redirected to callback url; 3. Pass the &#x60;code&#x60; from query params to this endpoint.
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Code code = new Code(); // Code | 
+    try {
+      SocialLogin result = apiInstance.usersGooglePOST(code);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#usersGooglePOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **code** | [**Code**](Code.md)|  | [optional] |
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+<a name="usersOffice365POST"></a>
+# **usersOffice365POST**
+> SocialLogin usersOffice365POST(code)
+
+
+
+Authenticate user (register first if the profile doesn&#39;t exist) via Microsoft office365 in CLM.  The login algorithm is next:  1. Redirect to microsoft auth page &#x60;https://login.microsoftonline.com/consumers|common/oauth2/v2.0/authorize&#x60;     with correct &#x60;client_id&#x60;, &#x60;redirect_url&#x60;, &#x60;response_type&#x60;, and &#x60;scope&#x60;; 2. After microsoft auth user will be redirected to callback url; 3. Pass the &#x60;code&#x60; from query params to this endpoint.
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Code code = new Code(); // Code | 
+    try {
+      SocialLogin result = apiInstance.usersOffice365POST(code);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#usersOffice365POST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **code** | [**Code**](Code.md)|  | [optional] |
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+<a name="usersOktaPOST"></a>
+# **usersOktaPOST**
+> SocialLogin usersOktaPOST(code)
+
+
+
+Authenticate user (register first if the profile doesn&#39;t exist) via Okta in CLM.  The login algorithm is next:  1. Redirect to okta auth page &#x60;https://{{your domain}}.okta.com/oauth2/default/v1/authorize&#x60;     with correct &#x60;client_id&#x60;, &#x60;redirect_url&#x60;, &#x60;scope&#x60;, and &#x60;state&#x60;; 2. After google auth user will be redirected to callback url; 3. Pass the &#x60;code&#x60; from query params to this endpoint.
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.V1Api;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    V1Api apiInstance = new V1Api(defaultClient);
+    Code code = new Code(); // Code | 
+    try {
+      SocialLogin result = apiInstance.usersOktaPOST(code);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling V1Api#usersOktaPOST");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **code** | [**Code**](Code.md)|  | [optional] |
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 <a name="usersUsersFormFieldsGET"></a>
 # **usersUsersFormFieldsGET**
@@ -25292,7 +25794,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersUsersGET"></a>
 # **usersUsersGET**
@@ -25341,9 +25843,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -25361,7 +25863,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersUsersIdFormFieldsGET"></a>
 # **usersUsersIdFormFieldsGET**
@@ -25410,9 +25912,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -25430,7 +25932,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersUsersIdGET"></a>
 # **usersUsersIdGET**
@@ -25480,10 +25982,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -25501,7 +26003,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersUsersIdPATCH"></a>
 # **usersUsersIdPATCH**
@@ -25551,10 +26053,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
- **userProfile** | [**UserProfile**](UserProfile.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
+| **userProfile** | [**UserProfile**](UserProfile.md)|  | [optional] |
 
 ### Return type
 
@@ -25572,7 +26074,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersUsersIdPUT"></a>
 # **usersUsersIdPUT**
@@ -25622,10 +26124,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
- **userProfile** | [**UserProfile**](UserProfile.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
+| **userProfile** | [**UserProfile**](UserProfile.md)|  | [optional] |
 
 ### Return type
 
@@ -25643,7 +26145,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersUsersPOST"></a>
 # **usersUsersPOST**
@@ -25692,9 +26194,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **userProfile** | [**UserProfile**](UserProfile.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **userProfile** | [**UserProfile**](UserProfile.md)|  | [optional] |
 
 ### Return type
 
@@ -25712,7 +26214,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="usersUsersUserStatsGET"></a>
 # **usersUsersUserStatsGET**
@@ -25777,7 +26279,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="usersVerifyTokenPOST"></a>
 # **usersVerifyTokenPOST**
@@ -25826,9 +26328,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **verifyAuthTokenRequest** | [**VerifyAuthTokenRequest**](VerifyAuthTokenRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **verifyAuthTokenRequest** | [**VerifyAuthTokenRequest**](VerifyAuthTokenRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -25846,6 +26348,6 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**403** |  |  -  |
+| **201** |  |  -  |
+| **403** |  |  -  |
 

@@ -2,67 +2,67 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**projectProjectClusteringGET**](ProjectApi.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ | 
-[**projectProjectClusteringIdGET**](ProjectApi.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ | 
-[**projectProjectsFormFieldsGET**](ProjectApi.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ | 
-[**projectProjectsGET**](ProjectApi.md#projectProjectsGET) | **GET** /api/v1/project/projects/ | 
-[**projectProjectsIdActiveTasksGET**](ProjectApi.md#projectProjectsIdActiveTasksGET) | **GET** /api/v1/project/projects/{id}/active_tasks/ | 
-[**projectProjectsIdAnnotationsAssigneesGET**](ProjectApi.md#projectProjectsIdAnnotationsAssigneesGET) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ | 
-[**projectProjectsIdAssignAnnotationsPOST**](ProjectApi.md#projectProjectsIdAssignAnnotationsPOST) | **POST** /api/v1/project/projects/{id}/assign_annotations/ | 
-[**projectProjectsIdAssignDocumentPOST**](ProjectApi.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ | 
-[**projectProjectsIdAssignDocumentsPOST**](ProjectApi.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ | 
-[**projectProjectsIdAssigneesGET**](ProjectApi.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ | 
-[**projectProjectsIdCheckSimilarityProcessAllowedPOST**](ProjectApi.md#projectProjectsIdCheckSimilarityProcessAllowedPOST) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ | 
-[**projectProjectsIdCleanupPOST**](ProjectApi.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ | 
-[**projectProjectsIdClusterActionsGET**](ProjectApi.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ | 
-[**projectProjectsIdClusterPOST**](ProjectApi.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ | 
-[**projectProjectsIdClusteringStatusGET**](ProjectApi.md#projectProjectsIdClusteringStatusGET) | **GET** /api/v1/project/projects/{id}/clustering-status/ | 
-[**projectProjectsIdDELETE**](ProjectApi.md#projectProjectsIdDELETE) | **DELETE** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdDeleteDocumentSimilarityResultsDELETE**](ProjectApi.md#projectProjectsIdDeleteDocumentSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ | 
-[**projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](ProjectApi.md#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ | 
-[**projectProjectsIdDetectFieldValuesPOST**](ProjectApi.md#projectProjectsIdDetectFieldValuesPOST) | **POST** /api/v1/project/projects/{id}/detect_field_values/ | 
-[**projectProjectsIdFormFieldsGET**](ProjectApi.md#projectProjectsIdFormFieldsGET) | **GET** /api/v1/project/projects/{id}/form-fields/ | 
-[**projectProjectsIdGET**](ProjectApi.md#projectProjectsIdGET) | **GET** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdLocateItemsPOST**](ProjectApi.md#projectProjectsIdLocateItemsPOST) | **POST** /api/v1/project/projects/{id}/locate_items/ | 
-[**projectProjectsIdMarkDeletePOST**](ProjectApi.md#projectProjectsIdMarkDeletePOST) | **POST** /api/v1/project/projects/{id}/mark_delete/ | 
-[**projectProjectsIdPATCH**](ProjectApi.md#projectProjectsIdPATCH) | **PATCH** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdPUT**](ProjectApi.md#projectProjectsIdPUT) | **PUT** /api/v1/project/projects/{id}/ | 
-[**projectProjectsIdProgressGET**](ProjectApi.md#projectProjectsIdProgressGET) | **GET** /api/v1/project/projects/{id}/progress/ | 
-[**projectProjectsIdSearchSimilarDocumentsPOST**](ProjectApi.md#projectProjectsIdSearchSimilarDocumentsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ | 
-[**projectProjectsIdSearchSimilarTextUnitsPOST**](ProjectApi.md#projectProjectsIdSearchSimilarTextUnitsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ | 
-[**projectProjectsIdSendClustersToProjectPOST**](ProjectApi.md#projectProjectsIdSendClustersToProjectPOST) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ | 
-[**projectProjectsIdSetAnnotationStatusPOST**](ProjectApi.md#projectProjectsIdSetAnnotationStatusPOST) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ | 
-[**projectProjectsIdSetStatusPOST**](ProjectApi.md#projectProjectsIdSetStatusPOST) | **POST** /api/v1/project/projects/{id}/set_status/ | 
-[**projectProjectsIdSettingsActionsGET**](ProjectApi.md#projectProjectsIdSettingsActionsGET) | **GET** /api/v1/project/projects/{id}/settings_actions/ | 
-[**projectProjectsIdTaskTaskIdTaskLogsGET**](ProjectApi.md#projectProjectsIdTaskTaskIdTaskLogsGET) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ | 
-[**projectProjectsIdTasksGET**](ProjectApi.md#projectProjectsIdTasksGET) | **GET** /api/v1/project/projects/{id}/tasks/ | 
-[**projectProjectsIdUnmarkDeletePOST**](ProjectApi.md#projectProjectsIdUnmarkDeletePOST) | **POST** /api/v1/project/projects/{id}/unmark_delete/ | 
-[**projectProjectsIdUpdateDocumentFieldsPOST**](ProjectApi.md#projectProjectsIdUpdateDocumentFieldsPOST) | **POST** /api/v1/project/projects/{id}/update_document_fields/ | 
-[**projectProjectsPOST**](ProjectApi.md#projectProjectsPOST) | **POST** /api/v1/project/projects/ | 
-[**projectProjectsProjectStatsGET**](ProjectApi.md#projectProjectsProjectStatsGET) | **GET** /api/v1/project/projects/project_stats/ | 
-[**projectProjectsRecentGET**](ProjectApi.md#projectProjectsRecentGET) | **GET** /api/v1/project/projects/recent/ | 
-[**projectProjectsSelectProjectsPOST**](ProjectApi.md#projectProjectsSelectProjectsPOST) | **POST** /api/v1/project/projects/select_projects/ | 
-[**projectTaskQueuesGET**](ProjectApi.md#projectTaskQueuesGET) | **GET** /api/v1/project/task-queues/ | 
-[**projectTaskQueuesIdDELETE**](ProjectApi.md#projectTaskQueuesIdDELETE) | **DELETE** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesIdGET**](ProjectApi.md#projectTaskQueuesIdGET) | **GET** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesIdPATCH**](ProjectApi.md#projectTaskQueuesIdPATCH) | **PATCH** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesIdPUT**](ProjectApi.md#projectTaskQueuesIdPUT) | **PUT** /api/v1/project/task-queues/{id}/ | 
-[**projectTaskQueuesPOST**](ProjectApi.md#projectTaskQueuesPOST) | **POST** /api/v1/project/task-queues/ | 
-[**projectUploadSessionGET**](ProjectApi.md#projectUploadSessionGET) | **GET** /api/v1/project/upload-session/ | 
-[**projectUploadSessionPOST**](ProjectApi.md#projectUploadSessionPOST) | **POST** /api/v1/project/upload-session/ | 
-[**projectUploadSessionStatusGET**](ProjectApi.md#projectUploadSessionStatusGET) | **GET** /api/v1/project/upload-session/status/ | 
-[**projectUploadSessionUidBatchUploadPOST**](ProjectApi.md#projectUploadSessionUidBatchUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/_batch_upload/ | 
-[**projectUploadSessionUidBatchUploadPOST_0**](ProjectApi.md#projectUploadSessionUidBatchUploadPOST_0) | **POST** /api/v1/project/upload-session/{uid}/batch_upload/ | 
-[**projectUploadSessionUidCancelDELETE**](ProjectApi.md#projectUploadSessionUidCancelDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/cancel/ | 
-[**projectUploadSessionUidDELETE**](ProjectApi.md#projectUploadSessionUidDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/ | 
-[**projectUploadSessionUidDeleteFileDELETE**](ProjectApi.md#projectUploadSessionUidDeleteFileDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ | 
-[**projectUploadSessionUidFilesPOST**](ProjectApi.md#projectUploadSessionUidFilesPOST) | **POST** /api/v1/project/upload-session/{uid}/files/ | 
-[**projectUploadSessionUidGET**](ProjectApi.md#projectUploadSessionUidGET) | **GET** /api/v1/project/upload-session/{uid}/ | 
-[**projectUploadSessionUidPATCH**](ProjectApi.md#projectUploadSessionUidPATCH) | **PATCH** /api/v1/project/upload-session/{uid}/ | 
-[**projectUploadSessionUidProgressGET**](ProjectApi.md#projectUploadSessionUidProgressGET) | **GET** /api/v1/project/upload-session/{uid}/progress/ | 
-[**projectUploadSessionUidUploadPOST**](ProjectApi.md#projectUploadSessionUidUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/upload/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**projectProjectClusteringGET**](ProjectApi.md#projectProjectClusteringGET) | **GET** /api/v1/project/project-clustering/ |  |
+| [**projectProjectClusteringIdGET**](ProjectApi.md#projectProjectClusteringIdGET) | **GET** /api/v1/project/project-clustering/{id}/ |  |
+| [**projectProjectsFormFieldsGET**](ProjectApi.md#projectProjectsFormFieldsGET) | **GET** /api/v1/project/projects/form-fields/ |  |
+| [**projectProjectsGET**](ProjectApi.md#projectProjectsGET) | **GET** /api/v1/project/projects/ |  |
+| [**projectProjectsIdActiveTasksGET**](ProjectApi.md#projectProjectsIdActiveTasksGET) | **GET** /api/v1/project/projects/{id}/active_tasks/ |  |
+| [**projectProjectsIdAnnotationsAssigneesGET**](ProjectApi.md#projectProjectsIdAnnotationsAssigneesGET) | **GET** /api/v1/project/projects/{id}/annotations_assignees/ |  |
+| [**projectProjectsIdAssignAnnotationsPOST**](ProjectApi.md#projectProjectsIdAssignAnnotationsPOST) | **POST** /api/v1/project/projects/{id}/assign_annotations/ |  |
+| [**projectProjectsIdAssignDocumentPOST**](ProjectApi.md#projectProjectsIdAssignDocumentPOST) | **POST** /api/v1/project/projects/{id}/assign_document/ |  |
+| [**projectProjectsIdAssignDocumentsPOST**](ProjectApi.md#projectProjectsIdAssignDocumentsPOST) | **POST** /api/v1/project/projects/{id}/assign_documents/ |  |
+| [**projectProjectsIdAssigneesGET**](ProjectApi.md#projectProjectsIdAssigneesGET) | **GET** /api/v1/project/projects/{id}/assignees/ |  |
+| [**projectProjectsIdCheckSimilarityProcessAllowedPOST**](ProjectApi.md#projectProjectsIdCheckSimilarityProcessAllowedPOST) | **POST** /api/v1/project/projects/{id}/check_similarity_process_allowed/ |  |
+| [**projectProjectsIdCleanupPOST**](ProjectApi.md#projectProjectsIdCleanupPOST) | **POST** /api/v1/project/projects/{id}/cleanup/ |  |
+| [**projectProjectsIdClusterActionsGET**](ProjectApi.md#projectProjectsIdClusterActionsGET) | **GET** /api/v1/project/projects/{id}/cluster_actions/ |  |
+| [**projectProjectsIdClusterPOST**](ProjectApi.md#projectProjectsIdClusterPOST) | **POST** /api/v1/project/projects/{id}/cluster/ |  |
+| [**projectProjectsIdClusteringStatusGET**](ProjectApi.md#projectProjectsIdClusteringStatusGET) | **GET** /api/v1/project/projects/{id}/clustering-status/ |  |
+| [**projectProjectsIdDELETE**](ProjectApi.md#projectProjectsIdDELETE) | **DELETE** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdDeleteDocumentSimilarityResultsDELETE**](ProjectApi.md#projectProjectsIdDeleteDocumentSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_document_similarity_results/ |  |
+| [**projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**](ProjectApi.md#projectProjectsIdDeleteTextUnitSimilarityResultsDELETE) | **DELETE** /api/v1/project/projects/{id}/delete_text_unit_similarity_results/ |  |
+| [**projectProjectsIdDetectFieldValuesPOST**](ProjectApi.md#projectProjectsIdDetectFieldValuesPOST) | **POST** /api/v1/project/projects/{id}/detect_field_values/ |  |
+| [**projectProjectsIdFormFieldsGET**](ProjectApi.md#projectProjectsIdFormFieldsGET) | **GET** /api/v1/project/projects/{id}/form-fields/ |  |
+| [**projectProjectsIdGET**](ProjectApi.md#projectProjectsIdGET) | **GET** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdLocateItemsPOST**](ProjectApi.md#projectProjectsIdLocateItemsPOST) | **POST** /api/v1/project/projects/{id}/locate_items/ |  |
+| [**projectProjectsIdMarkDeletePOST**](ProjectApi.md#projectProjectsIdMarkDeletePOST) | **POST** /api/v1/project/projects/{id}/mark_delete/ |  |
+| [**projectProjectsIdPATCH**](ProjectApi.md#projectProjectsIdPATCH) | **PATCH** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdPUT**](ProjectApi.md#projectProjectsIdPUT) | **PUT** /api/v1/project/projects/{id}/ |  |
+| [**projectProjectsIdProgressGET**](ProjectApi.md#projectProjectsIdProgressGET) | **GET** /api/v1/project/projects/{id}/progress/ |  |
+| [**projectProjectsIdSearchSimilarDocumentsPOST**](ProjectApi.md#projectProjectsIdSearchSimilarDocumentsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_documents/ |  |
+| [**projectProjectsIdSearchSimilarTextUnitsPOST**](ProjectApi.md#projectProjectsIdSearchSimilarTextUnitsPOST) | **POST** /api/v1/project/projects/{id}/search_similar_text_units/ |  |
+| [**projectProjectsIdSendClustersToProjectPOST**](ProjectApi.md#projectProjectsIdSendClustersToProjectPOST) | **POST** /api/v1/project/projects/{id}/send-clusters-to-project/ |  |
+| [**projectProjectsIdSetAnnotationStatusPOST**](ProjectApi.md#projectProjectsIdSetAnnotationStatusPOST) | **POST** /api/v1/project/projects/{id}/set_annotation_status/ |  |
+| [**projectProjectsIdSetStatusPOST**](ProjectApi.md#projectProjectsIdSetStatusPOST) | **POST** /api/v1/project/projects/{id}/set_status/ |  |
+| [**projectProjectsIdSettingsActionsGET**](ProjectApi.md#projectProjectsIdSettingsActionsGET) | **GET** /api/v1/project/projects/{id}/settings_actions/ |  |
+| [**projectProjectsIdTaskTaskIdTaskLogsGET**](ProjectApi.md#projectProjectsIdTaskTaskIdTaskLogsGET) | **GET** /api/v1/project/projects/{id}/task/{task_id}/task-logs/ |  |
+| [**projectProjectsIdTasksGET**](ProjectApi.md#projectProjectsIdTasksGET) | **GET** /api/v1/project/projects/{id}/tasks/ |  |
+| [**projectProjectsIdUnmarkDeletePOST**](ProjectApi.md#projectProjectsIdUnmarkDeletePOST) | **POST** /api/v1/project/projects/{id}/unmark_delete/ |  |
+| [**projectProjectsIdUpdateDocumentFieldsPOST**](ProjectApi.md#projectProjectsIdUpdateDocumentFieldsPOST) | **POST** /api/v1/project/projects/{id}/update_document_fields/ |  |
+| [**projectProjectsPOST**](ProjectApi.md#projectProjectsPOST) | **POST** /api/v1/project/projects/ |  |
+| [**projectProjectsProjectStatsGET**](ProjectApi.md#projectProjectsProjectStatsGET) | **GET** /api/v1/project/projects/project_stats/ |  |
+| [**projectProjectsRecentGET**](ProjectApi.md#projectProjectsRecentGET) | **GET** /api/v1/project/projects/recent/ |  |
+| [**projectProjectsSelectProjectsPOST**](ProjectApi.md#projectProjectsSelectProjectsPOST) | **POST** /api/v1/project/projects/select_projects/ |  |
+| [**projectTaskQueuesGET**](ProjectApi.md#projectTaskQueuesGET) | **GET** /api/v1/project/task-queues/ |  |
+| [**projectTaskQueuesIdDELETE**](ProjectApi.md#projectTaskQueuesIdDELETE) | **DELETE** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesIdGET**](ProjectApi.md#projectTaskQueuesIdGET) | **GET** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesIdPATCH**](ProjectApi.md#projectTaskQueuesIdPATCH) | **PATCH** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesIdPUT**](ProjectApi.md#projectTaskQueuesIdPUT) | **PUT** /api/v1/project/task-queues/{id}/ |  |
+| [**projectTaskQueuesPOST**](ProjectApi.md#projectTaskQueuesPOST) | **POST** /api/v1/project/task-queues/ |  |
+| [**projectUploadSessionGET**](ProjectApi.md#projectUploadSessionGET) | **GET** /api/v1/project/upload-session/ |  |
+| [**projectUploadSessionPOST**](ProjectApi.md#projectUploadSessionPOST) | **POST** /api/v1/project/upload-session/ |  |
+| [**projectUploadSessionStatusGET**](ProjectApi.md#projectUploadSessionStatusGET) | **GET** /api/v1/project/upload-session/status/ |  |
+| [**projectUploadSessionUidBatchUploadPOST**](ProjectApi.md#projectUploadSessionUidBatchUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/_batch_upload/ |  |
+| [**projectUploadSessionUidBatchUploadPOST_0**](ProjectApi.md#projectUploadSessionUidBatchUploadPOST_0) | **POST** /api/v1/project/upload-session/{uid}/batch_upload/ |  |
+| [**projectUploadSessionUidCancelDELETE**](ProjectApi.md#projectUploadSessionUidCancelDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/cancel/ |  |
+| [**projectUploadSessionUidDELETE**](ProjectApi.md#projectUploadSessionUidDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/ |  |
+| [**projectUploadSessionUidDeleteFileDELETE**](ProjectApi.md#projectUploadSessionUidDeleteFileDELETE) | **DELETE** /api/v1/project/upload-session/{uid}/delete-file/ |  |
+| [**projectUploadSessionUidFilesPOST**](ProjectApi.md#projectUploadSessionUidFilesPOST) | **POST** /api/v1/project/upload-session/{uid}/files/ |  |
+| [**projectUploadSessionUidGET**](ProjectApi.md#projectUploadSessionUidGET) | **GET** /api/v1/project/upload-session/{uid}/ |  |
+| [**projectUploadSessionUidPATCH**](ProjectApi.md#projectUploadSessionUidPATCH) | **PATCH** /api/v1/project/upload-session/{uid}/ |  |
+| [**projectUploadSessionUidProgressGET**](ProjectApi.md#projectUploadSessionUidProgressGET) | **GET** /api/v1/project/upload-session/{uid}/progress/ |  |
+| [**projectUploadSessionUidUploadPOST**](ProjectApi.md#projectUploadSessionUidUploadPOST) | **POST** /api/v1/project/upload-session/{uid}/upload/ |  |
 
 
 <a name="projectProjectClusteringGET"></a>
@@ -112,9 +112,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -132,7 +132,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectClusteringIdGET"></a>
 # **projectProjectClusteringIdGET**
@@ -182,10 +182,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project clustering. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project clustering. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -203,7 +203,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsFormFieldsGET"></a>
 # **projectProjectsFormFieldsGET**
@@ -268,7 +268,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsGET"></a>
 # **projectProjectsGET**
@@ -317,9 +317,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -337,11 +337,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdActiveTasksGET"></a>
 # **projectProjectsIdActiveTasksGET**
 > List&lt;ProjectActiveTasks&gt; projectProjectsIdActiveTasksGET(id, jqFilters)
+
+
 
 
 
@@ -385,10 +387,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -406,7 +408,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdAnnotationsAssigneesGET"></a>
 # **projectProjectsIdAnnotationsAssigneesGET**
@@ -455,9 +457,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -475,7 +477,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdAssignAnnotationsPOST"></a>
 # **projectProjectsIdAssignAnnotationsPOST**
@@ -525,10 +527,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **assignProjectAnnotationsRequest** | [**AssignProjectAnnotationsRequest**](AssignProjectAnnotationsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **assignProjectAnnotationsRequest** | [**AssignProjectAnnotationsRequest**](AssignProjectAnnotationsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -546,8 +548,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**404** |  |  -  |
+| **201** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdAssignDocumentPOST"></a>
 # **projectProjectsIdAssignDocumentPOST**
@@ -597,10 +599,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **assignProjectDocumentRequest** | [**AssignProjectDocumentRequest**](AssignProjectDocumentRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **assignProjectDocumentRequest** | [**AssignProjectDocumentRequest**](AssignProjectDocumentRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -618,8 +620,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdAssignDocumentsPOST"></a>
 # **projectProjectsIdAssignDocumentsPOST**
@@ -669,10 +671,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **assignProjectDocumentsRequest** | [**AssignProjectDocumentsRequest**](AssignProjectDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **assignProjectDocumentsRequest** | [**AssignProjectDocumentsRequest**](AssignProjectDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -690,8 +692,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdAssigneesGET"></a>
 # **projectProjectsIdAssigneesGET**
@@ -740,9 +742,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -760,11 +762,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdCheckSimilarityProcessAllowedPOST"></a>
 # **projectProjectsIdCheckSimilarityProcessAllowedPOST**
 > ProjectDetail projectProjectsIdCheckSimilarityProcessAllowedPOST(id, projectDetail)
+
+
 
 
 
@@ -808,10 +812,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectDetail** | [**ProjectDetail**](ProjectDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -829,7 +833,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdCleanupPOST"></a>
 # **projectProjectsIdCleanupPOST**
@@ -879,10 +883,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **cleanupProjectRequest** | [**CleanupProjectRequest**](CleanupProjectRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **cleanupProjectRequest** | [**CleanupProjectRequest**](CleanupProjectRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -900,12 +904,14 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**200** |  |  -  |
+| **201** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdClusterActionsGET"></a>
 # **projectProjectsIdClusterActionsGET**
 > ProjectDetail projectProjectsIdClusterActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
 
 
 
@@ -952,13 +958,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -976,7 +982,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdClusterPOST"></a>
 # **projectProjectsIdClusterPOST**
@@ -1026,10 +1032,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **clusterProjectRequest** | [**ClusterProjectRequest**](ClusterProjectRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **clusterProjectRequest** | [**ClusterProjectRequest**](ClusterProjectRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -1047,8 +1053,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**400** |  |  -  |
+| **201** |  |  -  |
+| **400** |  |  -  |
 
 <a name="projectProjectsIdClusteringStatusGET"></a>
 # **projectProjectsIdClusteringStatusGET**
@@ -1098,10 +1104,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectClusteringId** | **Integer**| Get by project_clustering_id | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectClusteringId** | **Integer**| Get by project_clustering_id | [optional] |
 
 ### Return type
 
@@ -1119,8 +1125,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsIdDELETE"></a>
 # **projectProjectsIdDELETE**
@@ -1168,9 +1174,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -1188,11 +1194,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectProjectsIdDeleteDocumentSimilarityResultsDELETE"></a>
 # **projectProjectsIdDeleteDocumentSimilarityResultsDELETE**
 > projectProjectsIdDeleteDocumentSimilarityResultsDELETE(id)
+
+
 
 
 
@@ -1234,9 +1242,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -1254,11 +1262,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectProjectsIdDeleteTextUnitSimilarityResultsDELETE"></a>
 # **projectProjectsIdDeleteTextUnitSimilarityResultsDELETE**
 > projectProjectsIdDeleteTextUnitSimilarityResultsDELETE(id)
+
+
 
 
 
@@ -1300,9 +1310,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -1320,11 +1330,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectProjectsIdDetectFieldValuesPOST"></a>
 # **projectProjectsIdDetectFieldValuesPOST**
 > TaskIdResponse projectProjectsIdDetectFieldValuesPOST(id, detectProjectFieldValuesRequest)
+
+
 
 
 
@@ -1368,10 +1380,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **detectProjectFieldValuesRequest** | [**DetectProjectFieldValuesRequest**](DetectProjectFieldValuesRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **detectProjectFieldValuesRequest** | [**DetectProjectFieldValuesRequest**](DetectProjectFieldValuesRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -1389,7 +1401,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdFormFieldsGET"></a>
 # **projectProjectsIdFormFieldsGET**
@@ -1438,9 +1450,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -1458,7 +1470,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdGET"></a>
 # **projectProjectsIdGET**
@@ -1508,10 +1520,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1529,11 +1541,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdLocateItemsPOST"></a>
 # **projectProjectsIdLocateItemsPOST**
 > TaskIdResponse projectProjectsIdLocateItemsPOST(id, locateItemsRequest)
+
+
 
 
 
@@ -1577,10 +1591,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **locateItemsRequest** | [**LocateItemsRequest**](LocateItemsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -1598,7 +1612,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdMarkDeletePOST"></a>
 # **projectProjectsIdMarkDeletePOST**
@@ -1648,10 +1662,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -1669,7 +1683,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdPATCH"></a>
 # **projectProjectsIdPATCH**
@@ -1719,10 +1733,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -1740,7 +1754,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdPUT"></a>
 # **projectProjectsIdPUT**
@@ -1790,10 +1804,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectUpdate** | [**ProjectUpdate**](ProjectUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -1811,7 +1825,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdProgressGET"></a>
 # **projectProjectsIdProgressGET**
@@ -1860,9 +1874,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
 
 ### Return type
 
@@ -1880,11 +1894,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdSearchSimilarDocumentsPOST"></a>
 # **projectProjectsIdSearchSimilarDocumentsPOST**
 > TaskIdResponse projectProjectsIdSearchSimilarDocumentsPOST(id, projectSearchSimilarDocumentsRequest)
+
+
 
 
 
@@ -1928,10 +1944,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectSearchSimilarDocumentsRequest** | [**ProjectSearchSimilarDocumentsRequest**](ProjectSearchSimilarDocumentsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -1949,11 +1965,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdSearchSimilarTextUnitsPOST"></a>
 # **projectProjectsIdSearchSimilarTextUnitsPOST**
 > TaskIdResponse projectProjectsIdSearchSimilarTextUnitsPOST(id, projectSearchSimilarTextUnitsRequest)
+
+
 
 
 
@@ -1997,10 +2015,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectSearchSimilarTextUnitsRequest** | [**ProjectSearchSimilarTextUnitsRequest**](ProjectSearchSimilarTextUnitsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -2018,7 +2036,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdSendClustersToProjectPOST"></a>
 # **projectProjectsIdSendClustersToProjectPOST**
@@ -2068,10 +2086,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **sendClusterToProjectRequest** | [**SendClusterToProjectRequest**](SendClusterToProjectRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **sendClusterToProjectRequest** | [**SendClusterToProjectRequest**](SendClusterToProjectRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -2089,13 +2107,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**200** |  |  -  |
-**400** |  |  -  |
+| **201** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="projectProjectsIdSetAnnotationStatusPOST"></a>
 # **projectProjectsIdSetAnnotationStatusPOST**
-> OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest)
+> ProjectProjectsIdSetAnnotationStatusPOST200Response projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest)
 
 
 
@@ -2126,7 +2144,7 @@ public class Example {
     String id = "id_example"; // String | A unique integer value identifying this project.
     SetProjectAnnotationsStatusRequest setProjectAnnotationsStatusRequest = new SetProjectAnnotationsStatusRequest(); // SetProjectAnnotationsStatusRequest | 
     try {
-      OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse result = apiInstance.projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
+      ProjectProjectsIdSetAnnotationStatusPOST200Response result = apiInstance.projectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ProjectApi#projectProjectsIdSetAnnotationStatusPOST");
@@ -2141,14 +2159,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **setProjectAnnotationsStatusRequest** | [**SetProjectAnnotationsStatusRequest**](SetProjectAnnotationsStatusRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **setProjectAnnotationsStatusRequest** | [**SetProjectAnnotationsStatusRequest**](SetProjectAnnotationsStatusRequest.md)|  | [optional] |
 
 ### Return type
 
-[**OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse**](OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse.md)
+[**ProjectProjectsIdSetAnnotationStatusPOST200Response**](ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
 
 ### Authorization
 
@@ -2162,7 +2180,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdSetStatusPOST"></a>
 # **projectProjectsIdSetStatusPOST**
@@ -2212,10 +2230,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **setProjectDocumentsStatusRequest** | [**SetProjectDocumentsStatusRequest**](SetProjectDocumentsStatusRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **setProjectDocumentsStatusRequest** | [**SetProjectDocumentsStatusRequest**](SetProjectDocumentsStatusRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -2233,11 +2251,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdSettingsActionsGET"></a>
 # **projectProjectsIdSettingsActionsGET**
 > ProjectDetail projectProjectsIdSettingsActionsGET(id, projectId, documentId, viewActions, jqFilters)
+
+
 
 
 
@@ -2284,13 +2304,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2308,11 +2328,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdTaskTaskIdTaskLogsGET"></a>
 # **projectProjectsIdTaskTaskIdTaskLogsGET**
 > TaskLogResponse projectProjectsIdTaskTaskIdTaskLogsGET(id, taskId, recordsLimit, jqFilters)
+
+
 
 
 
@@ -2358,12 +2380,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **taskId** | **String**|  |
- **recordsLimit** | **Integer**|  | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **taskId** | **String**|  | |
+| **recordsLimit** | **Integer**|  | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2381,11 +2403,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdTasksGET"></a>
 # **projectProjectsIdTasksGET**
 > List&lt;ProjectTasks&gt; projectProjectsIdTasksGET(id, jqFilters)
+
+
 
 
 
@@ -2429,10 +2453,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2450,7 +2474,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsIdUnmarkDeletePOST"></a>
 # **projectProjectsIdUnmarkDeletePOST**
@@ -2500,10 +2524,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **markUnmarkForDeleteProjectsRequest** | [**MarkUnmarkForDeleteProjectsRequest**](MarkUnmarkForDeleteProjectsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -2521,11 +2545,11 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsIdUpdateDocumentFieldsPOST"></a>
 # **projectProjectsIdUpdateDocumentFieldsPOST**
-> TaskIdResponse projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest)
+> UpdateProjectDocumentsFieldsResponse projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest)
 
 
 
@@ -2556,7 +2580,7 @@ public class Example {
     String id = "id_example"; // String | A unique integer value identifying this project.
     UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest | 
     try {
-      TaskIdResponse result = apiInstance.projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+      UpdateProjectDocumentsFieldsResponse result = apiInstance.projectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling ProjectApi#projectProjectsIdUpdateDocumentFieldsPOST");
@@ -2571,14 +2595,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this project. |
- **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this project. | |
+| **updateProjectDocumentsFieldsRequest** | [**UpdateProjectDocumentsFieldsRequest**](UpdateProjectDocumentsFieldsRequest.md)|  | [optional] |
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**UpdateProjectDocumentsFieldsResponse**](UpdateProjectDocumentsFieldsResponse.md)
 
 ### Authorization
 
@@ -2592,8 +2616,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**404** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
 
 <a name="projectProjectsPOST"></a>
 # **projectProjectsPOST**
@@ -2642,9 +2666,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectCreate** | [**ProjectCreate**](ProjectCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectCreate** | [**ProjectCreate**](ProjectCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -2662,7 +2686,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectProjectsProjectStatsGET"></a>
 # **projectProjectsProjectStatsGET**
@@ -2711,9 +2735,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectIds** | **String**| Project ids separated by commas | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectIds** | **String**| Project ids separated by commas | [optional] |
 
 ### Return type
 
@@ -2731,7 +2755,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsRecentGET"></a>
 # **projectProjectsRecentGET**
@@ -2780,9 +2804,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **n** | **Integer**| Max rows number | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **n** | **Integer**| Max rows number | [optional] |
 
 ### Return type
 
@@ -2800,7 +2824,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectProjectsSelectProjectsPOST"></a>
 # **projectProjectsSelectProjectsPOST**
@@ -2849,9 +2873,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **selectProjectsRequest** | [**SelectProjectsRequest**](SelectProjectsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **selectProjectsRequest** | [**SelectProjectsRequest**](SelectProjectsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -2869,7 +2893,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectTaskQueuesGET"></a>
 # **projectTaskQueuesGET**
@@ -2918,9 +2942,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2938,7 +2962,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesIdDELETE"></a>
 # **projectTaskQueuesIdDELETE**
@@ -2986,9 +3010,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
 
 ### Return type
 
@@ -3006,7 +3030,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectTaskQueuesIdGET"></a>
 # **projectTaskQueuesIdGET**
@@ -3056,10 +3080,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -3077,7 +3101,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesIdPATCH"></a>
 # **projectTaskQueuesIdPATCH**
@@ -3127,10 +3151,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
- **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
+| **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional] |
 
 ### Return type
 
@@ -3148,7 +3172,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesIdPUT"></a>
 # **projectTaskQueuesIdPUT**
@@ -3198,10 +3222,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this task queue. |
- **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this task queue. | |
+| **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional] |
 
 ### Return type
 
@@ -3219,7 +3243,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectTaskQueuesPOST"></a>
 # **projectTaskQueuesPOST**
@@ -3268,9 +3292,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **taskQueue** | [**TaskQueue**](TaskQueue.md)|  | [optional] |
 
 ### Return type
 
@@ -3288,7 +3312,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionGET"></a>
 # **projectUploadSessionGET**
@@ -3337,9 +3361,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -3357,7 +3381,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionPOST"></a>
 # **projectUploadSessionPOST**
@@ -3406,9 +3430,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uploadSessionCreate** | [**UploadSessionCreate**](UploadSessionCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -3426,7 +3450,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionStatusGET"></a>
 # **projectUploadSessionStatusGET**
@@ -3475,9 +3499,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**| Project id | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**| Project id | [optional] |
 
 ### Return type
 
@@ -3495,7 +3519,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidBatchUploadPOST"></a>
 # **projectUploadSessionUidBatchUploadPOST**
@@ -3545,10 +3569,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionDetail** | [**UploadSessionDetail**](UploadSessionDetail.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionDetail** | [**UploadSessionDetail**](UploadSessionDetail.md)|  | [optional] |
 
 ### Return type
 
@@ -3566,7 +3590,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionUidBatchUploadPOST_0"></a>
 # **projectUploadSessionUidBatchUploadPOST_0**
@@ -3616,10 +3640,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionBatchUploadRequest** | [**UploadSessionBatchUploadRequest**](UploadSessionBatchUploadRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionBatchUploadRequest** | [**UploadSessionBatchUploadRequest**](UploadSessionBatchUploadRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -3637,7 +3661,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="projectUploadSessionUidCancelDELETE"></a>
 # **projectUploadSessionUidCancelDELETE**
@@ -3685,9 +3709,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
 
 ### Return type
 
@@ -3705,7 +3729,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectUploadSessionUidDELETE"></a>
 # **projectUploadSessionUidDELETE**
@@ -3753,9 +3777,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
 
 ### Return type
 
@@ -3773,7 +3797,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="projectUploadSessionUidDeleteFileDELETE"></a>
 # **projectUploadSessionUidDeleteFileDELETE**
@@ -3823,10 +3847,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionDeleteFileRequest** | [**UploadSessionDeleteFileRequest**](UploadSessionDeleteFileRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionDeleteFileRequest** | [**UploadSessionDeleteFileRequest**](UploadSessionDeleteFileRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -3844,14 +3868,16 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
-**200** |  |  -  |
-**404** |  |  -  |
-**500** |  |  -  |
+| **204** |  |  -  |
+| **200** |  |  -  |
+| **404** |  |  -  |
+| **500** |  |  -  |
 
 <a name="projectUploadSessionUidFilesPOST"></a>
 # **projectUploadSessionUidFilesPOST**
 > ProjectUploadSessionFilesResponse projectUploadSessionUidFilesPOST(uid, contentLength, fileName, force, directoryPath, force2, body)
+
+
 
 
 
@@ -3900,15 +3926,15 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **contentLength** | **Integer**| Content Length |
- **fileName** | **String**| Content Length |
- **force** | **Boolean**| Force upload | [optional]
- **directoryPath** | **Boolean**| Directory Path | [optional]
- **force2** | **Boolean**| Force upload | [optional]
- **body** | **File**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **contentLength** | **Integer**| Content Length | |
+| **fileName** | **String**| Content Length | |
+| **force** | **Boolean**| Force upload | [optional] |
+| **directoryPath** | **Boolean**| Directory Path | [optional] |
+| **force2** | **Boolean**| Force upload | [optional] |
+| **body** | **File**|  | [optional] |
 
 ### Return type
 
@@ -3926,10 +3952,10 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
-**204** |  |  -  |
-**400** |  |  -  |
-**500** |  |  -  |
+| **201** |  |  -  |
+| **204** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
 
 <a name="projectUploadSessionUidGET"></a>
 # **projectUploadSessionUidGET**
@@ -3979,10 +4005,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -4000,7 +4026,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidPATCH"></a>
 # **projectUploadSessionUidPATCH**
@@ -4050,10 +4076,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **uploadSessionUpdate** | [**UploadSessionUpdate**](UploadSessionUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -4071,7 +4097,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidProgressGET"></a>
 # **projectUploadSessionUidProgressGET**
@@ -4120,9 +4146,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
 
 ### Return type
 
@@ -4140,7 +4166,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="projectUploadSessionUidUploadPOST"></a>
 # **projectUploadSessionUidUploadPOST**
@@ -4195,15 +4221,15 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uid** | **String**| A UUID string identifying this upload session. |
- **fileName** | **Boolean**| File Name |
- **fileEncoding** | **String**| File Encoding |
- **force** | **Boolean**| Force upload | [optional]
- **reviewFile** | **Boolean**| Review File | [optional]
- **directoryPath** | **Boolean**| Directory Path | [optional]
- **body** | **File**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uid** | **String**| A UUID string identifying this upload session. | |
+| **fileName** | **Boolean**| File Name | |
+| **fileEncoding** | **String**| File Encoding | |
+| **force** | **Boolean**| Force upload | [optional] |
+| **reviewFile** | **Boolean**| Review File | [optional] |
+| **directoryPath** | **Boolean**| Directory Path | [optional] |
+| **body** | **File**|  | [optional] |
 
 ### Return type
 
@@ -4221,7 +4247,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**500** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
 

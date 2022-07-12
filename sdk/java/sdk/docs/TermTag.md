@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**pk** | **Integer** |  |  [optional] [readonly]
-**name** | **String** |  |  [optional]
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**pk** | **Integer** |  |  [optional] [readonly] |
+|**name** | **String** |  |  [optional] |
 
 
 

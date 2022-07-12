@@ -1958,7 +1958,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this geo entity.
+            var id = "id_example";  // string | A unique integer value identifying this geo entity.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2040,7 +2040,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this geo entity.
+            var id = "id_example";  // string | A unique integer value identifying this geo entity.
             var geoEntityUpdate = new GeoEntityUpdate(); // GeoEntityUpdate |  (optional) 
 
             try
@@ -2358,7 +2358,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this party.
+            var id = "id_example";  // string | A unique integer value identifying this party.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -3534,7 +3534,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
+            var fieldName = "fieldName_example";  // string | 
 
             try
             {
@@ -3614,7 +3614,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
+            var fieldName = "fieldName_example";  // string | 
 
             try
             {
@@ -3694,7 +3694,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ExtractApi(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
+            var fieldName = "fieldName_example";  // string | 
 
             try
             {

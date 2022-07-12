@@ -29,8 +29,8 @@ from guardian.shortcuts import QuerySet, get_identity, get_group_obj_perms_model
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -119,6 +119,8 @@ document_type_manager_permissions = dict(
 
 
 def get_default_group_permissions():
+    appvar_perms_list = [i for i in permissions_for('common', 'appvar')
+                         if i['perm_name'].split('_')[0] not in ('add', 'delete')]
     menuitem_perms_list = permissions_for('common', 'menuitem')
     menuitem_perms_dict = permissions_for('common', 'menuitem', as_dict=True)
     menugroup_perms_list = permissions_for('common', 'menugroup')
@@ -141,6 +143,7 @@ def get_default_group_permissions():
             menugroup_perms_dict['view_menugroup'],
         ],
         "Project Creator":
+            appvar_perms_list +
             menuitem_perms_list +
             menugroup_perms_list + [
                 project_perms_dict['add_project'],
@@ -148,6 +151,7 @@ def get_default_group_permissions():
                 user_perms_dict['view_explorer']
             ],
         "Project and Document Type Creator":
+            appvar_perms_list +
             menuitem_perms_list +
             menugroup_perms_list +
             documenttype_perms +
@@ -160,6 +164,7 @@ def get_default_group_permissions():
                 user_perms_dict['view_explorer']
             ],
         "Technical Admin":
+            appvar_perms_list +
             menuitem_perms_list +
             menugroup_perms_list +
             documenttype_perms +

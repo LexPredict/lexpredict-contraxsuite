@@ -107,11 +107,20 @@ spec:
             - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
               value: {{ .Values.rmqHost | quote}}
             - name: DOCKER_RABBITMQ_PASSWORD
-              value: {{ .Values.rmqPassword | quote}}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_password
             - name: DOCKER_RABBITMQ_USER
-              value: {{ .Values.rmqUsername | quote}}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_username
             - name: DOCKER_RABBITMQ_VHOST
-              value: {{ .Values.rmqVhost | quote}}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_vhost
             - name: DOCKER_WEBDAV_AUTH_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -276,11 +285,20 @@ spec:
             - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
               value: {{ .Values.rmqHost }}
             - name: DOCKER_RABBITMQ_PASSWORD
-              value: {{ .Values.rmqPassword }}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_password
             - name: DOCKER_RABBITMQ_USER
-              value: {{ .Values.rmqUsername }}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_username
             - name: DOCKER_RABBITMQ_VHOST
-              value: {{ .Values.rmqVhost }}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_vhost
             - name: DOCKER_WEBDAV_AUTH_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -438,11 +456,20 @@ spec:
             - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
               value: {{ .Values.rmqHost }}
             - name: DOCKER_RABBITMQ_PASSWORD
-              value: {{ .Values.rmqPassword }}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_password
             - name: DOCKER_RABBITMQ_USER
-              value: {{ .Values.rmqUsername }}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_username
             - name: DOCKER_RABBITMQ_VHOST
-              value: {{ .Values.rmqVhost }}
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secrets
+                  key: rmq_vhost
             - name: DOCKER_WEBDAV_AUTH_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -470,7 +497,7 @@ spec:
           name: contrax-celery-beat
           image: {{ .Values.contraxImage | quote }}
           volumeMounts:
-            - name: contrax-celery-beat-pvc
+            - name: contrax-celery-beat
               mountPath: /data/celery_worker_state
             - name: local-settings
               mountPath: /contraxsuite_services/local_settings.py
@@ -483,18 +510,12 @@ spec:
         - name: local-settings
           configMap:
             name: local-settings
+        - name: contrax-celery-beat
+          persistentVolumeClaim:
+            claimName: contrax-celery-beat
+            readOnly: false
       imagePullSecrets:
         - name: contraxsuitesecret
-  volumeClaimTemplates:
-    - metadata:
-        name: contrax-celery-beat-pvc
-      spec:
-        accessModes: [ "ReadWriteOnce" ]
-        storageClassName: "rook-ceph-block"
-        resources:
-          requests:
-            storage: 1Gi
-
 
 ### --- contrax-text-extraction-system ---
 # tes-celery-worker

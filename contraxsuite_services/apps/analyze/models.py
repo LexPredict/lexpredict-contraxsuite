@@ -46,8 +46,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -98,14 +98,14 @@ class MLTextUnitContractClassifierModelManager(models.Manager):
 
 
 class MLModel(models.Model):
-    DEFAULT_LANGUAGE = 'en'
-
     """
     This table stores only the path to the ML Model (pickled or even compressed)
     together with some flags.
     Document / text unit level classifiers, transformers and contract type detectors all
     use this class to access the model files.
     """
+    DEFAULT_LANGUAGE = 'en'
+
     # Transformer / classifier name, also may contain description (model params)
     name = models.CharField(max_length=1024, db_index=True,
                             help_text='Model name, may include module parameters')
@@ -178,8 +178,8 @@ class MLModel(models.Model):
     textunit_contract_classifiers = MLTextUnitContractClassifierModelManager()
 
     def __str__(self):
-        return f'{self.apply_to} {self.target_entity}, lang="{self.language}", project={self.project}. ' + \
-               f'Name="{self.name}"'
+        return f'{self.apply_to} {self.target_entity}, ' \
+               f'lang="{self.language}", project={self.project}, name="{self.name}"'
 
     def __repr__(self):
         return self.__str__()

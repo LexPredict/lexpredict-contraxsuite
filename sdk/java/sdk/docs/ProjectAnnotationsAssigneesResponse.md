@@ -5,12 +5,12 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**assigneeId** | **Integer** |  | 
-**assigneeName** | **String** |  | 
-**annotationsCount** | **Integer** |  | 
-**annotationUids** | **List&lt;UUID&gt;** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**assigneeId** | **Integer** |  |  |
+|**assigneeName** | **String** |  |  |
+|**annotationsCount** | **Integer** |  |  |
+|**annotationUids** | **List&lt;UUID&gt;** |  |  |
 
 
 

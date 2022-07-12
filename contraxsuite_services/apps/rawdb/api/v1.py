@@ -55,8 +55,8 @@ from apps.rawdb.schemas import DocumentsAPIViewSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -330,7 +330,7 @@ class DocumentsAPIView(APIView):
                                 'query_assignee_stats': query_assignee_stats}
                 if filters:
                     for field_name, condition in filters.items():
-                        the_self.GET['where_{}'.format(field_name)] = condition
+                        the_self.GET[f'{DocumentsAPIView.URL_PARAM_PREFIX_FILTER}{field_name}'] = condition
 
         request = FakeRequest()
         doc_type_code = project.type.code

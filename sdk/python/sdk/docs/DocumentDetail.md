@@ -12,7 +12,7 @@ Name | Type | Description | Notes
 **modified_by_photo** | **str** |  | 
 **status_data** | [**DocumentDetailStatusData**](DocumentDetailStatusData.md) |  | 
 **assignee_data** | [**DocumentDetailAssigneeData**](DocumentDetailAssigneeData.md) |  | 
-**available_assignees_data** | [**[DocumentDetailAvailableAssigneesData], none_type**](DocumentDetailAvailableAssigneesData.md) |  | 
+**available_assignees_data** | [**[DocumentDetailAvailableAssigneesDataInner], none_type**](DocumentDetailAvailableAssigneesDataInner.md) |  | 
 **pk** | **int** |  | [optional] [readonly] 
 **name** | **str, none_type** |  | [optional] 
 **document_type** | **str, none_type** |  | [optional] 
@@ -37,6 +37,7 @@ Name | Type | Description | Notes
 **documents_count** | **str** |  | [optional] [readonly] 
 **sections** | **[{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]** |  | [optional] [readonly] 
 **cluster_id** | **str** |  | [optional] [readonly] 
+**was_opened_in_annotator** | **bool** |  | [optional] [readonly] 
 **user_permissions** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}** |  | [optional] [readonly] 
 **any string name** | **bool, date, datetime, dict, float, int, list, str, none_type** | any string name can be used but the value must be the correct type | [optional]
 

@@ -4,7 +4,11 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**users_social_accounts_get**](UsersApi.md#users_social_accounts_get) | **GET** /api/v1/users/social_accounts/ | 
+[**users_client_ids_get**](UsersApi.md#users_client_ids_get) | **GET** /api/v1/users/client-ids/ | 
+[**users_elevate_post**](UsersApi.md#users_elevate_post) | **POST** /api/v1/users/elevate/ | 
+[**users_google_post**](UsersApi.md#users_google_post) | **POST** /api/v1/users/google/ | 
+[**users_office365_post**](UsersApi.md#users_office365_post) | **POST** /api/v1/users/office365/ | 
+[**users_okta_post**](UsersApi.md#users_okta_post) | **POST** /api/v1/users/okta/ | 
 [**users_users_form_fields_get**](UsersApi.md#users_users_form_fields_get) | **GET** /api/v1/users/users/form-fields/ | 
 [**users_users_get**](UsersApi.md#users_users_get) | **GET** /api/v1/users/users/ | 
 [**users_users_id_form_fields_get**](UsersApi.md#users_users_id_form_fields_get) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -16,8 +20,10 @@ Method | HTTP request | Description
 [**users_verify_token_post**](UsersApi.md#users_verify_token_post) | **POST** /api/v1/users/verify-token/ | 
 
 
-# **users_social_accounts_get**
-> SocialAccountsResponse users_social_accounts_get()
+# **users_client_ids_get**
+> [SocialClientList] users_client_ids_get()
+
+
 
 
 
@@ -29,7 +35,7 @@ Method | HTTP request | Description
 import time
 import openapi_client
 from openapi_client.api import users_api
-from openapi_client.model.social_accounts_response import SocialAccountsResponse
+from openapi_client.model.social_client_list import SocialClientList
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -55,10 +61,10 @@ with openapi_client.ApiClient(configuration) as api_client:
 
     # example, this endpoint has no required or optional parameters
     try:
-        api_response = api_instance.users_social_accounts_get()
+        api_response = api_instance.users_client_ids_get()
         pprint(api_response)
     except openapi_client.ApiException as e:
-        print("Exception when calling UsersApi->users_social_accounts_get: %s\n" % e)
+        print("Exception when calling UsersApi->users_client_ids_get: %s\n" % e)
 ```
 
 
@@ -67,7 +73,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
+[**[SocialClientList]**](SocialClientList.md)
 
 ### Authorization
 
@@ -84,6 +90,330 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_elevate_post**
+> SocialLogin users_elevate_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Elevate in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://elmqa.elevateservices.com/services/oauth/authorize`     with correct `client_id`, `redirect_url`, and `response_type=token`; 2. After elevate auth user will be redirected to callback url; 3. Pass the `access_token` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import users_api
+from openapi_client.model.access_token_schema import AccessTokenSchema
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = users_api.UsersApi(api_client)
+    access_token_schema = AccessTokenSchema(
+        access_token="access_token_example",
+    ) # AccessTokenSchema |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_elevate_post(access_token_schema=access_token_schema)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling UsersApi->users_elevate_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **access_token_schema** | [**AccessTokenSchema**](AccessTokenSchema.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_google_post**
+> SocialLogin users_google_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Google in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://accounts.google.com/o/oauth2/v2/auth`     with correct `client_id`, `redirect_url`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import users_api
+from openapi_client.model.code import Code
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = users_api.UsersApi(api_client)
+    code = Code(
+        code="code_example",
+    ) # Code |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_google_post(code=code)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling UsersApi->users_google_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_office365_post**
+> SocialLogin users_office365_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Microsoft office365 in CLM.  The login algorithm is next:  1. Redirect to microsoft auth page `https://login.microsoftonline.com/consumers|common/oauth2/v2.0/authorize`     with correct `client_id`, `redirect_url`, `response_type`, and `scope`; 2. After microsoft auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import users_api
+from openapi_client.model.code import Code
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = users_api.UsersApi(api_client)
+    code = Code(
+        code="code_example",
+    ) # Code |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_office365_post(code=code)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling UsersApi->users_office365_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_okta_post**
+> SocialLogin users_okta_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Okta in CLM.  The login algorithm is next:  1. Redirect to okta auth page `https://{{your domain}}.okta.com/oauth2/default/v1/authorize`     with correct `client_id`, `redirect_url`, `scope`, and `state`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import users_api
+from openapi_client.model.code import Code
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = users_api.UsersApi(api_client)
+    code = Code(
+        code="code_example",
+    ) # Code |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_okta_post(code=code)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling UsersApi->users_okta_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

@@ -1,8 +1,8 @@
 # contraxsuite-openapi-client
 
 Contraxsuite API
-- API version: 2.1.188
-  - Build date: 2022-01-19T15:46:46.101102+03:00[Europe/Moscow]
+- API version: 2.3.0
+  - Build date: 2022-06-16T11:43:26.677726+03:00[Europe/Moscow]
 
 Contraxsuite API
 
@@ -13,7 +13,7 @@ Contraxsuite API
 ## Requirements
 
 Building the API client library requires:
-1. Java 1.7+
+1. Java 1.8+
 2. Maven (3.8.3+)/Gradle (7.2+)
 
 ## Installation
@@ -156,6 +156,7 @@ Class | Method | HTTP request | Description
 *CommonApi* | [**commonAppVariablesListGET**](docs/CommonApi.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ | 
 *CommonApi* | [**commonAppVariablesProjectProjectIdGET**](docs/CommonApi.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
 *CommonApi* | [**commonAppVariablesProjectProjectIdPUT**](docs/CommonApi.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
+*CommonApi* | [**commonLogoGET**](docs/CommonApi.md#commonLogoGET) | **GET** /api/v1/common/logo/ | 
 *CommonApi* | [**commonMediaPathGET**](docs/CommonApi.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ | 
 *CommonApi* | [**commonMenuGroupsFormFieldsGET**](docs/CommonApi.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 *CommonApi* | [**commonMenuGroupsGET**](docs/CommonApi.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ | 
@@ -266,6 +267,7 @@ Class | Method | HTTP request | Description
 *DocumentApi* | [**documentDocumentsIdPATCH**](docs/DocumentApi.md#documentDocumentsIdPATCH) | **PATCH** /api/v1/document/documents/{id}/ | 
 *DocumentApi* | [**documentDocumentsIdPUT**](docs/DocumentApi.md#documentDocumentsIdPUT) | **PUT** /api/v1/document/documents/{id}/ | 
 *DocumentApi* | [**documentDocumentsIdPdfReprGET**](docs/DocumentApi.md#documentDocumentsIdPdfReprGET) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
+*DocumentApi* | [**documentDocumentsIdSetAnnotatorCoordDifferencePOST**](docs/DocumentApi.md#documentDocumentsIdSetAnnotatorCoordDifferencePOST) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ | 
 *DocumentApi* | [**documentDocumentsIdShowGET**](docs/DocumentApi.md#documentDocumentsIdShowGET) | **GET** /api/v1/document/documents/{id}/show/ | 
 *DocumentApi* | [**documentDocumentsIdSimilarGET**](docs/DocumentApi.md#documentDocumentsIdSimilarGET) | **GET** /api/v1/document/documents/{id}/similar/ | 
 *DocumentApi* | [**documentDocumentsMarkDeletePOST**](docs/DocumentApi.md#documentDocumentsMarkDeletePOST) | **POST** /api/v1/document/documents/mark_delete/ | 
@@ -306,6 +308,7 @@ Class | Method | HTTP request | Description
 *DocumentApi* | [**documentProjectProjectPkDocumentsIdPATCH**](docs/DocumentApi.md#documentProjectProjectPkDocumentsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 *DocumentApi* | [**documentProjectProjectPkDocumentsIdPUT**](docs/DocumentApi.md#documentProjectProjectPkDocumentsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 *DocumentApi* | [**documentProjectProjectPkDocumentsIdPdfReprGET**](docs/DocumentApi.md#documentProjectProjectPkDocumentsIdPdfReprGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
+*DocumentApi* | [**documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST**](docs/DocumentApi.md#documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ | 
 *DocumentApi* | [**documentProjectProjectPkDocumentsIdShowGET**](docs/DocumentApi.md#documentProjectProjectPkDocumentsIdShowGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
 *DocumentApi* | [**documentProjectProjectPkDocumentsIdSimilarGET**](docs/DocumentApi.md#documentProjectProjectPkDocumentsIdSimilarGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 *DocumentApi* | [**documentProjectProjectPkDocumentsMarkDeletePOST**](docs/DocumentApi.md#documentProjectProjectPkDocumentsMarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
@@ -444,8 +447,6 @@ Class | Method | HTTP request | Description
 *RestAuthApi* | [**restAuthPasswordChangePOST**](docs/RestAuthApi.md#restAuthPasswordChangePOST) | **POST** /rest-auth/password/change/ | 
 *RestAuthApi* | [**restAuthPasswordResetConfirmPOST**](docs/RestAuthApi.md#restAuthPasswordResetConfirmPOST) | **POST** /rest-auth/password/reset/confirm/ | 
 *RestAuthApi* | [**restAuthPasswordResetPOST**](docs/RestAuthApi.md#restAuthPasswordResetPOST) | **POST** /rest-auth/password/reset/ | 
-*RestAuthApi* | [**restAuthRegistrationPOST**](docs/RestAuthApi.md#restAuthRegistrationPOST) | **POST** /rest-auth/registration/ | 
-*RestAuthApi* | [**restAuthRegistrationVerifyEmailPOST**](docs/RestAuthApi.md#restAuthRegistrationVerifyEmailPOST) | **POST** /rest-auth/registration/verify-email/ | 
 *SimilarityApi* | [**similarityDocumentSimilarityByFeaturesGET**](docs/SimilarityApi.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
 *SimilarityApi* | [**similarityDocumentSimilarityByFeaturesPOST**](docs/SimilarityApi.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 *SimilarityApi* | [**similarityPartySimilarityGET**](docs/SimilarityApi.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ | 
@@ -479,7 +480,11 @@ Class | Method | HTTP request | Description
 *TaskApi* | [**taskUpdateElasticIndexPOST**](docs/TaskApi.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ | 
 *TusApi* | [**tusUploadSessionUploadSessionIdUploadGuidPATCH**](docs/TusApi.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 *TusApi* | [**tusUploadSessionUploadSessionIdUploadPOST**](docs/TusApi.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-*UsersApi* | [**usersSocialAccountsGET**](docs/UsersApi.md#usersSocialAccountsGET) | **GET** /api/v1/users/social_accounts/ | 
+*UsersApi* | [**usersClientIdsGET**](docs/UsersApi.md#usersClientIdsGET) | **GET** /api/v1/users/client-ids/ | 
+*UsersApi* | [**usersElevatePOST**](docs/UsersApi.md#usersElevatePOST) | **POST** /api/v1/users/elevate/ | 
+*UsersApi* | [**usersGooglePOST**](docs/UsersApi.md#usersGooglePOST) | **POST** /api/v1/users/google/ | 
+*UsersApi* | [**usersOffice365POST**](docs/UsersApi.md#usersOffice365POST) | **POST** /api/v1/users/office365/ | 
+*UsersApi* | [**usersOktaPOST**](docs/UsersApi.md#usersOktaPOST) | **POST** /api/v1/users/okta/ | 
 *UsersApi* | [**usersUsersFormFieldsGET**](docs/UsersApi.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ | 
 *UsersApi* | [**usersUsersGET**](docs/UsersApi.md#usersUsersGET) | **GET** /api/v1/users/users/ | 
 *UsersApi* | [**usersUsersIdFormFieldsGET**](docs/UsersApi.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -523,6 +528,7 @@ Class | Method | HTTP request | Description
 *V1Api* | [**commonAppVariablesListGET**](docs/V1Api.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ | 
 *V1Api* | [**commonAppVariablesProjectProjectIdGET**](docs/V1Api.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
 *V1Api* | [**commonAppVariablesProjectProjectIdPUT**](docs/V1Api.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
+*V1Api* | [**commonLogoGET**](docs/V1Api.md#commonLogoGET) | **GET** /api/v1/common/logo/ | 
 *V1Api* | [**commonMediaPathGET**](docs/V1Api.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ | 
 *V1Api* | [**commonMenuGroupsFormFieldsGET**](docs/V1Api.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 *V1Api* | [**commonMenuGroupsGET**](docs/V1Api.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ | 
@@ -633,6 +639,7 @@ Class | Method | HTTP request | Description
 *V1Api* | [**documentDocumentsIdPATCH**](docs/V1Api.md#documentDocumentsIdPATCH) | **PATCH** /api/v1/document/documents/{id}/ | 
 *V1Api* | [**documentDocumentsIdPUT**](docs/V1Api.md#documentDocumentsIdPUT) | **PUT** /api/v1/document/documents/{id}/ | 
 *V1Api* | [**documentDocumentsIdPdfReprGET**](docs/V1Api.md#documentDocumentsIdPdfReprGET) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
+*V1Api* | [**documentDocumentsIdSetAnnotatorCoordDifferencePOST**](docs/V1Api.md#documentDocumentsIdSetAnnotatorCoordDifferencePOST) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ | 
 *V1Api* | [**documentDocumentsIdShowGET**](docs/V1Api.md#documentDocumentsIdShowGET) | **GET** /api/v1/document/documents/{id}/show/ | 
 *V1Api* | [**documentDocumentsIdSimilarGET**](docs/V1Api.md#documentDocumentsIdSimilarGET) | **GET** /api/v1/document/documents/{id}/similar/ | 
 *V1Api* | [**documentDocumentsMarkDeletePOST**](docs/V1Api.md#documentDocumentsMarkDeletePOST) | **POST** /api/v1/document/documents/mark_delete/ | 
@@ -673,6 +680,7 @@ Class | Method | HTTP request | Description
 *V1Api* | [**documentProjectProjectPkDocumentsIdPATCH**](docs/V1Api.md#documentProjectProjectPkDocumentsIdPATCH) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 *V1Api* | [**documentProjectProjectPkDocumentsIdPUT**](docs/V1Api.md#documentProjectProjectPkDocumentsIdPUT) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 *V1Api* | [**documentProjectProjectPkDocumentsIdPdfReprGET**](docs/V1Api.md#documentProjectProjectPkDocumentsIdPdfReprGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
+*V1Api* | [**documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST**](docs/V1Api.md#documentProjectProjectPkDocumentsIdSetAnnotatorCoordDifferencePOST) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ | 
 *V1Api* | [**documentProjectProjectPkDocumentsIdShowGET**](docs/V1Api.md#documentProjectProjectPkDocumentsIdShowGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
 *V1Api* | [**documentProjectProjectPkDocumentsIdSimilarGET**](docs/V1Api.md#documentProjectProjectPkDocumentsIdSimilarGET) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 *V1Api* | [**documentProjectProjectPkDocumentsMarkDeletePOST**](docs/V1Api.md#documentProjectProjectPkDocumentsMarkDeletePOST) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
@@ -811,8 +819,6 @@ Class | Method | HTTP request | Description
 *V1Api* | [**restAuthPasswordChangePOST**](docs/V1Api.md#restAuthPasswordChangePOST) | **POST** /rest-auth/password/change/ | 
 *V1Api* | [**restAuthPasswordResetConfirmPOST**](docs/V1Api.md#restAuthPasswordResetConfirmPOST) | **POST** /rest-auth/password/reset/confirm/ | 
 *V1Api* | [**restAuthPasswordResetPOST**](docs/V1Api.md#restAuthPasswordResetPOST) | **POST** /rest-auth/password/reset/ | 
-*V1Api* | [**restAuthRegistrationPOST**](docs/V1Api.md#restAuthRegistrationPOST) | **POST** /rest-auth/registration/ | 
-*V1Api* | [**restAuthRegistrationVerifyEmailPOST**](docs/V1Api.md#restAuthRegistrationVerifyEmailPOST) | **POST** /rest-auth/registration/verify-email/ | 
 *V1Api* | [**similarityDocumentSimilarityByFeaturesGET**](docs/V1Api.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
 *V1Api* | [**similarityDocumentSimilarityByFeaturesPOST**](docs/V1Api.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 *V1Api* | [**similarityPartySimilarityGET**](docs/V1Api.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ | 
@@ -846,7 +852,11 @@ Class | Method | HTTP request | Description
 *V1Api* | [**taskUpdateElasticIndexPOST**](docs/V1Api.md#taskUpdateElasticIndexPOST) | **POST** /api/v1/task/update-elastic-index/ | 
 *V1Api* | [**tusUploadSessionUploadSessionIdUploadGuidPATCH**](docs/V1Api.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 *V1Api* | [**tusUploadSessionUploadSessionIdUploadPOST**](docs/V1Api.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-*V1Api* | [**usersSocialAccountsGET**](docs/V1Api.md#usersSocialAccountsGET) | **GET** /api/v1/users/social_accounts/ | 
+*V1Api* | [**usersClientIdsGET**](docs/V1Api.md#usersClientIdsGET) | **GET** /api/v1/users/client-ids/ | 
+*V1Api* | [**usersElevatePOST**](docs/V1Api.md#usersElevatePOST) | **POST** /api/v1/users/elevate/ | 
+*V1Api* | [**usersGooglePOST**](docs/V1Api.md#usersGooglePOST) | **POST** /api/v1/users/google/ | 
+*V1Api* | [**usersOffice365POST**](docs/V1Api.md#usersOffice365POST) | **POST** /api/v1/users/office365/ | 
+*V1Api* | [**usersOktaPOST**](docs/V1Api.md#usersOktaPOST) | **POST** /api/v1/users/okta/ | 
 *V1Api* | [**usersUsersFormFieldsGET**](docs/V1Api.md#usersUsersFormFieldsGET) | **GET** /api/v1/users/users/form-fields/ | 
 *V1Api* | [**usersUsersGET**](docs/V1Api.md#usersUsersGET) | **GET** /api/v1/users/users/ | 
 *V1Api* | [**usersUsersIdFormFieldsGET**](docs/V1Api.md#usersUsersIdFormFieldsGET) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -860,6 +870,7 @@ Class | Method | HTTP request | Description
 
 ## Documentation for Models
 
+ - [AccessTokenSchema](docs/AccessTokenSchema.md)
  - [Action](docs/Action.md)
  - [AmountUsage](docs/AmountUsage.md)
  - [Annotation](docs/Annotation.md)
@@ -880,6 +891,7 @@ Class | Method | HTTP request | Description
  - [CloneDocumentTypeRequest](docs/CloneDocumentTypeRequest.md)
  - [ClusterProjectRequest](docs/ClusterProjectRequest.md)
  - [ClusterProjectResponse](docs/ClusterProjectResponse.md)
+ - [Code](docs/Code.md)
  - [CopyrightUsage](docs/CopyrightUsage.md)
  - [CountSuccessResponse](docs/CountSuccessResponse.md)
  - [CourtUsage](docs/CourtUsage.md)
@@ -895,18 +907,19 @@ Class | Method | HTTP request | Description
  - [DetectProjectFieldValuesRequest](docs/DetectProjectFieldValuesRequest.md)
  - [DistanceUsage](docs/DistanceUsage.md)
  - [DocumentCluster](docs/DocumentCluster.md)
- - [DocumentClusterDocumentData](docs/DocumentClusterDocumentData.md)
+ - [DocumentClusterDocumentDataInner](docs/DocumentClusterDocumentDataInner.md)
  - [DocumentClusterUpdate](docs/DocumentClusterUpdate.md)
  - [DocumentDefinitions](docs/DocumentDefinitions.md)
  - [DocumentDetail](docs/DocumentDetail.md)
  - [DocumentDetailAssigneeData](docs/DocumentDetailAssigneeData.md)
- - [DocumentDetailAvailableAssigneesData](docs/DocumentDetailAvailableAssigneesData.md)
+ - [DocumentDetailAvailableAssigneesDataInner](docs/DocumentDetailAvailableAssigneesDataInner.md)
  - [DocumentDetailStatusData](docs/DocumentDetailStatusData.md)
+ - [DocumentDocumentsDownloadZipGET404Response](docs/DocumentDocumentsDownloadZipGET404Response.md)
  - [DocumentDownloadZipResponse](docs/DocumentDownloadZipResponse.md)
  - [DocumentFieldAnnotation](docs/DocumentFieldAnnotation.md)
  - [DocumentFieldCategoryCreate](docs/DocumentFieldCategoryCreate.md)
  - [DocumentFieldCategoryList](docs/DocumentFieldCategoryList.md)
- - [DocumentFieldCategoryListFields](docs/DocumentFieldCategoryListFields.md)
+ - [DocumentFieldCategoryListFieldsInner](docs/DocumentFieldCategoryListFieldsInner.md)
  - [DocumentFieldCreate](docs/DocumentFieldCreate.md)
  - [DocumentFieldDetail](docs/DocumentFieldDetail.md)
  - [DocumentFieldDetectorCreate](docs/DocumentFieldDetectorCreate.md)
@@ -921,13 +934,16 @@ Class | Method | HTTP request | Description
  - [DocumentNoteDetailUser](docs/DocumentNoteDetailUser.md)
  - [DocumentNoteUpdate](docs/DocumentNoteUpdate.md)
  - [DocumentPDFRepr](docs/DocumentPDFRepr.md)
+ - [DocumentSetAnnotatorCoordinatesDifferenceRequest](docs/DocumentSetAnnotatorCoordinatesDifferenceRequest.md)
+ - [DocumentSetAnnotatorCoordinatesDifferenceRequestFirstLettersInner](docs/DocumentSetAnnotatorCoordinatesDifferenceRequestFirstLettersInner.md)
+ - [DocumentSetAnnotatorCoordinatesDifferenceResponse](docs/DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
  - [DocumentSimilarity](docs/DocumentSimilarity.md)
  - [DocumentSimilarityByFeaturesForm](docs/DocumentSimilarityByFeaturesForm.md)
  - [DocumentSimilarityRun](docs/DocumentSimilarityRun.md)
  - [DocumentTypeCreate](docs/DocumentTypeCreate.md)
  - [DocumentTypeDetail](docs/DocumentTypeDetail.md)
- - [DocumentTypeDetailCategories](docs/DocumentTypeDetailCategories.md)
- - [DocumentTypeDetailFieldsData](docs/DocumentTypeDetailFieldsData.md)
+ - [DocumentTypeDetailCategoriesInner](docs/DocumentTypeDetailCategoriesInner.md)
+ - [DocumentTypeDetailFieldsDataInner](docs/DocumentTypeDetailFieldsDataInner.md)
  - [DocumentTypeForStats](docs/DocumentTypeForStats.md)
  - [DocumentTypeImportRequest](docs/DocumentTypeImportRequest.md)
  - [DocumentTypeImportResponse](docs/DocumentTypeImportResponse.md)
@@ -935,7 +951,8 @@ Class | Method | HTTP request | Description
  - [DocumentTypeStatsData](docs/DocumentTypeStatsData.md)
  - [DocumentsForUser](docs/DocumentsForUser.md)
  - [DocumentsForUserResponse](docs/DocumentsForUserResponse.md)
- - [DocumentsForUserResponseData](docs/DocumentsForUserResponseData.md)
+ - [DocumentsForUserResponseDataInner](docs/DocumentsForUserResponseDataInner.md)
+ - [DumpDocumentConfigGET200Response](docs/DumpDocumentConfigGET200Response.md)
  - [DumpFixture](docs/DumpFixture.md)
  - [DumpPUTErrorResponse](docs/DumpPUTErrorResponse.md)
  - [FieldAnnotationStatus](docs/FieldAnnotationStatus.md)
@@ -943,9 +960,6 @@ Class | Method | HTTP request | Description
  - [GeoEntityList](docs/GeoEntityList.md)
  - [GeoEntityUpdate](docs/GeoEntityUpdate.md)
  - [GeoEntityUsage](docs/GeoEntityUsage.md)
- - [InlineResponse400](docs/InlineResponse400.md)
- - [InlineResponse404](docs/InlineResponse404.md)
- - [InlineResponse4041](docs/InlineResponse4041.md)
  - [LoadFixture](docs/LoadFixture.md)
  - [LocateItemsRequest](docs/LocateItemsRequest.md)
  - [LoggingAPIViewRequest](docs/LoggingAPIViewRequest.md)
@@ -970,20 +984,22 @@ Class | Method | HTTP request | Description
  - [ProjectAnnotationsAssigneesResponse](docs/ProjectAnnotationsAssigneesResponse.md)
  - [ProjectAppVar](docs/ProjectAppVar.md)
  - [ProjectClustering](docs/ProjectClustering.md)
- - [ProjectClusteringDocumentClusters](docs/ProjectClusteringDocumentClusters.md)
+ - [ProjectClusteringDocumentClustersInner](docs/ProjectClusteringDocumentClustersInner.md)
  - [ProjectClusteringStatusResponse](docs/ProjectClusteringStatusResponse.md)
  - [ProjectCreate](docs/ProjectCreate.md)
  - [ProjectDetail](docs/ProjectDetail.md)
- - [ProjectDetailOwnersData](docs/ProjectDetailOwnersData.md)
+ - [ProjectDetailOwnersDataInner](docs/ProjectDetailOwnersDataInner.md)
  - [ProjectDocumentSimilarity](docs/ProjectDocumentSimilarity.md)
  - [ProjectDocumentSimilarityResponse](docs/ProjectDocumentSimilarityResponse.md)
- - [ProjectDocumentSimilarityResponseData](docs/ProjectDocumentSimilarityResponseData.md)
+ - [ProjectDocumentSimilarityResponseDataInner](docs/ProjectDocumentSimilarityResponseDataInner.md)
  - [ProjectDocumentsAssigneesResponse](docs/ProjectDocumentsAssigneesResponse.md)
  - [ProjectDocumentsSimilarityByVectorsForm](docs/ProjectDocumentsSimilarityByVectorsForm.md)
  - [ProjectList](docs/ProjectList.md)
  - [ProjectListStatusData](docs/ProjectListStatusData.md)
  - [ProjectListTypeData](docs/ProjectListTypeData.md)
  - [ProjectProgressResponse](docs/ProjectProgressResponse.md)
+ - [ProjectProjectsIdAssignAnnotationsPOST404Response](docs/ProjectProjectsIdAssignAnnotationsPOST404Response.md)
+ - [ProjectProjectsIdSetAnnotationStatusPOST200Response](docs/ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
  - [ProjectSearchSimilarDocumentsRequest](docs/ProjectSearchSimilarDocumentsRequest.md)
  - [ProjectSearchSimilarTextUnitsRequest](docs/ProjectSearchSimilarTextUnitsRequest.md)
  - [ProjectStats](docs/ProjectStats.md)
@@ -996,7 +1012,6 @@ Class | Method | HTTP request | Description
  - [ProjectUploadSessionProgressResponse](docs/ProjectUploadSessionProgressResponse.md)
  - [RatioUsage](docs/RatioUsage.md)
  - [RawdbDocumentsPOSTRequest](docs/RawdbDocumentsPOSTRequest.md)
- - [Register](docs/Register.md)
  - [RegulationUsage](docs/RegulationUsage.md)
  - [RestAuthCommonResponse](docs/RestAuthCommonResponse.md)
  - [ReviewStatus](docs/ReviewStatus.md)
@@ -1013,15 +1028,16 @@ Class | Method | HTTP request | Description
  - [SimilarityForm](docs/SimilarityForm.md)
  - [SimilarityPOSTObjectResponse](docs/SimilarityPOSTObjectResponse.md)
  - [SimilarityRun](docs/SimilarityRun.md)
- - [SocialAccountsResponse](docs/SocialAccountsResponse.md)
- - [SocialAccountsResponseSocialAccounts](docs/SocialAccountsResponseSocialAccounts.md)
+ - [SocialClientList](docs/SocialClientList.md)
+ - [SocialClientListUrls](docs/SocialClientListUrls.md)
+ - [SocialLogin](docs/SocialLogin.md)
  - [Task](docs/Task.md)
  - [TaskIdResponse](docs/TaskIdResponse.md)
  - [TaskLogResponse](docs/TaskLogResponse.md)
  - [TaskLogResponseRecords](docs/TaskLogResponseRecords.md)
  - [TaskQueue](docs/TaskQueue.md)
- - [TaskQueueDocumentsData](docs/TaskQueueDocumentsData.md)
- - [TaskQueueReviewersData](docs/TaskQueueReviewersData.md)
+ - [TaskQueueDocumentsDataInner](docs/TaskQueueDocumentsDataInner.md)
+ - [TaskQueueReviewersDataInner](docs/TaskQueueReviewersDataInner.md)
  - [TermTag](docs/TermTag.md)
  - [TermUsage](docs/TermUsage.md)
  - [TextUnitClassification](docs/TextUnitClassification.md)
@@ -1034,8 +1050,10 @@ Class | Method | HTTP request | Description
  - [TextUnitSimilarityByFeaturesForm](docs/TextUnitSimilarityByFeaturesForm.md)
  - [TrademarkUsage](docs/TrademarkUsage.md)
  - [Transformer](docs/Transformer.md)
+ - [TusUploadSessionUploadSessionIdUploadPOST400Response](docs/TusUploadSessionUploadSessionIdUploadPOST400Response.md)
  - [Typeahead](docs/Typeahead.md)
  - [UpdateProjectDocumentsFieldsRequest](docs/UpdateProjectDocumentsFieldsRequest.md)
+ - [UpdateProjectDocumentsFieldsResponse](docs/UpdateProjectDocumentsFieldsResponse.md)
  - [Upload](docs/Upload.md)
  - [UploadSessionBatchUploadRequest](docs/UploadSessionBatchUploadRequest.md)
  - [UploadSessionCreate](docs/UploadSessionCreate.md)
@@ -1048,7 +1066,6 @@ Class | Method | HTTP request | Description
  - [UserStats](docs/UserStats.md)
  - [VerifyAuthTokenRequest](docs/VerifyAuthTokenRequest.md)
  - [VerifyAuthTokenResponse](docs/VerifyAuthTokenResponse.md)
- - [VerifyEmail](docs/VerifyEmail.md)
  - [WebNotificationDetail](docs/WebNotificationDetail.md)
  - [WebNotificationDetailNotification](docs/WebNotificationDetailNotification.md)
 

@@ -34,8 +34,8 @@ from apps.task.utils.task_utils import TaskUtils  # noqa
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,6 +58,7 @@ class AdvancedCelery(Celery):
             countdown=None,  # we don't need countdown when re-sending, it was already delayed before hanging
             eta=None,
             group_id=None,
+            group_index=None,
             expires=None,
             retries=0,
             chord=None,  # we have own implementation of chords
@@ -85,7 +86,7 @@ class AdvancedCelery(Celery):
 
     def send_task(self, name, args=None, kwargs=None, countdown=None, eta=None, task_id=None,
                   producer=None, connection=None, router=None, result_cls=None, expires=None,
-                  publisher=None, link=None, link_error=None, add_to_parent=True, group_id=None,
+                  publisher=None, link=None, link_error=None, add_to_parent=True, group_id=None, group_index=None,
                   retries=0, chord=None, reply_to=None, time_limit=None, soft_time_limit=None,
                   root_id=None, parent_id=None, source_data=None,
                   run_after_sub_tasks_finished=False,
@@ -136,6 +137,6 @@ class AdvancedCelery(Celery):
 
         return super().send_task(name, args, kwargs, countdown, eta, task_id, producer, connection,
                                  router, result_cls, expires, publisher, link, link_error,
-                                 add_to_parent, group_id, retries, chord, reply_to, time_limit,
+                                 add_to_parent, group_id, group_index, retries, chord, reply_to, time_limit,
                                  soft_time_limit, root_id, parent_id, route_name, shadow, chain,
                                  task_type, **options)

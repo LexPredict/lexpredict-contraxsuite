@@ -2,9 +2,9 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**loggingLogMessagePOST**](LoggingApi.md#loggingLogMessagePOST) | **POST** /api/v1/logging/log_message/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**loggingLogMessagePOST**](LoggingApi.md#loggingLogMessagePOST) | **POST** /api/v1/logging/log_message/ |  |
 
 
 <a name="loggingLogMessagePOST"></a>
@@ -54,9 +54,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **loggingAPIViewRequest** | [**LoggingAPIViewRequest**](LoggingAPIViewRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **loggingAPIViewRequest** | [**LoggingAPIViewRequest**](LoggingAPIViewRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -74,7 +74,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
-**500** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
 

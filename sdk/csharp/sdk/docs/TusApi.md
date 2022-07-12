@@ -11,7 +11,7 @@ Method | HTTP request | Description
 
 ## TusUploadSessionUploadSessionIdUploadGuidPATCH
 
-> InlineResponse400 TusUploadSessionUploadSessionIdUploadGuidPATCH (string uploadSessionId, string guid, int uploadOffset, string tusResumable, bool? force = null, System.IO.Stream body = null)
+> TusUploadSessionUploadSessionIdUploadPOST400Response TusUploadSessionUploadSessionIdUploadGuidPATCH (string uploadSessionId, string guid, int uploadOffset, string tusResumable, bool? force = null, System.IO.Stream body = null)
 
 
 
@@ -39,16 +39,16 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TusApi(Configuration.Default);
-            var uploadSessionId = uploadSessionId_example;  // string | 
-            var guid = guid_example;  // string | 
+            var uploadSessionId = "uploadSessionId_example";  // string | 
+            var guid = "guid_example";  // string | 
             var uploadOffset = 56;  // int | Upload offset, bytes.
-            var tusResumable = tusResumable_example;  // string | 1.0.0
+            var tusResumable = "tusResumable_example";  // string | 1.0.0
             var force = true;  // bool? | Upload a file even if it exists. (optional) 
-            var body = BINARY_DATA_HERE;  // System.IO.Stream |  (optional) 
+            var body = new System.IO.MemoryStream(System.IO.File.ReadAllBytes("/path/to/file.txt"));  // System.IO.Stream |  (optional) 
 
             try
             {
-                InlineResponse400 result = apiInstance.TusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
+                TusUploadSessionUploadSessionIdUploadPOST400Response result = apiInstance.TusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -76,7 +76,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InlineResponse400**](InlineResponse400.md)
+[**TusUploadSessionUploadSessionIdUploadPOST400Response**](TusUploadSessionUploadSessionIdUploadPOST400Response.md)
 
 ### Authorization
 
@@ -132,10 +132,10 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TusApi(Configuration.Default);
-            var uploadSessionId = uploadSessionId_example;  // string | 
+            var uploadSessionId = "uploadSessionId_example";  // string | 
             var uploadLength = 56;  // int | File length.
-            var uploadMetadata = uploadMetadata_example;  // string | Upload metadata include file name, relative path, etc.
-            var tusResumable = tusResumable_example;  // string | 1.0.0
+            var uploadMetadata = "uploadMetadata_example";  // string | Upload metadata include file name, relative path, etc.
+            var tusResumable = "tusResumable_example";  // string | 1.0.0
             var force = true;  // bool? | Upload a file even if it exists. (optional) 
             var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
 

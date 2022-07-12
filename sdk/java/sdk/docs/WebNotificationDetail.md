@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**isSeen** | **Boolean** |  |  [optional]
-**notification** | [**WebNotificationDetailNotification**](WebNotificationDetailNotification.md) |  |  [optional]
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**isSeen** | **Boolean** |  |  [optional] |
+|**notification** | [**WebNotificationDetailNotification**](WebNotificationDetailNotification.md) |  |  [optional] |
 
 
 

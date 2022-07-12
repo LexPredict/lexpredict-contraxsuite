@@ -35,7 +35,6 @@ from typing import Tuple, Match, List
 
 # Django imports
 from django.contrib import messages
-from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.db.models import Count, Q
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -53,8 +52,8 @@ import apps.common.mixins
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -562,17 +561,7 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     ]
 
     def get_json_data(self, **kwargs):
-        qs = kwargs.get('qs') or self.get_queryset()
-        kwargs['qs'] = qs
-
-        # ToDo: move exporting large amount of items to separate celery task
-        from apps.analyze.app_vars import NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT
-        disable_data_export = qs.count() > NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT.val()
-
-        # super method removes qs from kwargs
-        data = super().get_json_data(**kwargs)
-        data['disable_data_export'] = disable_data_export
-
+        data = super().get_json_data()
         all_document_names = {
             i['pk']: i['name'] for i in Document.all_objects.all().values('pk', 'name')
         }
@@ -613,21 +602,16 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
     def get(self, request, *args, **kwargs):
         qs = self.get_queryset()
 
-        self.object_list = qs
-        context = self.get_context_data()
-
-        # ToDo: move exporting large amount of items to separate celery task
-        from apps.analyze.app_vars import NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT
-        if qs.count() > NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT.val():
-            context['disable_data_export'] = True
-
         if request.is_ajax() or 'return_raw_data' in self.request.GET:
             if 'export' in self.request.GET:
                 return export_qs_to_file(request, qs=qs, **self.export_params)
             if request.GET.get('export_to') in ['csv', 'xlsx', 'pdf']:
-                if context.get('disable_data_export', False):
+                # ToDo: move exporting large amount of items to separate celery task
+                from apps.analyze.app_vars import NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT
+                if qs.count() > NOTIFY_TOO_MANY_SIMILARITY_UNITS_TO_EXPORT.val():
                     messages.error(request, 'There are too many items to export')
-                    return HttpResponseRedirect(self.request.path_info)
+                    self.object_list = qs
+                    return self.render_to_response(self.get_context_data())
 
                 data = self.get_json_data(qs=qs)
                 if isinstance(data, dict) and 'data' in data:
@@ -637,6 +621,9 @@ class TextUnitSimilarityListView(apps.common.mixins.JqPaginatedListView):
                                                self.model.__name__.lower(),
                                    fmt=request.GET.get('export_to'))
             return self.render_to_response(qs=qs)
+
+        self.object_list = qs
+        context = self.get_context_data()
         return self.render_to_response(context)
 
 

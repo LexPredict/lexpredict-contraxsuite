@@ -526,7 +526,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var requestId = requestId_example;  // string | 
+            var requestId = "requestId_example";  // string | 
             var requestBody = new Dictionary<string, Object>(); // Dictionary<string, Object> |  (optional) 
 
             try
@@ -922,7 +922,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var taskId = taskId_example;  // string | 
+            var taskId = "taskId_example";  // string | 
             var recordsLimit = 56;  // int? |  (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -1006,7 +1006,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var taskId = taskId_example;  // string |  (optional) 
+            var taskId = "taskId_example";  // string |  (optional) 
 
             try
             {
@@ -1167,7 +1167,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var id = id_example;  // string | A unique value identifying this task.
+            var id = "id_example";  // string | A unique value identifying this task.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1247,7 +1247,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1327,7 +1327,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new TaskApi(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try

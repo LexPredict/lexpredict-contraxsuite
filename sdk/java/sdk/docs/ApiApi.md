@@ -2,14 +2,16 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**listLocales**](ApiApi.md#listLocales) | **GET** /api/v1/project/locales/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**listLocales**](ApiApi.md#listLocales) | **GET** /api/v1/project/locales/ |  |
 
 
 <a name="listLocales"></a>
 # **listLocales**
 > List&lt;Map&lt;String, Object&gt;&gt; listLocales()
+
+
 
 
 
@@ -68,6 +70,6 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**500** |  |  -  |
+| **200** |  |  -  |
+| **500** |  |  -  |
 

@@ -40,8 +40,8 @@ from apps.tus.schemas import TusUploadViewSetSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -89,7 +89,7 @@ class TusUploadViewSet(UploadViewSet):
         from apps.document.app_vars import ALLOW_DUPLICATE_DOCS
         force_rename = request.POST.get('force') == 'true' or \
                        request.META.get('HTTP_FORCE') == 'true' or \
-                       not ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
+                       ALLOW_DUPLICATE_DOCS.val(project_id=project.id)
 
         if not force_rename and can_upload_status is not True:
             return Response(data={'status': can_upload_status}, status=status.HTTP_400_BAD_REQUEST)

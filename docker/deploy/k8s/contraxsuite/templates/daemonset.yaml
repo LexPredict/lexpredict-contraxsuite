@@ -100,6 +100,37 @@ roleRef:
   kind: ClusterRole
   name: contrax-filebeat
   apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: filebeat
+  namespace: {{ .Values.namespace | quote }}
+subjects:
+  - kind: ServiceAccount
+    name: contrax-filebeat
+    namespace: {{ .Values.namespace | quote }}
+roleRef:
+  kind: Role
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: filebeat-kubeadm-config
+  namespace: kube-system
+subjects:
+  - kind: ServiceAccount
+    name: contrax-filebeat
+    namespace: {{ .Values.namespace | quote }}
+roleRef:
+  kind: Role
+  name: filebeat-kubeadm-config
+  apiGroup: rbac.authorization.k8s.io
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -109,13 +140,46 @@ metadata:
     k8s-app: contrax-filebeat
 rules:
 - apiGroups: [""] # "" indicates the core API group
+  resources: ["nodes", "namespaces", "pods"]
+  verbs: ["get","watch","list"]
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
   resources:
-  - namespaces
-  - pods
-  verbs:
-  - get
-  - watch
-  - list
+    - jobs
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: filebeat
+  namespace: {{ .Values.namespace | quote }}
+  labels:
+    k8s-app: contrax-filebeat
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs: ["get", "create", "update"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: filebeat-kubeadm-config
+  namespace: kube-system
+  labels:
+    k8s-app: contrax-filebeat
+rules:
+  - apiGroups: [""]
+    resources:
+      - configmaps
+    resourceNames:
+      - kubeadm-config
+    verbs: ["get"]
 
 ---
 apiVersion: v1

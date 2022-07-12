@@ -38,8 +38,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new MediaDataApi(Configuration.Default);
-            var path = path_example;  // string | 
-            var action = action_example;  // string | Action name (optional)  (default to download)
+            var path = "path_example";  // string | 
+            var action = "info";  // string | Action name (optional)  (default to download)
 
             try
             {

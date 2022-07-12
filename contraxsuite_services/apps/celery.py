@@ -35,6 +35,7 @@ import django
 from celery import signals
 from celery.app import trace
 from celery.signals import task_failure
+from click import Option
 from django.db import InterfaceError
 
 # Project imports
@@ -42,8 +43,8 @@ from apps import celery_worker_roles
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -77,13 +78,19 @@ if True:  # not WAS_INIT:
 
     app = AdvancedCelery('apps')
 
-    def add_preload_options(parser):
-        parser.add_argument(
-            '-R', '--role', default=None,
-            help='Celery worker role.',
-        )
+    # def add_preload_options(parser):
+    #     parser.add_argument(
+    #         '-R', '--role', default=None,
+    #         help='Celery worker role.',
+    #     )
+    #
+    # app.user_options['preload'].add(add_preload_options)
 
-    app.user_options['preload'].add(add_preload_options)
+    # In future Celery versions we should pass
+    # Option(('-R', '--role'), default=None, help='Celery worker role.')
+    # to the add(..), but not the function
+    role_option = Option(('-R', '--role'), default=None, help='Celery worker role.')
+    app.user_options['worker'].add(role_option)
 
     app.config_from_object('django.conf:settings', namespace='CELERY')
     app.autodiscover_tasks(force=True)
@@ -101,6 +108,12 @@ if True:  # not WAS_INIT:
 
             TaskUtils.prepare_task_execution()
             Task.objects.start_processing(task_id=uuid, worker=worker)
+
+            # In celery < 5 the chain object is None by default.
+            # We imitate here the similar behaviour,
+            # otherwise ../site-packages/celery/app/trace.py will
+            # fail in row 512 telling that chain object hasn't attribute pop(...)
+            args1[2]['chain'] = None
 
             return old_trace_task(uuid, *args1, **kwargs1)
 

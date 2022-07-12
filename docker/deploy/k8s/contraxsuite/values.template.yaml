@@ -9,16 +9,16 @@ basicAuthPassword:
 ### --- Docker Images
 contraxImage: lexpredict/contraxsuite-dev:${HELM_CHART_APP_VERSION}
 curatorImage: lexpredict/es-curator-cron:5.8.1-1
-elasticSearchImage: docker.elastic.co/elasticsearch/elasticsearch-oss:7.5.2
-filebeatImage: docker.elastic.co/beats/filebeat-oss:7.5.2
-kibanaImage: lexpredict/lexpredict-kibana:7.5.0
-metricbeatImage: docker.elastic.co/beats/metricbeat-oss:7.5.2
+elasticSearchImage: elasticsearch:7.16.2
+filebeatImage: elastic/filebeat:7.16.2
+kibanaImage: lexpredict/lexpredict-kibana:7.16.2
+metricbeatImage: elastic/metricbeat:7.16.2
 minioImage: minio/minio:RELEASE.2020-01-03T19-12-21Z
 mlflowTrackingImage: lexpredict/mlflow-tracking-server:1.6.0-1
 nginxImage: lexpredict/contraxsuite-dev-frontend:${HELM_CHART_APP_VERSION}
 postgresImage: postgres:11.5
 pgbouncerImage: wiredrequired/pgbouncer:0.0.1
-rabbitmqImage: rabbitmq:3.8-management
+rabbitmqImage: rabbitmq:3.9-management
 redisImage: redis:5-alpine
 #webdavImage: bytemark/webdav:2.4
 webdavImage: lexpredict/nginx-webdav:1.19.6
@@ -85,16 +85,15 @@ dbLimitCpu: 1
 dbLimitMemory: 4Gi
 
 ### --- RabbitMQ settings --- 
-rmqUsername: contrax
-rmqPassword: contrax
+rmqUsername: ${DOCKER_RABBITMQ_USER}
+rmqPassword: ${DOCKER_RABBITMQ_PASSWORD}
 rmqHost: contrax-rabbitmq
 rmqPort: 5672
-rmqVhost: contrax
+rmqVhost: ${DOCKER_RABBITMQ_VHOST}
 rmqRequestCpu: 1
 rmqRequestMemory: 1Gi
 rmqLimitCpu: 1
 rmqLmitMemory: 2Gi
-  
 
 ### --- Redis settinsgs --- 
 ### --- Rook Ceph Settings --- 

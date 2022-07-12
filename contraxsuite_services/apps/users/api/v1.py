@@ -24,8 +24,6 @@
 """
 # -*- coding: utf-8 -*-
 
-from urllib.parse import quote
-
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib.postgres.aggregates import StringAgg
@@ -34,23 +32,29 @@ from django.db.models import Count, F, Q, Case, When, DecimalField
 import coreapi
 import coreschema
 from allauth.socialaccount.models import SocialApp
-from allauth.socialaccount import providers
 from drf_extra_fields.fields import Base64ImageField
 from guardian.shortcuts import get_objects_for_user
 from rest_framework import routers, viewsets, serializers, views, schemas
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissions, AllowAny
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 
-from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer, APIFormFieldsMixin, APILoggingMixin
+from apps.common.mixins import JqListAPIMixin, SimpleRelationSerializer, APIFormFieldsMixin
 from apps.common.schemas import CustomAutoSchema, ObjectToItemResponseMixin, string_content
 from apps.users.models import User
+from apps.users.schemas import SocialLoginSchema
+from apps.users.serializers import SocialClientListSerializer
+from apps.users.social.elevate.schemas import ElevateLoginSchema
+from apps.users.social.google.views import GoogleLoginView
+from apps.users.social.office365.views import Office365LoginView
+from apps.users.social.okta.views import OktaLoginView
+from apps.users.social.elevate.views import ElevateLoginView
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -58,8 +62,6 @@ __email__ = "support@contraxsuite.com"
 # --------------------------------------------------------
 # User View
 # --------------------------------------------------------
-from apps.users.schemas import SocialAccountsAPISchema
-
 
 class UserSerializer(SimpleRelationSerializer):
     photo = serializers.SerializerMethodField()
@@ -322,31 +324,11 @@ class VerifyAuthTokenAPIView(views.APIView):
         return Response()
 
 
-class SocialAccountsAPIView(APILoggingMixin, APIView):
+class SocialClientListView(ListAPIView):
     permission_classes = (AllowAny,)
     authentication_classes = []
-    schema = SocialAccountsAPISchema()
-    action = 'retrieve'    # need for schema to treat response as single object, not list
-
-    def get(self, request, *_args, **_kwargs):
-        root_url = request.build_absolute_uri('/')
-        next_val = quote(root_url.rstrip('/') + '/#/?redirect_oauth=true')
-
-        social_apps = SocialApp.objects.all()
-        social_app_data = []
-        for app in social_apps:  # type: SocialApp
-            provider = providers.registry.by_id(app.provider)
-            provider_url = provider.get_login_url(None)
-            provider_url = f'{provider_url.rstrip()}?next={next_val}'
-            social_app_data.append({
-                'name': app.name,
-                'provider': app.provider,
-                'login_url': provider_url
-            })
-
-        return Response({
-            'social_accounts': social_app_data
-        })
+    queryset = SocialApp.objects.all()
+    serializer_class = SocialClientListSerializer
 
 
 router = routers.DefaultRouter()
@@ -355,5 +337,11 @@ router.register('users', UserViewSet, 'user')
 
 urlpatterns = [
     url('verify-token/', VerifyAuthTokenAPIView.as_view(), name='verify-token'),
-    url(r'social_accounts/$', SocialAccountsAPIView.as_view(), name='social_accounts'),
+
+    url('client-ids/', SocialClientListView.as_view(), name='social_clients'),
+
+    url('google/', GoogleLoginView.as_view(schema=SocialLoginSchema()), name='google_login'),
+    url('office365/', Office365LoginView.as_view(schema=SocialLoginSchema()), name='office365_login'),
+    url('okta/', OktaLoginView.as_view(schema=SocialLoginSchema()), name='okta_login'),
+    url('elevate/', ElevateLoginView.as_view(schema=ElevateLoginSchema()), name='elevate_login'),
 ]

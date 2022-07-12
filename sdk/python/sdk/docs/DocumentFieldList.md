@@ -8,6 +8,7 @@ Name | Type | Description | Notes
 **code** | **str** | Field codes must be lowercase, should start with  a Latin letter, and contain only Latin letters, digits, underscores. Field codes must be unique to every Document Type. | 
 **title** | **str** |  | 
 **uid** | **str** |  | [optional] [readonly] 
+**document_type__title** | **str** |  | [optional] [readonly] 
 **long_code** | **str** |  | [optional] 
 **description** | **str, none_type** |  | [optional] 
 **type** | **str** |  | [optional] 

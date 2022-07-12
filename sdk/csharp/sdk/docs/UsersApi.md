@@ -4,7 +4,11 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**UsersSocialAccountsGET**](UsersApi.md#userssocialaccountsget) | **GET** /api/v1/users/social_accounts/ | 
+[**UsersClientIdsGET**](UsersApi.md#usersclientidsget) | **GET** /api/v1/users/client-ids/ | 
+[**UsersElevatePOST**](UsersApi.md#userselevatepost) | **POST** /api/v1/users/elevate/ | 
+[**UsersGooglePOST**](UsersApi.md#usersgooglepost) | **POST** /api/v1/users/google/ | 
+[**UsersOffice365POST**](UsersApi.md#usersoffice365post) | **POST** /api/v1/users/office365/ | 
+[**UsersOktaPOST**](UsersApi.md#usersoktapost) | **POST** /api/v1/users/okta/ | 
 [**UsersUsersFormFieldsGET**](UsersApi.md#usersusersformfieldsget) | **GET** /api/v1/users/users/form-fields/ | 
 [**UsersUsersGET**](UsersApi.md#usersusersget) | **GET** /api/v1/users/users/ | 
 [**UsersUsersIdFormFieldsGET**](UsersApi.md#usersusersidformfieldsget) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -17,9 +21,9 @@ Method | HTTP request | Description
 
 
 
-## UsersSocialAccountsGET
+## UsersClientIdsGET
 
-> SocialAccountsResponse UsersSocialAccountsGET ()
+> List&lt;SocialClientList&gt; UsersClientIdsGET ()
 
 
 
@@ -34,7 +38,7 @@ using Org.OpenAPITools.Model;
 
 namespace Example
 {
-    public class UsersSocialAccountsGETExample
+    public class UsersClientIdsGETExample
     {
         public static void Main()
         {
@@ -48,12 +52,12 @@ namespace Example
 
             try
             {
-                SocialAccountsResponse result = apiInstance.UsersSocialAccountsGET();
+                List<SocialClientList> result = apiInstance.UsersClientIdsGET();
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
             {
-                Debug.Print("Exception when calling UsersApi.UsersSocialAccountsGET: " + e.Message );
+                Debug.Print("Exception when calling UsersApi.UsersClientIdsGET: " + e.Message );
                 Debug.Print("Status Code: "+ e.ErrorCode);
                 Debug.Print(e.StackTrace);
             }
@@ -68,7 +72,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
+[**List&lt;SocialClientList&gt;**](SocialClientList.md)
 
 ### Authorization
 
@@ -84,6 +88,326 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersElevatePOST
+
+> SocialLogin UsersElevatePOST (AccessTokenSchema accessTokenSchema = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Elevate in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://elmqa.elevateservices.com/services/oauth/authorize`     with correct `client_id`, `redirect_url`, and `response_type=token`; 2. After elevate auth user will be redirected to callback url; 3. Pass the `access_token` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersElevatePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new UsersApi(Configuration.Default);
+            var accessTokenSchema = new AccessTokenSchema(); // AccessTokenSchema |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersElevatePOST(accessTokenSchema);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling UsersApi.UsersElevatePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **accessTokenSchema** | [**AccessTokenSchema**](AccessTokenSchema.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersGooglePOST
+
+> SocialLogin UsersGooglePOST (Code code = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Google in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://accounts.google.com/o/oauth2/v2/auth`     with correct `client_id`, `redirect_url`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersGooglePOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new UsersApi(Configuration.Default);
+            var code = new Code(); // Code |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersGooglePOST(code);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling UsersApi.UsersGooglePOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersOffice365POST
+
+> SocialLogin UsersOffice365POST (Code code = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Microsoft office365 in CLM.  The login algorithm is next:  1. Redirect to microsoft auth page `https://login.microsoftonline.com/consumers|common/oauth2/v2.0/authorize`     with correct `client_id`, `redirect_url`, `response_type`, and `scope`; 2. After microsoft auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersOffice365POSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new UsersApi(Configuration.Default);
+            var code = new Code(); // Code |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersOffice365POST(code);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling UsersApi.UsersOffice365POST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## UsersOktaPOST
+
+> SocialLogin UsersOktaPOST (Code code = null)
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Okta in CLM.  The login algorithm is next:  1. Redirect to okta auth page `https://{{your domain}}.okta.com/oauth2/default/v1/authorize`     with correct `client_id`, `redirect_url`, `scope`, and `state`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class UsersOktaPOSTExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new UsersApi(Configuration.Default);
+            var code = new Code(); // Code |  (optional) 
+
+            try
+            {
+                SocialLogin result = apiInstance.UsersOktaPOST(code);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling UsersApi.UsersOktaPOST: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional] 
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **201** |  |  -  |
 
 [[Back to top]](#)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)
@@ -277,7 +601,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new UsersApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -357,7 +681,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new UsersApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -439,7 +763,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new UsersApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
             var userProfile = new UserProfile(); // UserProfile |  (optional) 
 
             try
@@ -521,7 +845,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new UsersApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
             var userProfile = new UserProfile(); // UserProfile |  (optional) 
 
             try

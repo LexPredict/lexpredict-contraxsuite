@@ -38,6 +38,7 @@ Method | HTTP request | Description
 [**common_app_variables_list_get**](V1Api.md#common_app_variables_list_get) | **GET** /api/v1/common/app-variables/list/ | 
 [**common_app_variables_project_project_id_get**](V1Api.md#common_app_variables_project_project_id_get) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
 [**common_app_variables_project_project_id_put**](V1Api.md#common_app_variables_project_project_id_put) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
+[**common_logo_get**](V1Api.md#common_logo_get) | **GET** /api/v1/common/logo/ | 
 [**common_media_path_get**](V1Api.md#common_media_path_get) | **GET** /api/v1/common/media/{path}/ | 
 [**common_menu_groups_form_fields_get**](V1Api.md#common_menu_groups_form_fields_get) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**common_menu_groups_get**](V1Api.md#common_menu_groups_get) | **GET** /api/v1/common/menu-groups/ | 
@@ -148,6 +149,7 @@ Method | HTTP request | Description
 [**document_documents_id_patch**](V1Api.md#document_documents_id_patch) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**document_documents_id_pdf_repr_get**](V1Api.md#document_documents_id_pdf_repr_get) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
 [**document_documents_id_put**](V1Api.md#document_documents_id_put) | **PUT** /api/v1/document/documents/{id}/ | 
+[**document_documents_id_set_annotator_coord_difference_post**](V1Api.md#document_documents_id_set_annotator_coord_difference_post) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ | 
 [**document_documents_id_show_get**](V1Api.md#document_documents_id_show_get) | **GET** /api/v1/document/documents/{id}/show/ | 
 [**document_documents_id_similar_get**](V1Api.md#document_documents_id_similar_get) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**document_documents_mark_delete_post**](V1Api.md#document_documents_mark_delete_post) | **POST** /api/v1/document/documents/mark_delete/ | 
@@ -188,6 +190,7 @@ Method | HTTP request | Description
 [**document_project_project_pk_documents_id_patch**](V1Api.md#document_project_project_pk_documents_id_patch) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**document_project_project_pk_documents_id_pdf_repr_get**](V1Api.md#document_project_project_pk_documents_id_pdf_repr_get) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
 [**document_project_project_pk_documents_id_put**](V1Api.md#document_project_project_pk_documents_id_put) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**document_project_project_pk_documents_id_set_annotator_coord_difference_post**](V1Api.md#document_project_project_pk_documents_id_set_annotator_coord_difference_post) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ | 
 [**document_project_project_pk_documents_id_show_get**](V1Api.md#document_project_project_pk_documents_id_show_get) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
 [**document_project_project_pk_documents_id_similar_get**](V1Api.md#document_project_project_pk_documents_id_similar_get) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**document_project_project_pk_documents_mark_delete_post**](V1Api.md#document_project_project_pk_documents_mark_delete_post) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
@@ -326,8 +329,6 @@ Method | HTTP request | Description
 [**rest_auth_password_change_post**](V1Api.md#rest_auth_password_change_post) | **POST** /rest-auth/password/change/ | 
 [**rest_auth_password_reset_confirm_post**](V1Api.md#rest_auth_password_reset_confirm_post) | **POST** /rest-auth/password/reset/confirm/ | 
 [**rest_auth_password_reset_post**](V1Api.md#rest_auth_password_reset_post) | **POST** /rest-auth/password/reset/ | 
-[**rest_auth_registration_post**](V1Api.md#rest_auth_registration_post) | **POST** /rest-auth/registration/ | 
-[**rest_auth_registration_verify_email_post**](V1Api.md#rest_auth_registration_verify_email_post) | **POST** /rest-auth/registration/verify-email/ | 
 [**similarity_document_similarity_by_features_get**](V1Api.md#similarity_document_similarity_by_features_get) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
 [**similarity_document_similarity_by_features_post**](V1Api.md#similarity_document_similarity_by_features_post) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
 [**similarity_party_similarity_get**](V1Api.md#similarity_party_similarity_get) | **GET** /api/v1/similarity/party-similarity/ | 
@@ -361,7 +362,11 @@ Method | HTTP request | Description
 [**task_update_elastic_index_post**](V1Api.md#task_update_elastic_index_post) | **POST** /api/v1/task/update-elastic-index/ | 
 [**tus_upload_session_upload_session_id_upload_guid_patch**](V1Api.md#tus_upload_session_upload_session_id_upload_guid_patch) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
 [**tus_upload_session_upload_session_id_upload_post**](V1Api.md#tus_upload_session_upload_session_id_upload_post) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
-[**users_social_accounts_get**](V1Api.md#users_social_accounts_get) | **GET** /api/v1/users/social_accounts/ | 
+[**users_client_ids_get**](V1Api.md#users_client_ids_get) | **GET** /api/v1/users/client-ids/ | 
+[**users_elevate_post**](V1Api.md#users_elevate_post) | **POST** /api/v1/users/elevate/ | 
+[**users_google_post**](V1Api.md#users_google_post) | **POST** /api/v1/users/google/ | 
+[**users_office365_post**](V1Api.md#users_office365_post) | **POST** /api/v1/users/office365/ | 
+[**users_okta_post**](V1Api.md#users_okta_post) | **POST** /api/v1/users/okta/ | 
 [**users_users_form_fields_get**](V1Api.md#users_users_form_fields_get) | **GET** /api/v1/users/users/form-fields/ | 
 [**users_users_get**](V1Api.md#users_users_get) | **GET** /api/v1/users/users/ | 
 [**users_users_id_form_fields_get**](V1Api.md#users_users_id_form_fields_get) | **GET** /api/v1/users/users/{id}/form-fields/ | 
@@ -2063,6 +2068,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -2302,6 +2309,8 @@ void (empty response body)
 
 # **analyze_text_unit_classifiers_id_get**
 > TextUnitClassifier analyze_text_unit_classifiers_id_get(id)
+
+
 
 
 
@@ -2973,6 +2982,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -3210,6 +3221,83 @@ Name | Type | Description  | Notes
 
  - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
  - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **common_logo_get**
+> {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} common_logo_get()
+
+
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    action = "download" # str | Action name (optional) if omitted the server will use the default value of "download"
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.common_logo_get(action=action)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->common_logo_get: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **action** | **str**| Action name | [optional] if omitted the server will use the default value of "download"
+
+### Return type
+
+**{str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)}**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, */*
 
 
 ### HTTP response details
@@ -5616,6 +5704,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6273,6 +6363,8 @@ Name | Type | Description  | Notes
 
 # **document_document_field_annotations_for_user_get**
 > DocumentFieldAnnotation document_document_field_annotations_for_user_get()
+
+
 
 
 
@@ -8381,6 +8473,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -9918,6 +10012,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -10162,6 +10258,8 @@ This endpoint does not need any parameter.
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -10396,6 +10494,8 @@ void (empty response body)
 
 # **document_document_types_uid_export_doc_type_get**
 > file_type document_document_types_uid_export_doc_type_get(uid)
+
+
 
 
 
@@ -10945,6 +11045,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11023,6 +11125,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11031,8 +11135,8 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.document_documents_download_zip_get404_response import DocumentDocumentsDownloadZipGET404Response
 from openapi_client.model.document_download_zip_response import DocumentDownloadZipResponse
-from openapi_client.model.inline_response404 import InlineResponse404
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -11100,6 +11204,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_for_user_get**
 > DocumentsForUserResponse document_documents_for_user_get()
+
+
 
 
 
@@ -11255,6 +11361,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_actions_get**
 > DocumentsForUser document_documents_id_actions_get(id)
+
+
 
 
 
@@ -11442,6 +11550,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11514,6 +11624,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_delete**
 > document_documents_id_delete(id)
+
+
 
 
 
@@ -11666,6 +11778,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11740,6 +11854,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11803,7 +11919,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -11866,6 +11982,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11929,7 +12047,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -11992,6 +12110,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -12055,7 +12175,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -12115,6 +12235,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_full_text_get**
 > str document_documents_id_full_text_get(id)
+
+
 
 
 
@@ -12281,6 +12403,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -12355,6 +12479,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -12418,7 +12544,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -12478,6 +12604,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_pdf_repr_get**
 > DocumentPDFRepr document_documents_id_pdf_repr_get(id)
+
+
 
 
 
@@ -12643,8 +12771,107 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **document_documents_id_set_annotator_coord_difference_post**
+> DocumentSetAnnotatorCoordinatesDifferenceResponse document_documents_id_set_annotator_coord_difference_post(id)
+
+
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.document_set_annotator_coordinates_difference_request import DocumentSetAnnotatorCoordinatesDifferenceRequest
+from openapi_client.model.document_set_annotator_coordinates_difference_response import DocumentSetAnnotatorCoordinatesDifferenceResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    id = "id_example" # str | A unique integer value identifying this document.
+    document_set_annotator_coordinates_difference_request = DocumentSetAnnotatorCoordinatesDifferenceRequest(
+        document_id=1,
+        first_letters=[
+            DocumentSetAnnotatorCoordinatesDifferenceRequestFirstLettersInner(
+                x=3.14,
+                y=3.14,
+                letter="letter_example",
+            ),
+        ],
+    ) # DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.document_documents_id_set_annotator_coord_difference_post(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->document_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.document_documents_id_set_annotator_coord_difference_post(id, document_set_annotator_coordinates_difference_request=document_set_annotator_coordinates_difference_request)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->document_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **str**| A unique integer value identifying this document. |
+ **document_set_annotator_coordinates_difference_request** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional]
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **document_documents_id_show_get**
 > file_type document_documents_id_show_get(id)
+
+
 
 
 
@@ -12905,6 +13132,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_post**
 > DocumentsForUser document_documents_post()
+
+
 
 
 
@@ -13318,6 +13547,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -13586,6 +13817,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_document_field_annotations_for_user_get**
 > DocumentFieldAnnotation document_project_project_pk_document_field_annotations_for_user_get(project_pk)
+
+
 
 
 
@@ -14036,6 +14269,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -14110,6 +14345,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_document_pk_annotations_id_delete**
 > document_project_project_pk_documents_document_pk_annotations_id_delete(project_pk, document_pk, id)
+
+
 
 
 
@@ -14190,6 +14427,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -14266,6 +14505,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_document_pk_annotations_id_patch**
 > AnnotationInDocument document_project_project_pk_documents_document_pk_annotations_id_patch(project_pk, document_pk, id)
+
+
 
 
 
@@ -14366,6 +14607,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -14460,6 +14703,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_document_pk_annotations_post**
 > AnnotationInDocument document_project_project_pk_documents_document_pk_annotations_post(project_pk, document_pk)
+
+
 
 
 
@@ -14558,6 +14803,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -14566,8 +14813,8 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.document_documents_download_zip_get404_response import DocumentDocumentsDownloadZipGET404Response
 from openapi_client.model.document_download_zip_response import DocumentDownloadZipResponse
-from openapi_client.model.inline_response404 import InlineResponse404
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -14644,6 +14891,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_for_user_get**
 > DocumentsForUserResponse document_project_project_pk_documents_for_user_get(project_pk)
+
+
 
 
 
@@ -14812,6 +15061,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_actions_get**
 > DocumentsForUser document_project_project_pk_documents_id_actions_get(project_pk, id)
+
+
 
 
 
@@ -15003,6 +15254,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -15077,6 +15330,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_delete**
 > document_project_project_pk_documents_id_delete(project_pk, id)
+
+
 
 
 
@@ -15233,6 +15488,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -15309,6 +15566,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -15373,7 +15632,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -15437,6 +15696,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -15501,7 +15762,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -15565,6 +15826,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -15629,7 +15892,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -15690,6 +15953,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_full_text_get**
 > str document_project_project_pk_documents_id_full_text_get(project_pk, id)
+
+
 
 
 
@@ -15860,6 +16125,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -15936,6 +16203,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -16000,7 +16269,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -16061,6 +16330,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_pdf_repr_get**
 > DocumentPDFRepr document_project_project_pk_documents_id_pdf_repr_get(project_pk, id)
+
+
 
 
 
@@ -16230,8 +16501,109 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **document_project_project_pk_documents_id_set_annotator_coord_difference_post**
+> DocumentSetAnnotatorCoordinatesDifferenceResponse document_project_project_pk_documents_id_set_annotator_coord_difference_post(project_pk, id)
+
+
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.document_set_annotator_coordinates_difference_request import DocumentSetAnnotatorCoordinatesDifferenceRequest
+from openapi_client.model.document_set_annotator_coordinates_difference_response import DocumentSetAnnotatorCoordinatesDifferenceResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    project_pk = "project_pk_example" # str | 
+    id = "id_example" # str | A unique integer value identifying this document.
+    document_set_annotator_coordinates_difference_request = DocumentSetAnnotatorCoordinatesDifferenceRequest(
+        document_id=1,
+        first_letters=[
+            DocumentSetAnnotatorCoordinatesDifferenceRequestFirstLettersInner(
+                x=3.14,
+                y=3.14,
+                letter="letter_example",
+            ),
+        ],
+    ) # DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.document_project_project_pk_documents_id_set_annotator_coord_difference_post(project_pk, id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->document_project_project_pk_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.document_project_project_pk_documents_id_set_annotator_coord_difference_post(project_pk, id, document_set_annotator_coordinates_difference_request=document_set_annotator_coordinates_difference_request)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->document_project_project_pk_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_pk** | **str**|  |
+ **id** | **str**| A unique integer value identifying this document. |
+ **document_set_annotator_coordinates_difference_request** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional]
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **document_project_project_pk_documents_id_show_get**
 > file_type document_project_project_pk_documents_id_show_get(project_pk, id)
+
+
 
 
 
@@ -16508,6 +16880,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -16689,6 +17063,8 @@ Name | Type | Description  | Notes
 
 # **document_stats_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} document_stats_get()
+
+
 
 
 
@@ -16923,7 +17299,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_document_config_get**
-> bool, date, datetime, dict, float, int, list, str, none_type dump_document_config_get()
+> DumpDocumentConfigGET200Response dump_document_config_get()
 
 
 
@@ -16937,6 +17313,7 @@ Dump document types, fields, field detectors and  document filters to json.
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.dump_document_config_get200_response import DumpDocumentConfigGET200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -16981,7 +17358,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -17168,7 +17545,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_get**
-> bool, date, datetime, dict, float, int, list, str, none_type dump_dump_get()
+> DumpDocumentConfigGET200Response dump_dump_get()
 
 
 
@@ -17182,6 +17559,7 @@ Dump all users, email addresses, review statuses, review status groups, app vars
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.dump_document_config_get200_response import DumpDocumentConfigGET200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -17224,7 +17602,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -17327,7 +17705,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_field_values_get**
-> bool, date, datetime, dict, float, int, list, str, none_type dump_field_values_get()
+> DumpDocumentConfigGET200Response dump_field_values_get()
 
 
 
@@ -17341,6 +17719,7 @@ Dump field values to json.
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.dump_document_config_get200_response import DumpDocumentConfigGET200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -17383,7 +17762,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -20586,6 +20965,8 @@ This endpoint does not need any parameter.
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -21999,6 +22380,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -22173,9 +22556,9 @@ Bulk assign batch of annotations to a review team member      Params:         an
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.assign_project_annotations_request import AssignProjectAnnotationsRequest
 from openapi_client.model.count_success_response import CountSuccessResponse
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -22272,9 +22655,9 @@ Bulk assign batch of documents to a review team member      Params:         docu
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.count_success_response import CountSuccessResponse
 from openapi_client.model.assign_project_document_request import AssignProjectDocumentRequest
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -22365,9 +22748,9 @@ Bulk assign batch of documents to a review team member      Params:         docu
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.assign_project_documents_request import AssignProjectDocumentsRequest
 from openapi_client.model.count_success_response import CountSuccessResponse
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -22528,6 +22911,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_check_similarity_process_allowed_post**
 > ProjectDetail project_projects_id_check_similarity_process_allowed_post(id)
+
+
 
 
 
@@ -22742,6 +23127,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -22942,8 +23329,8 @@ Last Clustering task status/data      Params:         - project_clustering_id: i
 import time
 import openapi_client
 from openapi_client.api import v1_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.project_clustering_status_response import ProjectClusteringStatusResponse
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -23096,6 +23483,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -23169,6 +23558,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -23239,6 +23630,8 @@ void (empty response body)
 
 # **project_projects_id_detect_field_values_post**
 > TaskIdResponse project_projects_id_detect_field_values_post(id)
+
+
 
 
 
@@ -23496,6 +23889,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_locate_items_post**
 > TaskIdResponse project_projects_id_locate_items_post(id)
+
+
 
 
 
@@ -23996,6 +24391,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -24087,6 +24484,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_search_similar_text_units_post**
 > TaskIdResponse project_projects_id_search_similar_text_units_post(id)
+
+
 
 
 
@@ -24279,7 +24678,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_set_annotation_status_post**
-> bool, date, datetime, dict, float, int, list, str, none_type project_projects_id_set_annotation_status_post(id)
+> ProjectProjectsIdSetAnnotationStatusPOST200Response project_projects_id_set_annotation_status_post(id)
 
 
 
@@ -24294,6 +24693,7 @@ import time
 import openapi_client
 from openapi_client.api import v1_api
 from openapi_client.model.set_project_annotations_status_request import SetProjectAnnotationsStatusRequest
+from openapi_client.model.project_projects_id_set_annotation_status_post200_response import ProjectProjectsIdSetAnnotationStatusPOST200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -24326,6 +24726,7 @@ with openapi_client.ApiClient(configuration) as api_client:
         no_annotation_ids=[
             1,
         ],
+        force=True,
     ) # SetProjectAnnotationsStatusRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -24354,7 +24755,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**ProjectProjectsIdSetAnnotationStatusPOST200Response**](ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
 
 ### Authorization
 
@@ -24476,6 +24877,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -24571,6 +24974,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -24659,6 +25064,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_tasks_get**
 > [ProjectTasks] project_projects_id_tasks_get(id)
+
+
 
 
 
@@ -24839,7 +25246,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_update_document_fields_post**
-> TaskIdResponse project_projects_id_update_document_fields_post(id)
+> UpdateProjectDocumentsFieldsResponse project_projects_id_update_document_fields_post(id)
 
 
 
@@ -24853,9 +25260,9 @@ Bulk update project documents field, similar to /fields/ API in document app    
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.task_id_response import TaskIdResponse
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
+from openapi_client.model.update_project_documents_fields_response import UpdateProjectDocumentsFieldsResponse
 from openapi_client.model.update_project_documents_fields_request import UpdateProjectDocumentsFieldsRequest
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -24917,7 +25324,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**UpdateProjectDocumentsFieldsResponse**](UpdateProjectDocumentsFieldsResponse.md)
 
 ### Authorization
 
@@ -26073,7 +26480,7 @@ with openapi_client.ApiClient(configuration) as api_client:
     uid = "uid_example" # str | A UUID string identifying this upload session.
     upload_session_detail = UploadSessionDetail(
         project=1,
-        created_by=TaskQueueReviewersData(
+        created_by=TaskQueueReviewersDataInner(
             username="A",
         ),
         completed=True,
@@ -26459,6 +26866,8 @@ Name | Type | Description  | Notes
 
 # **project_upload_session_uid_files_post**
 > ProjectUploadSessionFilesResponse project_upload_session_uid_files_post(uid, content_length, file_name)
+
+
 
 
 
@@ -26916,6 +27325,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -26983,6 +27394,8 @@ This endpoint does not need any parameter.
 
 # **rawdb_documents_document_type_code_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} rawdb_documents_document_type_code_get(document_type_code)
+
+
 
 
 
@@ -27199,6 +27612,8 @@ Name | Type | Description  | Notes
 
 # **rawdb_project_stats_project_id_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} rawdb_project_stats_project_id_get(project_id)
+
+
 
 
 
@@ -27735,165 +28150,6 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**RestAuthCommonResponse**](RestAuthCommonResponse.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**201** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **rest_auth_registration_post**
-> Register rest_auth_registration_post()
-
-
-
-### Example
-
-* Api Key Authentication (AuthToken):
-
-```python
-import time
-import openapi_client
-from openapi_client.api import v1_api
-from openapi_client.model.register import Register
-from pprint import pprint
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = openapi_client.Configuration(
-    host = "http://localhost"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AuthToken
-configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AuthToken'] = 'Bearer'
-
-# Enter a context with an instance of the API client
-with openapi_client.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = v1_api.V1Api(api_client)
-    register = Register(
-        username="username_example",
-        email="email_example",
-        password1="password1_example",
-        password2="password2_example",
-    ) # Register |  (optional)
-
-    # example passing only required values which don't have defaults set
-    # and optional values
-    try:
-        api_response = api_instance.rest_auth_registration_post(register=register)
-        pprint(api_response)
-    except openapi_client.ApiException as e:
-        print("Exception when calling V1Api->rest_auth_registration_post: %s\n" % e)
-```
-
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **register** | [**Register**](Register.md)|  | [optional]
-
-### Return type
-
-[**Register**](Register.md)
-
-### Authorization
-
-[AuthToken](../README.md#AuthToken)
-
-### HTTP request headers
-
- - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
- - **Accept**: application/json
-
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**201** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **rest_auth_registration_verify_email_post**
-> VerifyEmail rest_auth_registration_verify_email_post()
-
-
-
-### Example
-
-* Api Key Authentication (AuthToken):
-
-```python
-import time
-import openapi_client
-from openapi_client.api import v1_api
-from openapi_client.model.verify_email import VerifyEmail
-from pprint import pprint
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = openapi_client.Configuration(
-    host = "http://localhost"
-)
-
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AuthToken
-configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AuthToken'] = 'Bearer'
-
-# Enter a context with an instance of the API client
-with openapi_client.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = v1_api.V1Api(api_client)
-    verify_email = VerifyEmail(
-        key="key_example",
-    ) # VerifyEmail |  (optional)
-
-    # example passing only required values which don't have defaults set
-    # and optional values
-    try:
-        api_response = api_instance.rest_auth_registration_verify_email_post(verify_email=verify_email)
-        pprint(api_response)
-    except openapi_client.ApiException as e:
-        print("Exception when calling V1Api->rest_auth_registration_verify_email_post: %s\n" % e)
-```
-
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **verify_email** | [**VerifyEmail**](VerifyEmail.md)|  | [optional]
-
-### Return type
-
-[**VerifyEmail**](VerifyEmail.md)
 
 ### Authorization
 
@@ -29343,6 +29599,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -29656,6 +29914,8 @@ Name | Type | Description  | Notes
 
 # **task_reindexroutines_check_schedule_post**
 > bool, date, datetime, dict, float, int, list, str, none_type task_reindexroutines_check_schedule_post()
+
+
 
 
 
@@ -30074,6 +30334,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -30158,6 +30420,8 @@ Name | Type | Description  | Notes
 
 # **task_tasks_project_project_id_tasks_get**
 > [ProjectTasks] task_tasks_project_project_id_tasks_get(project_id)
+
+
 
 
 
@@ -30395,7 +30659,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **tus_upload_session_upload_session_id_upload_guid_patch**
-> InlineResponse400 tus_upload_session_upload_session_id_upload_guid_patch(upload_session_id, guid, upload_offset, tus_resumable)
+> TusUploadSessionUploadSessionIdUploadPOST400Response tus_upload_session_upload_session_id_upload_guid_patch(upload_session_id, guid, upload_offset, tus_resumable)
 
 
 
@@ -30409,7 +30673,7 @@ Transfer file data
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.inline_response400 import InlineResponse400
+from openapi_client.model.tus_upload_session_upload_session_id_upload_post400_response import TusUploadSessionUploadSessionIdUploadPOST400Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -30469,7 +30733,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InlineResponse400**](InlineResponse400.md)
+[**TusUploadSessionUploadSessionIdUploadPOST400Response**](TusUploadSessionUploadSessionIdUploadPOST400Response.md)
 
 ### Authorization
 
@@ -30507,7 +30771,7 @@ Create an Upload
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.inline_response400 import InlineResponse400
+from openapi_client.model.tus_upload_session_upload_session_id_upload_post400_response import TusUploadSessionUploadSessionIdUploadPOST400Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -30586,8 +30850,10 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **users_social_accounts_get**
-> SocialAccountsResponse users_social_accounts_get()
+# **users_client_ids_get**
+> [SocialClientList] users_client_ids_get()
+
+
 
 
 
@@ -30599,7 +30865,7 @@ void (empty response body)
 import time
 import openapi_client
 from openapi_client.api import v1_api
-from openapi_client.model.social_accounts_response import SocialAccountsResponse
+from openapi_client.model.social_client_list import SocialClientList
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -30625,10 +30891,10 @@ with openapi_client.ApiClient(configuration) as api_client:
 
     # example, this endpoint has no required or optional parameters
     try:
-        api_response = api_instance.users_social_accounts_get()
+        api_response = api_instance.users_client_ids_get()
         pprint(api_response)
     except openapi_client.ApiException as e:
-        print("Exception when calling V1Api->users_social_accounts_get: %s\n" % e)
+        print("Exception when calling V1Api->users_client_ids_get: %s\n" % e)
 ```
 
 
@@ -30637,7 +30903,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**SocialAccountsResponse**](SocialAccountsResponse.md)
+[**[SocialClientList]**](SocialClientList.md)
 
 ### Authorization
 
@@ -30654,6 +30920,330 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_elevate_post**
+> SocialLogin users_elevate_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Elevate in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://elmqa.elevateservices.com/services/oauth/authorize`     with correct `client_id`, `redirect_url`, and `response_type=token`; 2. After elevate auth user will be redirected to callback url; 3. Pass the `access_token` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.access_token_schema import AccessTokenSchema
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    access_token_schema = AccessTokenSchema(
+        access_token="access_token_example",
+    ) # AccessTokenSchema |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_elevate_post(access_token_schema=access_token_schema)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->users_elevate_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **access_token_schema** | [**AccessTokenSchema**](AccessTokenSchema.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_google_post**
+> SocialLogin users_google_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Google in CLM.  The login algorithm is next:  1. Redirect to google auth page `https://accounts.google.com/o/oauth2/v2/auth`     with correct `client_id`, `redirect_url`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.code import Code
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    code = Code(
+        code="code_example",
+    ) # Code |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_google_post(code=code)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->users_google_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_office365_post**
+> SocialLogin users_office365_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Microsoft office365 in CLM.  The login algorithm is next:  1. Redirect to microsoft auth page `https://login.microsoftonline.com/consumers|common/oauth2/v2.0/authorize`     with correct `client_id`, `redirect_url`, `response_type`, and `scope`; 2. After microsoft auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.code import Code
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    code = Code(
+        code="code_example",
+    ) # Code |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_office365_post(code=code)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->users_office365_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **users_okta_post**
+> SocialLogin users_okta_post()
+
+
+
+Authenticate user (register first if the profile doesn't exist) via Okta in CLM.  The login algorithm is next:  1. Redirect to okta auth page `https://{{your domain}}.okta.com/oauth2/default/v1/authorize`     with correct `client_id`, `redirect_url`, `scope`, and `state`; 2. After google auth user will be redirected to callback url; 3. Pass the `code` from query params to this endpoint.
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import v1_api
+from openapi_client.model.code import Code
+from openapi_client.model.social_login import SocialLogin
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = v1_api.V1Api(api_client)
+    code = Code(
+        code="code_example",
+    ) # Code |  (optional)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.users_okta_post(code=code)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling V1Api->users_okta_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **code** | [**Code**](Code.md)|  | [optional]
+
+### Return type
+
+[**SocialLogin**](SocialLogin.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

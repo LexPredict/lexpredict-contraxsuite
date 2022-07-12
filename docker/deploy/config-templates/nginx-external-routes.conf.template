@@ -21,6 +21,9 @@ location /frontend/ {
     allow all;
 }
 
+rewrite ^${DOCKER_DJANGO_BASE_PATH_STRIPPED}/accounts/(.*)/login/callback(.*) /#/login/${DOLLAR}1/callback${DOLLAR}2 redirect;
+rewrite ^/login/(.*)/callback(.*) /#/login/${DOLLAR}1/callback${DOLLAR}2 redirect;
+
 rewrite ^/advanced(.*) ${DOCKER_DJANGO_BASE_PATH_STRIPPED}${DOLLAR}1 redirect;
 
 location ${DOCKER_DJANGO_BASE_PATH_STRIPPED} {

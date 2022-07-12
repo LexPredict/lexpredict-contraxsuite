@@ -168,10 +168,10 @@ variable "helm_install_keda" {
   type        = string
   description = "Should Keda Helm Chart be installed"
 }
-variable "ceph_cluster_deploy" {
+variable "ceph_cluster_environment" {
   default     = false
   type        = string
-  description = ""
+  description = "Ceph Cluster Type (only 'dev' or 'prd' values are valid)"
 }
 variable "ceph_cluster_rook_version" {
   default     = "v1.5.11"

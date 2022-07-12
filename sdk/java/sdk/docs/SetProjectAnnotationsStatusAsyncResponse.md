@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**taskId** | **UUID** |  | 
-**annotations** | **Integer** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**taskId** | **UUID** |  |  |
+|**annotations** | **Integer** |  |  |
 
 
 

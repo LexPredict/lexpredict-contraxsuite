@@ -11,7 +11,6 @@
   var tuc_type_name_url = '{% url "analyze:text-unit-classification-name-complete" %}';
   var tuc_type_value_url = '{% url "analyze:text-unit-classification-value-complete" %}';
   var export_filename = '{% replace model_name_plural|default:"data"|lower|slugify "-" "_" %}';
-  var disable_data_export = {{ disable_data_export|yesno:"true,false" }};
   var is_jq_export = {{ settings.JQ_EXPORT|yesno:"true,false" }};
 </script>
 <script src="{% static "js/jqwidgets.js" %}" type="text/javascript"></script>

@@ -85,8 +85,8 @@ from apps.users.permissions import remove_perm, document_type_manager_permission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -1165,7 +1165,7 @@ class Document(LazyTimeStampedModel):
                 'document': document_name,
                 'action_creator': str(request_user) if request_user else "someone"
             }
-            if prev_assignee and str(prev_assignee) != message_data['action_creator']:
+            if prev_assignee:
                 notification_type = WebNotificationTypes.DOCUMENT_UNASSIGNED
                 redirect_link = {
                     'type': notification_type.redirect_link_type(),
@@ -1179,16 +1179,18 @@ class Document(LazyTimeStampedModel):
                 message_data['assignee'] = prev_assignee.name
                 message_data = notification_type.check_message_data(message_data)
                 actions.append(Action(name='Document Unassigned',
-                                      message=notification_type.message_template().format(
-                                          **message_data),
+                                      message='Document assignee changed from "{assignee}" '
+                                              'to "None"'.format(**message_data),
                                       **action_params))
+
                 # Web Notification
-                message_data['assignee'] = 'you'
-                message_data = notification_type.check_message_data(message_data)
-                recipients = [prev_assignee.id]
-                notifications.append((message_data, redirect_link, notification_type,
-                                      recipients))
-            if new_assignee and str(new_assignee) != message_data['action_creator']:
+                if str(prev_assignee) != message_data['action_creator']:
+                    message_data['assignee'] = 'you'
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [prev_assignee.id]
+                    notifications.append((message_data, redirect_link, notification_type,
+                                          recipients))
+            if new_assignee:
                 message_data = message_data.copy()
                 notification_type = WebNotificationTypes.DOCUMENT_ASSIGNED
                 redirect_link = {
@@ -1204,15 +1206,17 @@ class Document(LazyTimeStampedModel):
                 message_data['assignee'] = new_assignee.name
                 message_data = notification_type.check_message_data(message_data)
                 actions.append(Action(name='Document Assigned',
-                                      message=notification_type.message_template().format(
-                                          **message_data),
+                                      message='Document assignee changed from "None" '
+                                              'to "{assignee}"'.format(**message_data),
                                       **action_params))
+
                 # Web Notification
-                message_data['assignee'] = 'you'
-                message_data = notification_type.check_message_data(message_data)
-                recipients = [new_assignee.id]
-                notifications.append((message_data, redirect_link, notification_type,
-                                      recipients))
+                if str(new_assignee) != message_data['action_creator']:
+                    message_data['assignee'] = 'you'
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [new_assignee.id]
+                    notifications.append((message_data, redirect_link, notification_type,
+                                          recipients))
         if actions:
             Action.objects.bulk_create(actions)
         WebNotificationMessage.bulk_create_notification_messages(notifications)
@@ -1346,15 +1350,11 @@ class DocumentPDFRepresentation(models.Model):
     """Additional information for the Document related to its representation in PDF format such as
     the bounding boxes of each character in its extracted plain text.
     """
-
-    # Document FK
     document = models.OneToOneField(Document, db_index=True, on_delete=CASCADE,
                                     related_name='document_pdf_repr')
-
     char_bboxes = models.BinaryField(null=True, blank=True,
                                      help_text='''Bounding boxes of all characters of the document text in 
                                            format of list of [page_num, x_on_page, y_on_page, w, h].''')
-
     pages = models.BinaryField(null=True, blank=True,
                                help_text='''Information on PDF representation of the document pages.
         List of dictionaries: { 'number': ..., 'start': ..., 'end': ..., 'bbox': ... }
@@ -1362,6 +1362,14 @@ class DocumentPDFRepresentation(models.Model):
         "start" is offset in plain text of the first character on the page;
         "end" is offset in plain text + 1 of the last character on the page;
         "bbox" is bounding box in PDF coordinates in format: [x, y, w, h]. X and Y are usually zeros.''')
+    was_opened_in_annotator = models.BooleanField(default=False,
+                                                  help_text="Detector that fixes coordinates after "
+                                                            "opening document in Annotator")
+    annotator_difference = models.BinaryField(
+        null=True, blank=True,
+        help_text="Difference in pixels between TES and Annotator coordinates. List of "
+                  "dictionaries: { 'width': ..., 'height': ... } where "
+                  "\"width\" is float width difference; \"height\" is float height difference.")
 
     @property
     def char_bboxes_list(self) -> List[List[float]]:
@@ -1380,35 +1388,47 @@ class DocumentPDFRepresentation(models.Model):
     def pages_list(self) -> List[Dict[str, Any]]:
         # returns: [{'number': 0, 'start': 0, 'end': 1109,
         #            'bbox': [0.0, 0.0, 595.2999877929688, 841.8900146484375]}, ...
-        if not self.pages:
-            return []
-        return self.unpack_pages(self.pages)
+        return self.unpack_pages(self.pages) if self.pages else []
 
     def set_pages(self, pages: List[Dict[str, Any]]):
         self.pages = msgpack.packb(pages, use_bin_type=True, use_single_float=True)
 
     @classmethod
     def unpack_pages(cls, pages: Optional[bytes]) -> List[Dict[str, Any]]:
-        if pages is None or not len(pages):
-            return []
-        return msgpack.unpackb(pages, raw=False)
+        return msgpack.unpackb(pages, raw=False) if pages and len(pages) else []
 
-    def get_text_location_by_coords(
-            self,
-            selections: List[Dict[str, Any]]) -> Tuple[int, int]:
-        return CoordTextMap.get_text_location_by_coords(PdfMarkup(
-            self.char_bboxes_list, self.pages_list),
-            selections)
+    @property
+    def difference_coordinates_list(self) -> List[Dict[str, float]]:
+        # returns: [{'width': 0, 'height': 0 }, ...]
+        return msgpack.unpackb(self.annotator_difference, raw=False) \
+            if self.annotator_difference and len(self.annotator_difference) else []
+
+    def update_coordinates_annotator_difference(self,
+                                                difference: List[Dict[str, float]]) -> bool:
+        if not self.was_opened_in_annotator and difference:
+            self.was_opened_in_annotator = True
+            self.annotator_difference = msgpack.packb(difference,
+                                                      use_bin_type=True,
+                                                      use_single_float=True)
+            self.save(update_fields=['was_opened_in_annotator', 'annotator_difference'])
+            return True
+        return False
+
+    def get_text_location_by_coords(self, selections: List[Dict[str, Any]]) -> Tuple[int, int]:
+        return CoordTextMap.get_text_location_by_coords(
+            PdfMarkup(self.char_bboxes_list, self.pages_list),
+            selections
+        )
 
     @classmethod
-    def get_text_location_by_coords_for_doc(
-            cls,
-            document_id: int,
-            selections: List[Dict[str, Any]]) -> Tuple[int, int]:
-        pdf_records = list(DocumentPDFRepresentation.objects.filter(document_id=document_id))
-        if not pdf_records:
+    def get_text_location_by_coords_for_doc(cls,
+                                            document_id: int,
+                                            selections: List[Dict[str, Any]]) -> Tuple[int, int]:
+        try:
+            pdf_records = DocumentPDFRepresentation.objects.get(document_id=document_id)
+            return pdf_records.get_text_location_by_coords(selections)
+        except DocumentPDFRepresentation.DoesNotExist:
             raise RuntimeError(f'Document #{document_id} contains no PDF markup')
-        return pdf_records[0].get_text_location_by_coords(selections)
 
 
 class DocumentMetadata(models.Model):
@@ -2338,7 +2358,8 @@ class FieldValue(models.Model):
                 'action_creator': str(request_user) if request_user else "someone",
                 'project': project.name
             }
-            if prev_assignee_id and prev_assignee_name != message_data['action_creator']:
+
+            if prev_assignee_id:
                 notification_type = WebNotificationTypes.CLAUSES_UNASSIGNED
                 redirect_link = {
                     'type': notification_type.redirect_link_type(),
@@ -2356,12 +2377,15 @@ class FieldValue(models.Model):
                            message=notification_type.message_template().format(**message_data),
                            **action_params)
                 )
+
                 # Web Notification
-                message_data['assignee'] = 'you'
-                message_data = notification_type.check_message_data(message_data)
-                recipients = [prev_assignee_id]
-                notifications.append((message_data, redirect_link, notification_type, recipients))
-            if new_assignee_id and new_assignee_name != message_data['action_creator']:
+                if prev_assignee_name != message_data['action_creator']:
+                    message_data['assignee'] = 'you'
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [prev_assignee_id]
+                    notifications.append((message_data, redirect_link, notification_type, recipients))
+
+            if new_assignee_id:
                 message_data = message_data.copy()
                 notification_type = WebNotificationTypes.CLAUSES_ASSIGNED
                 redirect_link = {
@@ -2378,11 +2402,13 @@ class FieldValue(models.Model):
                            message=notification_type.message_template().format(**message_data),
                            **action_params)
                 )
+
                 # Web Notification
-                message_data['assignee'] = 'you'
-                message_data = notification_type.check_message_data(message_data)
-                recipients = [new_assignee_id]
-                notifications.append((message_data, redirect_link, notification_type, recipients))
+                if new_assignee_name != message_data['action_creator']:
+                    message_data['assignee'] = 'you'
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [new_assignee_id]
+                    notifications.append((message_data, redirect_link, notification_type, recipients))
         WebNotificationMessage.bulk_create_notification_messages(notifications)
         if actions:
             Action.objects.bulk_create(actions)
@@ -2620,7 +2646,8 @@ class FieldAnnotation(models.Model):
                 'action_creator': str(request_user) if request_user else "someone",
                 'project': project.name
             }
-            if prev_assignee_id and prev_assignee_name != message_data['action_creator']:
+
+            if prev_assignee_id:
                 notification_type = WebNotificationTypes.CLAUSES_UNASSIGNED
                 redirect_link = {
                     'type': notification_type.redirect_link_type(),
@@ -2638,12 +2665,15 @@ class FieldAnnotation(models.Model):
                            message=notification_type.message_template().format(**message_data),
                            **action_params)
                 )
+
                 # Web Notification
-                message_data['assignee'] = 'you'
-                message_data = notification_type.check_message_data(message_data)
-                recipients = [prev_assignee_id]
-                notifications.append((message_data, redirect_link, notification_type, recipients))
-            if new_assignee_id and new_assignee_name != message_data['action_creator']:
+                if prev_assignee_name != message_data['action_creator']:
+                    message_data['assignee'] = 'you'
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [prev_assignee_id]
+                    notifications.append((message_data, redirect_link, notification_type, recipients))
+
+            if new_assignee_id:
                 message_data = message_data.copy()
                 notification_type = WebNotificationTypes.CLAUSES_ASSIGNED
                 redirect_link = {
@@ -2660,11 +2690,13 @@ class FieldAnnotation(models.Model):
                            message=notification_type.message_template().format(**message_data),
                            **action_params)
                 )
+
                 # Web Notification
-                message_data['assignee'] = 'you'
-                message_data = notification_type.check_message_data(message_data)
-                recipients = [new_assignee_id]
-                notifications.append((message_data, redirect_link, notification_type, recipients))
+                if new_assignee_name != message_data['action_creator']:
+                    message_data['assignee'] = 'you'
+                    message_data = notification_type.check_message_data(message_data)
+                    recipients = [new_assignee_id]
+                    notifications.append((message_data, redirect_link, notification_type, recipients))
         WebNotificationMessage.bulk_create_notification_messages(notifications)
         if actions:
             Action.objects.bulk_create(actions)

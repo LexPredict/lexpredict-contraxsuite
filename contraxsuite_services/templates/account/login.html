@@ -13,88 +13,50 @@
 {% block content2 %}
 <div class="login-page container">
     <div class="wrapper">
-        <div class="login-form login-animation">
-            <div class="logo">
-                <img src="{% static "images/logo.png" %}" alt="Contraxsuite Logo" />
-            </div>
+        <div class="logo-icon-block">
+            <img src="{% static "images/logo-icon.svg" %}" alt="Contraxsuite Logo" />
+        </div>
+        <div class="login-form false">
             <div class="input-group">
-                <div class="login-state ">Sign in to ContraxSuite</div>
-                <span class="login-description">The leading open-source contract analytics and legal document platform.</span>
+                <img src="{% static "images/logo-elevate.svg" %}" alt="Elevate Logo" />
+
+                <div class="login-state fade">Sign In</div>
                 <form id="loginForm" method="POST" action="{% url 'account_login' %}">
                     {% csrf_token %}
                     {% if redirect_field_value %}
-                        <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
-                        <input type="hidden" name="marker_input" value="" />
+                    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+                    <input type="hidden" name="marker_input" value="" />
                     {% endif %}
 
                     <div class="input-block {% if form.errors %}with-error{% endif %}">
-                        <span class="input-labels fade">
-                            <label class="input-name">Email:</label>
-                        </span>
-                        <input
-                            class="login-input"
-                            name="login"
-                            type="text"
-                            placeholder="Username or e-mail"
-                            autocomplete="off"
-                            autofocus
-                            tabindex="1"
-                        />
-                        <span class="input-labels fade">
-                            <label class="input-name">Password:</label>
-                            <label
-                                class="to-reset"
-                                data-href="{% url 'account_reset_password' %}"
-                                onclick="document.location.href = this.getAttribute('data-href')"
-                            >
-                                Forgot password?
-                            </label>
-                        </span>
-                        <input
-                            class="login-input"
-                            name="password"
-                            type="password"
-                            placeholder="Enter here"
-                            autocomplete="off"
-                            tabindex="2"
-                        />
+                        <input class="login-input" name="login" type="email" placeholder="Email" autocomplete="off"
+                            autofocus tabindex="1" />
+                        <input class="login-input" name="password" type="password" placeholder="Password"
+                            autocomplete="off" tabindex="2" />
                         {% if form.errors %}
                         <div class="error-message">
-                            The username and/or password you specified are not correct.
+                            The email and/or password you specified are not correct.
                         </div>
                         {% endif %}
                     </div>
                 </form>
-                <button
-                    class="login-button fade"
-                    onClick="document.getElementById('loginForm').submit();"
-                    tabindex="3"
-                >
+                <button class="login-button fade" onClick="document.getElementById('loginForm').submit();" tabindex="3">
                     Sign In
                 </button>
-
-                {% for provider in providers %}
-                    {% if provider.sites.all %}
-                    <div>
-                        <a href="{% provider_login_url provider.provider %}">Login with {{provider.name}}</a>
-                    </div>
-                    {% endif %}
-                {% endfor %}
+                <span class="input-labels">
+                    <label 
+                        class="to-reset"
+                        data-href="{% url 'account_reset_password' %}"
+                        onclick="document.location.href = this.getAttribute('data-href')"
+                    >
+                        Forgot password?
+                    </label>
+                </span>
             </div>
-
-            <div class="help">
-                <p class="helper">Contact Us</p>
-                <div class="version-block">
-                    <p class="support-info">{% app_var_value "support_email" %}</p>
-                    <p class="support-info">Version: {% settings_value "VERSION_NUMBER" %}</p>
-                </div>
-            </div>
-        </div>
-        <div class="greeting-block">
-            <div class="login-intro"></div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block js %}

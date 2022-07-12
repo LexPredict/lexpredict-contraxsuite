@@ -2,21 +2,21 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**dumpDocumentConfigGET**](DumpApi.md#dumpDocumentConfigGET) | **GET** /api/v1/dump/document-config/ | 
-[**dumpDocumentConfigPUT**](DumpApi.md#dumpDocumentConfigPUT) | **PUT** /api/v1/dump/document-config/ | 
-[**dumpDumpFixturePOST**](DumpApi.md#dumpDumpFixturePOST) | **POST** /api/v1/dump/dump-fixture/ | 
-[**dumpDumpGET**](DumpApi.md#dumpDumpGET) | **GET** /api/v1/dump/dump/ | 
-[**dumpDumpPUT**](DumpApi.md#dumpDumpPUT) | **PUT** /api/v1/dump/dump/ | 
-[**dumpFieldValuesGET**](DumpApi.md#dumpFieldValuesGET) | **GET** /api/v1/dump/field-values/ | 
-[**dumpFieldValuesPUT**](DumpApi.md#dumpFieldValuesPUT) | **PUT** /api/v1/dump/field-values/ | 
-[**dumpLoadFixturePOST**](DumpApi.md#dumpLoadFixturePOST) | **POST** /api/v1/dump/load-fixture/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**dumpDocumentConfigGET**](DumpApi.md#dumpDocumentConfigGET) | **GET** /api/v1/dump/document-config/ |  |
+| [**dumpDocumentConfigPUT**](DumpApi.md#dumpDocumentConfigPUT) | **PUT** /api/v1/dump/document-config/ |  |
+| [**dumpDumpFixturePOST**](DumpApi.md#dumpDumpFixturePOST) | **POST** /api/v1/dump/dump-fixture/ |  |
+| [**dumpDumpGET**](DumpApi.md#dumpDumpGET) | **GET** /api/v1/dump/dump/ |  |
+| [**dumpDumpPUT**](DumpApi.md#dumpDumpPUT) | **PUT** /api/v1/dump/dump/ |  |
+| [**dumpFieldValuesGET**](DumpApi.md#dumpFieldValuesGET) | **GET** /api/v1/dump/field-values/ |  |
+| [**dumpFieldValuesPUT**](DumpApi.md#dumpFieldValuesPUT) | **PUT** /api/v1/dump/field-values/ |  |
+| [**dumpLoadFixturePOST**](DumpApi.md#dumpLoadFixturePOST) | **POST** /api/v1/dump/load-fixture/ |  |
 
 
 <a name="dumpDocumentConfigGET"></a>
 # **dumpDocumentConfigGET**
-> OneOfarrayfile dumpDocumentConfigGET(download, documentTypeCodes)
+> DumpDocumentConfigGET200Response dumpDocumentConfigGET(download, documentTypeCodes)
 
 
 
@@ -47,7 +47,7 @@ public class Example {
     Boolean download = true; // Boolean | Download as file
     String documentTypeCodes = "documentTypeCodes_example"; // String | Document Type codes separated by comma
     try {
-      OneOfarrayfile result = apiInstance.dumpDocumentConfigGET(download, documentTypeCodes);
+      DumpDocumentConfigGET200Response result = apiInstance.dumpDocumentConfigGET(download, documentTypeCodes);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpDocumentConfigGET");
@@ -62,14 +62,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **download** | **Boolean**| Download as file | [optional]
- **documentTypeCodes** | **String**| Document Type codes separated by comma | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **download** | **Boolean**| Download as file | [optional] |
+| **documentTypeCodes** | **String**| Document Type codes separated by comma | [optional] |
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -83,8 +83,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpDocumentConfigPUT"></a>
 # **dumpDocumentConfigPUT**
@@ -116,7 +116,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
-    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<>()); // List<Map<String, Object>> | 
     try {
       String result = apiInstance.dumpDocumentConfigPUT(requestBody);
       System.out.println(result);
@@ -133,9 +133,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional] |
 
 ### Return type
 
@@ -153,8 +153,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpDumpFixturePOST"></a>
 # **dumpDumpFixturePOST**
@@ -203,9 +203,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **dumpFixture** | [**DumpFixture**](DumpFixture.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **dumpFixture** | [**DumpFixture**](DumpFixture.md)|  | [optional] |
 
 ### Return type
 
@@ -223,11 +223,11 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="dumpDumpGET"></a>
 # **dumpDumpGET**
-> OneOfarrayfile dumpDumpGET(download)
+> DumpDocumentConfigGET200Response dumpDumpGET(download)
 
 
 
@@ -257,7 +257,7 @@ public class Example {
     DumpApi apiInstance = new DumpApi(defaultClient);
     Boolean download = true; // Boolean | Download as file
     try {
-      OneOfarrayfile result = apiInstance.dumpDumpGET(download);
+      DumpDocumentConfigGET200Response result = apiInstance.dumpDumpGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpDumpGET");
@@ -272,13 +272,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **download** | **Boolean**| Download as file | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **download** | **Boolean**| Download as file | [optional] |
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -292,8 +292,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpDumpPUT"></a>
 # **dumpDumpPUT**
@@ -325,7 +325,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
-    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<>()); // List<Map<String, Object>> | 
     try {
       String result = apiInstance.dumpDumpPUT(requestBody);
       System.out.println(result);
@@ -342,9 +342,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional] |
 
 ### Return type
 
@@ -362,12 +362,12 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpFieldValuesGET"></a>
 # **dumpFieldValuesGET**
-> OneOfarrayfile dumpFieldValuesGET(download)
+> DumpDocumentConfigGET200Response dumpFieldValuesGET(download)
 
 
 
@@ -397,7 +397,7 @@ public class Example {
     DumpApi apiInstance = new DumpApi(defaultClient);
     Boolean download = true; // Boolean | Download as file
     try {
-      OneOfarrayfile result = apiInstance.dumpFieldValuesGET(download);
+      DumpDocumentConfigGET200Response result = apiInstance.dumpFieldValuesGET(download);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling DumpApi#dumpFieldValuesGET");
@@ -412,13 +412,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **download** | **Boolean**| Download as file | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **download** | **Boolean**| Download as file | [optional] |
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -432,8 +432,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpFieldValuesPUT"></a>
 # **dumpFieldValuesPUT**
@@ -465,7 +465,7 @@ public class Example {
     //AuthToken.setApiKeyPrefix("Token");
 
     DumpApi apiInstance = new DumpApi(defaultClient);
-    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<String, Object>()); // List<Map<String, Object>> | 
+    List<Map<String, Object>> requestBody = Arrays.asList(new HashMap<>()); // List<Map<String, Object>> | 
     try {
       String result = apiInstance.dumpFieldValuesPUT(requestBody);
       System.out.println(result);
@@ -482,9 +482,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **requestBody** | [**List&lt;Map&lt;String, Object&gt;&gt;**](Map.md)|  | [optional] |
 
 ### Return type
 
@@ -502,8 +502,8 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 
 <a name="dumpLoadFixturePOST"></a>
 # **dumpLoadFixturePOST**
@@ -552,9 +552,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **loadFixture** | [**LoadFixture**](LoadFixture.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **loadFixture** | [**LoadFixture**](LoadFixture.md)|  | [optional] |
 
 ### Return type
 
@@ -572,6 +572,6 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
-**400** |  |  -  |
+| **200** |  |  -  |
+| **400** |  |  -  |
 

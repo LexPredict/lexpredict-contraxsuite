@@ -490,6 +490,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -803,6 +805,8 @@ Name | Type | Description  | Notes
 
 # **task_reindexroutines_check_schedule_post**
 > bool, date, datetime, dict, float, int, list, str, none_type task_reindexroutines_check_schedule_post()
+
+
 
 
 
@@ -1221,6 +1225,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -1305,6 +1311,8 @@ Name | Type | Description  | Notes
 
 # **task_tasks_project_project_id_tasks_get**
 > [ProjectTasks] task_tasks_project_project_id_tasks_get(project_id)
+
+
 
 
 

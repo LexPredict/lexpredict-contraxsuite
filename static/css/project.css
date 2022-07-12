@@ -335,24 +335,30 @@ body {
   white-space: nowrap;
 }
 
-.sidebar .version {
-  bottom: 45px;
-}
+/* .sidebar .version {
+  bottom: 21px;
+} */
 
 .sidebar .version,
 .sidebar .copyright {
   display: block;
 }
 
-.sidebar .copyright.first-line {
-  margin-bottom: 20px;
-}
-
 .sidebar .version .version_number,
 .sidebar .version .build_date_value,
-.sidebar .copyright .secondary,
-.sidebar .copyright.first-line a {
+.sidebar .copyright .secondary a {
   font-weight: 600;
+}
+
+.sidebar .copyright-block {
+  border-bottom: none;
+  font-size: 12px;
+  padding: 5px 15px;
+  position: absolute;
+  bottom: 3px;
+  width: 100%;
+  text-align: center;
+  color: #334C70;
 }
 /*---------------------------------------------------------
     2.3 Main Container

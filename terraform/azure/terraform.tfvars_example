@@ -9,7 +9,7 @@ resource_group_name = "dev-k8s"
 ### --- AKS Cluser --- ###
 aks_dns_prefix = "dev-k8s"
 # AKS Master Node Pool
-master_nodepool_vm_size   = "Standard_D4s_v4"
+master_nodepool_vm_size   = "Standard_B4ms" # use "Standard_D4s_v4" for production
 master_nodepool_count = 2
 # AKS Worker Node Pool
 worker_nodepool_vm_size   = "Standard_F8s_v2"

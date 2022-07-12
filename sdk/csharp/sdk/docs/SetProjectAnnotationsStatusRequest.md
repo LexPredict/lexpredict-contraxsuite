@@ -9,6 +9,7 @@ Name | Type | Description | Notes
 **All** | **bool** |  | [optional] 
 **AnnotationIds** | **List&lt;int&gt;** |  | [optional] 
 **NoAnnotationIds** | **List&lt;int&gt;** |  | [optional] 
+**Force** | **bool** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

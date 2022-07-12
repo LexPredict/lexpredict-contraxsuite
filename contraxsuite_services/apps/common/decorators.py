@@ -49,8 +49,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -325,3 +325,24 @@ def init_decorators():
     logging.info('Initiate collect_stats decorators on system start')
     for instance_values in MethodStatsCollectorPlugin.objects.values():
         decorate(collect_stats, **instance_values)
+
+
+def temp_disconnect_signal(signal, receiver, sender, dispatch_uid=None):
+    """
+    Temporarily disconnect a model from a signal
+    """
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            try:
+                signal.disconnect(receiver=receiver,
+                                  sender=sender,
+                                  dispatch_uid=dispatch_uid)
+                result = function(*args, **kwargs)
+            finally:
+                signal.connect(receiver=receiver,
+                               sender=sender,
+                               dispatch_uid=dispatch_uid,
+                               weak=False)
+            return result
+        return wrapper
+    return decorator

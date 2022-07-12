@@ -5,11 +5,11 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **Integer** |  |  [optional] [readonly]
-**name** | **String** |  | 
-**order** | **Integer** |  |  [optional]
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**id** | **Integer** |  |  [optional] [readonly] |
+|**name** | **String** |  |  |
+|**order** | **Integer** |  |  [optional] |
 
 
 

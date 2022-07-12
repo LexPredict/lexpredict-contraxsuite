@@ -145,7 +145,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document cluster.
+            var id = "id_example";  // string | A unique integer value identifying this document cluster.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -227,7 +227,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document cluster.
+            var id = "id_example";  // string | A unique integer value identifying this document cluster.
             var documentClusterUpdate = new DocumentClusterUpdate(); // DocumentClusterUpdate |  (optional) 
 
             try
@@ -309,7 +309,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this document cluster.
+            var id = "id_example";  // string | A unique integer value identifying this document cluster.
             var documentClusterUpdate = new DocumentClusterUpdate(); // DocumentClusterUpdate |  (optional) 
 
             try
@@ -973,7 +973,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var unitSource = "unitSource_example";  // string | document / text_unit (optional) 
             var projectId = 56;  // int? | Project ID (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -1057,8 +1057,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this similarity run.
-            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this similarity run.
+            var unitSource = "unitSource_example";  // string | document / text_unit (optional) 
             var projectId = 56;  // int? | Project ID (optional) 
 
             try
@@ -1140,8 +1140,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this similarity run.
-            var unitSource = unitSource_example;  // string | document / text_unit (optional) 
+            var id = "id_example";  // string | A unique integer value identifying this similarity run.
+            var unitSource = "unitSource_example";  // string | document / text_unit (optional) 
             var projectId = 56;  // int? | Project ID (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -1306,7 +1306,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classification.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classification.
 
             try
             {
@@ -1385,7 +1385,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classification.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classification.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1627,7 +1627,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier suggestion.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier suggestion.
 
             try
             {
@@ -1704,7 +1704,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier suggestion.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier suggestion.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1866,7 +1866,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier.
 
             try
             {
@@ -1943,7 +1943,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this text unit classifier.
+            var id = "id_example";  // string | A unique integer value identifying this text unit classifier.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2265,8 +2265,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new AnalyzeApi(Configuration.Default);
-            var fieldName = fieldName_example;  // string | 
-            var q = q_example;  // string | Typeahead string
+            var fieldName = "fieldName_example";  // string | 
+            var q = "q_example";  // string | Typeahead string
 
             try
             {

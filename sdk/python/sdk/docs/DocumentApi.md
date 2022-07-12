@@ -85,6 +85,7 @@ Method | HTTP request | Description
 [**document_documents_id_patch**](DocumentApi.md#document_documents_id_patch) | **PATCH** /api/v1/document/documents/{id}/ | 
 [**document_documents_id_pdf_repr_get**](DocumentApi.md#document_documents_id_pdf_repr_get) | **GET** /api/v1/document/documents/{id}/pdf_repr/ | 
 [**document_documents_id_put**](DocumentApi.md#document_documents_id_put) | **PUT** /api/v1/document/documents/{id}/ | 
+[**document_documents_id_set_annotator_coord_difference_post**](DocumentApi.md#document_documents_id_set_annotator_coord_difference_post) | **POST** /api/v1/document/documents/{id}/set_annotator_coord_difference/ | 
 [**document_documents_id_show_get**](DocumentApi.md#document_documents_id_show_get) | **GET** /api/v1/document/documents/{id}/show/ | 
 [**document_documents_id_similar_get**](DocumentApi.md#document_documents_id_similar_get) | **GET** /api/v1/document/documents/{id}/similar/ | 
 [**document_documents_mark_delete_post**](DocumentApi.md#document_documents_mark_delete_post) | **POST** /api/v1/document/documents/mark_delete/ | 
@@ -125,6 +126,7 @@ Method | HTTP request | Description
 [**document_project_project_pk_documents_id_patch**](DocumentApi.md#document_project_project_pk_documents_id_patch) | **PATCH** /api/v1/document/project/{project_pk}/documents/{id}/ | 
 [**document_project_project_pk_documents_id_pdf_repr_get**](DocumentApi.md#document_project_project_pk_documents_id_pdf_repr_get) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/pdf_repr/ | 
 [**document_project_project_pk_documents_id_put**](DocumentApi.md#document_project_project_pk_documents_id_put) | **PUT** /api/v1/document/project/{project_pk}/documents/{id}/ | 
+[**document_project_project_pk_documents_id_set_annotator_coord_difference_post**](DocumentApi.md#document_project_project_pk_documents_id_set_annotator_coord_difference_post) | **POST** /api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/ | 
 [**document_project_project_pk_documents_id_show_get**](DocumentApi.md#document_project_project_pk_documents_id_show_get) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/show/ | 
 [**document_project_project_pk_documents_id_similar_get**](DocumentApi.md#document_project_project_pk_documents_id_similar_get) | **GET** /api/v1/document/project/{project_pk}/documents/{id}/similar/ | 
 [**document_project_project_pk_documents_mark_delete_post**](DocumentApi.md#document_project_project_pk_documents_mark_delete_post) | **POST** /api/v1/document/project/{project_pk}/documents/mark_delete/ | 
@@ -137,6 +139,8 @@ Method | HTTP request | Description
 
 # **document_annotations_annotate_put**
 > AnnotationUpdateResponse document_annotations_annotate_put()
+
+
 
 
 
@@ -797,6 +801,8 @@ Name | Type | Description  | Notes
 
 # **document_document_field_annotations_for_user_get**
 > DocumentFieldAnnotation document_document_field_annotations_for_user_get()
+
+
 
 
 
@@ -2905,6 +2911,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -4442,6 +4450,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -4686,6 +4696,8 @@ This endpoint does not need any parameter.
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -4920,6 +4932,8 @@ void (empty response body)
 
 # **document_document_types_uid_export_doc_type_get**
 > file_type document_document_types_uid_export_doc_type_get(uid)
+
+
 
 
 
@@ -5469,6 +5483,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -5547,6 +5563,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -5555,8 +5573,8 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import document_api
+from openapi_client.model.document_documents_download_zip_get404_response import DocumentDocumentsDownloadZipGET404Response
 from openapi_client.model.document_download_zip_response import DocumentDownloadZipResponse
-from openapi_client.model.inline_response404 import InlineResponse404
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -5624,6 +5642,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_for_user_get**
 > DocumentsForUserResponse document_documents_for_user_get()
+
+
 
 
 
@@ -5779,6 +5799,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_actions_get**
 > DocumentsForUser document_documents_id_actions_get(id)
+
+
 
 
 
@@ -5966,6 +5988,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6038,6 +6062,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_delete**
 > document_documents_id_delete(id)
+
+
 
 
 
@@ -6190,6 +6216,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6264,6 +6292,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6327,7 +6357,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -6390,6 +6420,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6453,7 +6485,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -6516,6 +6548,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6579,7 +6613,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -6639,6 +6673,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_full_text_get**
 > str document_documents_id_full_text_get(id)
+
+
 
 
 
@@ -6805,6 +6841,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6879,6 +6917,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -6942,7 +6982,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -7002,6 +7042,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_id_pdf_repr_get**
 > DocumentPDFRepr document_documents_id_pdf_repr_get(id)
+
+
 
 
 
@@ -7167,8 +7209,107 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **document_documents_id_set_annotator_coord_difference_post**
+> DocumentSetAnnotatorCoordinatesDifferenceResponse document_documents_id_set_annotator_coord_difference_post(id)
+
+
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import document_api
+from openapi_client.model.document_set_annotator_coordinates_difference_request import DocumentSetAnnotatorCoordinatesDifferenceRequest
+from openapi_client.model.document_set_annotator_coordinates_difference_response import DocumentSetAnnotatorCoordinatesDifferenceResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = document_api.DocumentApi(api_client)
+    id = "id_example" # str | A unique integer value identifying this document.
+    document_set_annotator_coordinates_difference_request = DocumentSetAnnotatorCoordinatesDifferenceRequest(
+        document_id=1,
+        first_letters=[
+            DocumentSetAnnotatorCoordinatesDifferenceRequestFirstLettersInner(
+                x=3.14,
+                y=3.14,
+                letter="letter_example",
+            ),
+        ],
+    ) # DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.document_documents_id_set_annotator_coord_difference_post(id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling DocumentApi->document_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.document_documents_id_set_annotator_coord_difference_post(id, document_set_annotator_coordinates_difference_request=document_set_annotator_coordinates_difference_request)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling DocumentApi->document_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **str**| A unique integer value identifying this document. |
+ **document_set_annotator_coordinates_difference_request** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional]
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **document_documents_id_show_get**
 > file_type document_documents_id_show_get(id)
+
+
 
 
 
@@ -7429,6 +7570,8 @@ Name | Type | Description  | Notes
 
 # **document_documents_post**
 > DocumentsForUser document_documents_post()
+
+
 
 
 
@@ -7842,6 +7985,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -8110,6 +8255,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_document_field_annotations_for_user_get**
 > DocumentFieldAnnotation document_project_project_pk_document_field_annotations_for_user_get(project_pk)
+
+
 
 
 
@@ -8560,6 +8707,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -8634,6 +8783,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_document_pk_annotations_id_delete**
 > document_project_project_pk_documents_document_pk_annotations_id_delete(project_pk, document_pk, id)
+
+
 
 
 
@@ -8714,6 +8865,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -8790,6 +8943,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_document_pk_annotations_id_patch**
 > AnnotationInDocument document_project_project_pk_documents_document_pk_annotations_id_patch(project_pk, document_pk, id)
+
+
 
 
 
@@ -8890,6 +9045,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -8984,6 +9141,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_document_pk_annotations_post**
 > AnnotationInDocument document_project_project_pk_documents_document_pk_annotations_post(project_pk, document_pk)
+
+
 
 
 
@@ -9082,6 +9241,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -9090,8 +9251,8 @@ Name | Type | Description  | Notes
 import time
 import openapi_client
 from openapi_client.api import document_api
+from openapi_client.model.document_documents_download_zip_get404_response import DocumentDocumentsDownloadZipGET404Response
 from openapi_client.model.document_download_zip_response import DocumentDownloadZipResponse
-from openapi_client.model.inline_response404 import InlineResponse404
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -9168,6 +9329,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_for_user_get**
 > DocumentsForUserResponse document_project_project_pk_documents_for_user_get(project_pk)
+
+
 
 
 
@@ -9336,6 +9499,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_actions_get**
 > DocumentsForUser document_project_project_pk_documents_id_actions_get(project_pk, id)
+
+
 
 
 
@@ -9527,6 +9692,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -9601,6 +9768,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_delete**
 > document_project_project_pk_documents_id_delete(project_pk, id)
+
+
 
 
 
@@ -9757,6 +9926,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -9833,6 +10004,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -9897,7 +10070,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -9961,6 +10134,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -10025,7 +10200,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -10089,6 +10264,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -10153,7 +10330,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -10214,6 +10391,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_full_text_get**
 > str document_project_project_pk_documents_id_full_text_get(project_pk, id)
+
+
 
 
 
@@ -10384,6 +10563,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -10460,6 +10641,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -10524,7 +10707,7 @@ with openapi_client.ApiClient(configuration) as api_client:
             initials="initials_example",
         ),
         available_assignees_data=[
-            DocumentDetailAvailableAssigneesData(
+            DocumentDetailAvailableAssigneesDataInner(
                 first_name="first_name_example",
                 last_name="last_name_example",
                 username="A",
@@ -10585,6 +10768,8 @@ Name | Type | Description  | Notes
 
 # **document_project_project_pk_documents_id_pdf_repr_get**
 > DocumentPDFRepr document_project_project_pk_documents_id_pdf_repr_get(project_pk, id)
+
+
 
 
 
@@ -10754,8 +10939,109 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **document_project_project_pk_documents_id_set_annotator_coord_difference_post**
+> DocumentSetAnnotatorCoordinatesDifferenceResponse document_project_project_pk_documents_id_set_annotator_coord_difference_post(project_pk, id)
+
+
+
+
+
+### Example
+
+* Api Key Authentication (AuthToken):
+
+```python
+import time
+import openapi_client
+from openapi_client.api import document_api
+from openapi_client.model.document_set_annotator_coordinates_difference_request import DocumentSetAnnotatorCoordinatesDifferenceRequest
+from openapi_client.model.document_set_annotator_coordinates_difference_response import DocumentSetAnnotatorCoordinatesDifferenceResponse
+from pprint import pprint
+# Defining the host is optional and defaults to http://localhost
+# See configuration.py for a list of all supported configuration parameters.
+configuration = openapi_client.Configuration(
+    host = "http://localhost"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AuthToken
+configuration.api_key['AuthToken'] = 'YOUR_API_KEY'
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AuthToken'] = 'Bearer'
+
+# Enter a context with an instance of the API client
+with openapi_client.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = document_api.DocumentApi(api_client)
+    project_pk = "project_pk_example" # str | 
+    id = "id_example" # str | A unique integer value identifying this document.
+    document_set_annotator_coordinates_difference_request = DocumentSetAnnotatorCoordinatesDifferenceRequest(
+        document_id=1,
+        first_letters=[
+            DocumentSetAnnotatorCoordinatesDifferenceRequestFirstLettersInner(
+                x=3.14,
+                y=3.14,
+                letter="letter_example",
+            ),
+        ],
+    ) # DocumentSetAnnotatorCoordinatesDifferenceRequest |  (optional)
+
+    # example passing only required values which don't have defaults set
+    try:
+        api_response = api_instance.document_project_project_pk_documents_id_set_annotator_coord_difference_post(project_pk, id)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling DocumentApi->document_project_project_pk_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+
+    # example passing only required values which don't have defaults set
+    # and optional values
+    try:
+        api_response = api_instance.document_project_project_pk_documents_id_set_annotator_coord_difference_post(project_pk, id, document_set_annotator_coordinates_difference_request=document_set_annotator_coordinates_difference_request)
+        pprint(api_response)
+    except openapi_client.ApiException as e:
+        print("Exception when calling DocumentApi->document_project_project_pk_documents_id_set_annotator_coord_difference_post: %s\n" % e)
+```
+
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_pk** | **str**|  |
+ **id** | **str**| A unique integer value identifying this document. |
+ **document_set_annotator_coordinates_difference_request** | [**DocumentSetAnnotatorCoordinatesDifferenceRequest**](DocumentSetAnnotatorCoordinatesDifferenceRequest.md)|  | [optional]
+
+### Return type
+
+[**DocumentSetAnnotatorCoordinatesDifferenceResponse**](DocumentSetAnnotatorCoordinatesDifferenceResponse.md)
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json, application/x-www-form-urlencoded, multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**201** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **document_project_project_pk_documents_id_show_get**
 > file_type document_project_project_pk_documents_id_show_get(project_pk, id)
+
+
 
 
 
@@ -11032,6 +11318,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -11213,6 +11501,8 @@ Name | Type | Description  | Notes
 
 # **document_stats_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} document_stats_get()
+
+
 
 
 

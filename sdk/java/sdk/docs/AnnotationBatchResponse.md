@@ -5,11 +5,11 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**operationUid** | **UUID** |  | 
-**status** | **String** |  | 
-**data** | **Object** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**operationUid** | **UUID** |  |  |
+|**status** | **String** |  |  |
+|**data** | **Object** |  |  |
 
 
 

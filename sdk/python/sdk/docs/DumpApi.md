@@ -15,7 +15,7 @@ Method | HTTP request | Description
 
 
 # **dump_document_config_get**
-> bool, date, datetime, dict, float, int, list, str, none_type dump_document_config_get()
+> DumpDocumentConfigGET200Response dump_document_config_get()
 
 
 
@@ -29,6 +29,7 @@ Dump document types, fields, field detectors and  document filters to json.
 import time
 import openapi_client
 from openapi_client.api import dump_api
+from openapi_client.model.dump_document_config_get200_response import DumpDocumentConfigGET200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -73,7 +74,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -260,7 +261,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_dump_get**
-> bool, date, datetime, dict, float, int, list, str, none_type dump_dump_get()
+> DumpDocumentConfigGET200Response dump_dump_get()
 
 
 
@@ -274,6 +275,7 @@ Dump all users, email addresses, review statuses, review status groups, app vars
 import time
 import openapi_client
 from openapi_client.api import dump_api
+from openapi_client.model.dump_document_config_get200_response import DumpDocumentConfigGET200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -316,7 +318,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -419,7 +421,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **dump_field_values_get**
-> bool, date, datetime, dict, float, int, list, str, none_type dump_field_values_get()
+> DumpDocumentConfigGET200Response dump_field_values_get()
 
 
 
@@ -433,6 +435,7 @@ Dump field values to json.
 import time
 import openapi_client
 from openapi_client.api import dump_api
+from openapi_client.model.dump_document_config_get200_response import DumpDocumentConfigGET200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -475,7 +478,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 

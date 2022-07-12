@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 **document_type** | **str, none_type** |  | 
 **document_type_title** | **str** |  | 
 **name** | **str** |  | 
-**fields** | [**[DocumentFieldCategoryListFields]**](DocumentFieldCategoryListFields.md) |  | 
+**fields** | [**[DocumentFieldCategoryListFieldsInner]**](DocumentFieldCategoryListFieldsInner.md) |  | 
 **fields_number** | **int** |  | 
 **id** | **int** |  | [optional] [readonly] 
 **order** | **int** |  | [optional] 

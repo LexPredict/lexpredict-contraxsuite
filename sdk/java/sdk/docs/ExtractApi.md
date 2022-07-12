@@ -2,57 +2,57 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**extractAmountUsageGET**](ExtractApi.md#extractAmountUsageGET) | **GET** /api/v1/extract/amount-usage/ | 
-[**extractAmountUsageTopGET**](ExtractApi.md#extractAmountUsageTopGET) | **GET** /api/v1/extract/amount-usage/top/ | 
-[**extractCitationUsageGET**](ExtractApi.md#extractCitationUsageGET) | **GET** /api/v1/extract/citation-usage/ | 
-[**extractCitationUsageTopGET**](ExtractApi.md#extractCitationUsageTopGET) | **GET** /api/v1/extract/citation-usage/top/ | 
-[**extractCopyrightUsageGET**](ExtractApi.md#extractCopyrightUsageGET) | **GET** /api/v1/extract/copyright-usage/ | 
-[**extractCopyrightUsageTopGET**](ExtractApi.md#extractCopyrightUsageTopGET) | **GET** /api/v1/extract/copyright-usage/top/ | 
-[**extractCourtUsageGET**](ExtractApi.md#extractCourtUsageGET) | **GET** /api/v1/extract/court-usage/ | 
-[**extractCourtUsageTopGET**](ExtractApi.md#extractCourtUsageTopGET) | **GET** /api/v1/extract/court-usage/top/ | 
-[**extractCurrencyUsageGET**](ExtractApi.md#extractCurrencyUsageGET) | **GET** /api/v1/extract/currency-usage/ | 
-[**extractCurrencyUsageTopGET**](ExtractApi.md#extractCurrencyUsageTopGET) | **GET** /api/v1/extract/currency-usage/top/ | 
-[**extractDateDurationUsageGET**](ExtractApi.md#extractDateDurationUsageGET) | **GET** /api/v1/extract/date-duration-usage/ | 
-[**extractDateDurationUsageTopGET**](ExtractApi.md#extractDateDurationUsageTopGET) | **GET** /api/v1/extract/date-duration-usage/top/ | 
-[**extractDateUsageCalendarChartGET**](ExtractApi.md#extractDateUsageCalendarChartGET) | **GET** /api/v1/extract/date-usage/calendar-chart/ | 
-[**extractDateUsageGET**](ExtractApi.md#extractDateUsageGET) | **GET** /api/v1/extract/date-usage/ | 
-[**extractDateUsageTimelineChartGET**](ExtractApi.md#extractDateUsageTimelineChartGET) | **GET** /api/v1/extract/date-usage/timeline-chart/ | 
-[**extractDateUsageToIcalGET**](ExtractApi.md#extractDateUsageToIcalGET) | **GET** /api/v1/extract/date-usage/to-ical/ | 
-[**extractDateUsageTopGET**](ExtractApi.md#extractDateUsageTopGET) | **GET** /api/v1/extract/date-usage/top/ | 
-[**extractDefinitionUsageGET**](ExtractApi.md#extractDefinitionUsageGET) | **GET** /api/v1/extract/definition-usage/ | 
-[**extractDefinitionUsageTopGET**](ExtractApi.md#extractDefinitionUsageTopGET) | **GET** /api/v1/extract/definition-usage/top/ | 
-[**extractDistanceUsageGET**](ExtractApi.md#extractDistanceUsageGET) | **GET** /api/v1/extract/distance-usage/ | 
-[**extractDistanceUsageTopGET**](ExtractApi.md#extractDistanceUsageTopGET) | **GET** /api/v1/extract/distance-usage/top/ | 
-[**extractGeoAliasUsageGET**](ExtractApi.md#extractGeoAliasUsageGET) | **GET** /api/v1/extract/geo-alias-usage/ | 
-[**extractGeoAliasUsageTopGET**](ExtractApi.md#extractGeoAliasUsageTopGET) | **GET** /api/v1/extract/geo-alias-usage/top/ | 
-[**extractGeoEntitiesGET**](ExtractApi.md#extractGeoEntitiesGET) | **GET** /api/v1/extract/geo-entities/ | 
-[**extractGeoEntitiesIdGET**](ExtractApi.md#extractGeoEntitiesIdGET) | **GET** /api/v1/extract/geo-entities/{id}/ | 
-[**extractGeoEntitiesIdPUT**](ExtractApi.md#extractGeoEntitiesIdPUT) | **PUT** /api/v1/extract/geo-entities/{id}/ | 
-[**extractGeoEntityUsageGET**](ExtractApi.md#extractGeoEntityUsageGET) | **GET** /api/v1/extract/geo-entity-usage/ | 
-[**extractGeoEntityUsageTopGET**](ExtractApi.md#extractGeoEntityUsageTopGET) | **GET** /api/v1/extract/geo-entity-usage/top/ | 
-[**extractPartiesGET**](ExtractApi.md#extractPartiesGET) | **GET** /api/v1/extract/parties/ | 
-[**extractPartiesIdGET**](ExtractApi.md#extractPartiesIdGET) | **GET** /api/v1/extract/parties/{id}/ | 
-[**extractPartyNetworkChartGET**](ExtractApi.md#extractPartyNetworkChartGET) | **GET** /api/v1/extract/party/network-chart/ | 
-[**extractPartyUsageGET**](ExtractApi.md#extractPartyUsageGET) | **GET** /api/v1/extract/party-usage/ | 
-[**extractPartyUsageTopGET**](ExtractApi.md#extractPartyUsageTopGET) | **GET** /api/v1/extract/party-usage/top/ | 
-[**extractPercentUsageGET**](ExtractApi.md#extractPercentUsageGET) | **GET** /api/v1/extract/percent-usage/ | 
-[**extractPercentUsageTopGET**](ExtractApi.md#extractPercentUsageTopGET) | **GET** /api/v1/extract/percent-usage/top/ | 
-[**extractRatioUsageGET**](ExtractApi.md#extractRatioUsageGET) | **GET** /api/v1/extract/ratio-usage/ | 
-[**extractRatioUsageTopGET**](ExtractApi.md#extractRatioUsageTopGET) | **GET** /api/v1/extract/ratio-usage/top/ | 
-[**extractRegulationUsageGET**](ExtractApi.md#extractRegulationUsageGET) | **GET** /api/v1/extract/regulation-usage/ | 
-[**extractRegulationUsageTopGET**](ExtractApi.md#extractRegulationUsageTopGET) | **GET** /api/v1/extract/regulation-usage/top/ | 
-[**extractTermTagsGET**](ExtractApi.md#extractTermTagsGET) | **GET** /api/v1/extract/term-tags/ | 
-[**extractTermUsageGET**](ExtractApi.md#extractTermUsageGET) | **GET** /api/v1/extract/term-usage/ | 
-[**extractTermUsageTopGET**](ExtractApi.md#extractTermUsageTopGET) | **GET** /api/v1/extract/term-usage/top/ | 
-[**extractTrademarkUsageGET**](ExtractApi.md#extractTrademarkUsageGET) | **GET** /api/v1/extract/trademark-usage/ | 
-[**extractTrademarkUsageTopGET**](ExtractApi.md#extractTrademarkUsageTopGET) | **GET** /api/v1/extract/trademark-usage/top/ | 
-[**extractTypeaheadGeoEntityUsageFieldNameGET**](ExtractApi.md#extractTypeaheadGeoEntityUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/geo-entity-usage/{field_name}/ | 
-[**extractTypeaheadPartyUsageFieldNameGET**](ExtractApi.md#extractTypeaheadPartyUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/party-usage/{field_name}/ | 
-[**extractTypeaheadTermUsageFieldNameGET**](ExtractApi.md#extractTypeaheadTermUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/term-usage/{field_name}/ | 
-[**extractUrlUsageGET**](ExtractApi.md#extractUrlUsageGET) | **GET** /api/v1/extract/url-usage/ | 
-[**extractUrlUsageTopGET**](ExtractApi.md#extractUrlUsageTopGET) | **GET** /api/v1/extract/url-usage/top/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**extractAmountUsageGET**](ExtractApi.md#extractAmountUsageGET) | **GET** /api/v1/extract/amount-usage/ |  |
+| [**extractAmountUsageTopGET**](ExtractApi.md#extractAmountUsageTopGET) | **GET** /api/v1/extract/amount-usage/top/ |  |
+| [**extractCitationUsageGET**](ExtractApi.md#extractCitationUsageGET) | **GET** /api/v1/extract/citation-usage/ |  |
+| [**extractCitationUsageTopGET**](ExtractApi.md#extractCitationUsageTopGET) | **GET** /api/v1/extract/citation-usage/top/ |  |
+| [**extractCopyrightUsageGET**](ExtractApi.md#extractCopyrightUsageGET) | **GET** /api/v1/extract/copyright-usage/ |  |
+| [**extractCopyrightUsageTopGET**](ExtractApi.md#extractCopyrightUsageTopGET) | **GET** /api/v1/extract/copyright-usage/top/ |  |
+| [**extractCourtUsageGET**](ExtractApi.md#extractCourtUsageGET) | **GET** /api/v1/extract/court-usage/ |  |
+| [**extractCourtUsageTopGET**](ExtractApi.md#extractCourtUsageTopGET) | **GET** /api/v1/extract/court-usage/top/ |  |
+| [**extractCurrencyUsageGET**](ExtractApi.md#extractCurrencyUsageGET) | **GET** /api/v1/extract/currency-usage/ |  |
+| [**extractCurrencyUsageTopGET**](ExtractApi.md#extractCurrencyUsageTopGET) | **GET** /api/v1/extract/currency-usage/top/ |  |
+| [**extractDateDurationUsageGET**](ExtractApi.md#extractDateDurationUsageGET) | **GET** /api/v1/extract/date-duration-usage/ |  |
+| [**extractDateDurationUsageTopGET**](ExtractApi.md#extractDateDurationUsageTopGET) | **GET** /api/v1/extract/date-duration-usage/top/ |  |
+| [**extractDateUsageCalendarChartGET**](ExtractApi.md#extractDateUsageCalendarChartGET) | **GET** /api/v1/extract/date-usage/calendar-chart/ |  |
+| [**extractDateUsageGET**](ExtractApi.md#extractDateUsageGET) | **GET** /api/v1/extract/date-usage/ |  |
+| [**extractDateUsageTimelineChartGET**](ExtractApi.md#extractDateUsageTimelineChartGET) | **GET** /api/v1/extract/date-usage/timeline-chart/ |  |
+| [**extractDateUsageToIcalGET**](ExtractApi.md#extractDateUsageToIcalGET) | **GET** /api/v1/extract/date-usage/to-ical/ |  |
+| [**extractDateUsageTopGET**](ExtractApi.md#extractDateUsageTopGET) | **GET** /api/v1/extract/date-usage/top/ |  |
+| [**extractDefinitionUsageGET**](ExtractApi.md#extractDefinitionUsageGET) | **GET** /api/v1/extract/definition-usage/ |  |
+| [**extractDefinitionUsageTopGET**](ExtractApi.md#extractDefinitionUsageTopGET) | **GET** /api/v1/extract/definition-usage/top/ |  |
+| [**extractDistanceUsageGET**](ExtractApi.md#extractDistanceUsageGET) | **GET** /api/v1/extract/distance-usage/ |  |
+| [**extractDistanceUsageTopGET**](ExtractApi.md#extractDistanceUsageTopGET) | **GET** /api/v1/extract/distance-usage/top/ |  |
+| [**extractGeoAliasUsageGET**](ExtractApi.md#extractGeoAliasUsageGET) | **GET** /api/v1/extract/geo-alias-usage/ |  |
+| [**extractGeoAliasUsageTopGET**](ExtractApi.md#extractGeoAliasUsageTopGET) | **GET** /api/v1/extract/geo-alias-usage/top/ |  |
+| [**extractGeoEntitiesGET**](ExtractApi.md#extractGeoEntitiesGET) | **GET** /api/v1/extract/geo-entities/ |  |
+| [**extractGeoEntitiesIdGET**](ExtractApi.md#extractGeoEntitiesIdGET) | **GET** /api/v1/extract/geo-entities/{id}/ |  |
+| [**extractGeoEntitiesIdPUT**](ExtractApi.md#extractGeoEntitiesIdPUT) | **PUT** /api/v1/extract/geo-entities/{id}/ |  |
+| [**extractGeoEntityUsageGET**](ExtractApi.md#extractGeoEntityUsageGET) | **GET** /api/v1/extract/geo-entity-usage/ |  |
+| [**extractGeoEntityUsageTopGET**](ExtractApi.md#extractGeoEntityUsageTopGET) | **GET** /api/v1/extract/geo-entity-usage/top/ |  |
+| [**extractPartiesGET**](ExtractApi.md#extractPartiesGET) | **GET** /api/v1/extract/parties/ |  |
+| [**extractPartiesIdGET**](ExtractApi.md#extractPartiesIdGET) | **GET** /api/v1/extract/parties/{id}/ |  |
+| [**extractPartyNetworkChartGET**](ExtractApi.md#extractPartyNetworkChartGET) | **GET** /api/v1/extract/party/network-chart/ |  |
+| [**extractPartyUsageGET**](ExtractApi.md#extractPartyUsageGET) | **GET** /api/v1/extract/party-usage/ |  |
+| [**extractPartyUsageTopGET**](ExtractApi.md#extractPartyUsageTopGET) | **GET** /api/v1/extract/party-usage/top/ |  |
+| [**extractPercentUsageGET**](ExtractApi.md#extractPercentUsageGET) | **GET** /api/v1/extract/percent-usage/ |  |
+| [**extractPercentUsageTopGET**](ExtractApi.md#extractPercentUsageTopGET) | **GET** /api/v1/extract/percent-usage/top/ |  |
+| [**extractRatioUsageGET**](ExtractApi.md#extractRatioUsageGET) | **GET** /api/v1/extract/ratio-usage/ |  |
+| [**extractRatioUsageTopGET**](ExtractApi.md#extractRatioUsageTopGET) | **GET** /api/v1/extract/ratio-usage/top/ |  |
+| [**extractRegulationUsageGET**](ExtractApi.md#extractRegulationUsageGET) | **GET** /api/v1/extract/regulation-usage/ |  |
+| [**extractRegulationUsageTopGET**](ExtractApi.md#extractRegulationUsageTopGET) | **GET** /api/v1/extract/regulation-usage/top/ |  |
+| [**extractTermTagsGET**](ExtractApi.md#extractTermTagsGET) | **GET** /api/v1/extract/term-tags/ |  |
+| [**extractTermUsageGET**](ExtractApi.md#extractTermUsageGET) | **GET** /api/v1/extract/term-usage/ |  |
+| [**extractTermUsageTopGET**](ExtractApi.md#extractTermUsageTopGET) | **GET** /api/v1/extract/term-usage/top/ |  |
+| [**extractTrademarkUsageGET**](ExtractApi.md#extractTrademarkUsageGET) | **GET** /api/v1/extract/trademark-usage/ |  |
+| [**extractTrademarkUsageTopGET**](ExtractApi.md#extractTrademarkUsageTopGET) | **GET** /api/v1/extract/trademark-usage/top/ |  |
+| [**extractTypeaheadGeoEntityUsageFieldNameGET**](ExtractApi.md#extractTypeaheadGeoEntityUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/geo-entity-usage/{field_name}/ |  |
+| [**extractTypeaheadPartyUsageFieldNameGET**](ExtractApi.md#extractTypeaheadPartyUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/party-usage/{field_name}/ |  |
+| [**extractTypeaheadTermUsageFieldNameGET**](ExtractApi.md#extractTypeaheadTermUsageFieldNameGET) | **GET** /api/v1/extract/typeahead/term-usage/{field_name}/ |  |
+| [**extractUrlUsageGET**](ExtractApi.md#extractUrlUsageGET) | **GET** /api/v1/extract/url-usage/ |  |
+| [**extractUrlUsageTopGET**](ExtractApi.md#extractUrlUsageTopGET) | **GET** /api/v1/extract/url-usage/top/ |  |
 
 
 <a name="extractAmountUsageGET"></a>
@@ -102,9 +102,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -122,7 +122,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractAmountUsageTopGET"></a>
 # **extractAmountUsageTopGET**
@@ -187,7 +187,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCitationUsageGET"></a>
 # **extractCitationUsageGET**
@@ -236,9 +236,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -256,7 +256,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCitationUsageTopGET"></a>
 # **extractCitationUsageTopGET**
@@ -321,7 +321,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCopyrightUsageGET"></a>
 # **extractCopyrightUsageGET**
@@ -370,9 +370,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -390,7 +390,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCopyrightUsageTopGET"></a>
 # **extractCopyrightUsageTopGET**
@@ -455,7 +455,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCourtUsageGET"></a>
 # **extractCourtUsageGET**
@@ -504,9 +504,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -524,7 +524,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCourtUsageTopGET"></a>
 # **extractCourtUsageTopGET**
@@ -589,7 +589,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCurrencyUsageGET"></a>
 # **extractCurrencyUsageGET**
@@ -638,9 +638,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -658,7 +658,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractCurrencyUsageTopGET"></a>
 # **extractCurrencyUsageTopGET**
@@ -723,7 +723,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateDurationUsageGET"></a>
 # **extractDateDurationUsageGET**
@@ -772,9 +772,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -792,7 +792,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateDurationUsageTopGET"></a>
 # **extractDateDurationUsageTopGET**
@@ -857,7 +857,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageCalendarChartGET"></a>
 # **extractDateUsageCalendarChartGET**
@@ -922,7 +922,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageGET"></a>
 # **extractDateUsageGET**
@@ -971,9 +971,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -991,7 +991,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageTimelineChartGET"></a>
 # **extractDateUsageTimelineChartGET**
@@ -1056,7 +1056,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageToIcalGET"></a>
 # **extractDateUsageToIcalGET**
@@ -1105,9 +1105,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1125,7 +1125,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDateUsageTopGET"></a>
 # **extractDateUsageTopGET**
@@ -1190,7 +1190,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDefinitionUsageGET"></a>
 # **extractDefinitionUsageGET**
@@ -1239,9 +1239,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1259,7 +1259,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDefinitionUsageTopGET"></a>
 # **extractDefinitionUsageTopGET**
@@ -1324,7 +1324,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDistanceUsageGET"></a>
 # **extractDistanceUsageGET**
@@ -1373,9 +1373,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1393,7 +1393,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractDistanceUsageTopGET"></a>
 # **extractDistanceUsageTopGET**
@@ -1458,7 +1458,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoAliasUsageGET"></a>
 # **extractGeoAliasUsageGET**
@@ -1507,9 +1507,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1527,7 +1527,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoAliasUsageTopGET"></a>
 # **extractGeoAliasUsageTopGET**
@@ -1592,7 +1592,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntitiesGET"></a>
 # **extractGeoEntitiesGET**
@@ -1641,9 +1641,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1661,7 +1661,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntitiesIdGET"></a>
 # **extractGeoEntitiesIdGET**
@@ -1711,10 +1711,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this geo entity. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this geo entity. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1732,7 +1732,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntitiesIdPUT"></a>
 # **extractGeoEntitiesIdPUT**
@@ -1782,10 +1782,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this geo entity. |
- **geoEntityUpdate** | [**GeoEntityUpdate**](GeoEntityUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this geo entity. | |
+| **geoEntityUpdate** | [**GeoEntityUpdate**](GeoEntityUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -1803,7 +1803,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntityUsageGET"></a>
 # **extractGeoEntityUsageGET**
@@ -1852,9 +1852,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1872,7 +1872,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractGeoEntityUsageTopGET"></a>
 # **extractGeoEntityUsageTopGET**
@@ -1937,7 +1937,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartiesGET"></a>
 # **extractPartiesGET**
@@ -1986,9 +1986,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2006,7 +2006,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartiesIdGET"></a>
 # **extractPartiesIdGET**
@@ -2056,10 +2056,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this party. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this party. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2077,7 +2077,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartyNetworkChartGET"></a>
 # **extractPartyNetworkChartGET**
@@ -2126,9 +2126,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2146,7 +2146,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartyUsageGET"></a>
 # **extractPartyUsageGET**
@@ -2195,9 +2195,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2215,7 +2215,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPartyUsageTopGET"></a>
 # **extractPartyUsageTopGET**
@@ -2280,7 +2280,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPercentUsageGET"></a>
 # **extractPercentUsageGET**
@@ -2329,9 +2329,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2349,7 +2349,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractPercentUsageTopGET"></a>
 # **extractPercentUsageTopGET**
@@ -2414,7 +2414,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRatioUsageGET"></a>
 # **extractRatioUsageGET**
@@ -2463,9 +2463,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2483,7 +2483,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRatioUsageTopGET"></a>
 # **extractRatioUsageTopGET**
@@ -2548,7 +2548,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRegulationUsageGET"></a>
 # **extractRegulationUsageGET**
@@ -2597,9 +2597,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2617,7 +2617,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractRegulationUsageTopGET"></a>
 # **extractRegulationUsageTopGET**
@@ -2682,11 +2682,13 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTermTagsGET"></a>
 # **extractTermTagsGET**
 > List&lt;TermTag&gt; extractTermTagsGET(jqFilters)
+
+
 
 
 
@@ -2729,9 +2731,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2749,7 +2751,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTermUsageGET"></a>
 # **extractTermUsageGET**
@@ -2798,9 +2800,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2818,7 +2820,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTermUsageTopGET"></a>
 # **extractTermUsageTopGET**
@@ -2883,7 +2885,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTrademarkUsageGET"></a>
 # **extractTrademarkUsageGET**
@@ -2932,9 +2934,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2952,7 +2954,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTrademarkUsageTopGET"></a>
 # **extractTrademarkUsageTopGET**
@@ -3017,7 +3019,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTypeaheadGeoEntityUsageFieldNameGET"></a>
 # **extractTypeaheadGeoEntityUsageFieldNameGET**
@@ -3066,9 +3068,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
 
 ### Return type
 
@@ -3086,7 +3088,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTypeaheadPartyUsageFieldNameGET"></a>
 # **extractTypeaheadPartyUsageFieldNameGET**
@@ -3135,9 +3137,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
 
 ### Return type
 
@@ -3155,7 +3157,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractTypeaheadTermUsageFieldNameGET"></a>
 # **extractTypeaheadTermUsageFieldNameGET**
@@ -3204,9 +3206,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
 
 ### Return type
 
@@ -3224,7 +3226,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractUrlUsageGET"></a>
 # **extractUrlUsageGET**
@@ -3273,9 +3275,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -3293,7 +3295,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="extractUrlUsageTopGET"></a>
 # **extractUrlUsageTopGET**
@@ -3358,5 +3360,5 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 

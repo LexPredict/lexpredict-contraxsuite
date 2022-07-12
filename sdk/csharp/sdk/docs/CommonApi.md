@@ -10,6 +10,7 @@ Method | HTTP request | Description
 [**CommonAppVariablesListGET**](CommonApi.md#commonappvariableslistget) | **GET** /api/v1/common/app-variables/list/ | 
 [**CommonAppVariablesProjectProjectIdGET**](CommonApi.md#commonappvariablesprojectprojectidget) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
 [**CommonAppVariablesProjectProjectIdPUT**](CommonApi.md#commonappvariablesprojectprojectidput) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
+[**CommonLogoGET**](CommonApi.md#commonlogoget) | **GET** /api/v1/common/logo/ | 
 [**CommonMediaPathGET**](CommonApi.md#commonmediapathget) | **GET** /api/v1/common/media/{path}/ | 
 [**CommonMenuGroupsFormFieldsGET**](CommonApi.md#commonmenugroupsformfieldsget) | **GET** /api/v1/common/menu-groups/form-fields/ | 
 [**CommonMenuGroupsGET**](CommonApi.md#commonmenugroupsget) | **GET** /api/v1/common/menu-groups/ | 
@@ -158,7 +159,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this action.
+            var id = "id_example";  // string | A unique integer value identifying this action.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -246,7 +247,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var name = name_example;  // string | App var name (optional) 
+            var name = "name_example";  // string | App var name (optional) 
 
             try
             {
@@ -404,7 +405,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
 
             try
             {
@@ -484,7 +485,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var projectId = projectId_example;  // string | 
+            var projectId = "projectId_example";  // string | 
             var projectAppVar = new List<ProjectAppVar>(); // List<ProjectAppVar> |  (optional) 
 
             try
@@ -536,6 +537,84 @@ Name | Type | Description  | Notes
 [[Back to README]](../README.md)
 
 
+## CommonLogoGET
+
+> Dictionary&lt;string, Object&gt; CommonLogoGET (string action = null)
+
+
+
+### Example
+
+```csharp
+using System.Collections.Generic;
+using System.Diagnostics;
+using Org.OpenAPITools.Api;
+using Org.OpenAPITools.Client;
+using Org.OpenAPITools.Model;
+
+namespace Example
+{
+    public class CommonLogoGETExample
+    {
+        public static void Main()
+        {
+            Configuration.Default.BasePath = "http://localhost";
+            // Configure API key authorization: AuthToken
+            Configuration.Default.AddApiKey("Authorization", "YOUR_API_KEY");
+            // Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+            // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
+
+            var apiInstance = new CommonApi(Configuration.Default);
+            var action = "info";  // string | Action name (optional)  (default to download)
+
+            try
+            {
+                Dictionary<string, Object> result = apiInstance.CommonLogoGET(action);
+                Debug.WriteLine(result);
+            }
+            catch (ApiException e)
+            {
+                Debug.Print("Exception when calling CommonApi.CommonLogoGET: " + e.Message );
+                Debug.Print("Status Code: "+ e.ErrorCode);
+                Debug.Print(e.StackTrace);
+            }
+        }
+    }
+}
+```
+
+### Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **action** | **string**| Action name | [optional] [default to download]
+
+### Return type
+
+**Dictionary<string, Object>**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json, */*
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#)
+[[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## CommonMediaPathGET
 
 > Dictionary&lt;string, Object&gt; CommonMediaPathGET (string path, string action = null)
@@ -566,8 +645,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var path = path_example;  // string | 
-            var action = action_example;  // string | Action name (optional)  (default to download)
+            var path = "path_example";  // string | 
+            var action = "info";  // string | Action name (optional)  (default to download)
 
             try
             {
@@ -800,7 +879,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -879,7 +958,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -959,7 +1038,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -1039,7 +1118,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuGroup = new MenuGroup(); // MenuGroup |  (optional) 
 
             try
@@ -1121,7 +1200,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuGroup = new MenuGroup(); // MenuGroup |  (optional) 
 
             try
@@ -1435,7 +1514,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -1514,7 +1593,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -1594,7 +1673,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
 
             try
             {
@@ -1674,7 +1753,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuItem = new MenuItem(); // MenuItem |  (optional) 
 
             try
@@ -1756,7 +1835,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | 
+            var id = "id_example";  // string | 
             var menuItem = new MenuItem(); // MenuItem |  (optional) 
 
             try
@@ -1998,7 +2077,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
 
             try
             {
@@ -2077,7 +2156,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2159,7 +2238,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -2241,7 +2320,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status Group.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status Group.
             var reviewStatusGroup = new ReviewStatusGroup(); // ReviewStatusGroup |  (optional) 
 
             try
@@ -2483,7 +2562,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
 
             try
             {
@@ -2562,7 +2641,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2644,7 +2723,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try
@@ -2726,7 +2805,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new CommonApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this Review Status.
+            var id = "id_example";  // string | A unique integer value identifying this Review Status.
             var reviewStatus = new ReviewStatus(); // ReviewStatus |  (optional) 
 
             try

@@ -26,16 +26,20 @@
 
 # Standard imports
 import datetime
-import os
+from os import path, stat
 import pickle
 from typing import Tuple, Iterable, Any, List, Union, Optional, Callable, Generator
+from tempfile import NamedTemporaryFile
+from gc import collect
 
 # Third-party imports
-import gensim.models.doc2vec
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from gensim import __version__ as version_gensim
+from gensim.models.callbacks import CallbackAny2Vec
+from lexnlp.nlp.en.tokens import get_token_list, get_tokens
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F, QuerySet
-from lexnlp.nlp.en.tokens import get_token_list
-from django.conf import settings
 
 # Project imports
 from apps.analyze.ml.classifier_repository import ClassifierRepositoryBuilder
@@ -46,8 +50,8 @@ from apps.document.models import DocumentText, TextUnit, Document
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -55,99 +59,148 @@ __email__ = "support@contraxsuite.com"
 # TODO: Implement language-specific tokenization,
 # e.g., en vs. es vs. de, inferred from TU/Document .language
 
+
+class TrainingCallback(CallbackAny2Vec):
+    """
+    """
+
+    def __init__(self, log: Callable[[str], None]) -> None:
+        """
+        Note that the logger cannot be pickled, and so this callback cannot be
+        saved with the model.
+        """
+        self.log: Callable[[str], None] = log
+        self.completed_epochs: int = 0
+        self.epoch: int = 0
+
+    def on_epoch_begin(self, model: Doc2Vec) -> None:
+        """
+        Called at the start of each training epoch.
+        """
+        self.epoch += 1
+        self.log(f'Started epoch {self.epoch} / {model.epochs}')
+
+    def on_epoch_end(self, model: Doc2Vec) -> None:
+        """
+        Called at the end of each training epoch.
+
+        Take note if we want to compute and log loss:
+        https://stackoverflow.com/a/58188779/4189676
+        https://stackoverflow.com/a/56085717/4189676
+        """
+        self.log(
+            f'...[Epoch {self.epoch} |'
+            f' Memory: {get_free_mem()} |'
+            f' total_train_time: {model.total_train_time}]'
+        )
+        self.completed_epochs += 1
+
+    def on_train_begin(self, model: Doc2Vec) -> None:
+        """
+        Called at the start of the training process.
+        """
+        self.log('Started training...')
+        self.log(
+            f'Gensim version: {version_gensim}, '
+            f'{model.vector_size=}, '
+            f'{model.window=}, '
+            f'{model.min_count=}, '
+            f'{model.dm=}'
+        )
+
+    def on_train_end(self, model: Doc2Vec) -> None:
+        """
+        Called at the start of the training process.
+        """
+        self.log('Ended training.')
+
+
 class Doc2VecTransformer:
     """
     Doc2VecTransformer class provides ability to
-     - train doc2vec models on TextUnit/Document querysets and
+     - train doc2vec models on TextUnit/Document QuerySets and
      - store trained models in Transformer objects and then
      - create Document/TextUnit Vectors using those models.
     """
 
-    def __init__(self,
-                 vector_size=100,
-                 window=10,
-                 min_count=10,
-                 dm=1,
-                 file_storage: Optional[ContraxsuiteFileStorage] = None,
-                 log_message: Optional[Callable[[str], None]] = None):
+    def __init__(
+        self,
+        vector_size: int = 100,
+        window: int = 10,
+        min_count: int = 10,
+        dm: int = 1,
+        file_storage: Optional[ContraxsuiteFileStorage] = None,
+        log_message: Optional[Callable[[str], None]] = None,
+    ):
         """
-        Setup main arguments for gensim.models.doc2vec.Doc2Vec model
-        see https://radimrehurek.com/gensim/models/doc2vec.html
+        Setup main arguments for gensim.models.doc2vec.Doc2Vec model.
+        See https://radimrehurek.com/gensim/models/doc2vec.html
         """
-        self.vector_size = vector_size
-        self.window = window
-        self.min_count = min_count
-        self.dm = dm
-        self.file_storage = file_storage or get_file_storage()
-        self.log_message_routine = log_message
+        self.vector_size: int = vector_size
+        self.window: int = window
+        self.min_count: int = min_count
+        self.dm: int = dm
+        self.file_storage: ContraxsuiteFileStorage = file_storage or get_file_storage()
+        self.log_message_routine: Optional[Callable[[str], None]] = log_message
 
-    def log_message(self, msg: str):
+    def log_message(self, msg: str) -> None:
         if self.log_message_routine:
             self.log_message_routine(msg)
         else:
             print(msg)
 
-    def train_doc2vec_model(self, data: Iterable[str], count: int) -> gensim.models.doc2vec.Doc2Vec:
+    def train_doc2vec_model(self, data: Iterable[str], count: int) -> Doc2Vec:
         """
-        Train doc2vec model from queryset values
+        Train doc2vec model from QuerySet values
 
         :param data: Iterable set of texts used as training data
         :param count: Number of text fragments
         :return: Doc2Vec trained model
         """
-        self.log_message(f'Start training train_doc2vec_model for {count} vectors')
+        self.log_message(f'Starting to train Doc2Vec model on {count} samples...')
         if not count:
             raise RuntimeError('Empty data set, unable to create Doc2Vec model.')
 
-        # Train model
-        try:
-            # we split model "build_vocab" and "train" procedures because
-            # both need iterating through TaggedDocuments, and we don't always have enough
-            # memory to store all these documents
-            doc2vec_model = gensim.models.doc2vec.Doc2Vec(None,
-                                                          vector_size=self.vector_size,
-                                                          window=self.window,
-                                                          dm=self.dm,
-                                                          min_count=self.min_count,
-                                                          workers=1)
-            doc2vec_model.build_vocab(self.iterate_source_texts(count, data))
-            doc2vec_model.train(self.iterate_source_texts(count, data), total_examples=count,
-                                epochs=doc2vec_model.iter)
-            # finished training a model (=no more updates, only querying), reduce memory usage
-            doc2vec_model.delete_temporary_training_data(keep_doctags_vectors=True,
-                                                         keep_inference=True)
-        except Exception as e:
-            raise RuntimeError('Bad data set, unable to create Doc2Vec model.') from e
+        # File-based training should eliminate memory issues.
+        # Gensim author's blog: https://notebook.community/piskvorky/gensim/docs/notebooks/Any2Vec_Filebased
+        # If, for whatever reason, memory issues persist, we can split back into:
+        #  - model instantiation with `corpus_file=None`
+        #  - doc2vec_model.build_vocab(corpus_file=corpus_file, ...)
+        #  - doc2vec_model.train(corpus_file=corpus_file, ...)
+        with NamedTemporaryFile(mode='w') as corpus_file:
+
+            self.log_message('Tokenizing training data...')
+            corpus_file.writelines(
+                ' '.join(tokens) + '\n'
+                for text in data
+                for tokens in get_tokens(text=text, stopword=True, lowercase=True)
+            )
+
+            self.log_message(
+                f'...tokenized training data;'
+                f' corpus_file "{corpus_file.name}"'
+                f' is {stat(corpus_file.name).st_size} bytes.'
+            )
+
+            # force garbage collection to clean up before training
+            collect()
+
+            doc2vec_model: Doc2Vec = Doc2Vec(
+                documents=None,
+                corpus_file=corpus_file.name,
+                vector_size=self.vector_size,
+                window=self.window,
+                dm=self.dm,
+                min_count=self.min_count,
+                workers=1,
+                callbacks=(TrainingCallback(log=self.log_message_routine),) if self.log_message_routine else (),
+            )
 
         return doc2vec_model
 
-    def iterate_source_texts(
-        self,
-        count: int,
-        data,
-    ) -> Generator[gensim.models.doc2vec.TaggedDocument, None, None]:
-        progress = 0
-        percent_interval = 1 if count > 5000 else 5 if count > 500 else 10 if count > 100 else 50
-        index = -1
-        self.log_message(f'Free memory: {get_free_mem()}')
-        for text in data:
-            index += 1
-            if not text:
-                continue
-            # Get tokens with LexNLP
-            text_tokens = get_token_list(text, stopword=True, lowercase=True)
-            # Append gensim object
-            doc = gensim.models.doc2vec.TaggedDocument(text_tokens, f'{index}')
-            new_progress = int((index + 1) * 100 / count)
-            if new_progress - progress > percent_interval:
-                self.log_message(f'train_doc2vec_model: {new_progress}% done')
-                progress = new_progress
-                self.log_message(f'Free memory: {get_free_mem()}')
-            yield doc
-
     def create_transformer_object(self,
                                   source_name: str,  # 'document' or 'text_unit'
-                                  doc2vec_model: Any,
+                                  doc2vec_model: Doc2Vec,
                                   **transformer_object_kwargs) -> MLModel:
         """
         Create and store in DB MLModel model object from arguments.
@@ -173,14 +226,14 @@ class Doc2VecTransformer:
         stor_path = f'{stor_folder}/model.pickle'
         model_bytes = pickle.dumps(doc2vec_model)
 
-        stor_folder = os.path.dirname(stor_path)
+        stor_folder = path.dirname(stor_path)
         file_storage = self.file_storage or get_file_storage()
         file_storage.ensure_folder_exists(stor_folder)
         file_storage.write_file(stor_path, model_bytes, skip_existing=True)
 
         obj = ClassifierRepositoryBuilder().repository.save_transformer(
             MLModel,
-            version="{}".format(datetime.datetime.now().isoformat()),
+            version=f'{datetime.datetime.now().isoformat()}',
             vector_name=transformer_name,
             model_path=stor_path,
             is_active=True,
@@ -192,10 +245,12 @@ class Doc2VecTransformer:
             **transformer_object_kwargs)
         return obj
 
-    def build_doc2vec_document_model(self,
-                                     document_qs=None,
-                                     project_ids=None,
-                                     transformer_name='') -> Tuple[gensim.models.doc2vec.Doc2Vec, MLModel]:
+    def build_doc2vec_document_model(
+        self,
+        document_qs: Optional[QuerySet] = None,
+        project_ids: Optional[List[int]] = None,
+        transformer_name: str = '',
+    ) -> Tuple[Doc2Vec, MLModel]:
         """
         Build a doc2vec model for Documents from a queryset or all documents.
 
@@ -229,7 +284,7 @@ class Doc2VecTransformer:
         project_ids=None,
         text_unit_type="sentence",
         transformer_name=None
-    ) -> Tuple[gensim.models.doc2vec.Doc2Vec, MLModel]:
+    ) -> Tuple[Doc2Vec, MLModel]:
         """
         Build a doc2vec model for TextUnits from all text units either for given text unit queryset,
         and for given text unit type.

@@ -5,9 +5,9 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **Integer** |  |  [optional]
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**success** | **Integer** |  |  [optional] |
 
 
 

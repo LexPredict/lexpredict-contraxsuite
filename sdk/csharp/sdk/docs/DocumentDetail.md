@@ -24,7 +24,7 @@ Name | Type | Description | Notes
 **Assignee** | **int?** |  | [optional] 
 **AssignDate** | **DateTime?** |  | [optional] 
 **AssigneeData** | [**DocumentDetailAssigneeData**](DocumentDetailAssigneeData.md) |  | 
-**AvailableAssigneesData** | [**List&lt;DocumentDetailAvailableAssigneesData&gt;**](DocumentDetailAvailableAssigneesData.md) |  | 
+**AvailableAssigneesData** | [**List&lt;DocumentDetailAvailableAssigneesDataInner&gt;**](DocumentDetailAvailableAssigneesDataInner.md) |  | 
 **Description** | **string** |  | [optional] 
 **Title** | **string** |  | [optional] 
 **InitialAnnotationId** | **string** |  | [optional] [readonly] 
@@ -38,6 +38,7 @@ Name | Type | Description | Notes
 **DocumentsCount** | **string** |  | [optional] [readonly] 
 **Sections** | **List&lt;Object&gt;** |  | [optional] [readonly] 
 **ClusterId** | **string** |  | [optional] [readonly] 
+**WasOpenedInAnnotator** | **bool** |  | [optional] [readonly] 
 **UserPermissions** | **Object** |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)

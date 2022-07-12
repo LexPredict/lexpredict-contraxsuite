@@ -26,6 +26,8 @@
 
 from typing import List
 
+from guardian.shortcuts import get_objects_for_user
+
 # Django imports
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
@@ -48,8 +50,8 @@ from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -101,8 +103,16 @@ class ProjectAdmin(GuardedModelAdmin):
     search_fields = ('name', 'description')
     filter_horizontal = ('task_queues',)
 
+    def has_view_permission(self, request, obj=None):
+        return (
+            super().has_view_permission(request, obj) or
+            request.user.has_perm('project.add_project')
+        )
+
     def get_queryset(self, request):
-        return Project.all_objects
+        owner_projects = get_objects_for_user(request.user, 'project.view_project', Project) \
+            .filter(delete_pending=False)
+        return owner_projects
 
     @staticmethod
     def status_name(obj):
@@ -230,11 +240,16 @@ delete_checked_projects.short_description = "Delete checked projects"
 
 
 class SoftDeleteProjectAdmin(ProjectAdmin):
-    list_filter = [DeletePendingFilter]
+    # list_filter = [DeletePendingFilter]
     list_display = ('get_name', 'type', 'status', 'delete_pending')
     search_fields = ['type__code', 'name']
     actions = [mark_deleting, unmark_deleting, delete_checked_projects]
     change_list_template = 'admin/project/softdeleteproject/change_list.html'
+
+    def get_queryset(self, request):
+        owner_projects = get_objects_for_user(request.user, 'project.view_project', Project) \
+            .filter(delete_pending=True)
+        return owner_projects
 
     def get_name(self, obj):
         display_text = "<a href={}>{}</a>".format(

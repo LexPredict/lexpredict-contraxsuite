@@ -29,19 +29,22 @@ from __future__ import absolute_import, unicode_literals
 
 # Django imports
 from django.conf.urls import url
+from django.urls import path, include
 
 # Project imports
 from apps.users import views
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 urlpatterns = [
+    path('social/', include('apps.users.social.urls')),
+
     url(
         r'^~redirect/$',
         views.UserRedirectView.as_view(),

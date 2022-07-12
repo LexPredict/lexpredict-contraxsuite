@@ -391,6 +391,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -565,9 +567,9 @@ Bulk assign batch of annotations to a review team member      Params:         an
 import time
 import openapi_client
 from openapi_client.api import project_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.assign_project_annotations_request import AssignProjectAnnotationsRequest
 from openapi_client.model.count_success_response import CountSuccessResponse
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -664,9 +666,9 @@ Bulk assign batch of documents to a review team member      Params:         docu
 import time
 import openapi_client
 from openapi_client.api import project_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.count_success_response import CountSuccessResponse
 from openapi_client.model.assign_project_document_request import AssignProjectDocumentRequest
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -757,9 +759,9 @@ Bulk assign batch of documents to a review team member      Params:         docu
 import time
 import openapi_client
 from openapi_client.api import project_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.assign_project_documents_request import AssignProjectDocumentsRequest
 from openapi_client.model.count_success_response import CountSuccessResponse
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -920,6 +922,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_check_similarity_process_allowed_post**
 > ProjectDetail project_projects_id_check_similarity_process_allowed_post(id)
+
+
 
 
 
@@ -1134,6 +1138,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -1334,8 +1340,8 @@ Last Clustering task status/data      Params:         - project_clustering_id: i
 import time
 import openapi_client
 from openapi_client.api import project_api
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
 from openapi_client.model.project_clustering_status_response import ProjectClusteringStatusResponse
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -1488,6 +1494,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -1561,6 +1569,8 @@ void (empty response body)
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -1631,6 +1641,8 @@ void (empty response body)
 
 # **project_projects_id_detect_field_values_post**
 > TaskIdResponse project_projects_id_detect_field_values_post(id)
+
+
 
 
 
@@ -1888,6 +1900,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_locate_items_post**
 > TaskIdResponse project_projects_id_locate_items_post(id)
+
+
 
 
 
@@ -2388,6 +2402,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -2479,6 +2495,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_search_similar_text_units_post**
 > TaskIdResponse project_projects_id_search_similar_text_units_post(id)
+
+
 
 
 
@@ -2671,7 +2689,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_set_annotation_status_post**
-> bool, date, datetime, dict, float, int, list, str, none_type project_projects_id_set_annotation_status_post(id)
+> ProjectProjectsIdSetAnnotationStatusPOST200Response project_projects_id_set_annotation_status_post(id)
 
 
 
@@ -2686,6 +2704,7 @@ import time
 import openapi_client
 from openapi_client.api import project_api
 from openapi_client.model.set_project_annotations_status_request import SetProjectAnnotationsStatusRequest
+from openapi_client.model.project_projects_id_set_annotation_status_post200_response import ProjectProjectsIdSetAnnotationStatusPOST200Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -2718,6 +2737,7 @@ with openapi_client.ApiClient(configuration) as api_client:
         no_annotation_ids=[
             1,
         ],
+        force=True,
     ) # SetProjectAnnotationsStatusRequest |  (optional)
 
     # example passing only required values which don't have defaults set
@@ -2746,7 +2766,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-**bool, date, datetime, dict, float, int, list, str, none_type**
+[**ProjectProjectsIdSetAnnotationStatusPOST200Response**](ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
 
 ### Authorization
 
@@ -2868,6 +2888,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -2963,6 +2985,8 @@ Name | Type | Description  | Notes
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -3051,6 +3075,8 @@ Name | Type | Description  | Notes
 
 # **project_projects_id_tasks_get**
 > [ProjectTasks] project_projects_id_tasks_get(id)
+
+
 
 
 
@@ -3231,7 +3257,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **project_projects_id_update_document_fields_post**
-> TaskIdResponse project_projects_id_update_document_fields_post(id)
+> UpdateProjectDocumentsFieldsResponse project_projects_id_update_document_fields_post(id)
 
 
 
@@ -3245,9 +3271,9 @@ Bulk update project documents field, similar to /fields/ API in document app    
 import time
 import openapi_client
 from openapi_client.api import project_api
-from openapi_client.model.task_id_response import TaskIdResponse
+from openapi_client.model.project_projects_id_assign_annotations_post404_response import ProjectProjectsIdAssignAnnotationsPOST404Response
+from openapi_client.model.update_project_documents_fields_response import UpdateProjectDocumentsFieldsResponse
 from openapi_client.model.update_project_documents_fields_request import UpdateProjectDocumentsFieldsRequest
-from openapi_client.model.inline_response4041 import InlineResponse4041
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -3309,7 +3335,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**UpdateProjectDocumentsFieldsResponse**](UpdateProjectDocumentsFieldsResponse.md)
 
 ### Authorization
 
@@ -4465,7 +4491,7 @@ with openapi_client.ApiClient(configuration) as api_client:
     uid = "uid_example" # str | A UUID string identifying this upload session.
     upload_session_detail = UploadSessionDetail(
         project=1,
-        created_by=TaskQueueReviewersData(
+        created_by=TaskQueueReviewersDataInner(
             username="A",
         ),
         completed=True,
@@ -4851,6 +4877,8 @@ Name | Type | Description  | Notes
 
 # **project_upload_session_uid_files_post**
 > ProjectUploadSessionFilesResponse project_upload_session_uid_files_post(uid, content_length, file_name)
+
+
 
 
 

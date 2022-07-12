@@ -54,6 +54,8 @@ from celery.result import AsyncResult
 from celery.states import FAILURE, UNREADY_STATES, SUCCESS, PENDING
 from celery.utils.log import get_task_logger
 from celery.utils.time import get_exponential_backoff_interval
+from psycopg2 import InterfaceError, OperationalError
+
 # Django imports
 import croniter
 from django.conf import settings
@@ -63,11 +65,12 @@ from django.db.models import QuerySet
 from django.db.utils import DatabaseError
 from django.utils.timezone import now
 
-from lexnlp.extract.common.ocr_rating.lang_vector_distribution_builder import \
-    LangVectorDistributionBuilder
-from lexnlp.extract.en.contracts.detector import is_contract
+# LexNLP
 from lexnlp.nlp.en.segments.paragraphs import get_paragraphs
-from psycopg2 import InterfaceError, OperationalError
+from lexnlp.extract.common.ocr_rating.lang_vector_distribution_builder import LangVectorDistributionBuilder
+from lexnlp.extract.en.contracts.predictors import ProbabilityPredictorIsContract
+
+# Text Extraction System
 from text_extraction_system_api.client import TextExtractionSystemWebClient
 from text_extraction_system_api.dto import PlainTextStructure, STATUS_DONE, OutputFormat, \
     TableParser
@@ -119,8 +122,8 @@ from contraxsuite_logging import write_task_log
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -135,6 +138,8 @@ logger = get_task_logger(__name__)
 remove_punctuation_map = dict((ord(char), None) for char in string.punctuation)
 
 python_magic = magic.Magic(mime=True)
+
+probability_predictor_is_contract: ProbabilityPredictorIsContract = ProbabilityPredictorIsContract()
 
 
 def _get_or_create_task_config(celery_task) -> TaskConfig:
@@ -170,6 +175,7 @@ class ExtendedTask(app.Task):
     """
 
     db_connection_ping = False
+    show_task_failed_message = True
     weight = 100
 
     def __init__(self, *args, **kwargs):
@@ -179,7 +185,7 @@ class ExtendedTask(app.Task):
 
     def run(self, *args, **kwargs):
         run_count = Task.objects.increase_run_count(self.request.id)
-        if hasattr(self, 'max_retries') and self.max_retries is not None \
+        if run_count is not None and hasattr(self, 'max_retries') and self.max_retries is not None \
                 and run_count > self.max_retries:
             raise RuntimeError(f'Exceeded maximum number of retries ({self.max_retries})')
         self.log_info(f'Start task "{self.task_name}", id={self.main_task_id}, '
@@ -274,7 +280,8 @@ class ExtendedTask(app.Task):
     def _render_task_failed_message(self,
                                     args,
                                     kwargs) -> str:
-
+        if not self.show_task_failed_message:
+            return ''
         return 'Task has been failed:\n' + \
                f'{self.name}\n' + \
                f'Args: {args}\n' + \
@@ -1153,7 +1160,9 @@ class LoadDocuments(ExtendedTask):
 
         extraction_request_id = task.request.id
         client = TextExtractionSystemWebClient(settings.TEXT_EXTRACTION_SYSTEM_URL)
+        task.log_info(f'Get TES task status for task with request id {extraction_request_id}')
         extract_process_status = client.get_data_extraction_task_status(extraction_request_id)
+        task.log_info(f'TES task status for task with request id {extraction_request_id} is {extract_process_status}')
 
         if extract_process_status.status != STATUS_DONE:
             # file name is not obligatory here, it's just for reference
@@ -1165,6 +1174,9 @@ class LoadDocuments(ExtendedTask):
                 pass
             LoadDocuments.safe_del_text_extraction_files(client, task, extraction_request_id, orig_doc_name)
             # This task fail should cause the parent Load Documents task failure.
+            if "document is injured" in extract_process_status.error_message:
+                task.show_task_failed_message = False
+                raise Exception("The document is injured and cannot be processed.")
             raise Exception(f'Document text and data extraction failed in LexPredict Text Extraction system.\n'
                             f'Request id: {extraction_request_id}\n'
                             f'Original file name: {extract_process_status.original_file_name}\n'
@@ -1188,6 +1200,7 @@ class LoadDocuments(ExtendedTask):
 
         if not plain_text.strip():
             client.delete_data_extraction_task_files(extraction_request_id)
+            task.show_task_failed_message = False
             raise RuntimeError('No text extracted.')
 
         task.log_info(f'Document plain text has {len(plain_text)} characters')
@@ -1334,12 +1347,27 @@ class LoadDocuments(ExtendedTask):
                     document_metadata.save()
 
             from apps.document.app_vars import DETECT_CONTRACT_TYPE
-            if DETECT_CONTRACT_TYPE.val():
-                contract_type, type_vector = ContractTypeClassifier.get_document_contract_type(
-                    plain_text, True, document_language=doc.language, project_id=doc.project_id)
-                doc.document_contract_class = contract_type
+            if DETECT_CONTRACT_TYPE.val(project_id=doc.project_id):
+
+                document_sentences: Tuple[str, ...] = tuple(
+                    doc.textunit_set
+                        .filter(unit_type='sentence')
+                        .order_by('location_start')
+                        .values_list('text', flat=True)
+                )
+
+                contract_type_classification, predictions = \
+                    ContractTypeClassifier.predict_classifications(
+                        log=CeleryTaskLogger(task),
+                        document_sentences=document_sentences,
+                        document_language=doc.language,
+                        project_id=doc.project_id,
+                    )
+
+                doc.document_contract_class = contract_type_classification
                 doc.save(update_fields=['document_contract_class'])
-                document_metadata.metadata[DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR] = type_vector
+
+                document_metadata.metadata[DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR] = predictions
                 document_metadata.save()
 
             # not trying to set the doc language based on the text units
@@ -1406,11 +1434,15 @@ class LoadDocuments(ExtendedTask):
         document.created_date = action.date
         document.modified_by = action.user
         document.modified_date = action.date
-        document.save()
+        document.save(cache_modified_date=True)
 
     @staticmethod
     def classify_document(doc_text: str) -> Tuple[str, float]:
-        res = is_contract(doc_text, return_probability=True)
+        res = probability_predictor_is_contract.is_contract(
+            text=doc_text,
+            min_probability=0.5,
+            return_probability=True,
+        )
         return (DocumentClass.CONTRACT if res[0] else DocumentClass.GENERIC, res[1]) \
             if res is not None else (None, None)
 
@@ -1830,9 +1862,8 @@ class Locate(ExtendedTask):
         doc = Document.all_objects.filter(pk=doc_id).last()  # type: Document
 
         if not doc:
-            _self.log_info(f'on_locate_finished: Document does not exist: {doc.name} (#{doc.pk})\n'
-                           f'Maybe it was deleted previously because of failed loading or failed entity location '
-                           f'stage.')
+            _self.log_info(f'on_locate_finished: Document does not exist: (#{doc_id})\n'
+                           'Maybe it was deleted previously because of failed loading or failed entity location stage.')
             return
         log = CeleryTaskLogger(_self)
         user: Optional[User] = None

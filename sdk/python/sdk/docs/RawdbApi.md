@@ -15,6 +15,8 @@ Method | HTTP request | Description
 
 
 
+
+
 ### Example
 
 * Api Key Authentication (AuthToken):
@@ -82,6 +84,8 @@ This endpoint does not need any parameter.
 
 # **rawdb_documents_document_type_code_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} rawdb_documents_document_type_code_get(document_type_code)
+
+
 
 
 
@@ -298,6 +302,8 @@ Name | Type | Description  | Notes
 
 # **rawdb_project_stats_project_id_get**
 > {str: ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},)} rawdb_project_stats_project_id_get(project_id)
+
+
 
 
 

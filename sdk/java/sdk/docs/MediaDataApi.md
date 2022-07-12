@@ -2,9 +2,9 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**mediaDataPathGET**](MediaDataApi.md#mediaDataPathGET) | **GET** /api/media-data/{path}/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**mediaDataPathGET**](MediaDataApi.md#mediaDataPathGET) | **GET** /api/media-data/{path}/ |  |
 
 
 <a name="mediaDataPathGET"></a>
@@ -55,10 +55,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **path** | **String**|  |
- **action** | **String**| Action name | [optional] [default to download] [enum: info, download]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **path** | **String**|  | |
+| **action** | **String**| Action name | [optional] [default to download] [enum: info, download] |
 
 ### Return type
 
@@ -76,5 +76,5 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 

@@ -50,8 +50,8 @@ from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -328,10 +328,14 @@ class CustomEmailMultiAlternatives(EmailMultiAlternatives):
                 fail_silently=fail_silently)
         return self.connection
 
+from allauth.account.utils import filter_users_by_email
+from allauth.account.adapter import get_adapter
+from django import forms
+from django.utils.translation import ugettext as _
 
 class CustomPasswordResetForm(PasswordResetForm):
 
-    def send_mail(self, subject_template_name, email_template_name,
+     def send_mail(self, subject_template_name, email_template_name,
                   context, from_email, to_email, html_email_template_name=None):
         """
         Send a django.core.mail.EmailMultiAlternatives to `to_email`.
@@ -359,6 +363,20 @@ class CustomPasswordResetSerializer(PasswordResetSerializer):
     Serializer for requesting a password reset e-mail.
     """
     password_reset_form_class = CustomPasswordResetForm
+
+    def validate_email(self, value):
+        email = get_adapter().clean_email(value)
+        users = filter_users_by_email(email, is_active=True)
+        if not users:
+            raise serializers.ValidationError(
+                _("The e-mail address is not assigned to any user account")
+            )
+
+        self.reset_form = self.password_reset_form_class(data=self.initial_data)
+        if not self.reset_form.is_valid():
+            raise serializers.ValidationError(self.reset_form.errors)
+
+        return value
 
     def get_email_options(self) -> dict:
         """

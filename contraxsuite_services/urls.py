@@ -59,8 +59,8 @@ from swagger_view import get_openapi_view
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -112,57 +112,60 @@ urlpatterns = [
     # use patched urls definitions including view schemas
     url(r'^rest-auth/', include('apps.users.rest_auth_urls')),
 
-    url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
+    # url(r'^rest-auth/registration/', include('rest_auth.registration.urls')),
     url(r"^accounts/confirm-email/(?P<key>[-:\w]+)/$", allauth_confirm_email_view, name="allauth_account_confirm_email")
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + \
     static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # autodiscover urls from custom apps
 namespaces = {getattr(i, 'namespace', None) for i in urlpatterns}
-custom_apps = [(i, i.replace(f'{settings.APPS_DIR_NAME}.', '')) for i in settings.PROJECT_APPS]
+custom_apps = sorted([(i, i.replace(f'{settings.APPS_DIR_NAME}.', '')) for i in settings.PROJECT_APPS])
 
 api_urlpatterns = {api_version: [] for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']}
 
 for app_loc, app_name in custom_apps:
     if app_name in namespaces:
         continue
+    try:
+        module_str = f'{app_loc}.urls'
+        spec = importlib.util.find_spec(module_str)
+        if spec:
+            include_urls = include((module_str, app_name))  # namespace=app_name)
+            urlpatterns += [url(r'^' + settings.BASE_URL + app_name + '/', include_urls)]
 
-    module_str = f'{app_loc}.urls'
-    spec = importlib.util.find_spec(module_str)
-    if spec:
-        include_urls = include((module_str, app_name))  # namespace=app_name)
-        urlpatterns += [url(r'^' + settings.BASE_URL + app_name + '/', include_urls)]
-
-    # add api urlpatterns
-    for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']:
-        try:
-            api_module_str = f'{app_loc}.api.{api_version}.api'
-            api_module = importlib.import_module(api_module_str)
-        except ImportError:
+        # add api urlpatterns
+        for api_version in settings.REST_FRAMEWORK['ALLOWED_VERSIONS']:
             try:
-                api_module_str = f'{app_loc}.api.{api_version}'
+                api_module_str = f'{app_loc}.api.{api_version}.api'
                 api_module = importlib.import_module(api_module_str)
-            except ImportError as import_error:
-                exc_type, _, _ = exc_info()
-                if exc_type == ModuleNotFoundError:
-                    if '.api' in api_module_str:
-                        continue
-                process_logger.error(str(import_error))
-                continue
+            except ImportError:
+                try:
+                    api_module_str = f'{app_loc}.api.{api_version}'
+                    api_module = importlib.import_module(api_module_str)
+                except ImportError as import_error:
+                    exc_type, _, _ = exc_info()
+                    if exc_type == ModuleNotFoundError:
+                        if '.api' in api_module_str:
+                            continue
+                    process_logger.error(str(import_error))
+                    continue
 
-        if hasattr(api_module, 'router'):
-            api_urlpatterns[api_version] += [
-                url(rf'{api_version}/{app_name}/', include(api_module.router.urls)),
-            ]
-        if hasattr(api_module, 'api_routers'):
-            for router in api_module.api_routers:
+            if hasattr(api_module, 'router'):
                 api_urlpatterns[api_version] += [
-                    url(rf'{api_version}/{app_name}/', include(router.urls)),
+                    url(rf'{api_version}/{app_name}/', include(api_module.router.urls)),
                 ]
-        if hasattr(api_module, 'urlpatterns'):
-            api_urlpatterns[api_version] += [
-                url(rf'{api_version}/{app_name}/', include(api_module.urlpatterns)),
-            ]
+            if hasattr(api_module, 'api_routers'):
+                for router in api_module.api_routers:
+                    api_urlpatterns[api_version] += [
+                        url(rf'{api_version}/{app_name}/', include(router.urls)),
+                    ]
+            if hasattr(api_module, 'urlpatterns'):
+                api_urlpatterns[api_version] += [
+                    url(rf'{api_version}/{app_name}/', include(api_module.urlpatterns)),
+                ]
+    except:
+        pass
+
 for api_version, this_api_urlpatterns in api_urlpatterns.items():
     urlpatterns += [
         url(r'^api/', include((this_api_urlpatterns, api_version))),

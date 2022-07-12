@@ -48,7 +48,7 @@ from typing import Tuple, Union, List, Any, Optional, Dict
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.contrib.postgres.fields.jsonb import KeyTextTransform, KeyTransform
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage
 from django.db import connection
@@ -62,6 +62,7 @@ from django.views.generic import ListView
 from django.views.generic.base import View
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import MultipleObjectMixin
+from guardian.ctypes import get_content_type
 from guardian.shortcuts import get_objects_for_user
 from rest_framework import status
 from rest_framework.decorators import action
@@ -82,8 +83,8 @@ from apps.common.utils import cap_words, export_qs_to_file, download, full_rever
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -626,7 +627,18 @@ class JqPaginatedListMixin:
         if sortfield:
             sortfield = sortfield.replace('-', '_')
             if sortorder == 'desc':
-                qs = qs.order_by(F(sortfield).desc(nulls_last=True))
+                # Nested JSON fields breaks sorting via F(field).desc() and F(field).desc() because
+                # this expression doesn't produce proper SQL using ->
+                # but it produces simple one instead
+                # So let's patch in case it sort field is of JSON type
+                sortfield_parts = sortfield.split('__')
+                parent_field = sortfield_parts[0]
+                fields = [i.name for i in qs.model._meta.fields]
+                if len(sortfield_parts) == 2 and parent_field in fields \
+                        and qs.model._meta.get_field(parent_field).get_internal_type() == 'JSONField':
+                    qs = qs.order_by(KeyTransform(sortfield_parts[1], parent_field).desc(nulls_last=True))
+                else:
+                    qs = qs.order_by(F(sortfield).desc(nulls_last=True))
             elif sortorder == 'asc':
                 qs = qs.order_by(sortfield)
         return qs
@@ -1147,9 +1159,21 @@ class APIActionMixin:
         # self.request is initialized, request - not
         response = super().dispatch(request, *args, **kwargs)
 
-        if self.should_track_view_action() is False:
+        if self.should_track_view_action() is False or str(response.status_code)[0] in ('4', '5'):
             return response
 
+        self.save_user_action(request, *args, **kwargs)
+
+        try:
+            self.save_action_parent()
+        except Exception as e:
+            if not str(response.status_code).startswith('2'):
+                return response
+            raise e
+        return response
+
+    def save_user_action(self, request, *args, **kwargs):
+        self.user_action = None
         content_type = self.get_content_type()
         action_messages = self.get_action_message()
         action_name = self.get_action_name()
@@ -1164,24 +1188,23 @@ class APIActionMixin:
             'request_data': self.get_request_data()
         }
 
-        if not action_messages and (self.action or action_name):
-            self.user_action = Action.objects.create(message=None, **action_data)
-        else:
-            if not hasattr(action_messages, '__iter__') or isinstance(action_messages, str):
-                action_messages = [action_messages]
-            action_messages = [i for i in action_messages if i]
-            user_actions = []
-            for action_message in action_messages:
-                user_actions.append(Action.objects.create(message=action_message, **action_data))
-            self.user_action = user_actions[-1] if user_actions else None
+        from apps.document.models import Document
 
-        try:
-            self.save_action_parent()
-        except Exception as e:
-            if not str(response.status_code).startswith('2'):
-                return response
-            raise e
-        return response
+        if self.action or action_name:
+            user_actions = []
+            if action_messages:
+                if not hasattr(action_messages, '__iter__') or isinstance(action_messages, str):
+                    action_messages = [action_messages]
+                action_messages = [i for i in action_messages if i]
+                for action_message in action_messages:
+                    user_actions.append(Action.objects.create(message=action_message, **action_data))
+                self.user_action = user_actions[-1] if user_actions else None
+
+            # Document actions should have action message to be created as they have pretty view.
+            # Other actions may have empty message now.
+            # ToDo: refactor Actions logic
+            elif content_type != get_content_type(Document):
+                user_actions.append(Action.objects.create(message="", **action_data))
 
     def save_action_parent(self):
         pass

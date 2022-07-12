@@ -4,7 +4,7 @@ Contraxsuite API
 
 Contraxsuite API
 
-The version of the OpenAPI document: 2.1.188
+The version of the OpenAPI document: 2.3.0
 
 -->
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -12,7 +12,7 @@ The version of the OpenAPI document: 2.1.188
     
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{7EBDE8EF-0A45-4F47-A141-554467350DEA}</ProjectGuid>
+    <ProjectGuid>{13D00732-DBC8-420F-8921-2F62C0AEEA1E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Org.OpenAPITools</RootNamespace>

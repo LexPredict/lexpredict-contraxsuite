@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 **DocumentTypeTitle** | **string** |  | 
 **Name** | **string** |  | 
 **Order** | **int** |  | [optional] 
-**Fields** | [**List&lt;DocumentFieldCategoryListFields&gt;**](DocumentFieldCategoryListFields.md) |  | 
+**Fields** | [**List&lt;DocumentFieldCategoryListFieldsInner&gt;**](DocumentFieldCategoryListFieldsInner.md) |  | 
 **FieldsNumber** | **int** |  | 
 **ExportKey** | **Guid** |  | [optional] 
 

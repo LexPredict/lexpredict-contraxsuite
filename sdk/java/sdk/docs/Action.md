@@ -5,19 +5,19 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **Integer** |  |  [optional] [readonly]
-**name** | **String** |  |  [optional]
-**message** | **String** |  |  [optional]
-**viewAction** | **String** |  |  [optional]
-**objectPk** | **String** |  |  [optional]
-**modelName** | **String** |  |  [optional]
-**date** | **OffsetDateTime** |  |  [optional] [readonly]
-**userName** | **String** |  |  [optional] [readonly]
-**userInitials** | **String** |  |  [optional] [readonly]
-**userPhotoUrl** | **String** |  |  [optional] [readonly]
-**requestData** | **Object** |  |  [optional]
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**id** | **Integer** |  |  [optional] [readonly] |
+|**name** | **String** |  |  [optional] |
+|**message** | **String** |  |  [optional] |
+|**viewAction** | **String** |  |  [optional] |
+|**objectPk** | **String** |  |  [optional] |
+|**modelName** | **String** |  |  [optional] |
+|**date** | **OffsetDateTime** |  |  [optional] [readonly] |
+|**userName** | **String** |  |  [optional] [readonly] |
+|**userInitials** | **String** |  |  [optional] [readonly] |
+|**userPhotoUrl** | **String** |  |  [optional] [readonly] |
+|**requestData** | **Object** |  |  [optional] |
 
 
 

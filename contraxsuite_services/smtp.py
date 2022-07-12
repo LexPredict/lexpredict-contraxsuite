@@ -32,8 +32,8 @@ from django.conf import settings
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -42,6 +42,22 @@ logger = logging.getLogger('django')
 
 
 class CustomEmailBackend(EmailBackend):
+
+    def __init__(self, **kwargs):
+        """
+        Use user-defined vars for email config instead of hardcoded in settings to be able to reconfigure on the fly
+        """
+        from apps.notifications.app_vars import APP_VAR_EMAIL_HOST, APP_VAR_EMAIL_PORT, APP_VAR_EMAIL_HOST_USER, \
+            APP_VAR_EMAIL_HOST_PASSWORD, APP_VAR_EMAIL_USE_TLS
+        config = dict(
+            host=APP_VAR_EMAIL_HOST.val(),
+            port=APP_VAR_EMAIL_PORT.val(),
+            username=APP_VAR_EMAIL_HOST_USER.val(),
+            password=APP_VAR_EMAIL_HOST_PASSWORD.val(),
+            use_tls=APP_VAR_EMAIL_USE_TLS.val(),
+        )
+        kwargs.update(config)
+        super().__init__(**kwargs)
 
     def send_messages(self, email_messages):
         for message in email_messages:

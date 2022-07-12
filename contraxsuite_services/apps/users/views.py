@@ -47,8 +47,8 @@ from apps.users.models import User, CustomUserObjectPermission
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -298,6 +298,8 @@ class MixedLoginView(LoginView):
     def get_context_data(self, **kwargs):
         ret = super().get_context_data(**kwargs)
         ret['providers'] = SocialApp.objects.all()
+        for provider in ret['providers']:
+            provider.login_url = reverse(f'v1:{provider.provider}_login')
         return ret
 
 

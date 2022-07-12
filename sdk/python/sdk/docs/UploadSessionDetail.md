@@ -4,7 +4,7 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**created_by** | [**TaskQueueReviewersData**](TaskQueueReviewersData.md) |  | 
+**created_by** | [**TaskQueueReviewersDataInner**](TaskQueueReviewersDataInner.md) |  | 
 **uid** | **str** |  | [optional] [readonly] 
 **project** | **int, none_type** |  | [optional] 
 **created_date** | **datetime** |  | [optional] [readonly] 

@@ -41,8 +41,8 @@ from task_names import TASK_NAME_IDENTIFY_CONTRACTS
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -340,11 +340,11 @@ class IdentifyContractsForm(forms.Form):
 
     check_is_contract = forms.BooleanField(required=False,
                                            initial=False,
-                                           label='Determine contracts - generic docs')
+                                           label='Determine whether documents are contracts or generic documents')
 
     set_contract_type = forms.BooleanField(required=False,
                                            initial=False,
-                                           label='Determine document contract types')
+                                           label='Determine the contract type of each document')
 
     recheck_contract = forms.BooleanField(required=False)
 
@@ -364,11 +364,11 @@ class IdentifyContractsForm(forms.Form):
     def clean(self):
         super().clean()
 
-        if not self.cleaned_data.get('check_is_contract') and \
-                not self.cleaned_data.get('set_contract_type'):
-            self.add_error('check_is_contract',
-                           '''Either of these check boxes: "Check if documents are contracts / generic",
-                           "Determine document contract types" should be checked.''')
+        if not self.cleaned_data.get('check_is_contract') and not self.cleaned_data.get('set_contract_type'):
+            self.add_error(
+                'check_is_contract',
+                '''Either of these check boxes: "Determine whether documents are contracts or generic documents",
+                "Determine the contract type of each document" should be checked.''')
         return self.cleaned_data
 
 

@@ -5,9 +5,9 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**taskId** | **UUID** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**taskId** | **UUID** |  |  |
 
 
 

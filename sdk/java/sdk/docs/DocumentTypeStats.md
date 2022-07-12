@@ -5,11 +5,11 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**data** | [**DocumentTypeStatsData**](DocumentTypeStatsData.md) |  | 
-**countOfItems** | **Integer** |  | 
-**countOfFilteredItems** | **Integer** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**data** | [**DocumentTypeStatsData**](DocumentTypeStatsData.md) |  |  |
+|**countOfItems** | **Integer** |  |  |
+|**countOfFilteredItems** | **Integer** |  |  |
 
 
 

@@ -56,8 +56,7 @@ from apps.document import signals
 from apps.document.constants import DocumentGenericField, DOCUMENT_TYPE_CODE_GENERIC_DOCUMENT
 from apps.document.field_detection import field_detection
 from apps.document.models import Document, DocumentType, TextUnit, FieldAnnotation, \
-    FieldAnnotationFalseMatch, \
-    FieldAnnotationStatus
+    FieldAnnotationFalseMatch, FieldAnnotationStatus
 from apps.document.repository.base_document_repository import BaseDocumentRepository
 from apps.document.repository.document_repository import DocumentRepository
 from apps.project.models import Project, ProjectClustering, UploadSession
@@ -67,13 +66,13 @@ from apps.project.notifications import notify_active_upload_sessions, \
 from apps.project.utils.unique_name import UniqueNameBuilder
 from apps.rawdb.constants import FIELD_CODE_STATUS_ID
 from apps.task.tasks import CeleryTaskLogger, Task, purge_task, ExtendedTask
-from apps.task.utils.task_utils import TaskUtils
+from apps.task.utils.task_utils import ArchiveOpenError, TaskUtils
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -96,7 +95,7 @@ class ClusterProjectDocuments(ExtendedTask):
 
     default_n_clusters = 3
     default_method = 'kmeans'
-    default_cluster_by = 'term'
+    default_cluster_by = ['term']
 
     project_clustering_id = None
 
@@ -654,6 +653,7 @@ class LoadArchive(ExtendedTask):
     """
     name = 'Load Archive'
     session_id = source_path = force = user_id = None
+    archive_types = ['zip', 'tar']
 
     soft_time_limit = 6000
     default_retry_delay = 10
@@ -677,16 +677,11 @@ class LoadArchive(ExtendedTask):
         })
         self.task.save(update_fields={'metadata'})
 
-        if archive_type == 'zip':
-            return self.process_zip()
+        if archive_type not in self.archive_types:
+            # fail silently - it should be caught in API view
+            self.remove_archive()
 
-        if archive_type == 'tar':
-            return self.process_tar()
-
-        # else fail silently - it should be caught in API view
-
-        self.log_info('Remove processed archive {}'.format(self.source_path))
-        file_storage.delete_document(self.source_path)
+        self.process_archive(archive_type)
 
     @staticmethod
     def get_mime_type(file_name):
@@ -715,74 +710,94 @@ class LoadArchive(ExtendedTask):
         )
         self.task.save(update_fields={'metadata'})
 
-    def process_zip(self):
+    def remove_archive(self):
+        self.log_info('Remove processed archive {}'.format(self.source_path))
+        file_storage.delete_document(self.source_path)
+
+    def process_archive(self, file_type: str = None):
+        is_error_raised = False
         with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
-            with zipfile.ZipFile(local_file_path) as zip_file:
-                zip_file_filelist = [i for i in zip_file.filelist if not i.is_dir()]
+            try:
+                if file_type == 'zip':
+                    self.process_zip(local_file_path)
+                elif file_type == 'tar':
+                    self.process_tar(local_file_path)
+            except (zipfile.BadZipFile, OSError):
+                self.show_task_failed_message = False
+                is_error_raised = True
 
-                self.log_info('Start extracting {} documents from {}'.format(
-                    len(zip_file_filelist), local_file_path))
+        if is_error_raised:
+            self.remove_archive()
+            raise ArchiveOpenError(file_type)
 
-                for n, a_file in enumerate(zip_file_filelist):
-                    file_size = a_file.file_size
-                    file_name = os.path.basename(a_file.filename)
-                    file_rel_path = os.path.dirname(a_file.filename)
-                    mime_type = self.get_mime_type(file_name)
-                    if file_rel_path:
-                        directory_path = os.path.join(self.directory_path or '', file_rel_path)
-                    else:
-                        directory_path = self.directory_path
+    def process_zip(self, local_file_path: str = ''):
+        # zip archive can raise error
+        zip_file = zipfile.ZipFile(local_file_path)
+        with zip_file:
+            zip_file_filelist = [i for i in zip_file.filelist if not i.is_dir()]
 
-                    self.log_info(f'Extract/start LoadDocument for {n + 1} of '
-                                  f'{len(zip_file_filelist)} files: name={file_name}, '
-                                  f'size={file_size}, mime_type={mime_type}')
+            self.log_info('Start extracting {} documents from {}'.format(
+                len(zip_file_filelist), local_file_path))
 
-                    with TemporaryUploadedFile(file_name,
-                                               mime_type,
-                                               file_size,
-                                               'utf-8') as tempfile:
-                        tempfile.file = zip_file.open(a_file)
-                        tempfile.file.seek = lambda *args: 0
+            for n, a_file in enumerate(zip_file_filelist):
+                file_size = a_file.file_size
+                file_name = os.path.basename(a_file.filename)
+                file_rel_path = os.path.dirname(a_file.filename)
+                mime_type = self.get_mime_type(file_name)
+                if file_rel_path:
+                    directory_path = os.path.join(self.directory_path or '', file_rel_path)
+                else:
+                    directory_path = self.directory_path
 
-                        self.upload_file(
-                            file_name=file_name,
-                            file_size=file_size,
-                            contents=tempfile,
-                            directory_path=directory_path)
+                self.log_info(f'Extract/start LoadDocument for {n + 1} of '
+                              f'{len(zip_file_filelist)} files: name={file_name}, '
+                              f'size={file_size}, mime_type={mime_type}')
 
-    def process_tar(self):
-        with file_storage.get_document_as_local_fn(self.source_path) as (local_file_path, _):
-            with tarfile.open(local_file_path) as tar_file:
-                tar_file_members = [i for i in tar_file.getmembers() if not i.isdir()]
+                with TemporaryUploadedFile(file_name,
+                                           mime_type,
+                                           file_size,
+                                           'utf-8') as tempfile:
+                    tempfile.file = zip_file.open(a_file)
+                    tempfile.file.seek = lambda *args: 0
 
-                self.log_info('Start extracting {} documents from {}'.format(
-                    len(tar_file_members), local_file_path))
+                    self.upload_file(
+                        file_name=file_name,
+                        file_size=file_size,
+                        contents=tempfile,
+                        directory_path=directory_path)
 
-                for n, a_file in enumerate(tar_file_members):
-                    file_size = a_file.size
-                    file_name = os.path.basename(a_file.name)
-                    mime_type = self.get_mime_type(file_name)
-                    file_rel_path = os.path.dirname(a_file.name)
-                    if file_rel_path:
-                        directory_path = os.path.join(self.directory_path or '', file_rel_path)
-                    else:
-                        directory_path = self.directory_path
+    def process_tar(self, local_file_path: str = ''):
+        with tarfile.open(local_file_path) as tar_file:
+            tar_file_members = [i for i in tar_file.getmembers() if not i.isdir()]
 
-                    self.log_info(f'Extract/start LoadDocument for {n + 1} of '
-                                  f'{len(tar_file_members)} files: name={file_name}, '
-                                  f'size={file_size}, mime_type={mime_type}')
+            self.log_info('Start extracting {} documents from {}'.format(
+                len(tar_file_members), local_file_path))
 
-                    with TemporaryUploadedFile(file_name,
-                                               mime_type,
-                                               file_size,
-                                               'utf-8') as tempfile:
-                        tempfile.file = tar_file.extractfile(a_file)
+            for n, a_file in enumerate(tar_file_members):
+                file_size = a_file.size
+                file_name = os.path.basename(a_file.name)
+                mime_type = self.get_mime_type(file_name)
+                file_rel_path = os.path.dirname(a_file.name)
+                if file_rel_path:
+                    directory_path = os.path.join(self.directory_path or '', file_rel_path)
+                else:
+                    directory_path = self.directory_path
 
-                        self.upload_file(
-                            file_name=file_name,
-                            file_size=file_size,
-                            contents=tempfile,
-                            directory_path=directory_path)
+                self.log_info(f'Extract/start LoadDocument for {n + 1} of '
+                              f'{len(tar_file_members)} files: name={file_name}, '
+                              f'size={file_size}, mime_type={mime_type}')
+
+                with TemporaryUploadedFile(file_name,
+                                           mime_type,
+                                           file_size,
+                                           'utf-8') as tempfile:
+                    tempfile.file = tar_file.extractfile(a_file)
+
+                    self.upload_file(
+                        file_name=file_name,
+                        file_size=file_size,
+                        contents=tempfile,
+                        directory_path=directory_path)
 
 
 class SetAnnotationsStatus(ExtendedTask):

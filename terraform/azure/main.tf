@@ -23,7 +23,7 @@ resource "azurerm_resource_group" "default" {
 
 module "vnet" {
   source              = "Azure/vnet/azurerm"
-  version             = "2.4.0"
+  version             = "2.6.0"
   resource_group_name = azurerm_resource_group.default.name
   address_space       = ["172.16.0.0/16"]
   subnet_prefixes     = ["172.16.1.0/24"]
@@ -117,8 +117,8 @@ module "helm_charts" {
   install_rook_ceph     = var.helm_install_rook_ceph
   # Ceph Cluster Section
   # NOTE ceph_cluster_deploy should be false until rook ceph succesfully installed 
-  ceph_cluster_deploy = var.ceph_cluster_deploy
-  rook_version        = var.ceph_cluster_rook_version
-  ceph_version        = var.ceph_cluster_ceph_version
+  ceph_cluster_environment = var.ceph_cluster_environment
+  rook_version             = var.ceph_cluster_rook_version
+  ceph_version             = var.ceph_cluster_ceph_version
   #depends_on = [module.aks_cluster]
 }

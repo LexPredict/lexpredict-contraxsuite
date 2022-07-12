@@ -31,8 +31,8 @@ from apps.document.models import Document, DocumentPDFRepresentation
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -154,6 +154,24 @@ class DocumentDefinitionsSchema(ObjectToItemResponseMixin, CustomAutoSchema):
         descriptions = serializers.ListField(child=serializers.DictField())
 
     response_serializer = DocumentDefinitionsSerializer()
+
+
+class DocumentAnnotatorCoordinatesDifferenceSerializer(serializers.Serializer):
+    x = serializers.FloatField(required=True)
+    y = serializers.FloatField(required=True)
+    letter = serializers.CharField(required=True)
+
+
+class DocumentSetAnnotatorCoordinatesDifferenceSchema(CustomAutoSchema):
+    class DocumentSetAnnotatorCoordinatesDifferenceRequestSerializer(serializers.Serializer):
+        document_id = serializers.IntegerField(required=True)
+        first_letters = serializers.ListField(child=DocumentAnnotatorCoordinatesDifferenceSerializer())
+
+    class DocumentSetAnnotatorCoordinatesDifferenceResponseSerializer(serializers.Serializer):
+        updated = serializers.BooleanField()
+
+    request_serializer = DocumentSetAnnotatorCoordinatesDifferenceRequestSerializer()
+    response_serializer = DocumentSetAnnotatorCoordinatesDifferenceResponseSerializer()
 
 
 class DocumentFullTextSchema(CustomAutoSchema):

@@ -14,7 +14,7 @@ Name | Type | Description | Notes
 **Using** | **string** |  | 
 **CreatedDate** | **DateTime** |  | [optional] 
 **DocumentsCount** | **int** |  | [optional] [readonly] 
-**DocumentData** | [**List&lt;DocumentClusterDocumentData&gt;**](DocumentClusterDocumentData.md) |  | [optional] [readonly] 
+**DocumentData** | [**List&lt;DocumentClusterDocumentDataInner&gt;**](DocumentClusterDocumentDataInner.md) |  | [optional] [readonly] 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

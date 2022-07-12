@@ -8,9 +8,9 @@ Name | Type | Description | Notes
 **code** | **str** | Field codes must be lowercase, should start with a Latin letter, and contain  only Latin letters, digits, and underscores. | 
 **editor_type** | **str** |  | 
 **uid** | **str** |  | [optional] [readonly] 
-**categories** | [**[DocumentTypeDetailCategories]**](DocumentTypeDetailCategories.md) |  | [optional] [readonly] 
+**categories** | [**[DocumentTypeDetailCategoriesInner]**](DocumentTypeDetailCategoriesInner.md) |  | [optional] [readonly] 
 **managers** | **[int]** | Choose which users can modify this Document Type. Users chosen as Managers can be of any System-Level Permission. | [optional] 
-**fields** | [**[DocumentFieldCategoryListFields]**](DocumentFieldCategoryListFields.md) |  | [optional] [readonly] 
+**fields** | [**[DocumentFieldCategoryListFieldsInner]**](DocumentFieldCategoryListFieldsInner.md) |  | [optional] [readonly] 
 **search_fields** | **[str]** |  | [optional] 
 **field_code_aliases** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}, none_type** |  | [optional] 
 **metadata** | **{str: (bool, date, datetime, dict, float, int, list, str, none_type)}, none_type** |  | [optional] 

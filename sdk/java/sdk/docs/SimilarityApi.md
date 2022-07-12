@@ -2,20 +2,20 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**similarityDocumentSimilarityByFeaturesGET**](SimilarityApi.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ | 
-[**similarityDocumentSimilarityByFeaturesPOST**](SimilarityApi.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ | 
-[**similarityPartySimilarityGET**](SimilarityApi.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ | 
-[**similarityPartySimilarityPOST**](SimilarityApi.md#similarityPartySimilarityPOST) | **POST** /api/v1/similarity/party-similarity/ | 
-[**similarityProjectDocumentsSimilarityByVectorsGET**](SimilarityApi.md#similarityProjectDocumentsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
-[**similarityProjectDocumentsSimilarityByVectorsPOST**](SimilarityApi.md#similarityProjectDocumentsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ | 
-[**similarityProjectTextUnitsSimilarityByVectorsGET**](SimilarityApi.md#similarityProjectTextUnitsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
-[**similarityProjectTextUnitsSimilarityByVectorsPOST**](SimilarityApi.md#similarityProjectTextUnitsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ | 
-[**similaritySimilarityGET**](SimilarityApi.md#similaritySimilarityGET) | **GET** /api/v1/similarity/similarity/ | 
-[**similaritySimilarityPOST**](SimilarityApi.md#similaritySimilarityPOST) | **POST** /api/v1/similarity/similarity/ | 
-[**similarityTextUnitSimilarityByFeaturesGET**](SimilarityApi.md#similarityTextUnitSimilarityByFeaturesGET) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ | 
-[**similarityTextUnitSimilarityByFeaturesPOST**](SimilarityApi.md#similarityTextUnitSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**similarityDocumentSimilarityByFeaturesGET**](SimilarityApi.md#similarityDocumentSimilarityByFeaturesGET) | **GET** /api/v1/similarity/document-similarity-by-features/ |  |
+| [**similarityDocumentSimilarityByFeaturesPOST**](SimilarityApi.md#similarityDocumentSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/document-similarity-by-features/ |  |
+| [**similarityPartySimilarityGET**](SimilarityApi.md#similarityPartySimilarityGET) | **GET** /api/v1/similarity/party-similarity/ |  |
+| [**similarityPartySimilarityPOST**](SimilarityApi.md#similarityPartySimilarityPOST) | **POST** /api/v1/similarity/party-similarity/ |  |
+| [**similarityProjectDocumentsSimilarityByVectorsGET**](SimilarityApi.md#similarityProjectDocumentsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-documents-similarity-by-vectors/ |  |
+| [**similarityProjectDocumentsSimilarityByVectorsPOST**](SimilarityApi.md#similarityProjectDocumentsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-documents-similarity-by-vectors/ |  |
+| [**similarityProjectTextUnitsSimilarityByVectorsGET**](SimilarityApi.md#similarityProjectTextUnitsSimilarityByVectorsGET) | **GET** /api/v1/similarity/project-text-units-similarity-by-vectors/ |  |
+| [**similarityProjectTextUnitsSimilarityByVectorsPOST**](SimilarityApi.md#similarityProjectTextUnitsSimilarityByVectorsPOST) | **POST** /api/v1/similarity/project-text-units-similarity-by-vectors/ |  |
+| [**similaritySimilarityGET**](SimilarityApi.md#similaritySimilarityGET) | **GET** /api/v1/similarity/similarity/ |  |
+| [**similaritySimilarityPOST**](SimilarityApi.md#similaritySimilarityPOST) | **POST** /api/v1/similarity/similarity/ |  |
+| [**similarityTextUnitSimilarityByFeaturesGET**](SimilarityApi.md#similarityTextUnitSimilarityByFeaturesGET) | **GET** /api/v1/similarity/text-unit-similarity-by-features/ |  |
+| [**similarityTextUnitSimilarityByFeaturesPOST**](SimilarityApi.md#similarityTextUnitSimilarityByFeaturesPOST) | **POST** /api/v1/similarity/text-unit-similarity-by-features/ |  |
 
 
 <a name="similarityDocumentSimilarityByFeaturesGET"></a>
@@ -81,7 +81,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityDocumentSimilarityByFeaturesPOST"></a>
 # **similarityDocumentSimilarityByFeaturesPOST**
@@ -130,9 +130,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentSimilarityByFeaturesForm** | [**DocumentSimilarityByFeaturesForm**](DocumentSimilarityByFeaturesForm.md)|  | [optional] |
 
 ### Return type
 
@@ -150,7 +150,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityPartySimilarityGET"></a>
 # **similarityPartySimilarityGET**
@@ -215,7 +215,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityPartySimilarityPOST"></a>
 # **similarityPartySimilarityPOST**
@@ -264,9 +264,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **partySimilarityForm** | [**PartySimilarityForm**](PartySimilarityForm.md)|  | [optional] |
 
 ### Return type
 
@@ -284,7 +284,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectDocumentsSimilarityByVectorsGET"></a>
 # **similarityProjectDocumentsSimilarityByVectorsGET**
@@ -349,7 +349,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectDocumentsSimilarityByVectorsPOST"></a>
 # **similarityProjectDocumentsSimilarityByVectorsPOST**
@@ -398,9 +398,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectDocumentsSimilarityByVectorsForm** | [**ProjectDocumentsSimilarityByVectorsForm**](ProjectDocumentsSimilarityByVectorsForm.md)|  | [optional] |
 
 ### Return type
 
@@ -418,7 +418,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectTextUnitsSimilarityByVectorsGET"></a>
 # **similarityProjectTextUnitsSimilarityByVectorsGET**
@@ -483,7 +483,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityProjectTextUnitsSimilarityByVectorsPOST"></a>
 # **similarityProjectTextUnitsSimilarityByVectorsPOST**
@@ -532,9 +532,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectTextUnitsSimilarityByVectorsForm** | [**ProjectTextUnitsSimilarityByVectorsForm**](ProjectTextUnitsSimilarityByVectorsForm.md)|  | [optional] |
 
 ### Return type
 
@@ -552,7 +552,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similaritySimilarityGET"></a>
 # **similaritySimilarityGET**
@@ -617,7 +617,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similaritySimilarityPOST"></a>
 # **similaritySimilarityPOST**
@@ -666,9 +666,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **similarityForm** | [**SimilarityForm**](SimilarityForm.md)|  | [optional] |
 
 ### Return type
 
@@ -686,7 +686,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityTextUnitSimilarityByFeaturesGET"></a>
 # **similarityTextUnitSimilarityByFeaturesGET**
@@ -751,7 +751,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="similarityTextUnitSimilarityByFeaturesPOST"></a>
 # **similarityTextUnitSimilarityByFeaturesPOST**
@@ -800,9 +800,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **textUnitSimilarityByFeaturesForm** | [**TextUnitSimilarityByFeaturesForm**](TextUnitSimilarityByFeaturesForm.md)|  | [optional] |
 
 ### Return type
 
@@ -820,5 +820,5 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 

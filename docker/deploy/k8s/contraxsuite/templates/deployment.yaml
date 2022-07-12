@@ -704,11 +704,20 @@ spec:
       containers:
       - env:
         - name: RABBITMQ_DEFAULT_PASS
-          value: {{ .Values.rmqPassword }}
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-secrets
+              key: rmq_password
         - name: RABBITMQ_DEFAULT_USER
-          value: {{ .Values.rmqUsername}}
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-secrets
+              key: rmq_username
         - name: RABBITMQ_DEFAULT_VHOST
-          value: {{ .Values.rmqVhost }}
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-secrets
+              key: rmq_vhost
         image: {{ .Values.rabbitmqImage }}
         name: contrax-rabbitmq
         resources:

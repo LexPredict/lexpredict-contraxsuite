@@ -33,7 +33,8 @@ import re
 import tempfile
 import zipfile
 from shutil import rmtree
-from typing import Any, List, Dict, Iterable, Tuple, Union, Optional, Callable
+from collections import defaultdict
+from typing import Any, List, Dict, DefaultDict, Iterable, Tuple, Union, Optional, Callable
 
 import jiphy
 from celery import shared_task
@@ -45,7 +46,7 @@ from django.db import transaction
 from django.db.models import DurationField, ExpressionWrapper, F, Q
 from django.db.models.functions import Now
 from django.urls import reverse
-from lexnlp.extract.en.contracts.detector import is_contract
+from lexnlp.extract.en.contracts.predictors import ProbabilityPredictorIsContract
 from psycopg2 import InterfaceError, OperationalError
 from text_extraction_system_api.pdf_coordinates.pdf_coords_common import find_page_by_smb_index
 
@@ -84,15 +85,15 @@ from apps.project.models import Project
 from apps.rawdb.field_value_tables import adapt_table_structure
 from apps.rawdb.field_value_tables import cache_document_fields
 from apps.task.models import Task
-from apps.task.tasks import ExtendedTask, CeleryTaskLogger, call_task, Locate
+from apps.task.tasks import ExtendedTask, CeleryTaskLogger, Locate
 from apps.task.tasks import call_task_func
 from apps.task.utils.task_utils import TaskUtils, download_task_attached_file
 from apps.users.models import User
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -1285,8 +1286,7 @@ def identify_document_classes(task: ExtendedTask,
         if check_is_contract:
             docs = docs.filter(Q(document_class='') | Q(document_class__isnull=True))
         if set_contract_type:
-            docs = docs.filter(Q(document_contract_class='') |
-                               Q(document_contract_class__isnull=True))
+            docs = docs.filter(Q(document_contract_class='') | Q(document_contract_class__isnull=True))
     if document_type_code:
         docs = docs.filter(document_type__code=document_type_code)
     if project_id:
@@ -1297,21 +1297,38 @@ def identify_document_classes(task: ExtendedTask,
     log.info(f'identify_document_classes: {total}')
     counter = 0
     total_contracts, total_generics = (0, 0)
-    doc_by_type: Dict[str, int] = {}
+    classification_counts: DefaultDict[str, int] = defaultdict(int)
+
+    if check_is_contract:
+        try:
+            probability_predictor_is_contract: ProbabilityPredictorIsContract = ProbabilityPredictorIsContract()
+            log.info(
+                f'Using pipeline with steps: {[step[0] for step in probability_predictor_is_contract.pipeline.steps]}'
+            )
+        except Exception as e:
+            log.error(
+                message='Could not instantiate ProbabilityPredictorIsContract object.',
+                exc_info=e,
+            )
+            raise
 
     for doc in docs:  # type: Document
-        # doc_pk, doc_text in docs.values_list('pk', 'documenttext__full_text'):
         new_task_progress = round(counter * 100 / total)
         if new_task_progress != task.task.progress:
             task.task.update_progress(new_task_progress)
         counter += 1
 
-        doc_text = doc.full_text or ''
+        doc_text: str = doc.full_text or ''
 
         document_is_updated = False
         if check_is_contract:
             try:
-                res = is_contract(doc_text, return_probability=True)
+                # noinspection PyUnboundLocalVariable
+                res = probability_predictor_is_contract.is_contract(
+                    text=doc_text,
+                    min_probability=0.5,
+                    return_probability=True,
+                )
             except Exception as e:
                 log.error(f'Error in is_contract() call for document #{doc.pk}, {len(doc_text)} characters',
                           exc_info=e)
@@ -1329,22 +1346,34 @@ def identify_document_classes(task: ExtendedTask,
                 meta = DocumentMetadata(document=doc, metadata={})
 
             new_doc_class = DocumentClass.CONTRACT if res[0] else DocumentClass.GENERIC
-            if new_doc_class != doc.document_class or \
-                    meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] != res[1]:
+            if new_doc_class != doc.document_class or meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] != res[1]:
                 document_is_updated = True
                 doc.document_class = new_doc_class
                 meta.metadata[DOC_METADATA_DOCUMENT_CLASS_PROB] = res[1]
                 meta.save()
 
         if set_contract_type:
-            contract_type, type_vector = ContractTypeClassifier.get_document_contract_type(
-                doc_text, True, document_language=doc.language, project_id=project_id)
-            doc_by_type[contract_type] = doc_by_type.get(contract_type, 0) + 1
+            document_sentences: Tuple[str, ...] = tuple(
+                doc.textunit_set
+                    .filter(unit_type='sentence')
+                    .order_by('location_start')
+                    .values_list('text', flat=True)
+            )
+
+            contract_type_classification, predictions = \
+                ContractTypeClassifier.predict_classifications(
+                    log=log,
+                    document_sentences=document_sentences,
+                    document_language=doc.language,
+                    project_id=project_id,
+                )
+
+            classification_counts[contract_type_classification] += 1
             meta: DocumentMetadata = DocumentMetadata.objects.get(document_id=doc.pk)
-            meta.metadata[DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR] = type_vector
+            meta.metadata[DOC_METADATA_DOCUMENT_CONTRACT_CLASS_VECTOR] = predictions
             meta.save()
             document_is_updated = True
-            doc.document_contract_class = contract_type
+            doc.document_contract_class = contract_type_classification
 
         if document_is_updated:
             doc.save()
@@ -1352,10 +1381,17 @@ def identify_document_classes(task: ExtendedTask,
             cache_document_fields(log, doc, cache_generic_fields=False, cache_user_fields=False)
 
     if check_is_contract:
-        log.info(f'{total} documents are processed: {total_contracts} contracts, {total_generics} generic docs)')
+        log.info(f'Processed {total} documents: {total_contracts} contracts, {total_generics} generic documents)')
     if set_contract_type:
-        doc_by_type_str = ', '.join([f'[{c}]: {doc_by_type[c]}' for c in doc_by_type])
-        log.info(f'Detected following contract types: {doc_by_type_str}')
+        s: str = ', '.join(
+            f'[{classification}]: {count}'
+            for classification, count in sorted(
+                classification_counts.items(),
+                key=lambda key_value: key_value[1],
+                reverse=True,
+            )
+        )
+        log.info(f'Detected following contract types: {s}')
 
 
 class DeleteDocumentTypes(ExtendedTask):

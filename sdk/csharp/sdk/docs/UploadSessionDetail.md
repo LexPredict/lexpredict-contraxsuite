@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Uid** | **Guid** |  | [optional] [readonly] 
 **Project** | **int?** |  | [optional] 
-**CreatedBy** | [**TaskQueueReviewersData**](TaskQueueReviewersData.md) |  | 
+**CreatedBy** | [**TaskQueueReviewersDataInner**](TaskQueueReviewersDataInner.md) |  | 
 **CreatedDate** | **DateTime** |  | [optional] [readonly] 
 **DocumentType** | **string** |  | [optional] [readonly] 
 **Progress** | **string** |  | [optional] [readonly] 

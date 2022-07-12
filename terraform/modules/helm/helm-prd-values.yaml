@@ -1,0 +1,103 @@
+cephClusterSpec:
+  cephVersion:
+    image: quay.io/ceph/ceph:v16.2.7
+    allowUnsupported: true
+  dataDirHostPath: /var/lib/rook
+  mon:
+    count: 3
+    allowMultiplePerNode: true
+  mgr:
+    count: 1
+    allowMultiplePerNode: true
+  # enable the ceph dashboard for viewing cluster status
+  dashboard:
+    enabled: true
+  crashCollector:
+    disable: true
+  healthCheck:
+    daemonHealth:
+      mon:
+        interval: 45s
+        timeout: 600s
+  disruptionManagement:
+    managePodBudgets: true
+  storage:
+    storageClassDeviceSets: 
+    - name: set1
+      count: 3
+      portable: true
+      tuneFastDeviceClass: true
+      resources:
+        limits:
+          cpu: "500m"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+      placement:
+        tolerations:
+          - key: storage-node
+            operator: Exists
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - rookceph
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rook-ceph-osd
+                - key: app
+                  operator: In
+                  values:
+                  - rook-ceph-osd-prepare
+              topologyKey: kubernetes.io/hostname 
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            resources:
+              requests:
+                storage: 240Gi
+            storageClassName: managed-premium
+            volumeMode: Block
+            accessModes:
+              - ReadWriteOnce
+
+cephBlockPools:
+  - name: ceph-blockpool
+    # see https://github.com/rook/rook/blob/master/Documentation/ceph-pool-crd.md#spec for available configuration
+    spec:
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: false
+    storageClass:
+      enabled: true
+      name: ceph-block
+      isDefault: true
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      mountOptions: []
+      # see https://github.com/rook/rook/blob/master/Documentation/ceph-block.md#provision-storage for available configuration
+      parameters:
+        clusterID: rook-ceph
+        pool: replicapool
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-secret
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: xfs

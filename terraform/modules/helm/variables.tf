@@ -39,10 +39,10 @@ variable "install_rook_ceph" {
   type = string
   description = "Should Rook Ceph Helm Chart be installed"
 }
-variable "ceph_cluster_deploy" {
-  default = false
+variable "ceph_cluster_environment" {
+  default = "dev"
   type = string
-  description = "Setup Ceph Cluster"
+  description = "Type of Ceph Cluster Setup (only 'dev' or 'prd' values are valid)"
 }
 variable "rook_version" {
   default = "v1.6.7"

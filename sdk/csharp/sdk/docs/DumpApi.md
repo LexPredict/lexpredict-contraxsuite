@@ -17,7 +17,7 @@ Method | HTTP request | Description
 
 ## DumpDocumentConfigGET
 
-> OneOfarrayfile DumpDocumentConfigGET (bool? download = null, string documentTypeCodes = null)
+> DumpDocumentConfigGET200Response DumpDocumentConfigGET (bool? download = null, string documentTypeCodes = null)
 
 
 
@@ -46,11 +46,11 @@ namespace Example
 
             var apiInstance = new DumpApi(Configuration.Default);
             var download = true;  // bool? | Download as file (optional) 
-            var documentTypeCodes = documentTypeCodes_example;  // string | Document Type codes separated by comma (optional) 
+            var documentTypeCodes = "documentTypeCodes_example";  // string | Document Type codes separated by comma (optional) 
 
             try
             {
-                OneOfarrayfile result = apiInstance.DumpDocumentConfigGET(download, documentTypeCodes);
+                DumpDocumentConfigGET200Response result = apiInstance.DumpDocumentConfigGET(download, documentTypeCodes);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -74,7 +74,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -261,7 +261,7 @@ Name | Type | Description  | Notes
 
 ## DumpDumpGET
 
-> OneOfarrayfile DumpDumpGET (bool? download = null)
+> DumpDocumentConfigGET200Response DumpDumpGET (bool? download = null)
 
 
 
@@ -293,7 +293,7 @@ namespace Example
 
             try
             {
-                OneOfarrayfile result = apiInstance.DumpDumpGET(download);
+                DumpDocumentConfigGET200Response result = apiInstance.DumpDumpGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -316,7 +316,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 
@@ -423,7 +423,7 @@ Name | Type | Description  | Notes
 
 ## DumpFieldValuesGET
 
-> OneOfarrayfile DumpFieldValuesGET (bool? download = null)
+> DumpDocumentConfigGET200Response DumpFieldValuesGET (bool? download = null)
 
 
 
@@ -455,7 +455,7 @@ namespace Example
 
             try
             {
-                OneOfarrayfile result = apiInstance.DumpFieldValuesGET(download);
+                DumpDocumentConfigGET200Response result = apiInstance.DumpFieldValuesGET(download);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -478,7 +478,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfarrayfile**](OneOfarrayfile.md)
+[**DumpDocumentConfigGET200Response**](DumpDocumentConfigGET200Response.md)
 
 ### Authorization
 

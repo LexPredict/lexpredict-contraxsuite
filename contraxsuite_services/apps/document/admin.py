@@ -29,7 +29,9 @@ import builtins
 import html
 import inspect
 import json
+import operator
 import re
+from functools import reduce
 from typing import List, Dict, Any, Optional, Union, Iterable
 
 # Django imports
@@ -67,6 +69,7 @@ from rest_framework.response import Response
 
 # Project imports
 from apps.common.collection_utils import chunks
+from apps.common.context_managers import update_immutable_data
 from apps.common.expressions import PythonExpressionChecker
 from apps.common.model_utils.model_class_dictionary import ModelClassDictionary
 from apps.common.script_utils import ScriptError
@@ -90,13 +93,13 @@ from apps.document.repository.document_field_repository import DocumentFieldRepo
 from apps.extract.models import Term
 from apps.project.models import Project
 from apps.rawdb.constants import FIELD_CODE_ANNOTATION_SUFFIX, FIELD_CODE_HIDE_UNTIL_PYTHON, FIELD_CODE_FORMULA
-from apps.rawdb.field_value_tables import validate_doctype_cache_columns_count
+from apps.rawdb.field_value_tables import validate_doctype_cache_columns_count, FIELD_CODES_SYSTEM, FIELD_CODES_GENERIC
 from apps.task.models import Task
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -949,6 +952,9 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                 self.add_error('code', '''"{}" suffix is reserved.
                  You cannot use a field code which ends with this suffix.'''.format(suffix))
 
+        if field_code in FIELD_CODES_GENERIC or field_code in FIELD_CODES_SYSTEM:
+            self.add_error('code', '''Field code "{}" is reserved. You cannot use this field code.'''.format(field_code))
+
     def clean_depends_on_fields(self):
         depends_on_fields = self.cleaned_data.get('depends_on_fields')
         if not depends_on_fields:
@@ -992,16 +998,17 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         if hide_until_python:
             self.calc_formula(hide_until_python, 'hide_until_python')
 
-        if default_value is not None:
+        if default_value is not None and not self.data.get('has_default_value_error', False):
             if type_code == RelatedInfoField.type_code:
                 self.add_error('default_value', 'Related info field can\'t have default value')
             elif typed_field.extract_from_possible_value(default_value) != default_value:
                 try:
-                    examp_value = typed_field.example_python_value()
+                    # examp_value = typed_field.example_python_value()
+                    examp_value = typed_field.field.get_choice_values()
                     examp_json = typed_field.field_value_python_to_json(examp_value)
                 except Exception as e:
-                    raise RuntimeError(f"Can't make an example value (JSON) for field {document_field.code}, " 
-                                       f'type {type_code}') from e
+                    raise RuntimeError(f"Can't make an example value (JSON) for field {document_field.code}, "
+                                       f"type {type_code}") from e
                 self.add_error('default_value',
                                f'Wrong value for type {type_code}. Correct examples: {examp_json}')
 
@@ -1030,6 +1037,11 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
         category = self.cleaned_data.get('category')
         document_type = self.cleaned_data.get('document_type')
         allow_values_not_specified_in_choices = self.cleaned_data.get('allow_values_not_specified_in_choices')
+        default_value = self.cleaned_data.get('default_value')
+
+        if default_value is not None:
+            if type_code in [ChoiceField.type_code, MultiChoiceField.type_code] and isinstance(default_value, int):
+                self.cleaned_data['default_value'] = str(default_value)
 
         if category and category.document_type != document_type:
             self.add_error('category',
@@ -1043,21 +1055,55 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
             for ch_err in choice_errors:
                 self.add_error('choices', ch_err)
 
-        if type_code in [ChoiceField.type_code, MultiChoiceField.type_code] \
-                and allow_values_not_specified_in_choices is not True:
+        if type_code in [ChoiceField.type_code, MultiChoiceField.type_code]:
             # CS-4254: check that filed detectors has detected_values from choices only
             # or allow_values_not_specified_in_choices is set to True
-            detected_values = set(self.instance.field_detectors.values_list('detected_value', flat=True))
-            if detected_values:
-                extra_choices = detected_values - set(choice_values)
-                if extra_choices:
+            # also see CS-3030
+            base_error_message = 'Changes to a Choice or Multi Choice Field cannot be saved ' \
+                                 'if they might result in database errors.'
+            existing_choices = DocumentField.parse_choice_values(self.instance.choices)
+            removed_choices = set(existing_choices) - set(choice_values)
+
+            if allow_values_not_specified_in_choices is not True:
+                if not self.data.get('has_default_value_error', False) \
+                        and self.instance.default_value \
+                        and self.instance.default_value in removed_choices:
                     self.add_error(
                         'choices',
-                        f'Field detectors have "Display Value" which is not specified in choices: {extra_choices}')
+                        f'{base_error_message} '
+                        f'Field has "Default Value" which is specified in removed choices: '
+                        f'{self.instance.default_value}')
 
+                # CS-7777: check that allow_values_not_specified_in_choices is set to False and
+                # default_value is removed
+                if self.data.get('has_default_value_error', False) \
+                        or (not default_value and self.instance.default_value):
+                    with update_immutable_data(self.data) as request_data:
+                        request_data['default_value'] = self.instance.default_value
+                        request_data['has_default_value_error'] = True
+                    self.add_error(
+                        'default_value',
+                        f'You cannot remove "{self.instance.default_value}" without losing data')
+
+                detected_values = set(self.instance.field_detectors.values_list('detected_value', flat=True))
+                if detected_values:
+                    extra_choices = detected_values - set(choice_values)
+                    if extra_choices:
+                        self.add_error(
+                            'choices',
+                            f'{base_error_message} '
+                            f'Field detectors have "Display Value" which is not specified in choices: {extra_choices}')
+                if self.instance.pk and removed_choices and self.instance.fieldvalue_set.filter(
+                        reduce(operator.or_, (Q(value__contains=i) for i in removed_choices))).exists():
+                    wrongly_removed_choices = {i for i in removed_choices
+                                               if self.instance.fieldvalue_set.filter(value__contains=i).exists()}
+                    self.add_error(
+                        'choices',
+                        f'{base_error_message} '
+                        f'There are Field Values in a Database having removed choices: {wrongly_removed_choices}')
         try:
             DocumentField.compile_value_regexp(self.cleaned_data['value_regexp'])
-        except Exception:
+        except:
             self.add_error('value_regexp', RegexPatternValidator.message)
 
         self.validate_field_code()
@@ -1081,10 +1127,9 @@ class DocumentFieldForm(ModelFormWithUnchangeableFields):
                             self.add_error(self.UNSURE_THRESHOLDS, 'Please set thresholds only for "sure" choice '
                                                                    'values and not for ' + k)
                         elif k not in choice_values:
-                            self.add_error(self.UNSURE_THRESHOLDS, 'Value not in choice values: ' + k)
+                            self.add_error(self.UNSURE_THRESHOLDS, f'Value not in choice values: {k}')
                         if (not isinstance(v, int) and not isinstance(v, float)) or v < 0 or v > 1:
-                            self.add_error(self.UNSURE_THRESHOLDS,
-                                           'Threshold should be a float value between 0 and 1: ' + k)
+                            self.add_error(self.UNSURE_THRESHOLDS, f'Threshold should be a float value between 0 and 1: {k}')
 
         try:
             init_classifier_impl(field_code, classifier_init_script)
@@ -1514,7 +1559,6 @@ class FieldDetectorListFilter(admin.SimpleListFilter):
 
 
 class DocumentFieldDetectorForm(forms.ModelForm):
-
     class Meta:
         model = DocumentFieldDetector
         fields = '__all__'

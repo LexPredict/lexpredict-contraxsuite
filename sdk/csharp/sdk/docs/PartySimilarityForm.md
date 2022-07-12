@@ -5,11 +5,11 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**RunName** | **string** |  | [optional] 
-**CaseSensitive** | **bool?** |  | [optional] 
+**RunName** | **string** |  | 
+**CaseSensitive** | **bool** |  | 
 **SimilarityType** | **string** |  | [optional] [default to SimilarityTypeEnum.Setratio]
-**SimilarityThreshold** | **int?** | Min. Similarity Value 0-100%. | [optional] [default to 90]
-**Delete** | **bool?** |  | [optional] 
+**SimilarityThreshold** | **int?** |  | [optional] [default to 90]
+**Delete** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models)
 [[Back to API list]](../README.md#documentation-for-api-endpoints)

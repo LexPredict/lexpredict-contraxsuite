@@ -708,7 +708,12 @@ services:
       replicas: 1
       placement:
         constraints: [node.role == manager]
-
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+      
   contrax-mock-imanage:
     image: ${CONTRAXSUITE_IMAGE}
     networks:

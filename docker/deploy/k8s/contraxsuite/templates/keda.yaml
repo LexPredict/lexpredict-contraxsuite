@@ -109,11 +109,20 @@ spec:
           - name: DOCKER_HOST_NAME_RABBITMQ_ACCESS
             value: {{ .Values.rmqHost }}
           - name: DOCKER_RABBITMQ_PASSWORD
-            value: {{ .Values.rmqPassword }}
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq-secrets
+                key: rmq_password
           - name: DOCKER_RABBITMQ_USER
-            value: {{ .Values.rmqUsername }}
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq-secrets
+                key: rmq_username
           - name: DOCKER_RABBITMQ_VHOST
-            value: {{ .Values.rmqVhost }}
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq-secrets
+                key: rmq_vhost
           - name: DOCKER_WEBDAV_AUTH_PASSWORD
             valueFrom:
               secretKeyRef:

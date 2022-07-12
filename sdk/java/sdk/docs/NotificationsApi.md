@@ -2,10 +2,10 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**notificationsWebNotificationsGET**](NotificationsApi.md#notificationsWebNotificationsGET) | **GET** /api/v1/notifications/web-notifications/ | 
-[**notificationsWebNotificationsMarkSeenPOST**](NotificationsApi.md#notificationsWebNotificationsMarkSeenPOST) | **POST** /api/v1/notifications/web-notifications/mark_seen/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**notificationsWebNotificationsGET**](NotificationsApi.md#notificationsWebNotificationsGET) | **GET** /api/v1/notifications/web-notifications/ |  |
+| [**notificationsWebNotificationsMarkSeenPOST**](NotificationsApi.md#notificationsWebNotificationsMarkSeenPOST) | **POST** /api/v1/notifications/web-notifications/mark_seen/ |  |
 
 
 <a name="notificationsWebNotificationsGET"></a>
@@ -71,7 +71,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="notificationsWebNotificationsMarkSeenPOST"></a>
 # **notificationsWebNotificationsMarkSeenPOST**
@@ -120,9 +120,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **markForSeenWebNotificationRequest** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **markForSeenWebNotificationRequest** | [**MarkForSeenWebNotificationRequest**](MarkForSeenWebNotificationRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -140,5 +140,5 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 

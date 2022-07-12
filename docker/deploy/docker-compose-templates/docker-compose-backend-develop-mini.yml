@@ -1,0 +1,121 @@
+version: "3.8"
+services:
+  # Service names should comply with the rules of building DNS names - they will be available
+  # under these domain names inside the cluster virtual network.
+  # (Service names should not contain underscores.)
+
+  contrax-webdav:
+    image: ${DOCKER_WEBDAV_IMAGE}
+    volumes:
+      - contraxsuite_data_media:/var/lib/dav
+    networks:
+      - contrax_net
+    environment:   # No need for auth - in prod envs the server is not accessible from outside of our network
+      AUTH_TYPE: Basic
+      USERNAME: ${DOCKER_WEBDAV_AUTH_USER}
+      PASSWORD: ${DOCKER_WEBDAV_AUTH_PASSWORD}
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - 8090:80
+
+  contrax-db:
+    image: ${DOCKER_PG_IMAGE}
+    environment:
+      - "PGDATA=/var/lib/contraxsuite-postgres"
+      - "POSTGRES_USER=${DOCKER_PG_USER}"
+      - "POSTGRES_PASSWORD=${DOCKER_PG_PASSWORD}"
+      - "POSTGRES_DB=${DOCKER_PG_DB_NAME}"
+      - "POSTGRES_ENABLE_DAILY_REINDEX=${POSTGRES_ENABLE_DAILY_REINDEX}"
+    command: postgres -c config_file=/contraxsuite/postgresql.conf
+    tmpfs:
+      - /tmp:size=4GB
+    volumes:
+      - postgres_data_11:/var/lib/contraxsuite-postgres
+      - backup:/backup
+      - type: tmpfs
+        target: /dev/shm
+    configs:
+      - source: pg_${PG_CONFIG_VERSION}
+        target: /contraxsuite/postgresql.conf
+      - source: pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}
+        target: /docker-entrypoint-initdb.d/postgres_init.sql
+      - source: pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}
+        target: /contraxsuite/db-backup.sh
+    networks:
+      - contrax_net
+    read_only: false
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
+    deploy:
+      replicas: ${DOCKER_PG_REPLICAS}
+      resources:
+        limits:
+          cpus: '${DOCKER_POSTGRES_CPUS}'
+          memory: ${DOCKER_POSTGRES_MEMORY}
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+#      - 54322:${DOCKER_PG_PORT} #
+      - 0.0.0.0:4432:5432 #
+
+  contrax-redis:
+    image: ${DOCKER_REDIS_IMAGE}
+    volumes:
+      - redis_data:/data
+    networks:
+      - contrax_net
+    logging:
+      driver: "json-file"
+      options:
+        max-file: 5
+        max-size: 10m
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+    ports: #
+      - 63790:6379 #
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  contraxsuite_deployment_uuid:
+  contraxsuite_static_files:
+  contraxsuite_frontend:
+  contraxsuite_third_party_dependencies:
+  contraxsuite_data_media:
+  contraxsuite_notebooks:
+  postgres_data_11:
+  rabbitmq_data:
+  redis_data:
+  celery_worker_state:
+  backup:
+  contraxsuite_additional_fixtures:
+  contraxsuite_jupyter_add_req:
+
+networks:
+  contrax_net:
+
+configs:
+  pg_${PG_CONFIG_VERSION}:
+    file: ./postgresql.conf
+  pg_init_sql_${PG_INIT_SQL_CONFIG_VERSION}:
+    file: ./postgres_init.sql
+  pg_backup_script_${PG_BACKUP_SCRIPT_CONFIG_VERSION}:
+    file: ./db-backup.sh
+  rabbitmq_${RABBITMQ_CONFIG_VERSION}:
+    file: ./rabbitmq.conf

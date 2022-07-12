@@ -2,43 +2,44 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**commonActionsGET**](CommonApi.md#commonActionsGET) | **GET** /api/v1/common/actions/ | 
-[**commonActionsIdGET**](CommonApi.md#commonActionsIdGET) | **GET** /api/v1/common/actions/{id}/ | 
-[**commonAppVariablesGET**](CommonApi.md#commonAppVariablesGET) | **GET** /api/v1/common/app-variables/ | 
-[**commonAppVariablesListGET**](CommonApi.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ | 
-[**commonAppVariablesProjectProjectIdGET**](CommonApi.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ | 
-[**commonAppVariablesProjectProjectIdPUT**](CommonApi.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ | 
-[**commonMediaPathGET**](CommonApi.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ | 
-[**commonMenuGroupsFormFieldsGET**](CommonApi.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ | 
-[**commonMenuGroupsGET**](CommonApi.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ | 
-[**commonMenuGroupsIdDELETE**](CommonApi.md#commonMenuGroupsIdDELETE) | **DELETE** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsIdFormFieldsGET**](CommonApi.md#commonMenuGroupsIdFormFieldsGET) | **GET** /api/v1/common/menu-groups/{id}/form-fields/ | 
-[**commonMenuGroupsIdGET**](CommonApi.md#commonMenuGroupsIdGET) | **GET** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsIdPATCH**](CommonApi.md#commonMenuGroupsIdPATCH) | **PATCH** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsIdPUT**](CommonApi.md#commonMenuGroupsIdPUT) | **PUT** /api/v1/common/menu-groups/{id}/ | 
-[**commonMenuGroupsPOST**](CommonApi.md#commonMenuGroupsPOST) | **POST** /api/v1/common/menu-groups/ | 
-[**commonMenuItemsFormFieldsGET**](CommonApi.md#commonMenuItemsFormFieldsGET) | **GET** /api/v1/common/menu-items/form-fields/ | 
-[**commonMenuItemsGET**](CommonApi.md#commonMenuItemsGET) | **GET** /api/v1/common/menu-items/ | 
-[**commonMenuItemsIdDELETE**](CommonApi.md#commonMenuItemsIdDELETE) | **DELETE** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsIdFormFieldsGET**](CommonApi.md#commonMenuItemsIdFormFieldsGET) | **GET** /api/v1/common/menu-items/{id}/form-fields/ | 
-[**commonMenuItemsIdGET**](CommonApi.md#commonMenuItemsIdGET) | **GET** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsIdPATCH**](CommonApi.md#commonMenuItemsIdPATCH) | **PATCH** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsIdPUT**](CommonApi.md#commonMenuItemsIdPUT) | **PUT** /api/v1/common/menu-items/{id}/ | 
-[**commonMenuItemsPOST**](CommonApi.md#commonMenuItemsPOST) | **POST** /api/v1/common/menu-items/ | 
-[**commonReviewStatusGroupsGET**](CommonApi.md#commonReviewStatusGroupsGET) | **GET** /api/v1/common/review-status-groups/ | 
-[**commonReviewStatusGroupsIdDELETE**](CommonApi.md#commonReviewStatusGroupsIdDELETE) | **DELETE** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsIdGET**](CommonApi.md#commonReviewStatusGroupsIdGET) | **GET** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsIdPATCH**](CommonApi.md#commonReviewStatusGroupsIdPATCH) | **PATCH** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsIdPUT**](CommonApi.md#commonReviewStatusGroupsIdPUT) | **PUT** /api/v1/common/review-status-groups/{id}/ | 
-[**commonReviewStatusGroupsPOST**](CommonApi.md#commonReviewStatusGroupsPOST) | **POST** /api/v1/common/review-status-groups/ | 
-[**commonReviewStatusesGET**](CommonApi.md#commonReviewStatusesGET) | **GET** /api/v1/common/review-statuses/ | 
-[**commonReviewStatusesIdDELETE**](CommonApi.md#commonReviewStatusesIdDELETE) | **DELETE** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesIdGET**](CommonApi.md#commonReviewStatusesIdGET) | **GET** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesIdPATCH**](CommonApi.md#commonReviewStatusesIdPATCH) | **PATCH** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesIdPUT**](CommonApi.md#commonReviewStatusesIdPUT) | **PUT** /api/v1/common/review-statuses/{id}/ | 
-[**commonReviewStatusesPOST**](CommonApi.md#commonReviewStatusesPOST) | **POST** /api/v1/common/review-statuses/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**commonActionsGET**](CommonApi.md#commonActionsGET) | **GET** /api/v1/common/actions/ |  |
+| [**commonActionsIdGET**](CommonApi.md#commonActionsIdGET) | **GET** /api/v1/common/actions/{id}/ |  |
+| [**commonAppVariablesGET**](CommonApi.md#commonAppVariablesGET) | **GET** /api/v1/common/app-variables/ |  |
+| [**commonAppVariablesListGET**](CommonApi.md#commonAppVariablesListGET) | **GET** /api/v1/common/app-variables/list/ |  |
+| [**commonAppVariablesProjectProjectIdGET**](CommonApi.md#commonAppVariablesProjectProjectIdGET) | **GET** /api/v1/common/app-variables/project/{project_id}/ |  |
+| [**commonAppVariablesProjectProjectIdPUT**](CommonApi.md#commonAppVariablesProjectProjectIdPUT) | **PUT** /api/v1/common/app-variables/project/{project_id}/ |  |
+| [**commonLogoGET**](CommonApi.md#commonLogoGET) | **GET** /api/v1/common/logo/ |  |
+| [**commonMediaPathGET**](CommonApi.md#commonMediaPathGET) | **GET** /api/v1/common/media/{path}/ |  |
+| [**commonMenuGroupsFormFieldsGET**](CommonApi.md#commonMenuGroupsFormFieldsGET) | **GET** /api/v1/common/menu-groups/form-fields/ |  |
+| [**commonMenuGroupsGET**](CommonApi.md#commonMenuGroupsGET) | **GET** /api/v1/common/menu-groups/ |  |
+| [**commonMenuGroupsIdDELETE**](CommonApi.md#commonMenuGroupsIdDELETE) | **DELETE** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsIdFormFieldsGET**](CommonApi.md#commonMenuGroupsIdFormFieldsGET) | **GET** /api/v1/common/menu-groups/{id}/form-fields/ |  |
+| [**commonMenuGroupsIdGET**](CommonApi.md#commonMenuGroupsIdGET) | **GET** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsIdPATCH**](CommonApi.md#commonMenuGroupsIdPATCH) | **PATCH** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsIdPUT**](CommonApi.md#commonMenuGroupsIdPUT) | **PUT** /api/v1/common/menu-groups/{id}/ |  |
+| [**commonMenuGroupsPOST**](CommonApi.md#commonMenuGroupsPOST) | **POST** /api/v1/common/menu-groups/ |  |
+| [**commonMenuItemsFormFieldsGET**](CommonApi.md#commonMenuItemsFormFieldsGET) | **GET** /api/v1/common/menu-items/form-fields/ |  |
+| [**commonMenuItemsGET**](CommonApi.md#commonMenuItemsGET) | **GET** /api/v1/common/menu-items/ |  |
+| [**commonMenuItemsIdDELETE**](CommonApi.md#commonMenuItemsIdDELETE) | **DELETE** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsIdFormFieldsGET**](CommonApi.md#commonMenuItemsIdFormFieldsGET) | **GET** /api/v1/common/menu-items/{id}/form-fields/ |  |
+| [**commonMenuItemsIdGET**](CommonApi.md#commonMenuItemsIdGET) | **GET** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsIdPATCH**](CommonApi.md#commonMenuItemsIdPATCH) | **PATCH** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsIdPUT**](CommonApi.md#commonMenuItemsIdPUT) | **PUT** /api/v1/common/menu-items/{id}/ |  |
+| [**commonMenuItemsPOST**](CommonApi.md#commonMenuItemsPOST) | **POST** /api/v1/common/menu-items/ |  |
+| [**commonReviewStatusGroupsGET**](CommonApi.md#commonReviewStatusGroupsGET) | **GET** /api/v1/common/review-status-groups/ |  |
+| [**commonReviewStatusGroupsIdDELETE**](CommonApi.md#commonReviewStatusGroupsIdDELETE) | **DELETE** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsIdGET**](CommonApi.md#commonReviewStatusGroupsIdGET) | **GET** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsIdPATCH**](CommonApi.md#commonReviewStatusGroupsIdPATCH) | **PATCH** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsIdPUT**](CommonApi.md#commonReviewStatusGroupsIdPUT) | **PUT** /api/v1/common/review-status-groups/{id}/ |  |
+| [**commonReviewStatusGroupsPOST**](CommonApi.md#commonReviewStatusGroupsPOST) | **POST** /api/v1/common/review-status-groups/ |  |
+| [**commonReviewStatusesGET**](CommonApi.md#commonReviewStatusesGET) | **GET** /api/v1/common/review-statuses/ |  |
+| [**commonReviewStatusesIdDELETE**](CommonApi.md#commonReviewStatusesIdDELETE) | **DELETE** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesIdGET**](CommonApi.md#commonReviewStatusesIdGET) | **GET** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesIdPATCH**](CommonApi.md#commonReviewStatusesIdPATCH) | **PATCH** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesIdPUT**](CommonApi.md#commonReviewStatusesIdPUT) | **PUT** /api/v1/common/review-statuses/{id}/ |  |
+| [**commonReviewStatusesPOST**](CommonApi.md#commonReviewStatusesPOST) | **POST** /api/v1/common/review-statuses/ |  |
 
 
 <a name="commonActionsGET"></a>
@@ -91,12 +92,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -114,7 +115,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonActionsIdGET"></a>
 # **commonActionsIdGET**
@@ -167,13 +168,13 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this action. |
- **projectId** | **Integer**| Project ID | [optional]
- **documentId** | **Integer**| Document ID | [optional]
- **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this action. | |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **documentId** | **Integer**| Document ID | [optional] |
+| **viewActions** | [**List&lt;String&gt;**](String.md)| Action names | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -191,7 +192,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesGET"></a>
 # **commonAppVariablesGET**
@@ -240,9 +241,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **name** | **String**| App var name | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **name** | **String**| App var name | [optional] |
 
 ### Return type
 
@@ -260,11 +261,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesListGET"></a>
 # **commonAppVariablesListGET**
 > List&lt;AppVar&gt; commonAppVariablesListGET(jqFilters)
+
+
 
 
 
@@ -307,9 +310,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -327,7 +330,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesProjectProjectIdGET"></a>
 # **commonAppVariablesProjectProjectIdGET**
@@ -376,9 +379,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
 
 ### Return type
 
@@ -396,7 +399,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonAppVariablesProjectProjectIdPUT"></a>
 # **commonAppVariablesProjectProjectIdPUT**
@@ -446,10 +449,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
- **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
+| **projectAppVar** | [**List&lt;ProjectAppVar&gt;**](ProjectAppVar.md)|  | [optional] |
 
 ### Return type
 
@@ -467,7 +470,76 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
+
+<a name="commonLogoGET"></a>
+# **commonLogoGET**
+> Map&lt;String, Object&gt; commonLogoGET(action)
+
+
+
+
+
+### Example
+```java
+// Import classes:
+import org.openapitools.client.ApiClient;
+import org.openapitools.client.ApiException;
+import org.openapitools.client.Configuration;
+import org.openapitools.client.auth.*;
+import org.openapitools.client.models.*;
+import org.openapitools.client.api.CommonApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+    
+    // Configure API key authorization: AuthToken
+    ApiKeyAuth AuthToken = (ApiKeyAuth) defaultClient.getAuthentication("AuthToken");
+    AuthToken.setApiKey("YOUR API KEY");
+    // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+    //AuthToken.setApiKeyPrefix("Token");
+
+    CommonApi apiInstance = new CommonApi(defaultClient);
+    String action = "info"; // String | Action name
+    try {
+      Map<String, Object> result = apiInstance.commonLogoGET(action);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling CommonApi#commonLogoGET");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **action** | **String**| Action name | [optional] [default to download] [enum: info, download] |
+
+### Return type
+
+**Map&lt;String, Object&gt;**
+
+### Authorization
+
+[AuthToken](../README.md#AuthToken)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json, */*
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
 
 <a name="commonMediaPathGET"></a>
 # **commonMediaPathGET**
@@ -517,10 +589,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **path** | **String**|  |
- **action** | **String**| Action name | [optional] [default to download] [enum: info, download]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **path** | **String**|  | |
+| **action** | **String**| Action name | [optional] [default to download] [enum: info, download] |
 
 ### Return type
 
@@ -538,7 +610,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsFormFieldsGET"></a>
 # **commonMenuGroupsFormFieldsGET**
@@ -603,7 +675,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsGET"></a>
 # **commonMenuGroupsGET**
@@ -668,7 +740,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdDELETE"></a>
 # **commonMenuGroupsIdDELETE**
@@ -716,9 +788,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -736,7 +808,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonMenuGroupsIdFormFieldsGET"></a>
 # **commonMenuGroupsIdFormFieldsGET**
@@ -785,9 +857,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -805,7 +877,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdGET"></a>
 # **commonMenuGroupsIdGET**
@@ -854,9 +926,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -874,7 +946,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdPATCH"></a>
 # **commonMenuGroupsIdPATCH**
@@ -924,10 +996,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -945,7 +1017,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsIdPUT"></a>
 # **commonMenuGroupsIdPUT**
@@ -995,10 +1067,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -1016,7 +1088,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuGroupsPOST"></a>
 # **commonMenuGroupsPOST**
@@ -1065,9 +1137,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **menuGroup** | [**MenuGroup**](MenuGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -1085,7 +1157,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="commonMenuItemsFormFieldsGET"></a>
 # **commonMenuItemsFormFieldsGET**
@@ -1150,7 +1222,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsGET"></a>
 # **commonMenuItemsGET**
@@ -1215,7 +1287,7 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdDELETE"></a>
 # **commonMenuItemsIdDELETE**
@@ -1263,9 +1335,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -1283,7 +1355,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonMenuItemsIdFormFieldsGET"></a>
 # **commonMenuItemsIdFormFieldsGET**
@@ -1332,9 +1404,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this user. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this user. | |
 
 ### Return type
 
@@ -1352,7 +1424,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdGET"></a>
 # **commonMenuItemsIdGET**
@@ -1401,9 +1473,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
 
 ### Return type
 
@@ -1421,7 +1493,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdPATCH"></a>
 # **commonMenuItemsIdPATCH**
@@ -1471,10 +1543,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional] |
 
 ### Return type
 
@@ -1492,7 +1564,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsIdPUT"></a>
 # **commonMenuItemsIdPUT**
@@ -1542,10 +1614,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**|  |
- **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**|  | |
+| **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional] |
 
 ### Return type
 
@@ -1563,7 +1635,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonMenuItemsPOST"></a>
 # **commonMenuItemsPOST**
@@ -1612,9 +1684,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **menuItem** | [**MenuItem**](MenuItem.md)|  | [optional] |
 
 ### Return type
 
@@ -1632,7 +1704,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="commonReviewStatusGroupsGET"></a>
 # **commonReviewStatusGroupsGET**
@@ -1681,9 +1753,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1701,7 +1773,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdDELETE"></a>
 # **commonReviewStatusGroupsIdDELETE**
@@ -1749,9 +1821,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
 
 ### Return type
 
@@ -1769,7 +1841,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdGET"></a>
 # **commonReviewStatusGroupsIdGET**
@@ -1819,10 +1891,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1840,7 +1912,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdPATCH"></a>
 # **commonReviewStatusGroupsIdPATCH**
@@ -1890,10 +1962,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
- **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
+| **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -1911,7 +1983,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsIdPUT"></a>
 # **commonReviewStatusGroupsIdPUT**
@@ -1961,10 +2033,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status Group. |
- **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status Group. | |
+| **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -1982,7 +2054,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusGroupsPOST"></a>
 # **commonReviewStatusGroupsPOST**
@@ -2031,9 +2103,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **reviewStatusGroup** | [**ReviewStatusGroup**](ReviewStatusGroup.md)|  | [optional] |
 
 ### Return type
 
@@ -2051,7 +2123,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="commonReviewStatusesGET"></a>
 # **commonReviewStatusesGET**
@@ -2100,9 +2172,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2120,7 +2192,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesIdDELETE"></a>
 # **commonReviewStatusesIdDELETE**
@@ -2168,9 +2240,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
 
 ### Return type
 
@@ -2188,7 +2260,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="commonReviewStatusesIdGET"></a>
 # **commonReviewStatusesIdGET**
@@ -2238,10 +2310,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -2259,7 +2331,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesIdPATCH"></a>
 # **commonReviewStatusesIdPATCH**
@@ -2309,10 +2381,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
- **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
+| **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -2330,7 +2402,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesIdPUT"></a>
 # **commonReviewStatusesIdPUT**
@@ -2380,10 +2452,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this Review Status. |
- **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this Review Status. | |
+| **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -2401,7 +2473,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="commonReviewStatusesPOST"></a>
 # **commonReviewStatusesPOST**
@@ -2450,9 +2522,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **reviewStatus** | [**ReviewStatus**](ReviewStatus.md)|  | [optional] |
 
 ### Return type
 
@@ -2470,5 +2542,5 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 

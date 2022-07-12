@@ -2,36 +2,36 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**analyzeDocumentClusterGET**](AnalyzeApi.md#analyzeDocumentClusterGET) | **GET** /api/v1/analyze/document-cluster/ | 
-[**analyzeDocumentClusterIdGET**](AnalyzeApi.md#analyzeDocumentClusterIdGET) | **GET** /api/v1/analyze/document-cluster/{id}/ | 
-[**analyzeDocumentClusterIdPATCH**](AnalyzeApi.md#analyzeDocumentClusterIdPATCH) | **PATCH** /api/v1/analyze/document-cluster/{id}/ | 
-[**analyzeDocumentClusterIdPUT**](AnalyzeApi.md#analyzeDocumentClusterIdPUT) | **PUT** /api/v1/analyze/document-cluster/{id}/ | 
-[**analyzeDocumentSimilarityListGET**](AnalyzeApi.md#analyzeDocumentSimilarityListGET) | **GET** /api/v1/analyze/document-similarity/list/ | 
-[**analyzeDocumentTransformerListGET**](AnalyzeApi.md#analyzeDocumentTransformerListGET) | **GET** /api/v1/analyze/document-transformer/list/ | 
-[**analyzeMlModelListGET**](AnalyzeApi.md#analyzeMlModelListGET) | **GET** /api/v1/analyze/ml-model/list/ | 
-[**analyzePartySimilarityListGET**](AnalyzeApi.md#analyzePartySimilarityListGET) | **GET** /api/v1/analyze/party-similarity/list/ | 
-[**analyzeProjectDocumentSimilarityListGET**](AnalyzeApi.md#analyzeProjectDocumentSimilarityListGET) | **GET** /api/v1/analyze/project-document-similarity/list/ | 
-[**analyzeProjectTextUnitSimilarityListGET**](AnalyzeApi.md#analyzeProjectTextUnitSimilarityListGET) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ | 
-[**analyzeProjectTextUnitSimilarityListPOST**](AnalyzeApi.md#analyzeProjectTextUnitSimilarityListPOST) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ | 
-[**analyzeSimilarityRunsGET**](AnalyzeApi.md#analyzeSimilarityRunsGET) | **GET** /api/v1/analyze/similarity-runs/ | 
-[**analyzeSimilarityRunsIdDELETE**](AnalyzeApi.md#analyzeSimilarityRunsIdDELETE) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ | 
-[**analyzeSimilarityRunsIdGET**](AnalyzeApi.md#analyzeSimilarityRunsIdGET) | **GET** /api/v1/analyze/similarity-runs/{id}/ | 
-[**analyzeTextUnitClassificationsGET**](AnalyzeApi.md#analyzeTextUnitClassificationsGET) | **GET** /api/v1/analyze/text-unit-classifications/ | 
-[**analyzeTextUnitClassificationsIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassificationsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ | 
-[**analyzeTextUnitClassificationsIdGET**](AnalyzeApi.md#analyzeTextUnitClassificationsIdGET) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ | 
-[**analyzeTextUnitClassificationsPOST**](AnalyzeApi.md#analyzeTextUnitClassificationsPOST) | **POST** /api/v1/analyze/text-unit-classifications/ | 
-[**analyzeTextUnitClassifierSuggestionsGET**](AnalyzeApi.md#analyzeTextUnitClassifierSuggestionsGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/ | 
-[**analyzeTextUnitClassifierSuggestionsIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassifierSuggestionsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ | 
-[**analyzeTextUnitClassifierSuggestionsIdGET**](AnalyzeApi.md#analyzeTextUnitClassifierSuggestionsIdGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ | 
-[**analyzeTextUnitClassifiersGET**](AnalyzeApi.md#analyzeTextUnitClassifiersGET) | **GET** /api/v1/analyze/text-unit-classifiers/ | 
-[**analyzeTextUnitClassifiersIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassifiersIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifiers/{id}/ | 
-[**analyzeTextUnitClassifiersIdGET**](AnalyzeApi.md#analyzeTextUnitClassifiersIdGET) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ | 
-[**analyzeTextUnitClusterListGET**](AnalyzeApi.md#analyzeTextUnitClusterListGET) | **GET** /api/v1/analyze/text-unit-cluster/list/ | 
-[**analyzeTextUnitSimilarityListGET**](AnalyzeApi.md#analyzeTextUnitSimilarityListGET) | **GET** /api/v1/analyze/text-unit-similarity/list/ | 
-[**analyzeTextUnitTransformerListGET**](AnalyzeApi.md#analyzeTextUnitTransformerListGET) | **GET** /api/v1/analyze/text-unit-transformer/list/ | 
-[**analyzeTypeaheadTextUnitClassificationFieldNameGET**](AnalyzeApi.md#analyzeTypeaheadTextUnitClassificationFieldNameGET) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**analyzeDocumentClusterGET**](AnalyzeApi.md#analyzeDocumentClusterGET) | **GET** /api/v1/analyze/document-cluster/ |  |
+| [**analyzeDocumentClusterIdGET**](AnalyzeApi.md#analyzeDocumentClusterIdGET) | **GET** /api/v1/analyze/document-cluster/{id}/ |  |
+| [**analyzeDocumentClusterIdPATCH**](AnalyzeApi.md#analyzeDocumentClusterIdPATCH) | **PATCH** /api/v1/analyze/document-cluster/{id}/ |  |
+| [**analyzeDocumentClusterIdPUT**](AnalyzeApi.md#analyzeDocumentClusterIdPUT) | **PUT** /api/v1/analyze/document-cluster/{id}/ |  |
+| [**analyzeDocumentSimilarityListGET**](AnalyzeApi.md#analyzeDocumentSimilarityListGET) | **GET** /api/v1/analyze/document-similarity/list/ |  |
+| [**analyzeDocumentTransformerListGET**](AnalyzeApi.md#analyzeDocumentTransformerListGET) | **GET** /api/v1/analyze/document-transformer/list/ |  |
+| [**analyzeMlModelListGET**](AnalyzeApi.md#analyzeMlModelListGET) | **GET** /api/v1/analyze/ml-model/list/ |  |
+| [**analyzePartySimilarityListGET**](AnalyzeApi.md#analyzePartySimilarityListGET) | **GET** /api/v1/analyze/party-similarity/list/ |  |
+| [**analyzeProjectDocumentSimilarityListGET**](AnalyzeApi.md#analyzeProjectDocumentSimilarityListGET) | **GET** /api/v1/analyze/project-document-similarity/list/ |  |
+| [**analyzeProjectTextUnitSimilarityListGET**](AnalyzeApi.md#analyzeProjectTextUnitSimilarityListGET) | **GET** /api/v1/analyze/project-text-unit-similarity/list/ |  |
+| [**analyzeProjectTextUnitSimilarityListPOST**](AnalyzeApi.md#analyzeProjectTextUnitSimilarityListPOST) | **POST** /api/v1/analyze/project-text-unit-similarity/list/ |  |
+| [**analyzeSimilarityRunsGET**](AnalyzeApi.md#analyzeSimilarityRunsGET) | **GET** /api/v1/analyze/similarity-runs/ |  |
+| [**analyzeSimilarityRunsIdDELETE**](AnalyzeApi.md#analyzeSimilarityRunsIdDELETE) | **DELETE** /api/v1/analyze/similarity-runs/{id}/ |  |
+| [**analyzeSimilarityRunsIdGET**](AnalyzeApi.md#analyzeSimilarityRunsIdGET) | **GET** /api/v1/analyze/similarity-runs/{id}/ |  |
+| [**analyzeTextUnitClassificationsGET**](AnalyzeApi.md#analyzeTextUnitClassificationsGET) | **GET** /api/v1/analyze/text-unit-classifications/ |  |
+| [**analyzeTextUnitClassificationsIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassificationsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifications/{id}/ |  |
+| [**analyzeTextUnitClassificationsIdGET**](AnalyzeApi.md#analyzeTextUnitClassificationsIdGET) | **GET** /api/v1/analyze/text-unit-classifications/{id}/ |  |
+| [**analyzeTextUnitClassificationsPOST**](AnalyzeApi.md#analyzeTextUnitClassificationsPOST) | **POST** /api/v1/analyze/text-unit-classifications/ |  |
+| [**analyzeTextUnitClassifierSuggestionsGET**](AnalyzeApi.md#analyzeTextUnitClassifierSuggestionsGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/ |  |
+| [**analyzeTextUnitClassifierSuggestionsIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassifierSuggestionsIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ |  |
+| [**analyzeTextUnitClassifierSuggestionsIdGET**](AnalyzeApi.md#analyzeTextUnitClassifierSuggestionsIdGET) | **GET** /api/v1/analyze/text-unit-classifier-suggestions/{id}/ |  |
+| [**analyzeTextUnitClassifiersGET**](AnalyzeApi.md#analyzeTextUnitClassifiersGET) | **GET** /api/v1/analyze/text-unit-classifiers/ |  |
+| [**analyzeTextUnitClassifiersIdDELETE**](AnalyzeApi.md#analyzeTextUnitClassifiersIdDELETE) | **DELETE** /api/v1/analyze/text-unit-classifiers/{id}/ |  |
+| [**analyzeTextUnitClassifiersIdGET**](AnalyzeApi.md#analyzeTextUnitClassifiersIdGET) | **GET** /api/v1/analyze/text-unit-classifiers/{id}/ |  |
+| [**analyzeTextUnitClusterListGET**](AnalyzeApi.md#analyzeTextUnitClusterListGET) | **GET** /api/v1/analyze/text-unit-cluster/list/ |  |
+| [**analyzeTextUnitSimilarityListGET**](AnalyzeApi.md#analyzeTextUnitSimilarityListGET) | **GET** /api/v1/analyze/text-unit-similarity/list/ |  |
+| [**analyzeTextUnitTransformerListGET**](AnalyzeApi.md#analyzeTextUnitTransformerListGET) | **GET** /api/v1/analyze/text-unit-transformer/list/ |  |
+| [**analyzeTypeaheadTextUnitClassificationFieldNameGET**](AnalyzeApi.md#analyzeTypeaheadTextUnitClassificationFieldNameGET) | **GET** /api/v1/analyze/typeahead/text-unit-classification/{field_name}/ |  |
 
 
 <a name="analyzeDocumentClusterGET"></a>
@@ -81,9 +81,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -101,7 +101,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentClusterIdGET"></a>
 # **analyzeDocumentClusterIdGET**
@@ -151,10 +151,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document cluster. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document cluster. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -172,7 +172,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentClusterIdPATCH"></a>
 # **analyzeDocumentClusterIdPATCH**
@@ -222,10 +222,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document cluster. |
- **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document cluster. | |
+| **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -243,7 +243,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentClusterIdPUT"></a>
 # **analyzeDocumentClusterIdPUT**
@@ -293,10 +293,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this document cluster. |
- **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this document cluster. | |
+| **documentClusterUpdate** | [**DocumentClusterUpdate**](DocumentClusterUpdate.md)|  | [optional] |
 
 ### Return type
 
@@ -314,7 +314,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentSimilarityListGET"></a>
 # **analyzeDocumentSimilarityListGET**
@@ -363,9 +363,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -383,7 +383,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeDocumentTransformerListGET"></a>
 # **analyzeDocumentTransformerListGET**
@@ -432,9 +432,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -452,7 +452,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeMlModelListGET"></a>
 # **analyzeMlModelListGET**
@@ -501,9 +501,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -521,7 +521,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzePartySimilarityListGET"></a>
 # **analyzePartySimilarityListGET**
@@ -570,9 +570,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -590,7 +590,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeProjectDocumentSimilarityListGET"></a>
 # **analyzeProjectDocumentSimilarityListGET**
@@ -642,12 +642,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional]
- **runId** | **Integer**| run id or document id required | [optional]
- **documentId** | **Integer**| run id or document id required | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **textMaxLength** | **Integer**| document b text max length, 0 to get all text | [optional] |
+| **runId** | **Integer**| run id or document id required | [optional] |
+| **documentId** | **Integer**| run id or document id required | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -665,7 +665,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeProjectTextUnitSimilarityListGET"></a>
 # **analyzeProjectTextUnitSimilarityListGET**
@@ -722,17 +722,17 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
- **textMaxLength** | **Integer**| text unit b text max length, 0 to get all text | [optional]
- **runId** | **Integer**| run id or text unit id required | [optional]
- **lastRun** | **Boolean**| run id or last_run or text unit id required | [optional]
- **textUnitId** | **Integer**| run id or text unit id required | [optional]
- **documentId** | **Integer**| document ID | [optional]
- **locationStart** | **Integer**| start of chosen text block in a Document | [optional]
- **locationEnd** | **Integer**| end of chosen text block in a Document | [optional]
- **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
+| **textMaxLength** | **Integer**| text unit b text max length, 0 to get all text | [optional] |
+| **runId** | **Integer**| run id or text unit id required | [optional] |
+| **lastRun** | **Boolean**| run id or last_run or text unit id required | [optional] |
+| **textUnitId** | **Integer**| run id or text unit id required | [optional] |
+| **documentId** | **Integer**| document ID | [optional] |
+| **locationStart** | **Integer**| start of chosen text block in a Document | [optional] |
+| **locationEnd** | **Integer**| end of chosen text block in a Document | [optional] |
+| **selection** | [**List&lt;Object&gt;**](Object.md)| selection coordinates | [optional] |
 
 ### Return type
 
@@ -750,7 +750,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeProjectTextUnitSimilarityListPOST"></a>
 # **analyzeProjectTextUnitSimilarityListPOST**
@@ -799,9 +799,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **similarProjectTextUnitsRequest** | [**SimilarProjectTextUnitsRequest**](SimilarProjectTextUnitsRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -819,7 +819,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="analyzeSimilarityRunsGET"></a>
 # **analyzeSimilarityRunsGET**
@@ -870,11 +870,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **unitSource** | **String**| document / text_unit | [optional]
- **projectId** | **Integer**| Project ID | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **unitSource** | **String**| document / text_unit | [optional] |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -892,7 +892,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeSimilarityRunsIdDELETE"></a>
 # **analyzeSimilarityRunsIdDELETE**
@@ -942,11 +942,11 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this similarity run. |
- **unitSource** | **String**| document / text_unit | [optional]
- **projectId** | **Integer**| Project ID | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this similarity run. | |
+| **unitSource** | **String**| document / text_unit | [optional] |
+| **projectId** | **Integer**| Project ID | [optional] |
 
 ### Return type
 
@@ -964,7 +964,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeSimilarityRunsIdGET"></a>
 # **analyzeSimilarityRunsIdGET**
@@ -1016,12 +1016,12 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this similarity run. |
- **unitSource** | **String**| document / text_unit | [optional]
- **projectId** | **Integer**| Project ID | [optional]
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this similarity run. | |
+| **unitSource** | **String**| document / text_unit | [optional] |
+| **projectId** | **Integer**| Project ID | [optional] |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1039,7 +1039,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsGET"></a>
 # **analyzeTextUnitClassificationsGET**
@@ -1088,9 +1088,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1108,7 +1108,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsIdDELETE"></a>
 # **analyzeTextUnitClassificationsIdDELETE**
@@ -1156,9 +1156,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classification. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classification. | |
 
 ### Return type
 
@@ -1176,7 +1176,7 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsIdGET"></a>
 # **analyzeTextUnitClassificationsIdGET**
@@ -1226,10 +1226,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classification. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classification. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1247,7 +1247,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassificationsPOST"></a>
 # **analyzeTextUnitClassificationsPOST**
@@ -1296,9 +1296,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **textUnitClassificationCreate** | [**TextUnitClassificationCreate**](TextUnitClassificationCreate.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **textUnitClassificationCreate** | [**TextUnitClassificationCreate**](TextUnitClassificationCreate.md)|  | [optional] |
 
 ### Return type
 
@@ -1316,7 +1316,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  -  |
+| **201** |  |  -  |
 
 <a name="analyzeTextUnitClassifierSuggestionsGET"></a>
 # **analyzeTextUnitClassifierSuggestionsGET**
@@ -1365,9 +1365,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1385,7 +1385,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassifierSuggestionsIdDELETE"></a>
 # **analyzeTextUnitClassifierSuggestionsIdDELETE**
@@ -1433,9 +1433,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier suggestion. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier suggestion. | |
 
 ### Return type
 
@@ -1453,11 +1453,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeTextUnitClassifierSuggestionsIdGET"></a>
 # **analyzeTextUnitClassifierSuggestionsIdGET**
 > TextUnitClassifierSuggestion analyzeTextUnitClassifierSuggestionsIdGET(id, jqFilters)
+
+
 
 
 
@@ -1501,10 +1503,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier suggestion. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier suggestion. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1522,7 +1524,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassifiersGET"></a>
 # **analyzeTextUnitClassifiersGET**
@@ -1571,9 +1573,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1591,7 +1593,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClassifiersIdDELETE"></a>
 # **analyzeTextUnitClassifiersIdDELETE**
@@ -1639,9 +1641,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier. |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier. | |
 
 ### Return type
 
@@ -1659,11 +1661,13 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  -  |
+| **204** |  |  -  |
 
 <a name="analyzeTextUnitClassifiersIdGET"></a>
 # **analyzeTextUnitClassifiersIdGET**
 > TextUnitClassifier analyzeTextUnitClassifiersIdGET(id, jqFilters)
+
+
 
 
 
@@ -1707,10 +1711,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **String**| A unique integer value identifying this text unit classifier. |
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **id** | **String**| A unique integer value identifying this text unit classifier. | |
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1728,7 +1732,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitClusterListGET"></a>
 # **analyzeTextUnitClusterListGET**
@@ -1777,9 +1781,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1797,7 +1801,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitSimilarityListGET"></a>
 # **analyzeTextUnitSimilarityListGET**
@@ -1846,9 +1850,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1866,7 +1870,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTextUnitTransformerListGET"></a>
 # **analyzeTextUnitTransformerListGET**
@@ -1915,9 +1919,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jqFilters** | [**Map&lt;String, String&gt;**](String.md)| Filter params similar to JQWidgets grid filter params:                             filterscount&#x3D;1,                             filterdatafield0&#x3D;\&quot;a\&quot;,                             filtervalue0&#x3D;\&quot;b\&quot;,                             filtercondition0&#x3D;\&quot;CONTAINS\&quot;,                             filteroperator0&#x3D;1,                             sortdatafied&#x3D;\&quot;c\&quot;,                            sortorder&#x3D;\&quot;asc\&quot;                             | [optional] |
 
 ### Return type
 
@@ -1935,7 +1939,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="analyzeTypeaheadTextUnitClassificationFieldNameGET"></a>
 # **analyzeTypeaheadTextUnitClassificationFieldNameGET**
@@ -1985,10 +1989,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **fieldName** | **String**|  |
- **q** | **String**| Typeahead string |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **fieldName** | **String**|  | |
+| **q** | **String**| Typeahead string | |
 
 ### Return type
 
@@ -2006,5 +2010,5 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 

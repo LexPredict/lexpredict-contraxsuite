@@ -46,7 +46,7 @@ class TestAppVarAPINonAuthUser(unittest.TestCase):
             api_instance = common_api.CommonApi(api_client)
             resp = api_instance.common_app_variables_list_get(_preload_content=False)
 
-        self.assertEqual(resp.status, 401)
+        self.assertEqual(resp.status, 403)
 
     def test_app_var_get(self):
         # test disallowed for non-auth access variables

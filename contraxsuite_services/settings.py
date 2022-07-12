@@ -91,12 +91,12 @@ INSTALLED_APPS = (
     'allauth',  # registration
     'allauth.account',  # registration
     'allauth.socialaccount',  # registration
-    'allauth.socialaccount.providers.facebook',
-    'allauth.socialaccount.providers.twitter',
-    'apps.users.providers.proprietary',
-    'apps.users.providers.office365',
-    'apps.users.providers.google',
-    'apps.users.providers.okta',
+    # 'allauth.socialaccount.providers.facebook',
+    # 'allauth.socialaccount.providers.twitter',
+    # 'apps.users.providers.proprietary',
+    # 'apps.users.providers.office365',
+    # 'apps.users.providers.google',
+    # 'apps.users.providers.okta',
     'simple_history',  # historical records
     'django_celery_beat',  # task scheduling via DB
     'django_celery_results',  # for celery tasks
@@ -123,7 +123,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'rest_framework.authtoken',
     'rest_auth',
-    'rest_auth.registration',
+    # 'rest_auth.registration',
     'rest_framework_swagger',
     'rest_framework_tracking',
 
@@ -152,6 +152,14 @@ INSTALLED_APPS = (
     'apps.websocket',
     'apps.imanage_integration',
     'apps.similarity',
+
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'apps.users.social.elevate',
+    'apps.users.social.office365',
+    'apps.users.social.google',
+    'apps.users.social.okta',
+
 )
 
 PLUGGABLE_PROJECT_APPS = tuple(f'{APPS_DIR_NAME}.{name}' for name in sorted(os.listdir(APPS_DIR))
@@ -411,7 +419,6 @@ ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 5
 # Set the allauth adapter to be the 2FA adapter
 # ACCOUNT_ADAPTER = 'allauth_2fa.adapter.OTPAdapter'
 ACCOUNT_ADAPTER = 'apps.users.adapters.AccountAdapter'
-SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
 
 ACCOUNT_FORMS: dict = {
     'reset_password': 'apps.users.forms.CustomResetPasswordForm',
@@ -588,7 +595,7 @@ CELERY_CHORD_UNLOCK_DELAY_BETWEEN_RETRIES_IN_SEC = 3
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_IGNORE_RESULT = False
+CELERY_TASK_IGNORE_RESULT = False
 
 # this needed on production. check
 CELERY_IMPORTS = ('apps.task.tasks',)
@@ -611,7 +618,7 @@ CELERY_TASK_QUEUES = (
 )
 
 
-CELERY_ROUTES = {
+CELERY_TASK_ROUTES = {
     'apps.task.tasks.terminate_processes': {
         'queue': CELERY_QUEUE_WORKER_BCAST,
         'exchange': CELERY_EXCHANGE_WORKER_BCAST
@@ -958,8 +965,8 @@ NOTEBOOK_ARGUMENTS = [
 # CORS_ALLOW_CREDENTIALS = False
 # CORS_URLS_REGEX = r'^.*$'
 
-VERSION_NUMBER = '2.2.0'
-VERSION_COMMIT = 'a2b74d323a8e0bf4867ece128fb8910f37f489f3'
+VERSION_NUMBER = '2.3.0'
+VERSION_COMMIT = '224181742aa0830933bf03669eb6b9ecba6ca955'
 
 NOTIFICATION_EMBEDDED_TEMPLATES_PATH = 'apps/notifications/notification_templates'
 NOTIFICATION_CUSTOM_TEMPLATES_PATH_IN_MEDIA = 'notification_templates'
@@ -1023,6 +1030,26 @@ MODEL_S3_BUCKET = 'lexnlp-models-public'
 MODEL_S3_REGION = 'us-west-1'
 MODEL_S3_SSL_VERIFY = True
 
+
+# SOCIALACCOUNT_ADAPTER = 'apps.users.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'apps.users.social.adapters.SocialAccountAdapter'
+
+# handled via nginx redirect, so these urls don't exist in regular scope
+SOCIAL_CALLBACK_URL_TEMPLATE = 'http://localhost:3000/explorer/accounts/{}/login/callback/'
+SOCIAL_GOOGLE_CALLBACK_URL = SOCIAL_CALLBACK_URL_TEMPLATE.format('google')
+SOCIAL_OFFICE365_CALLBACK_URL = SOCIAL_CALLBACK_URL_TEMPLATE.format('office365')
+SOCIAL_ELEVATE_CALLBACK_URL = SOCIAL_CALLBACK_URL_TEMPLATE.format('elevate')
+SOCIAL_OKTA_CALLBACK_URL = SOCIAL_CALLBACK_URL_TEMPLATE.format('okta')
+
+# App Var settings for social auth
+DEFAULT_USER_GROUP = None
+ALLOWED_EMAIL_DOMAINS = '*'
+AUTO_REG_EMAIL_DOMAINS = ''
+SOCIAL_ACCOUNT_ALLOW_REGISTRATION = True
+AZURE_AD_ALLOW_SWITCH_TENANT = True
+SOCIALACCOUNT_EMAIL_VERIFIED_ONLY = True
+READ_AZURE_AD_PRINCIPAL_EMAIL = True
+
 try:
     from local_settings import *
 
@@ -1063,6 +1090,7 @@ MEDIA_API_URL = '/api/media-data/'
 
 # LoginRequiredMiddleware settings
 LOGIN_EXEMPT_URLS = (
+    r'^' + BASE_URL + 'users/social/',  # allow any URL under /accounts/*
     r'^' + BASE_URL + 'accounts/',  # allow any URL under /accounts/*
     r'^rest-auth/',  # allow any URL under /rest-auth/*
     r'^api/v',  # allow any URL under /api/v*

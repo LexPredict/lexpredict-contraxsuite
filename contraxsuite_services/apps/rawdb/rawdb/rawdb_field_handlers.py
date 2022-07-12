@@ -30,9 +30,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import List, Optional, Any, Tuple, Dict, Set
 
-import dateparser
-from django.utils.timezone import get_current_timezone
-
+# ContraxSuite imports
 from apps.common.contraxsuite_urls import doc_editor_url
 from apps.common.sql_commons import escape_column_name, SQLClause, SQLInsertClause
 from apps.common.utils import parse_date
@@ -42,8 +40,8 @@ from apps.rawdb.rawdb.errors import FilterSyntaxError, FilterValueParsingError
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -205,8 +203,9 @@ class StringColumnDesc(ColumnDesc):
 
 
 class ComparableColumnDesc(ColumnDesc):
+    # matches something like `(<=aaa, <=bbb)`
     range_query_re = re.compile(
-        r'(?P<start_bracket>[[(])?(?P<start_operator>[><]=?)?(?P<start>[^,\[\]()]+),(?P<end_operator>[><]=?)?(?P<end>[^,\[\]()]+)(?P<end_bracket>[])])?')
+        r'(?P<start_bracket>[\[(])?(?P<start_operator>[><]=?)?(?P<start>[^,\[\]()]+),(?P<end_operator>[><]=?)?(?P<end>[^,\[\]()]+)(?P<end_bracket>[])])?')
 
     compare_re = re.compile(r'(?P<operator>[><]?=?)?(?P<value>[^,\[\]()]+)')
 

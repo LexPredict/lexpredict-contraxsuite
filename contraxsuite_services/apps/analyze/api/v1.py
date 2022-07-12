@@ -50,8 +50,8 @@ from apps.common.schemas import JqFiltersListViewSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -624,7 +624,11 @@ class ProjectTextUnitSimilarityListAPIView(ProjectTextUnitSimilarityListPermissi
             request_data['location_start'] = location_start
             request_data['location_end'] = location_end
 
-        self.selected_text = Document.objects.get(pk=document_id).text[location_start:location_end]
+        try:
+            self.selected_text = Document.objects.get(pk=document_id).text[
+                                 location_start:location_end]
+        except Document.DoesNotExist:
+            self.selected_text = ""
 
         if run_id:
             # choose ALL similar text units inside ONE run

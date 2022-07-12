@@ -2,17 +2,19 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**rawdbConfigGET**](RawdbApi.md#rawdbConfigGET) | **GET** /api/v1/rawdb/config/ | 
-[**rawdbDocumentsDocumentTypeCodeGET**](RawdbApi.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ | 
-[**rawdbDocumentsDocumentTypeCodePOST**](RawdbApi.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ | 
-[**rawdbProjectStatsProjectIdGET**](RawdbApi.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**rawdbConfigGET**](RawdbApi.md#rawdbConfigGET) | **GET** /api/v1/rawdb/config/ |  |
+| [**rawdbDocumentsDocumentTypeCodeGET**](RawdbApi.md#rawdbDocumentsDocumentTypeCodeGET) | **GET** /api/v1/rawdb/documents/{document_type_code}/ |  |
+| [**rawdbDocumentsDocumentTypeCodePOST**](RawdbApi.md#rawdbDocumentsDocumentTypeCodePOST) | **POST** /api/v1/rawdb/documents/{document_type_code}/ |  |
+| [**rawdbProjectStatsProjectIdGET**](RawdbApi.md#rawdbProjectStatsProjectIdGET) | **GET** /api/v1/rawdb/project_stats/{project_id}/ |  |
 
 
 <a name="rawdbConfigGET"></a>
 # **rawdbConfigGET**
 > Map&lt;String, Object&gt; rawdbConfigGET()
+
+
 
 
 
@@ -71,11 +73,13 @@ This endpoint does not need any parameter.
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="rawdbDocumentsDocumentTypeCodeGET"></a>
 # **rawdbDocumentsDocumentTypeCodeGET**
 > Map&lt;String, Object&gt; rawdbDocumentsDocumentTypeCodeGET(documentTypeCode, projectIds, columns, associatedText, asZip, fmt, limit, orderBy, savedFilters, saveFilter, returnReviewed, returnTotal, returnData, ignoreErrors, filters)
+
+
 
 
 
@@ -132,23 +136,23 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeCode** | **String**|  |
- **projectIds** | **String**| Project ids separated by commas | [optional]
- **columns** | **String**| Column names separated by commas | [optional]
- **associatedText** | **Boolean**| Boolean - show associated text | [optional]
- **asZip** | **Boolean**| Boolean - export as zip | [optional]
- **fmt** | **String**| Export format | [optional] [enum: json, csv, xlsx]
- **limit** | **Integer**| Page Size | [optional]
- **orderBy** | **String**| Sort order - column names separated by commas | [optional]
- **savedFilters** | **String**| Saved filter ids separated by commas | [optional]
- **saveFilter** | **Boolean**| Save filter | [optional]
- **returnReviewed** | **Boolean**| Return Reviewed documents count | [optional]
- **returnTotal** | **Boolean**| Return total documents count | [optional]
- **returnData** | **Boolean**| Return data | [optional]
- **ignoreErrors** | **Boolean**| Ignore errors | [optional]
- **filters** | [**Map&lt;String, String&gt;**](String.md)| Filter params | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeCode** | **String**|  | |
+| **projectIds** | **String**| Project ids separated by commas | [optional] |
+| **columns** | **String**| Column names separated by commas | [optional] |
+| **associatedText** | **Boolean**| Boolean - show associated text | [optional] |
+| **asZip** | **Boolean**| Boolean - export as zip | [optional] |
+| **fmt** | **String**| Export format | [optional] [enum: json, csv, xlsx] |
+| **limit** | **Integer**| Page Size | [optional] |
+| **orderBy** | **String**| Sort order - column names separated by commas | [optional] |
+| **savedFilters** | **String**| Saved filter ids separated by commas | [optional] |
+| **saveFilter** | **Boolean**| Save filter | [optional] |
+| **returnReviewed** | **Boolean**| Return Reviewed documents count | [optional] |
+| **returnTotal** | **Boolean**| Return total documents count | [optional] |
+| **returnData** | **Boolean**| Return data | [optional] |
+| **ignoreErrors** | **Boolean**| Ignore errors | [optional] |
+| **filters** | [**Map&lt;String, String&gt;**](String.md)| Filter params | [optional] |
 
 ### Return type
 
@@ -166,7 +170,7 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="rawdbDocumentsDocumentTypeCodePOST"></a>
 # **rawdbDocumentsDocumentTypeCodePOST**
@@ -216,10 +220,10 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **documentTypeCode** | **String**|  |
- **rawdbDocumentsPOSTRequest** | [**RawdbDocumentsPOSTRequest**](RawdbDocumentsPOSTRequest.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **documentTypeCode** | **String**|  | |
+| **rawdbDocumentsPOSTRequest** | [**RawdbDocumentsPOSTRequest**](RawdbDocumentsPOSTRequest.md)|  | [optional] |
 
 ### Return type
 
@@ -237,11 +241,13 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 
 <a name="rawdbProjectStatsProjectIdGET"></a>
 # **rawdbProjectStatsProjectIdGET**
 > Map&lt;String, Object&gt; rawdbProjectStatsProjectIdGET(projectId)
+
+
 
 
 
@@ -284,9 +290,9 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **projectId** | **String**|  |
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **projectId** | **String**|  | |
 
 ### Return type
 
@@ -304,5 +310,5 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** |  |  -  |
+| **200** |  |  -  |
 

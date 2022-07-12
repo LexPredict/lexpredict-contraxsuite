@@ -5,11 +5,11 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**all** | **Boolean** |  |  [optional]
-**projectId** | **Integer** |  | 
-**documentIds** | **List&lt;Integer&gt;** |  |  [optional]
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**all** | **Boolean** |  |  [optional] |
+|**projectId** | **Integer** |  |  |
+|**documentIds** | **List&lt;Integer&gt;** |  |  [optional] |
 
 
 

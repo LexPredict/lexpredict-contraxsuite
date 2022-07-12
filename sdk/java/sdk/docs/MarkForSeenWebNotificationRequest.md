@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**notificationIds** | **List&lt;Integer&gt;** |  | 
-**isSeen** | **Boolean** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**notificationIds** | **List&lt;Integer&gt;** |  |  |
+|**isSeen** | **Boolean** |  |  |
 
 
 

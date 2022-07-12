@@ -32,20 +32,19 @@ from apps.common.widgets import CustomLabelModelChoiceField, LTRCheckboxField
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
 class WritableSerializerMethodField(serializers.Field):
 
-    def __init__(self, to_repr_method_name=None, to_internal_method_name=None,
-                 read_only=False, write_only=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         kwargs['source'] = '*'
-        super().__init__(read_only, write_only, **kwargs)
-        self.to_repr_method_name = to_repr_method_name
-        self.to_internal_method_name = to_internal_method_name
+        self.to_repr_method_name = kwargs.pop('to_repr_method_name', None)
+        self.to_internal_method_name = kwargs.pop('to_internal_method_name', None)
+        super().__init__(*args, **kwargs)
 
     def bind(self, field_name, parent):
         super().bind(field_name, parent)

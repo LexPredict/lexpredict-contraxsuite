@@ -5,10 +5,10 @@
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**log** | **String** |  | 
-**exception** | **String** |  | 
+| Name | Type | Description | Notes |
+|------------ | ------------- | ------------- | -------------|
+|**log** | **String** |  |  |
+|**exception** | **String** |  |  |
 
 
 

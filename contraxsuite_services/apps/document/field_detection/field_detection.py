@@ -28,8 +28,9 @@ import sys
 from typing import Optional, List, Dict, Set, Any, Tuple
 
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, signals
 
+from apps.common.decorators import temp_disconnect_signal
 from apps.common.log_utils import ProcessLogger, ErrorCollectingLogger
 from apps.document.constants import FieldSpec
 from apps.document.field_detection.csv_regexps_field_detection_strategy import CsvRegexpsFieldDetectionStrategy
@@ -44,8 +45,8 @@ from apps.document.field_detection.regexps_field_detection import RegexpsOnlyFie
     FieldBasedRegexpsDetectionStrategy
 from apps.document.field_processing.field_processing_utils import order_field_detection, get_dependent_fields
 from apps.document.field_types import TypedField
-from apps.document.models import Document, DocumentType, DocumentField, ClassifierModel, FieldValue, FieldAnnotation, \
-    FieldAnnotationStatus
+from apps.document.models import Document, DocumentType, DocumentField, ClassifierModel, FieldValue, \
+    FieldAnnotation, FieldAnnotationStatus, post_save_field_annotation_actions
 from apps.document.repository.document_field_repository import DocumentFieldRepository
 from apps.document.repository.dto import FieldValueDTO
 from apps.document.signals import fire_document_changed, fire_document_field_detection_failed
@@ -54,8 +55,8 @@ from apps.document.field_detection.mlflow_field_detection import MLFlowModelBase
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -132,6 +133,9 @@ class FieldDetectionError(Exception):
     pass
 
 
+@temp_disconnect_signal(signal=signals.post_save,
+                        receiver=post_save_field_annotation_actions,
+                        sender=FieldAnnotation)
 def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                document: Document,
                                                save: bool = True,
@@ -148,8 +152,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
                                                skip_caching: bool = False,
                                                reset_document_status: bool = False):
     """
-    Detects field values for a document and stores their DocumentFieldValue objects as well as Document.field_value.
-    These two should always be consistent.
+    Detects field values for a document and stores their DocumentFieldValue objects
+    as well as Document.field_value. These two should always be consistent.
     :param log:
     :param document:
     :param save:
@@ -161,7 +165,7 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
     :param document_initial_load
     :param updated_field_codes - if set, we search for changed and dependent fields only
     :param skip_modified_values - don't overwrite field values overwritten by user
-    :param field_codes_to_detect - optional list of fields codes - only these fields are to be detected
+    :param field_codes_to_detect - optional list of fields codes - only these are to be detected
     :param task - optional task argument to fire signals
     :param skip_caching - don't cache right now, cache later
     :param reset_document_status - reset document status to "Loaded" or initial doc status
@@ -176,9 +180,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
 
     document_type = document.document_type  # type: DocumentType
 
-    all_fields = document_type.fields \
-        .all() \
-        .prefetch_related(Prefetch('depends_on_fields', queryset=DocumentField.objects.only('uid').all()))
+    all_fields = document_type.fields.prefetch_related(
+        Prefetch('depends_on_fields', queryset=DocumentField.objects.only('uid')))
 
     all_fields = list(all_fields)
 
@@ -195,18 +198,22 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
              f'Ignored fields: {ignore_field_codes}.')
 
     if updated_field_codes:
-        sorted_codes = [c for c in sorted_codes
-                        if c in dependent_fields and (not ignore_field_codes or c not in ignore_field_codes)]
+        sorted_codes = [
+            c for c in sorted_codes
+            if c in dependent_fields and (not ignore_field_codes or c not in ignore_field_codes)
+        ]
     elif ignore_field_codes:
         sorted_codes = [c for c in sorted_codes if c not in ignore_field_codes]
 
     current_field_values = {f.code: None for f in all_fields}
-    # we may get values for fields required for sorted_codes, regarding
-    # further dependencies
+
+    # we may get values for fields required for sorted_codes, regarding further dependencies
     # or we may just get all fields' values (field_codes_only=None)
-    actual_field_values = field_repo.get_field_code_to_python_value(document_type_id=document_type.pk,
-                                                                    doc_id=document.pk,
-                                                                    field_codes_only=None)
+    actual_field_values = field_repo.get_field_code_to_python_value(
+        document_type_id=document_type.pk,
+        doc_id=document.pk,
+        field_codes_only=None
+    )
     current_field_values.update(actual_field_values)
 
     res = []
@@ -238,8 +245,8 @@ def detect_and_cache_field_values_for_document(log: ProcessLogger,
         field_repo.delete_document_field_values(
             document.pk, list(skip_codes), updated_field_codes)
 
+    # to change status for a Document to "Loaded" -> document/async_tasks/detect_field_value_task.py
     if reset_document_status:
-        # to change status for a Document to "Loaded", see document/async_tasks/detect_field_value_task.py
         system_fields_changed = True
 
     for field_code in sorted_codes:

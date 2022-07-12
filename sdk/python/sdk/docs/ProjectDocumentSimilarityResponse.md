@@ -4,7 +4,7 @@
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**data** | [**[ProjectDocumentSimilarityResponseData]**](ProjectDocumentSimilarityResponseData.md) |  | 
+**data** | [**[ProjectDocumentSimilarityResponseDataInner]**](ProjectDocumentSimilarityResponseDataInner.md) |  | 
 **document_a_id** | **int, none_type** |  | [optional] 
 **document_a_name** | **str, none_type** |  | [optional] 
 **total_records** | **int** |  | [optional] 

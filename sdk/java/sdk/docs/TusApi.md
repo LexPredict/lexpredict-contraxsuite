@@ -2,15 +2,15 @@
 
 All URIs are relative to *http://localhost*
 
-Method | HTTP request | Description
-------------- | ------------- | -------------
-[**tusUploadSessionUploadSessionIdUploadGuidPATCH**](TusApi.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ | 
-[**tusUploadSessionUploadSessionIdUploadPOST**](TusApi.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ | 
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**tusUploadSessionUploadSessionIdUploadGuidPATCH**](TusApi.md#tusUploadSessionUploadSessionIdUploadGuidPATCH) | **PATCH** /api/v1/tus/upload-session/{upload_session_id}/upload/{guid}/ |  |
+| [**tusUploadSessionUploadSessionIdUploadPOST**](TusApi.md#tusUploadSessionUploadSessionIdUploadPOST) | **POST** /api/v1/tus/upload-session/{upload_session_id}/upload/ |  |
 
 
 <a name="tusUploadSessionUploadSessionIdUploadGuidPATCH"></a>
 # **tusUploadSessionUploadSessionIdUploadGuidPATCH**
-> InlineResponse400 tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body)
+> TusUploadSessionUploadSessionIdUploadPOST400Response tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body)
 
 
 
@@ -45,7 +45,7 @@ public class Example {
     Boolean force = true; // Boolean | Upload a file even if it exists.
     File body = new File("/path/to/file"); // File | 
     try {
-      InlineResponse400 result = apiInstance.tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
+      TusUploadSessionUploadSessionIdUploadPOST400Response result = apiInstance.tusUploadSessionUploadSessionIdUploadGuidPATCH(uploadSessionId, guid, uploadOffset, tusResumable, force, body);
       System.out.println(result);
     } catch (ApiException e) {
       System.err.println("Exception when calling TusApi#tusUploadSessionUploadSessionIdUploadGuidPATCH");
@@ -60,18 +60,18 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uploadSessionId** | **String**|  |
- **guid** | **String**|  |
- **uploadOffset** | **Integer**| Upload offset, bytes. |
- **tusResumable** | **String**| 1.0.0 |
- **force** | **Boolean**| Upload a file even if it exists. | [optional]
- **body** | **File**|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uploadSessionId** | **String**|  | |
+| **guid** | **String**|  | |
+| **uploadOffset** | **Integer**| Upload offset, bytes. | |
+| **tusResumable** | **String**| 1.0.0 | |
+| **force** | **Boolean**| Upload a file even if it exists. | [optional] |
+| **body** | **File**|  | [optional] |
 
 ### Return type
 
-[**InlineResponse400**](InlineResponse400.md)
+[**TusUploadSessionUploadSessionIdUploadPOST400Response**](TusUploadSessionUploadSessionIdUploadPOST400Response.md)
 
 ### Authorization
 
@@ -85,10 +85,10 @@ Name | Type | Description  | Notes
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**204** |  |  * Upload-Offset -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
-**400** |  |  -  |
-**460** |  |  -  |
-**500** |  |  -  |
+| **204** |  |  * Upload-Offset -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
+| **400** |  |  -  |
+| **460** |  |  -  |
+| **500** |  |  -  |
 
 <a name="tusUploadSessionUploadSessionIdUploadPOST"></a>
 # **tusUploadSessionUploadSessionIdUploadPOST**
@@ -141,14 +141,14 @@ public class Example {
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **uploadSessionId** | **String**|  |
- **uploadLength** | **Integer**| File length. |
- **uploadMetadata** | **String**| Upload metadata include file name, relative path, etc. |
- **tusResumable** | **String**| 1.0.0 |
- **force** | **Boolean**| Upload a file even if it exists. | [optional]
- **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional]
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uploadSessionId** | **String**|  | |
+| **uploadLength** | **Integer**| File length. | |
+| **uploadMetadata** | **String**| Upload metadata include file name, relative path, etc. | |
+| **tusResumable** | **String**| 1.0.0 | |
+| **force** | **Boolean**| Upload a file even if it exists. | [optional] |
+| **requestBody** | [**Map&lt;String, Object&gt;**](Object.md)|  | [optional] |
 
 ### Return type
 
@@ -166,6 +166,6 @@ null (empty response body)
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
-**400** |  |  -  |
+| **201** |  |  * Location -  <br>  * Upload-Expires -  <br>  * Tus-Resumable -  <br>  |
+| **400** |  |  -  |
 

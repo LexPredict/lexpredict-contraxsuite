@@ -43,7 +43,8 @@ RUN apt-get -y update --fix-missing && \
 	python3 --version && pip3 install -r /contraxsuite_services/deploy/base/python-requirements-all-3.8.txt && pip3 install --no-warn-conflicts --no-deps -r /contraxsuite_services/deploy/base/python-requirements-ignore-conflicts.txt${LEXNLP_MASTER_INSTALL_CMD} ${TEXT_EXTRACTION_API_INSTALL_CMD} && pip3 install -r /contraxsuite_services/python-requirements-additional.txt && pip3 uninstall -y -r /contraxsuite_services/deploy/base/python-unwanted-requirements.txt && \
 	if [ -f  /contraxsuite_services/deploy/base/customer-requirements.txt ]; then \
     pip3 install -r /contraxsuite_services/deploy/base/customer-requirements.txt; fi && \
-    su - ${SHARED_USER_NAME} -c "python3 -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet" && \
+    su - ${SHARED_USER_NAME} -c "python3 -m nltk.downloader averaged_perceptron_tagger punkt stopwords words maxent_ne_chunker wordnet omw-1.4" && \
+    su - ${SHARED_USER_NAME} -c "python3 -c 'from lexnlp.ml.catalog.download import download_github_release; download_github_release(\"pipeline/is-contract/0.1\", False); download_github_release(\"pipeline/contract-type/0.1\", False)'" && \
     su - ${SHARED_USER_NAME} -c "test -f \"/static/vendor/jqwidgets/jqx-all.js\" && echo \"JQWidgets are bundled within the image. Running collectstatic...\" && python3 manage.py collectstatic --noinput || echo \"JQWidgets not bundled within the image.\"" && \
     cat /build.info && cat /build.uuid && ls /static -l && \
     . /install_ssl_certs_to_python.sh && \

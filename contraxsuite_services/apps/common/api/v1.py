@@ -52,8 +52,8 @@ from apps.common.schemas import CustomAutoSchema, ObjectResponseSchema, JqFilter
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -152,6 +152,7 @@ class AppVarSerializer(serializers.ModelSerializer):
 
 
 class SystemAppVarListAPIView(JqListAPIView):
+    permission_classes = [AllowAny]
     queryset = AppVar.objects.filter(project_id=None).order_by('category', 'name')
     serializer_class = AppVarSerializer
     http_method_names = ['get']
@@ -569,7 +570,7 @@ class MediaFilesAPIView(APIView):
     permission_classes = [MediaFilesPermission]
     http_method_names = ['get']
     schema = MediaFilesAPIViewSchema()
-    free_media_folders = ['photo']
+    free_media_folders = ['photo', 'logo']
 
     def get(self, request, path):
         """
@@ -627,6 +628,21 @@ class MediaFilesAPIView(APIView):
         return Response(data)
 
 
+class LogoAPIView(MediaFilesAPIView):
+    permission_classes = [AllowAny]
+    http_method_names = ['get']
+    authentication_classes = []
+
+    def get(self, request, *args, **kwargs):
+        from apps.common.app_vars import CUSTOM_LOGO_URL
+        path = CUSTOM_LOGO_URL.val()
+
+        if not path or not file_storage.exists(path) or file_storage.isdir(path):
+            return HttpResponseNotFound()
+
+        return self.download(path, as_attachment=False)
+
+
 router = routers.DefaultRouter()
 router.register(r'actions', ActionViewSet, 'actions')
 router.register(r'review-status-groups', ReviewStatusGroupViewSet, 'review-status-group')
@@ -655,4 +671,10 @@ urlpatterns = [
         MediaFilesAPIView.as_view(),
         name='media'
     ),
+    url(
+        r'^logo/$',
+        LogoAPIView.as_view(),
+        name='logo'
+    ),
+
 ]

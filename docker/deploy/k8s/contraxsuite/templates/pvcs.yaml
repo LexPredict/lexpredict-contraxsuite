@@ -1,25 +1,38 @@
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   namespace: {{ .Values.namespace | quote }}
   name: backup
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
 
----
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ .Values.namespace | quote }}
+  name: contrax-celery-beat
+spec:
+  storageClassName: ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   namespace: {{ .Values.namespace | quote }}
   name: celery-worker-state
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -34,7 +47,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contrax-powa-web
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -49,7 +62,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-additional-fixtures
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -64,7 +77,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-data-media
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -79,7 +92,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-tes-data-media
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -94,7 +107,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-data-update
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -109,7 +122,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-jupyter-add-req
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -124,7 +137,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-minio
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -139,7 +152,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-mlflow-tracking
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -154,7 +167,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-nginx-conf
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -168,7 +181,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-nginx-certs
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -182,7 +195,7 @@ spec:
 #   namespace: {{ .Values.namespace | quote }}
 #   name: contraxsuite-frontend-nginx-volume
 # spec:
-#   storageClassName: rook-ceph-block
+#   storageClassName: ceph-block
   
 #   accessModes:
 #     - ReadWriteMany
@@ -197,7 +210,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-frontend
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -211,7 +224,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-nginx-server-include
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -226,7 +239,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-notebooks
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -241,7 +254,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-ssl-certs
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -256,7 +269,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: contraxsuite-third-party-dependencies
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -271,7 +284,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: elastalert-rules
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -286,7 +299,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: elasticsearch-data
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -300,7 +313,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: elastalert-rule-templates
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -315,7 +328,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: filebeat-data
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -331,7 +344,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: metricbeat-data
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -346,7 +359,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: postgres-data-11
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -361,7 +374,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: rabbitmq-data
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:
@@ -376,7 +389,7 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
   name: redis-data
 spec:
-  storageClassName: rook-ceph-block
+  storageClassName: ceph-block
   accessModes:
     - ReadWriteOnce
   resources:

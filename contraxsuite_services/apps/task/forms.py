@@ -45,8 +45,8 @@ from apps.task.models import Task, TaskLogEntry
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -209,6 +209,7 @@ class TaskDetailForm(forms.Form):
     child_tasks = forms.CharField(disabled=True)
     log = forms.CharField(widget=forms.Textarea, disabled=True)
     COLOR_BY_STATUS = {PENDING: '#ca3', SUCCESS: '#190', FAILURE: '#900', 'default': '#666'}
+    NO_STACK_TRACE_EXCEPTIONS = ['document is injured', 'No text extracted.']
 
     def __init__(self, prefix, instance: Task, initial):
         super().__init__()
@@ -269,7 +270,7 @@ class TaskDetailForm(forms.Form):
                   f'in {ex_module}:\n{ex_message}'
             logs.append(msg)
 
-        # Main problem is that this form's template uses some base template which replaces \n with <br />
+        # Main problem is that this form's template uses base template which replaces \n with <br />
         should_search_errors = this_task.status in {FAILURE, REVOKED} or \
             this_task.own_status in {FAILURE, REVOKED}
         all_records = instance.get_task_log_from_elasticsearch(should_search_errors)
@@ -283,11 +284,12 @@ class TaskDetailForm(forms.Form):
             message = record.message or ''
             message = '<br />' + message if '\n' in message else message
             message = message.replace('\n', '<br />')
-            log_add = f'<b><span style="color: {color}">{level}</span> {ts} | {record.task_name or "no task"} |</b> ' \
-                      f'{message}'
+            log_add = f'<b><span style="color: {color}">{level}</span> {ts} ' \
+                      f'| {record.task_name or "no task"} |</b> {message}'
             logs.append(log_add)
 
-            if record.stack_trace:
+            if record.stack_trace \
+                    and all([i not in record.message for i in self.NO_STACK_TRACE_EXCEPTIONS]):
                 # Adding JS to toggle stack trace showing/hiding
                 stack = record.stack_trace.replace('<', '&lt;').replace(
                     '>', '&gt;').replace('\n', '<br />')
@@ -295,7 +297,8 @@ class TaskDetailForm(forms.Form):
 
         # show system-wide errors in collapsible block
         if genr_records:
-            logs.append(f'<br/><h4>{len(genr_records)} error(s) also occurred after completing the task</h4>')
+            logs.append(f'<br/><h4>{len(genr_records)} error(s) also occurred after completing '
+                        f'the task</h4>')
             inner_block = ''
             for record in genr_records:
                 color = self.get_task_record_color(record)

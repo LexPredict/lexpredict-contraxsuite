@@ -45,8 +45,8 @@ from apps.common.singleton import Singleton
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -165,7 +165,7 @@ class ContraxsuiteWebDAVFileStorage(ContraxsuiteFileStorage):
         }
 
     def document_exists(self, rel_path: str):
-        url = os.path.join(self.root_url, self.documents_path, rel_path.lstrip('/'))
+        url = os.path.join(self.root_url, self.documents_path, quote(rel_path.lstrip('/')))
         r = requests.head(url, auth=self.auth, allow_redirects=True)
         return r.status_code == 200
 

@@ -9,7 +9,7 @@ Method | HTTP request | Description
 
 
 # **tus_upload_session_upload_session_id_upload_guid_patch**
-> InlineResponse400 tus_upload_session_upload_session_id_upload_guid_patch(upload_session_id, guid, upload_offset, tus_resumable)
+> TusUploadSessionUploadSessionIdUploadPOST400Response tus_upload_session_upload_session_id_upload_guid_patch(upload_session_id, guid, upload_offset, tus_resumable)
 
 
 
@@ -23,7 +23,7 @@ Transfer file data
 import time
 import openapi_client
 from openapi_client.api import tus_api
-from openapi_client.model.inline_response400 import InlineResponse400
+from openapi_client.model.tus_upload_session_upload_session_id_upload_post400_response import TusUploadSessionUploadSessionIdUploadPOST400Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.
@@ -83,7 +83,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**InlineResponse400**](InlineResponse400.md)
+[**TusUploadSessionUploadSessionIdUploadPOST400Response**](TusUploadSessionUploadSessionIdUploadPOST400Response.md)
 
 ### Authorization
 
@@ -121,7 +121,7 @@ Create an Upload
 import time
 import openapi_client
 from openapi_client.api import tus_api
-from openapi_client.model.inline_response400 import InlineResponse400
+from openapi_client.model.tus_upload_session_upload_session_id_upload_post400_response import TusUploadSessionUploadSessionIdUploadPOST400Response
 from pprint import pprint
 # Defining the host is optional and defaults to http://localhost
 # See configuration.py for a list of all supported configuration parameters.

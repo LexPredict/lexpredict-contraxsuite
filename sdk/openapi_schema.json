@@ -2,7 +2,7 @@
   "openapi": "3.0.2",
   "info": {
     "title": "Contraxsuite API",
-    "version": "2.1.188",
+    "version": "2.3.0",
     "description": "Contraxsuite API"
   },
   "paths": {
@@ -1655,6 +1655,53 @@
               }
             },
             "description": ""
+          }
+        },
+        "tags": [
+          "common",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/common/logo/": {
+      "get": {
+        "operationId": "common-logo:GET",
+        "description": "",
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "description": "Action name",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "info",
+                "download"
+              ],
+              "default": "download"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              },
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -6308,6 +6355,58 @@
         ]
       }
     },
+    "/api/v1/document/documents/{id}/set_annotator_coord_difference/": {
+      "post": {
+        "operationId": "document-documents-id-set_annotator_coord_difference:POST",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this document.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "document",
+          "v1"
+        ]
+      }
+    },
     "/api/v1/document/documents/{id}/show/": {
       "get": {
         "operationId": "document-documents-id-show:GET",
@@ -8363,6 +8462,67 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentPDFRepr"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "document",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/document/project/{project_pk}/documents/{id}/set_annotator_coord_difference/": {
+      "post": {
+        "operationId": "document-project-project_pk-documents-id-set_annotator_coord_difference:POST",
+        "description": "",
+        "parameters": [
+          {
+            "name": "project_pk",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "A unique integer value identifying this document.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSetAnnotatorCoordinatesDifferenceResponse"
                 }
               }
             },
@@ -12923,7 +13083,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskIdResponse"
+                  "$ref": "#/components/schemas/UpdateProjectDocumentsFieldsResponse"
                 }
               }
             },
@@ -15698,9 +15858,9 @@
         ]
       }
     },
-    "/api/v1/users/social_accounts/": {
+    "/api/v1/users/client-ids/": {
       "get": {
-        "operationId": "users-social_accounts:GET",
+        "operationId": "users-client-ids:GET",
         "description": "",
         "parameters": [],
         "responses": {
@@ -15708,7 +15868,178 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SocialAccountsResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SocialClientList"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/users/elevate/": {
+      "post": {
+        "operationId": "users-elevate:POST",
+        "description": "Authenticate user (register first if the profile doesn't exist)\nvia Elevate in CLM.\n\nThe login algorithm is next:\n\n1. Redirect to google auth page `https://elmqa.elevateservices.com/services/oauth/authorize`\n    with correct `client_id`, `redirect_url`, and `response_type=token`;\n2. After elevate auth user will be redirected to callback url;\n3. Pass the `access_token` from query params to this endpoint.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessTokenSchema"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessTokenSchema"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessTokenSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialLogin"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/users/google/": {
+      "post": {
+        "operationId": "users-google:POST",
+        "description": "Authenticate user (register first if the profile doesn't exist)\nvia Google in CLM.\n\nThe login algorithm is next:\n\n1. Redirect to google auth page `https://accounts.google.com/o/oauth2/v2/auth`\n    with correct `client_id`, `redirect_url`;\n2. After google auth user will be redirected to callback url;\n3. Pass the `code` from query params to this endpoint.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialLogin"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/users/office365/": {
+      "post": {
+        "operationId": "users-office365:POST",
+        "description": "Authenticate user (register first if the profile doesn't exist)\nvia Microsoft office365 in CLM.\n\nThe login algorithm is next:\n\n1. Redirect to microsoft auth page `https://login.microsoftonline.com/consumers|common/oauth2/v2.0/authorize`\n    with correct `client_id`, `redirect_url`, `response_type`, and `scope`;\n2. After microsoft auth user will be redirected to callback url;\n3. Pass the `code` from query params to this endpoint.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialLogin"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users",
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/users/okta/": {
+      "post": {
+        "operationId": "users-okta:POST",
+        "description": "Authenticate user (register first if the profile doesn't exist)\nvia Okta in CLM.\n\nThe login algorithm is next:\n\n1. Redirect to okta auth page `https://{{your domain}}.okta.com/oauth2/default/v1/authorize`\n    with correct `client_id`, `redirect_url`, `scope`, and `state`;\n2. After google auth user will be redirected to callback url;\n3. Pass the `code` from query params to this endpoint.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Code"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialLogin"
                 }
               }
             },
@@ -16320,90 +16651,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RestAuthCommonResponse"
-                }
-              }
-            },
-            "description": ""
-          }
-        },
-        "tags": [
-          "rest_auth",
-          "v1"
-        ]
-      }
-    },
-    "/rest-auth/registration/": {
-      "post": {
-        "operationId": "rest-auth-registration:POST",
-        "description": "",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Register"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/Register"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Register"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Register"
-                }
-              }
-            },
-            "description": ""
-          }
-        },
-        "tags": [
-          "rest_auth",
-          "v1"
-        ]
-      }
-    },
-    "/rest-auth/registration/verify-email/": {
-      "post": {
-        "operationId": "rest-auth-registration-verify-email:POST",
-        "description": "",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyEmail"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyEmail"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyEmail"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmail"
                 }
               }
             },
@@ -18057,6 +18304,10 @@
             "type": "string",
             "readOnly": true
           },
+          "was_opened_in_annotator": {
+            "type": "boolean",
+            "readOnly": true
+          },
           "user_permissions": {
             "type": "object",
             "readOnly": true
@@ -18209,6 +18460,10 @@
           },
           "document_type": {
             "type": "string"
+          },
+          "document_type__title": {
+            "type": "string",
+            "readOnly": true
           },
           "code": {
             "type": "string",
@@ -18524,6 +18779,10 @@
           "document_type": {
             "type": "string"
           },
+          "document_type__title": {
+            "type": "string",
+            "readOnly": true
+          },
           "code": {
             "type": "string",
             "description": "Field codes must be lowercase, should start with \na Latin letter, and contain only Latin letters, digits, underscores. Field codes must be unique to every Document Type.",
@@ -18778,6 +19037,10 @@
                 },
                 "document_type": {
                   "type": "string"
+                },
+                "document_type__title": {
+                  "type": "string",
+                  "readOnly": true
                 },
                 "code": {
                   "type": "string",
@@ -22404,6 +22667,428 @@
           "status"
         ]
       },
+      "SimilarityForm": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string"
+          },
+          "search_similar_documents": {
+            "type": "boolean"
+          },
+          "search_similar_text_units": {
+            "type": "boolean"
+          },
+          "similarity_threshold": {
+            "type": "integer",
+            "nullable": true,
+            "default": 75
+          },
+          "project": {
+            "enum": [
+              "",
+              2,
+              1
+            ]
+          },
+          "use_idf": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "run_name",
+          "search_similar_documents",
+          "search_similar_text_units",
+          "project",
+          "use_idf",
+          "delete"
+        ]
+      },
+      "SimilarityPOSTObjectResponse": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "confirm": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "detail"
+        ]
+      },
+      "DocumentSimilarityByFeaturesForm": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string"
+          },
+          "similarity_threshold": {
+            "type": "integer",
+            "nullable": true,
+            "default": 75
+          },
+          "project": {
+            "type": "integer"
+          },
+          "feature_source": {
+            "enum": [
+              "date",
+              "definition",
+              "duration",
+              "court",
+              "currency_name",
+              "currency_value",
+              "term",
+              "party",
+              "geoentity"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "term"
+          },
+          "distance_type": {
+            "enum": [
+              "braycurtis",
+              "canberra",
+              "chebyshev",
+              "cityblock",
+              "correlation",
+              "cosine",
+              "dice",
+              "euclidean",
+              "hamming",
+              "jaccard",
+              "jensenshannon",
+              "kulsinski",
+              "kulczynski1",
+              "mahalanobis",
+              "minkowski",
+              "rogerstanimoto",
+              "russellrao",
+              "seuclidean",
+              "sokalmichener",
+              "sokalsneath",
+              "sqeuclidean",
+              "yule"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "cosine"
+          },
+          "item_id": {
+            "type": "integer"
+          },
+          "create_reverse_relations": {
+            "type": "boolean"
+          },
+          "use_tfidf": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "run_name",
+          "project",
+          "item_id",
+          "create_reverse_relations",
+          "use_tfidf",
+          "delete"
+        ]
+      },
+      "TextUnitSimilarityByFeaturesForm": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string"
+          },
+          "similarity_threshold": {
+            "type": "integer",
+            "nullable": true,
+            "default": 75
+          },
+          "project": {
+            "type": "integer"
+          },
+          "feature_source": {
+            "enum": [
+              "date",
+              "definition",
+              "duration",
+              "court",
+              "currency_name",
+              "currency_value",
+              "term",
+              "party",
+              "geoentity"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "term"
+          },
+          "distance_type": {
+            "enum": [
+              "braycurtis",
+              "canberra",
+              "chebyshev",
+              "cityblock",
+              "correlation",
+              "cosine",
+              "dice",
+              "euclidean",
+              "hamming",
+              "jaccard",
+              "jensenshannon",
+              "kulsinski",
+              "kulczynski1",
+              "mahalanobis",
+              "minkowski",
+              "rogerstanimoto",
+              "russellrao",
+              "seuclidean",
+              "sokalmichener",
+              "sokalsneath",
+              "sqeuclidean",
+              "yule"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "cosine"
+          },
+          "item_id": {
+            "type": "integer"
+          },
+          "create_reverse_relations": {
+            "type": "boolean"
+          },
+          "use_tfidf": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "unit_type": {
+            "enum": [
+              null,
+              "sentence",
+              "paragraph"
+            ],
+            "nullable": true,
+            "default": "sentence"
+          }
+        },
+        "required": [
+          "run_name",
+          "project",
+          "item_id",
+          "create_reverse_relations",
+          "use_tfidf",
+          "delete"
+        ]
+      },
+      "ProjectDocumentsSimilarityByVectorsForm": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string"
+          },
+          "similarity_threshold": {
+            "type": "integer",
+            "nullable": true,
+            "default": 75
+          },
+          "project": {
+            "type": "integer"
+          },
+          "feature_source": {
+            "type": "string",
+            "nullable": true,
+            "default": "vector"
+          },
+          "distance_type": {
+            "enum": [
+              "braycurtis",
+              "canberra",
+              "chebyshev",
+              "cityblock",
+              "correlation",
+              "cosine",
+              "dice",
+              "euclidean",
+              "hamming",
+              "jaccard",
+              "jensenshannon",
+              "kulsinski",
+              "kulczynski1",
+              "mahalanobis",
+              "minkowski",
+              "rogerstanimoto",
+              "russellrao",
+              "seuclidean",
+              "sokalmichener",
+              "sokalsneath",
+              "sqeuclidean",
+              "yule"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "cosine"
+          },
+          "item_id": {
+            "type": "integer"
+          },
+          "create_reverse_relations": {
+            "type": "boolean"
+          },
+          "use_tfidf": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "run_name",
+          "project",
+          "item_id",
+          "create_reverse_relations",
+          "use_tfidf",
+          "delete"
+        ]
+      },
+      "ProjectTextUnitsSimilarityByVectorsForm": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string"
+          },
+          "similarity_threshold": {
+            "type": "integer",
+            "nullable": true,
+            "default": 75
+          },
+          "project": {
+            "type": "integer"
+          },
+          "feature_source": {
+            "type": "string",
+            "nullable": true,
+            "default": "vector"
+          },
+          "distance_type": {
+            "enum": [
+              "braycurtis",
+              "canberra",
+              "chebyshev",
+              "cityblock",
+              "correlation",
+              "cosine",
+              "dice",
+              "euclidean",
+              "hamming",
+              "jaccard",
+              "jensenshannon",
+              "kulsinski",
+              "kulczynski1",
+              "mahalanobis",
+              "minkowski",
+              "rogerstanimoto",
+              "russellrao",
+              "seuclidean",
+              "sokalmichener",
+              "sokalsneath",
+              "sqeuclidean",
+              "yule"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "cosine"
+          },
+          "item_id": {
+            "type": "integer"
+          },
+          "create_reverse_relations": {
+            "type": "boolean"
+          },
+          "use_tfidf": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "unit_type": {
+            "enum": [
+              null,
+              "sentence",
+              "paragraph"
+            ],
+            "nullable": true,
+            "default": "sentence"
+          },
+          "document_id": {
+            "type": "integer"
+          },
+          "location_start": {
+            "type": "integer"
+          },
+          "location_end": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_name",
+          "project",
+          "item_id",
+          "create_reverse_relations",
+          "use_tfidf",
+          "delete",
+          "document_id",
+          "location_start",
+          "location_end"
+        ]
+      },
+      "PartySimilarityForm": {
+        "type": "object",
+        "properties": {
+          "run_name": {
+            "type": "string"
+          },
+          "case_sensitive": {
+            "type": "boolean"
+          },
+          "similarity_type": {
+            "enum": [
+              "token_set_ratio",
+              "token_sort_ratio"
+            ],
+            "type": "string",
+            "nullable": true,
+            "default": "token_set_ratio"
+          },
+          "similarity_threshold": {
+            "type": "integer",
+            "nullable": true,
+            "default": 90
+          },
+          "delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "run_name",
+          "case_sensitive",
+          "delete"
+        ]
+      },
       "Task": {
         "type": "object",
         "properties": {
@@ -22531,560 +23216,65 @@
           "clauses_todo_pcnt"
         ]
       },
-      "SocialAccountsResponse": {
+      "SocialClientList": {
         "type": "object",
         "properties": {
-          "social_accounts": {
+          "provider": {
+            "enum": [
+              "elevate",
+              "office365",
+              "google",
+              "okta"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "client_id": {
+            "type": "string",
+            "description": "App ID, or consumer key",
+            "maxLength": 191
+          },
+          "urls": {
             "type": "object",
             "properties": {
-              "name": {
-                "type": "string"
+              "authorize_url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^(?:[a-z0-9\\.\\-\\+]*)://(?:[^\\s:@/]+(?::[^\\s:@/]*)?@)?(?:(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)(?:\\.(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)){3}|\\[[0-9a-f:\\.]+\\]|([a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?(?:\\.(?!-)[a-z\u00a1-\uffff0-9-]{1,63}(?<!-))*\\.(?!-)(?:[a-z\u00a1-\uffff-]{2,63}|xn--[a-z0-9]{1,59})(?<!-)\\.?|localhost))(?::\\d{2,5})?(?:[/?#][^\\s]*)?\\z"
               },
-              "provider": {
-                "type": "string"
+              "access_token_url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^(?:[a-z0-9\\.\\-\\+]*)://(?:[^\\s:@/]+(?::[^\\s:@/]*)?@)?(?:(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)(?:\\.(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)){3}|\\[[0-9a-f:\\.]+\\]|([a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?(?:\\.(?!-)[a-z\u00a1-\uffff0-9-]{1,63}(?<!-))*\\.(?!-)(?:[a-z\u00a1-\uffff-]{2,63}|xn--[a-z0-9]{1,59})(?<!-)\\.?|localhost))(?::\\d{2,5})?(?:[/?#][^\\s]*)?\\z"
+              },
+              "profile_url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^(?:[a-z0-9\\.\\-\\+]*)://(?:[^\\s:@/]+(?::[^\\s:@/]*)?@)?(?:(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)(?:\\.(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)){3}|\\[[0-9a-f:\\.]+\\]|([a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?(?:\\.(?!-)[a-z\u00a1-\uffff0-9-]{1,63}(?<!-))*\\.(?!-)(?:[a-z\u00a1-\uffff-]{2,63}|xn--[a-z0-9]{1,59})(?<!-)\\.?|localhost))(?::\\d{2,5})?(?:[/?#][^\\s]*)?\\z"
               },
               "login_url": {
-                "type": "string"
+                "type": "string",
+                "format": "uri",
+                "pattern": "^(?:[a-z0-9\\.\\-\\+]*)://(?:[^\\s:@/]+(?::[^\\s:@/]*)?@)?(?:(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)(?:\\.(?:0|25[0-5]|2[0-4]\\d|1\\d?\\d?|[1-9]\\d?)){3}|\\[[0-9a-f:\\.]+\\]|([a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?(?:\\.(?!-)[a-z\u00a1-\uffff0-9-]{1,63}(?<!-))*\\.(?!-)(?:[a-z\u00a1-\uffff-]{2,63}|xn--[a-z0-9]{1,59})(?<!-)\\.?|localhost))(?::\\d{2,5})?(?:[/?#][^\\s]*)?\\z"
               }
             },
             "required": [
-              "name",
-              "provider",
+              "authorize_url",
+              "access_token_url",
+              "profile_url",
               "login_url"
-            ]
+            ],
+            "readOnly": true
           }
         },
         "required": [
-          "social_accounts"
+          "provider",
+          "name",
+          "client_id"
         ]
-      },
-      "SimilarityForm": {
-        "type": "object",
-        "properties": {
-          "run_name": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 100
-          },
-          "search_similar_documents": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "search_similar_text_units": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "similarity_threshold": {
-            "type": "integer",
-            "nullable": true,
-            "default": 75,
-            "description": "Min. Similarity Value 50-100%",
-            "maximum": 100,
-            "minimum": 50
-          },
-          "project": {
-            "enum": [
-              "",
-              1204,
-              1203,
-              1198,
-              1191,
-              1189,
-              1188,
-              1187,
-              1186,
-              1185,
-              1184,
-              1183,
-              1179,
-              1178,
-              1177,
-              1176,
-              1174,
-              1173,
-              1172,
-              1170,
-              1169,
-              1168,
-              1167,
-              1165,
-              1164,
-              1163,
-              1159,
-              1157,
-              1156,
-              1153,
-              1149,
-              1145,
-              1141,
-              1133,
-              1129,
-              1126,
-              1125,
-              1124,
-              1123,
-              1120,
-              1118,
-              1116,
-              1115,
-              1113,
-              1112,
-              1110,
-              1101,
-              1097,
-              1085,
-              1083,
-              1080,
-              1079,
-              1067,
-              1065,
-              1062,
-              1061,
-              1059,
-              1057,
-              1052,
-              1050,
-              1047,
-              1036,
-              1025,
-              996,
-              992,
-              987,
-              978,
-              930,
-              923,
-              919,
-              915,
-              890,
-              889,
-              883,
-              773,
-              673,
-              600,
-              493,
-              401,
-              397,
-              291,
-              146,
-              46,
-              23,
-              12
-            ],
-            "nullable": true
-          },
-          "use_idf": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "delete": {
-            "type": "boolean",
-            "nullable": true
-          }
-        }
-      },
-      "SimilarityPOSTObjectResponse": {
-        "type": "object",
-        "properties": {
-          "detail": {
-            "type": "string"
-          },
-          "task_id": {
-            "type": "string"
-          },
-          "confirm": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "detail"
-        ]
-      },
-      "DocumentSimilarityByFeaturesForm": {
-        "type": "object",
-        "properties": {
-          "run_name": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 100
-          },
-          "similarity_threshold": {
-            "type": "integer",
-            "nullable": true,
-            "default": 75,
-            "description": "Min. Similarity Value 50-100%",
-            "maximum": 100,
-            "minimum": 50
-          },
-          "project": {
-            "type": "integer"
-          },
-          "feature_source": {
-            "enum": [
-              "date",
-              "definition",
-              "duration",
-              "court",
-              "currency_name",
-              "currency_value",
-              "term",
-              "party",
-              "geoentity"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "term",
-            "description": "Cluster by terms, parties or other fields."
-          },
-          "distance_type": {
-            "enum": [
-              "braycurtis",
-              "canberra",
-              "chebyshev",
-              "cityblock",
-              "correlation",
-              "cosine",
-              "dice",
-              "euclidean",
-              "hamming",
-              "jaccard",
-              "jensenshannon",
-              "kulsinski",
-              "mahalanobis",
-              "minkowski",
-              "rogerstanimoto",
-              "russellrao",
-              "seuclidean",
-              "sokalmichener",
-              "sokalsneath",
-              "sqeuclidean",
-              "wminkowski",
-              "yule"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "cosine"
-          },
-          "item_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Optional. Search similar for one concrete document"
-          },
-          "create_reverse_relations": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "use_tfidf": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "delete": {
-            "type": "boolean",
-            "nullable": true
-          }
-        },
-        "required": [
-          "project"
-        ]
-      },
-      "TextUnitSimilarityByFeaturesForm": {
-        "type": "object",
-        "properties": {
-          "run_name": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 100
-          },
-          "similarity_threshold": {
-            "type": "integer",
-            "nullable": true,
-            "default": 75,
-            "description": "Min. Similarity Value 50-100%",
-            "maximum": 100,
-            "minimum": 50
-          },
-          "project": {
-            "type": "integer"
-          },
-          "feature_source": {
-            "enum": [
-              "date",
-              "definition",
-              "duration",
-              "court",
-              "currency_name",
-              "currency_value",
-              "term",
-              "party",
-              "geoentity"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "term",
-            "description": "Cluster by terms, parties or other fields."
-          },
-          "distance_type": {
-            "enum": [
-              "braycurtis",
-              "canberra",
-              "chebyshev",
-              "cityblock",
-              "correlation",
-              "cosine",
-              "dice",
-              "euclidean",
-              "hamming",
-              "jaccard",
-              "jensenshannon",
-              "kulsinski",
-              "mahalanobis",
-              "minkowski",
-              "rogerstanimoto",
-              "russellrao",
-              "seuclidean",
-              "sokalmichener",
-              "sokalsneath",
-              "sqeuclidean",
-              "wminkowski",
-              "yule"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "cosine"
-          },
-          "item_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Optional. Search similar for one concrete text unit."
-          },
-          "create_reverse_relations": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "use_tfidf": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "delete": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "unit_type": {
-            "enum": [
-              null,
-              "sentence",
-              "paragraph"
-            ],
-            "nullable": true,
-            "default": "sentence"
-          }
-        },
-        "required": [
-          "project"
-        ]
-      },
-      "ProjectDocumentsSimilarityByVectorsForm": {
-        "type": "object",
-        "properties": {
-          "run_name": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 100
-          },
-          "similarity_threshold": {
-            "type": "integer",
-            "nullable": true,
-            "default": 75,
-            "description": "Min. Similarity Value 50-100%",
-            "maximum": 100,
-            "minimum": 50
-          },
-          "project": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Project with Document Transformer trained model"
-          },
-          "feature_source": {
-            "type": "string",
-            "nullable": true,
-            "default": "vector"
-          },
-          "distance_type": {
-            "enum": [
-              "braycurtis",
-              "canberra",
-              "chebyshev",
-              "cityblock",
-              "correlation",
-              "cosine",
-              "dice",
-              "euclidean",
-              "hamming",
-              "jaccard",
-              "jensenshannon",
-              "kulsinski",
-              "mahalanobis",
-              "minkowski",
-              "rogerstanimoto",
-              "russellrao",
-              "seuclidean",
-              "sokalmichener",
-              "sokalsneath",
-              "sqeuclidean",
-              "wminkowski",
-              "yule"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "cosine"
-          },
-          "item_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Optional. Search similar for one concrete document"
-          },
-          "create_reverse_relations": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "use_tfidf": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "delete": {
-            "type": "boolean",
-            "nullable": true
-          }
-        }
-      },
-      "ProjectTextUnitsSimilarityByVectorsForm": {
-        "type": "object",
-        "properties": {
-          "run_name": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 100
-          },
-          "similarity_threshold": {
-            "type": "integer",
-            "nullable": true,
-            "default": 75,
-            "description": "Min. Similarity Value 50-100%",
-            "maximum": 100,
-            "minimum": 50
-          },
-          "project": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Project with Text Unit Transformer trained model"
-          },
-          "feature_source": {
-            "type": "string",
-            "nullable": true,
-            "default": "vector"
-          },
-          "distance_type": {
-            "enum": [
-              "braycurtis",
-              "canberra",
-              "chebyshev",
-              "cityblock",
-              "correlation",
-              "cosine",
-              "dice",
-              "euclidean",
-              "hamming",
-              "jaccard",
-              "jensenshannon",
-              "kulsinski",
-              "mahalanobis",
-              "minkowski",
-              "rogerstanimoto",
-              "russellrao",
-              "seuclidean",
-              "sokalmichener",
-              "sokalsneath",
-              "sqeuclidean",
-              "wminkowski",
-              "yule"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "cosine"
-          },
-          "item_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Optional. Search similar for one concrete text unit."
-          },
-          "create_reverse_relations": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "use_tfidf": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "delete": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "unit_type": {
-            "enum": [
-              null,
-              "sentence",
-              "paragraph"
-            ],
-            "nullable": true,
-            "default": "sentence"
-          },
-          "document_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "location_start": {
-            "type": "integer",
-            "nullable": true
-          },
-          "location_end": {
-            "type": "integer",
-            "nullable": true
-          }
-        }
-      },
-      "PartySimilarityForm": {
-        "type": "object",
-        "properties": {
-          "run_name": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 100
-          },
-          "case_sensitive": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "similarity_type": {
-            "enum": [
-              "token_set_ratio",
-              "token_sort_ratio"
-            ],
-            "type": "string",
-            "nullable": true,
-            "default": "token_set_ratio"
-          },
-          "similarity_threshold": {
-            "type": "integer",
-            "nullable": true,
-            "default": 90,
-            "description": "Min. Similarity Value 0-100%.",
-            "maximum": 100,
-            "minimum": 0
-          },
-          "delete": {
-            "type": "boolean",
-            "nullable": true
-          }
-        }
       },
       "Login": {
         "type": "object",
@@ -23176,45 +23366,6 @@
         "required": [
           "old_password",
           "new_password"
-        ]
-      },
-      "Register": {
-        "type": "object",
-        "properties": {
-          "username": {
-            "type": "string",
-            "maxLength": 150,
-            "minLength": 1
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "password1": {
-            "type": "string",
-            "writeOnly": true
-          },
-          "password2": {
-            "type": "string",
-            "writeOnly": true
-          }
-        },
-        "required": [
-          "username",
-          "email",
-          "password1",
-          "password2"
-        ]
-      },
-      "VerifyEmail": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "key"
         ]
       },
       "TextUnitClassificationCreate": {
@@ -23309,6 +23460,51 @@
         },
         "required": [
           "count_deleted"
+        ]
+      },
+      "DocumentSetAnnotatorCoordinatesDifferenceRequest": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "integer"
+          },
+          "first_letters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "letter": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "letter"
+              ]
+            }
+          }
+        },
+        "required": [
+          "document_id",
+          "first_letters"
+        ]
+      },
+      "DocumentSetAnnotatorCoordinatesDifferenceResponse": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "updated"
         ]
       },
       "DocumentNoteCreate": {
@@ -24314,6 +24510,7 @@
               "jaccard",
               "jensenshannon",
               "kulsinski",
+              "kulczynski1",
               "mahalanobis",
               "minkowski",
               "rogerstanimoto",
@@ -24322,7 +24519,6 @@
               "sokalmichener",
               "sokalsneath",
               "sqeuclidean",
-              "wminkowski",
               "yule"
             ],
             "type": "string",
@@ -24369,6 +24565,7 @@
               "jaccard",
               "jensenshannon",
               "kulsinski",
+              "kulczynski1",
               "mahalanobis",
               "minkowski",
               "rogerstanimoto",
@@ -24377,7 +24574,6 @@
               "sokalmichener",
               "sokalsneath",
               "sqeuclidean",
-              "wminkowski",
               "yule"
             ],
             "type": "string",
@@ -24460,6 +24656,9 @@
             "items": {
               "type": "integer"
             }
+          },
+          "force": {
+            "type": "boolean"
           }
         }
       },
@@ -24530,6 +24729,32 @@
         },
         "required": [
           "fields_data"
+        ]
+      },
+      "UpdateProjectDocumentsFieldsResponse": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inactive_document_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "inactive_document_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "task_id",
+          "inactive_document_ids",
+          "inactive_document_names"
         ]
       },
       "UploadSessionCreate": {
@@ -24915,6 +25140,42 @@
           "user_name",
           "release_version",
           "user"
+        ]
+      },
+      "Code": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "SocialLogin": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "id_token": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessTokenSchema": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token"
         ]
       },
       "DocumentClusterUpdate": {

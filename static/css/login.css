@@ -1,29 +1,49 @@
-/*---------------------------------------------------------
-    2.1 Login Page
-----------------------------------------------------------*/
+@import url('https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&display=swap');
 
-@import 'fonts.css';
 
-*, *:before, *:after {
-  box-sizing: border-box;
+/* @media screen and (max-width: 1240px) {
+  .greeting-block {
+    background-size: 1280px  1274px;
+  }
 }
 
-html,
-body {
-  height: 100%;
+@media screen and (min-width: 1241px) {
+  .greeting-block {
+    background-size: 1440px 1274px;
+  }
 }
 
-body {
-  margin: 0;
-  padding: 0;
+@media screen and (min-width: 1441px) {
+  .greeting-block {
+    background-size: 1680px 1274px;
+  }
 }
+
+@media screen and (min-width: 1601px) {
+ .greeting-block {
+    background-size: 1920px 1800px;
+  }
+}
+
+@media screen and (min-width: 1921px) {
+  .greeting-block {
+    background-size: 2880px 2160px;
+  }
+}
+
+@media screen and (min-width: 2881px) {
+  .greeting-block {
+    background-size: 3840px 2160px;
+  }
+} */
 
 .login-page {
-  font-family: "Source Sans Pro", sans-serif;
+  font-family: "Karla", sans-serif;
 }
 
 .login-page.container {
-  height: 100%;
+  height: 100vh;
+  width: 100vw;
   position: relative;
 }
 
@@ -34,9 +54,35 @@ body {
   justify-content: flex-end;
 }
 
+.wrapper {
+  display: flex;
+  font-family: 'Karla', sans-serif;
+  flex-direction: row;
+  height: 100%;
+  /* justify-content: flex-end; */
+}
+
+.wrapper .logo-icon-block {
+  min-height: 700px;
+  width: 480px;
+  background-color: #F1F3F8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 220px;
+  height: 220px;
+}
+
+
 .greeting-block {
-  background-image: url(../images/login_intro_bg.svg);
-  box-shadow: 2px 0 15px 0 rgba(0, 0, 0, 0.09);
+  /* background-image: url('./../../../common/icons/login_intro_bg.svg'); */
+  background-color: #F1F3F8;
+  box-shadow: 2px 0 15px 0 rgba(0,0,0,0.09);
   background-repeat: no-repeat;
   background-position: center;
   min-width: 500px;
@@ -47,16 +93,38 @@ body {
   justify-content: center;
 }
 
-.login-intro {
-  background-image: url(../images/login_intro.svg);
+#app .container  .greeting-block.greeting-block-loading {
+  background-size: cover;
+}
+
+/***********/
+.container .greeting-block-loading {
+  width: 100%;
+  height: 100%;
+}
+
+.container .greeting-block-loading .preloader {
+  border: 4px solid #7A78CB;
+  position: absolute;
+  left: 50%;
+  bottom: 47%;
+  border-top: 4px solid #E2F0FD;
+}
+/***********/
+
+/* .login-intro {
+  background-image: url('./../../../common/icons/login_intro.svg');
   background-repeat: no-repeat;
   background-position: center;
   height: 904px;
   width: 786px;
   margin-left: -15%;
-}
+} */
+
 
 .help {
+  margin-top: auto;
+  margin-bottom: 24px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -67,6 +135,7 @@ body {
 .helper {
   margin-bottom: 15px;
   color: #3661EB;
+  font-family: "Karla";
   font-size: 16px;
   line-height: 24px;
   margin: 3px 0;
@@ -81,75 +150,62 @@ body {
 .support-info {
   opacity: 0.6;
   color: #334C70;
+  font-family: "Karla";
   font-size: 14px;
   line-height: 18px;
   margin: 3px 0;
 }
 
 .login-form {
-  box-shadow: 2px 0 15px 0 rgba(0, 0, 0, 0.09);
-  background-color: #FFFFFF;
+  /* animation: slide 300ms; */
+  box-shadow: 2px 0 15px 0 rgba(0,0,0,0.09);
+  background-color: #f8f9fb;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  align-items: center;
   height: 100%;
-  left: 0;
+  min-height: 700px;
+  right: 0;
   min-width: 430px;
-  padding: 40px 50px;
-  width: 38.2%;
+  padding: 0 50px;
+  position: relative;
+  width: calc(100% - 480px);
   z-index: 2;
 }
 
-.login-form.login-animation {
-  animation: slide 300ms reverse;
-}
-
-.login-form.reset-password {
+.login-form.password-reset {
   animation: none;
 }
 
-.login-form.reset-password .input-group p {
-  color: #16325C;
-}
-
-.login-form.reset-password .login-description {
+.login-form.password-reset .login-description {
   margin-bottom: 30px
 }
 
-.login-form.reset-password .login-button.reset {
+.login-form.password-reset .login-button.reset {
   margin-top: 10px;
 }
 
-.login-form.animation-slide {
+.login-form.password-recovery {
+  width: calc(100% - 480px);
+  /* animation: slide 300ms; */
+  position: absolute;
+  right: 0;
 }
 
-.login-form.reset-password {
-    left: 0;
-    position: absolute;
-    width: 100%;
-}
-
-.login-form.reset-password {
-  width: 100%;
-}
-
-.login-form.reset-password .login-description {
+.login-form.password-reset .login-description{
   text-align: center;
 }
 
-.login-form.reset-password .login-description {
-  text-align: center;
-}
-
-.login-form.reset-password,
-.login-form.reset-password .input-group {
+.login-form.password-recovery,
+.login-form.password-recovery .input-group {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.login-form.reset-password,
-.login-form.reset-password .input-group {
+.login-form.password-reset,
+.login-form.password-reset .input-group {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -157,11 +213,12 @@ body {
 
 .input-group {
   align-self: center;
-  min-width: 330px;
+  width: 304px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
+  margin-top: 87px;
 }
 
 .login-form .logo {
@@ -169,53 +226,46 @@ body {
 }
 
 .login-state {
-  color: #16325C;
-  font-size: 36px;
+  color: #000000;
+  font-family: "Karla";
+  font-size: 28px;
   font-weight: 300;
-  line-height: 45px;
-}
-
-.enter-new-password .login-state {
-  margin-bottom: 20px;
+  line-height: 26px;
+  margin-top: 88px;
+  margin-bottom: 32px;
 }
 
 .login-description {
   display: inline-block;
-  opacity: 0.7;
-  color: #16325C;
-  font-size: 16px;
-  line-height: 24px;
-  margin-top: 15px;
-  margin-bottom: 45px;
-  width: 310px;
+  font-family: "Karla";
+  margin-bottom: 8px;
   max-width: 310px;
+  color: #2E2E2E;
+  font-size: 14px;
+  line-height: 16px;
 }
 
-.login-animation .login-description.login {
+.login-description.login {
   animation: fade, descript-login 0.3s;
 }
 
-.login-form.reset-password .login-description {
+.login-form.password-recovery .login-description.fade {
+  animation: fade, descript-recovery 0.3s;
   margin-bottom: 25px;
 }
 
-/*.login-form.reset-password .login-description.fade {*/
-/*  animation: fade, descript-recovery 0.3s;*/
-/*  margin-bottom: 25px;*/
-/*}*/
-
 .error-message {
   color: red;
-  margin-bottom: 10px;
 }
 
-.login-state.reset {
+.login-state.reset{
   line-height: 21px;
   margin: 0 60px 10px;
 }
 
 .input-name {
   color: #334C70;
+  font-family: "Karla";
   font-size: 14px;
   font-weight: 600;
   line-height: 18px;
@@ -225,20 +275,20 @@ body {
   display: none;
 }
 
-.input-block {
-  display: flex;
-  flex-direction: column;
-  max-width: 310px;
+.login-state.fade {
+  animation: fade, descript-recovery 0.3s;
 }
 
-.to-email,
-.to-reset {
-  color: #334C70;
-  font-size: 14px;
-  line-height: 18px;
-  opacity: 0.6;
-  cursor: pointer;
-  text-decoration: none;
+.input-block.error .login-input {
+  border: 1px solid rgba(225, 79, 20, 0.3);
+  box-shadow: 0px 2px 10px rgba(225, 79, 20, 0.2);
+}
+
+.input-block-error-message {
+  color: #E14F14;
+  font-size: 12px;
+  line-height: 14px;
+  margin-bottom: 8px;
 }
 
 .input-labels {
@@ -247,43 +297,51 @@ body {
   justify-content: space-between;
 }
 
-.input-block.with-error .input-name {
-  color: #e63333;
-}
-
-.input-block.with-error .login-input {
-  border: 1px solid #e63333;
-}
-
-.login-form.reset-password .error-message {
-  margin-top: -13px;
-  margin-bottom: 15px;
-  max-width: 310px;
-}
-
 .login-input {
-  border: 1px solid #D8DDE6;
-  border-radius: 3px;
+  border: 1px solid #E4E4E4;
+  border-radius: 4px;
   background-color: #FFFFFF;
-  color: #334C70;
+  color: #2E2E2E;
+  font-family: "Karla";
   font-size: 14px;
-  height: 40px;
-  line-height: 18px;
-  margin: 7px 0 20px;
-  margin-bottom: 15px;
-  max-width: 310px;
-  padding: 0 15px;
+  height: 32px;
+  line-height: 16px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  width: 100%;
   position: relative;
   transition: top 300ms;
-  width: 310px;
-
 }
 
-.login-form input:focus {
+.hid_prevent {
+  display: none;
+}
+
+.login-form input:focus{
   border: 1px solid #3661EB;
   border-radius: 3px;
   background-color: #FFFFFF;
-  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 1px 0 rgba(0,0,0,0.06);
+}
+
+.to-email,
+.to-reset {
+  color: #434ABF;
+  font-family: "Karla";
+  font-size: 14px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.to-email:hover,
+.to-reset:hover {
+  color: #434ABF;
+}
+
+.password-recovery:visited,
+  .to-email:visited {
+    color: #334C70;
 }
 
 .login-form .to-email {
@@ -291,51 +349,147 @@ body {
 }
 
 .login-button {
-  transition: 300ms;
   border: none;
   border-radius: 3px;
-  background-color: #3661EB;
+  background-color: #7A78CB;
   color: #FFFFFF;
   cursor: pointer;
-  font-size: 16px;
-  line-height: 24px;
-  min-width: 140px;
+  font-family: "Karla";
+  font-size: 14px;
+  line-height: 16px;
+  width: 100%;
   padding: 8px 0;
   position: relative;
   text-align: center;
-  align-self: flex-start;
-  margin-bottom: 15px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
-.login-animation .login-button.login {
+.login-button:hover {
+  background-color: #434ABF;
+}
+
+.login-button.login{
   animation: to-login, button 300ms;
 }
 
 .login-button.reset {
   align-self: center;
   padding: 8px 0;
-  width: 200px;
-}
-
-.login-animation.login-button.reset {
-  animation: to-recovery 300ms;
 }
 
 .login-button:disabled {
   opacity: 0.6;
 }
 
-.login-animation.fade {
+/* Change implementation of loader*/
+.login-loader {
+  border: 4px solid #ebedf3;
+  border-top: 4px solid #7A78CB;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 2s linear infinite;
+  display: flex;
+  align-self: center;
+  position: absolute;
+  top: 45%;
+}
+
+.recovery-success{
+  color: #54698D;
+  font-family: 'Karla', sans-serif;
+  font-size: 14px;
+  line-height: 19px;
+  text-align: center;
+  margin: 0 59px 60px;
+}
+
+.fade {
   animation: fade 300ms;
 }
 
+.reset-status {
+  font: 12px "Karla", sans-serif;
+  margin: -20px 12px 5px;
+  opacity: 0.8
+}
+
+.reset-status.error {
+  color: red;
+}
+
+.reset-status.success {
+  color: green;
+}
+
+.password-change-label {
+  color: #16325C;
+  opacity: .7;
+}
+
+.login-social-providers-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.login-social-providers-list a {
+  text-decoration: none;
+  height: 32px;
+  width: 304px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #D7D8DD;
+  border-radius: 3px;
+  background-color: #FFFFFF;
+  box-sizing: border-box;
+  padding: 0 8px;
+  margin-bottom: 8px;
+}
+
+.login-social-providers-list a span {
+  flex: 1;
+  color: #000000;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.login-social-providers-list a:hover {
+  text-decoration: underline;
+  color: #000000;
+}
+
+.login-social-providers-list a:visited {
+  color: #334C70;
+}
+
+.sign-in-auth {
+  position: absolute;
+  width: 304px;
+  bottom: 0;
+  text-align: center;
+}
+
+.sign-via {
+  color: #979797;
+  font-family: "Karla";
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
 @keyframes slide {
-  0% {
-    width: 38.2%;
-  }
-  100% {
-    width: 100%;
-  }
+    0% {
+      width: 38.2%;
+    }
+    100% {
+      width: 100%;
+    }
 }
 
 @keyframes fade {
@@ -395,7 +549,7 @@ body {
 }
 
 
-@keyframes button {
+@keyframes button  {
   0% {
     color: #3661EB;
   }
@@ -404,38 +558,6 @@ body {
   }
 }
 
-@media screen and (max-width: 1240px) {
-  .greeting-block {
-    background-size: 1280px 1274px;
-  }
-}
-
-@media screen and (min-width: 1241px) {
-  .greeting-block {
-    background-size: 1440px 1274px;
-  }
-}
-
-@media screen and (min-width: 1441px) {
-  .greeting-block {
-    background-size: 1680px 1274px;
-  }
-}
-
-@media screen and (min-width: 1601px) {
-  .greeting-block {
-    background-size: 1920px 1800px;
-  }
-}
-
-@media screen and (min-width: 1921px) {
-  .greeting-block {
-    background-size: 2880px 2160px;
-  }
-}
-
-@media screen and (min-width: 2881px) {
-  .greeting-block {
-    background-size: 3840px 2160px;
-  }
+*, *:before, *:after {
+  box-sizing: border-box;
 }

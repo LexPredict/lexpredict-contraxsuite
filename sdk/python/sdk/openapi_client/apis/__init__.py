@@ -6,7 +6,7 @@
 # raise a `RecursionError`.
 # In order to avoid this, import only the API that you directly need like:
 #
-#   from .api.analyze_api import AnalyzeApi
+#   from openapi_client.api.analyze_api import AnalyzeApi
 #
 # or import this package, but before doing it, use:
 #

@@ -24,27 +24,19 @@
 """
 # -*- coding: utf-8 -*-
 
-from rest_framework import serializers
+from dj_rest_auth.registration.serializers import SocialLoginSerializer
+from apps.users.serializers import CodeSerializer
 
 from apps.common.schemas import CustomAutoSchema
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
 
-class SocialAccountsSerializer(serializers.Serializer):
-    name = serializers.CharField()
-    provider = serializers.CharField()
-    login_url = serializers.CharField()
-
-
-class SocialAccountsResponseSerializer(serializers.Serializer):
-    social_accounts = SocialAccountsSerializer()
-
-
-class SocialAccountsAPISchema(CustomAutoSchema):
-    response_serializer = SocialAccountsResponseSerializer()
+class SocialLoginSchema(CustomAutoSchema):
+    request_serializer = CodeSerializer()
+    response_serializer = SocialLoginSerializer()

@@ -176,7 +176,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project clustering.
+            var id = "id_example";  // string | A unique integer value identifying this project clustering.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -412,7 +412,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -494,7 +494,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -574,7 +574,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var assignProjectAnnotationsRequest = new AssignProjectAnnotationsRequest(); // AssignProjectAnnotationsRequest |  (optional) 
 
             try
@@ -657,7 +657,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var assignProjectDocumentRequest = new AssignProjectDocumentRequest(); // AssignProjectDocumentRequest |  (optional) 
 
             try
@@ -740,7 +740,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var assignProjectDocumentsRequest = new AssignProjectDocumentsRequest(); // AssignProjectDocumentsRequest |  (optional) 
 
             try
@@ -823,7 +823,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -901,7 +901,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectDetail = new ProjectDetail(); // ProjectDetail |  (optional) 
 
             try
@@ -983,7 +983,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var cleanupProjectRequest = new CleanupProjectRequest(); // CleanupProjectRequest |  (optional) 
 
             try
@@ -1064,7 +1064,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -1152,7 +1152,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var clusterProjectRequest = new ClusterProjectRequest(); // ClusterProjectRequest |  (optional) 
 
             try
@@ -1235,7 +1235,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectClusteringId = 56;  // int? | Get by project_clustering_id (optional) 
 
             try
@@ -1318,7 +1318,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -1395,7 +1395,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -1472,7 +1472,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -1549,7 +1549,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var detectProjectFieldValuesRequest = new DetectProjectFieldValuesRequest(); // DetectProjectFieldValuesRequest |  (optional) 
 
             try
@@ -1631,7 +1631,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this user.
+            var id = "id_example";  // string | A unique integer value identifying this user.
 
             try
             {
@@ -1711,7 +1711,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -1791,7 +1791,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var locateItemsRequest = new LocateItemsRequest(); // LocateItemsRequest |  (optional) 
 
             try
@@ -1873,7 +1873,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var markUnmarkForDeleteProjectsRequest = new MarkUnmarkForDeleteProjectsRequest(); // MarkUnmarkForDeleteProjectsRequest |  (optional) 
 
             try
@@ -1955,7 +1955,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectUpdate = new ProjectUpdate(); // ProjectUpdate |  (optional) 
 
             try
@@ -2037,7 +2037,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectUpdate = new ProjectUpdate(); // ProjectUpdate |  (optional) 
 
             try
@@ -2119,7 +2119,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
 
             try
             {
@@ -2197,7 +2197,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectSearchSimilarDocumentsRequest = new ProjectSearchSimilarDocumentsRequest(); // ProjectSearchSimilarDocumentsRequest |  (optional) 
 
             try
@@ -2277,7 +2277,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectSearchSimilarTextUnitsRequest = new ProjectSearchSimilarTextUnitsRequest(); // ProjectSearchSimilarTextUnitsRequest |  (optional) 
 
             try
@@ -2359,7 +2359,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var sendClusterToProjectRequest = new SendClusterToProjectRequest(); // SendClusterToProjectRequest |  (optional) 
 
             try
@@ -2415,7 +2415,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdSetAnnotationStatusPOST
 
-> OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse ProjectProjectsIdSetAnnotationStatusPOST (string id, SetProjectAnnotationsStatusRequest setProjectAnnotationsStatusRequest = null)
+> ProjectProjectsIdSetAnnotationStatusPOST200Response ProjectProjectsIdSetAnnotationStatusPOST (string id, SetProjectAnnotationsStatusRequest setProjectAnnotationsStatusRequest = null)
 
 
 
@@ -2443,12 +2443,12 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var setProjectAnnotationsStatusRequest = new SetProjectAnnotationsStatusRequest(); // SetProjectAnnotationsStatusRequest |  (optional) 
 
             try
             {
-                OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse result = apiInstance.ProjectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
+                ProjectProjectsIdSetAnnotationStatusPOST200Response result = apiInstance.ProjectProjectsIdSetAnnotationStatusPOST(id, setProjectAnnotationsStatusRequest);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2472,7 +2472,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse**](OneOfCountSuccessResponseSetProjectAnnotationsStatusAsyncResponse.md)
+[**ProjectProjectsIdSetAnnotationStatusPOST200Response**](ProjectProjectsIdSetAnnotationStatusPOST200Response.md)
 
 ### Authorization
 
@@ -2525,7 +2525,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var setProjectDocumentsStatusRequest = new SetProjectDocumentsStatusRequest(); // SetProjectDocumentsStatusRequest |  (optional) 
 
             try
@@ -2605,7 +2605,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var projectId = 56;  // int? | Project ID (optional) 
             var documentId = 56;  // int? | Document ID (optional) 
             var viewActions = new List<string>(); // List<string> | Action names (optional) 
@@ -2691,8 +2691,8 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
-            var taskId = taskId_example;  // string | 
+            var id = "id_example";  // string | A unique integer value identifying this project.
+            var taskId = "taskId_example";  // string | 
             var recordsLimit = 56;  // int? |  (optional) 
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
@@ -2775,7 +2775,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -2857,7 +2857,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var markUnmarkForDeleteProjectsRequest = new MarkUnmarkForDeleteProjectsRequest(); // MarkUnmarkForDeleteProjectsRequest |  (optional) 
 
             try
@@ -2911,7 +2911,7 @@ Name | Type | Description  | Notes
 
 ## ProjectProjectsIdUpdateDocumentFieldsPOST
 
-> TaskIdResponse ProjectProjectsIdUpdateDocumentFieldsPOST (string id, UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = null)
+> UpdateProjectDocumentsFieldsResponse ProjectProjectsIdUpdateDocumentFieldsPOST (string id, UpdateProjectDocumentsFieldsRequest updateProjectDocumentsFieldsRequest = null)
 
 
 
@@ -2939,12 +2939,12 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this project.
+            var id = "id_example";  // string | A unique integer value identifying this project.
             var updateProjectDocumentsFieldsRequest = new UpdateProjectDocumentsFieldsRequest(); // UpdateProjectDocumentsFieldsRequest |  (optional) 
 
             try
             {
-                TaskIdResponse result = apiInstance.ProjectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
+                UpdateProjectDocumentsFieldsResponse result = apiInstance.ProjectProjectsIdUpdateDocumentFieldsPOST(id, updateProjectDocumentsFieldsRequest);
                 Debug.WriteLine(result);
             }
             catch (ApiException e)
@@ -2968,7 +2968,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**TaskIdResponse**](TaskIdResponse.md)
+[**UpdateProjectDocumentsFieldsResponse**](UpdateProjectDocumentsFieldsResponse.md)
 
 ### Authorization
 
@@ -3102,7 +3102,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var projectIds = projectIds_example;  // string | Project ids separated by commas (optional) 
+            var projectIds = "projectIds_example";  // string | Project ids separated by commas (optional) 
 
             try
             {
@@ -3422,7 +3422,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
 
             try
             {
@@ -3501,7 +3501,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -3583,7 +3583,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
             var taskQueue = new TaskQueue(); // TaskQueue |  (optional) 
 
             try
@@ -3665,7 +3665,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var id = id_example;  // string | A unique integer value identifying this task queue.
+            var id = "id_example";  // string | A unique integer value identifying this task queue.
             var taskQueue = new TaskQueue(); // TaskQueue |  (optional) 
 
             try
@@ -3987,7 +3987,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var projectId = projectId_example;  // string | Project id (optional) 
+            var projectId = "projectId_example";  // string | Project id (optional) 
 
             try
             {
@@ -4067,7 +4067,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionDetail = new UploadSessionDetail(); // UploadSessionDetail |  (optional) 
 
             try
@@ -4149,7 +4149,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionBatchUploadRequest = new UploadSessionBatchUploadRequest(); // UploadSessionBatchUploadRequest |  (optional) 
 
             try
@@ -4231,7 +4231,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
 
             try
             {
@@ -4310,7 +4310,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
 
             try
             {
@@ -4389,7 +4389,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionDeleteFileRequest = new UploadSessionDeleteFileRequest(); // UploadSessionDeleteFileRequest |  (optional) 
 
             try
@@ -4472,13 +4472,13 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var contentLength = 56;  // int | Content Length
-            var fileName = fileName_example;  // string | Content Length
+            var fileName = "fileName_example";  // string | Content Length
             var force = true;  // bool? | Force upload (optional) 
             var directoryPath = true;  // bool? | Directory Path (optional) 
             var force2 = true;  // bool? | Force upload (optional) 
-            var body = BINARY_DATA_HERE;  // System.IO.Stream |  (optional) 
+            var body = new System.IO.MemoryStream(System.IO.File.ReadAllBytes("/path/to/file.txt"));  // System.IO.Stream |  (optional) 
 
             try
             {
@@ -4567,7 +4567,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var jqFilters = new Dictionary<string, string>(); // Dictionary<string, string> | Filter params similar to JQWidgets grid filter params:                             filterscount=1,                             filterdatafield0=\"a\",                             filtervalue0=\"b\",                             filtercondition0=\"CONTAINS\",                             filteroperator0=1,                             sortdatafied=\"c\",                            sortorder=\"asc\"                             (optional) 
 
             try
@@ -4649,7 +4649,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var uploadSessionUpdate = new UploadSessionUpdate(); // UploadSessionUpdate |  (optional) 
 
             try
@@ -4731,7 +4731,7 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
 
             try
             {
@@ -4811,13 +4811,13 @@ namespace Example
             // Configuration.Default.AddApiKeyPrefix("Authorization", "Bearer");
 
             var apiInstance = new ProjectApi(Configuration.Default);
-            var uid = uid_example;  // string | A UUID string identifying this upload session.
+            var uid = "uid_example";  // string | A UUID string identifying this upload session.
             var fileName = true;  // bool | File Name
-            var fileEncoding = fileEncoding_example;  // string | File Encoding
+            var fileEncoding = "fileEncoding_example";  // string | File Encoding
             var force = true;  // bool? | Force upload (optional) 
             var reviewFile = true;  // bool? | Review File (optional) 
             var directoryPath = true;  // bool? | Directory Path (optional) 
-            var body = BINARY_DATA_HERE;  // System.IO.Stream |  (optional) 
+            var body = new System.IO.MemoryStream(System.IO.File.ReadAllBytes("/path/to/file.txt"));  // System.IO.Stream |  (optional) 
 
             try
             {

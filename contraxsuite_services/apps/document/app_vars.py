@@ -24,13 +24,15 @@
 """
 # -*- coding: utf-8 -*-
 
+from json import dumps
+
 # Project imports
 from apps.common.models import AppVar
 
 __author__ = "ContraxSuite, LLC; LexPredict, LLC"
 __copyright__ = "Copyright 2015-2022, ContraxSuite, LLC"
-__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.2.0/LICENSE"
-__version__ = "2.2.0"
+__license__ = "https://github.com/LexPredict/lexpredict-contraxsuite/blob/2.3.0/LICENSE"
+__version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
@@ -147,9 +149,11 @@ MSWORD_TO_TEXT_ENABLE = AppVar.set(
 
 ALLOW_DUPLICATE_DOCS = AppVar.set(
     'Document', 'allow_duplicate_documents', False,
-    "If True, additional uploads of the same file name and same content " +
-    "will be allowed and copy 01, copy 02, etc will be added to the name. " +
-    "If False, you will get an error rejecting the upload of duplicate documents.",
+    """If “true”, duplicated filenames will be uploaded, 
+    but the second file will be named "copy 01", third file will be "copy 02", etc. 
+    If marked “false”, files with the exact same name AND the exact same content will be blocked as duplicates. 
+    Files with the same name but different content will be allowed.
+    """,
     system_only=False, target_type=bool)
 
 DETECT_CONTRACT = AppVar.set(
@@ -201,10 +205,30 @@ MAX_DOC_SIZE_IN_MAIL_ARCHIVE = AppVar.set(
     'Maximum total size of document files per one attached archive, MB.',
     system_only=False)
 
-CONTRACT_TYPE_FILTER = AppVar.set(
-    'Document', 'contract_type_filter',
-    '{"min_prob": 0.05, "max_closest_percent": 100}',
-    "Set contract type as 'UNKNOWN' if either the probability is too low or " +
-    "the next detected type has about the same probability",
+DETECT_CONTRACT_TYPE_SETTINGS = AppVar.set(
+    category='Document',
+    name='detect_contract_type_settings',
+    value=dumps({
+        'min_probability': 0.15,
+        'max_closest_probability': 0.75,
+        'pipeline_file_name': '',
+        'pipeline_file_member': '',
+        'fallback_to_lexnlp_default_pipeline': True,
+    }),
+    description="""
+    min_probability (float; 0.0 - 1.0):
+        The minimum predicted probability required to be considered a positive sample.<br/><br/>
+    max_closest_probability (float; 0.0 - 1.0):
+        The second-highest prediction probability must be this less than the highest prediction probability multiplied 
+        by this value.<br/> That is, if `predictions[1] > (predictions[0] * max_closest_probability)` then the `unknown_classification` will be 
+        returned.<br/><br/>
+    pipeline_file_name (string):
+        The name of the pipeline file to load.<br/><br/>
+    pipeline_file_member (string):
+        If `pipeline_file_name` is an archive (tar or zip) containing more than one file, then ContraxSuite will 
+        attempt to extract this member name.<br/><br/>
+    fallback_to_lexnlp_default_pipeline (boolean):
+        Whether to load LexNLP's default contract type classifier if no pipeline pickle file could be found.
+    """,
     system_only=False
 )
