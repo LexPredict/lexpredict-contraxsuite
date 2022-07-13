@@ -36,6 +36,8 @@ __version__ = "2.3.0"
 __maintainer__ = "LexPredict, LLC"
 __email__ = "support@contraxsuite.com"
 
+from apps.common.utils import get_logo_url
+
 
 def common(request):
     if request.is_ajax() or hasattr(request, 'versioning_scheme'):
@@ -66,4 +68,5 @@ def common(request):
             'custom_main_menu_item_templates': sorted(custom_main_menu_item_templates),
             'custom_task_menu_item_templates': sorted(custom_task_menu_item_templates),
             'available_locators': available_locators,
-            'has_admin_permissions': has_admin_permissions}
+            'has_admin_permissions': has_admin_permissions,
+            'logo_url': get_logo_url(), }

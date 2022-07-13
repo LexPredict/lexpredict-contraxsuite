@@ -30,6 +30,7 @@ from typing import Dict, Set, Optional, List, Any, Callable
 from jinja2 import Template
 
 from apps.common.contraxsuite_urls import root_url, doc_editor_url
+from apps.common.utils import get_logo_url
 from apps.document.constants import DOCUMENT_FIELD_CODE_NAME, DOCUMENT_FIELD_CODE_PROJECT, \
     DOCUMENT_FIELD_CODE_PROJECT_ID, DOCUMENT_FIELD_CODE_PROJECT_NAME, DOCUMENT_FIELD_CODE_STATUS, \
     DOCUMENT_FIELD_CODE_STATUS_NAME, DOCUMENT_FIELD_CODE_ASSIGNEE, DOCUMENT_FIELD_CODE_ASSIGNEE_ID, \
@@ -129,7 +130,7 @@ class NotificationRenderer:
             } for h in data.field_handlers if h.field_code in display_fields],
             'changes': changes,
             'changed_by_user': data.changed_by_user,
-            'logo_url': 'images/logo.png'
+            'logo_url': get_logo_url(),
         }  # type: Dict[str, Any]
 
         subject_template = subscription.subject or event_info.default_subject
@@ -196,7 +197,7 @@ class NotificationRenderer:
             'event_code': event_info.code,
             'event_title': event_info.title,
             'documents': [],
-            'logo_url': 'images/logo.png'
+            'logo_url': get_logo_url(),
         }
 
         # get recipients per message, split message packs by recipients

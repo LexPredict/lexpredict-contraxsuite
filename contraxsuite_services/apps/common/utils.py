@@ -609,3 +609,9 @@ def parse_date(date_str: str) -> Optional[datetime.datetime]:
         return None
     return dateparser.parse(date_str, settings={
         'TIMEZONE': get_current_timezone().zone})
+
+
+def get_logo_url():
+    from apps.common.app_vars import CUSTOM_LOGO_URL
+    from django.templatetags.static import static
+    return CUSTOM_LOGO_URL.val() or f"{settings.HOST_NAME.strip('/')}{static('images/logo.png')}"
