@@ -54,7 +54,7 @@ gensim==4.1.2
 geocoder==1.23.1
 Fabric3==1.14.post1
 fabtools-python==0.19.7
-flower==1.0.0
+flower==1.2.0
 fuzzywuzzy==0.18.0
 icalendar==4.0.9
 ipdb==0.13.9
