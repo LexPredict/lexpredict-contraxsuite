@@ -86,7 +86,7 @@ openpyxl==3.0.4
 pandas==1.4.2
 pdfkit==0.6.1
 pillow==9.1.1
-protobuf==3.20.1
+protobuf==3.20.2
 psutil==5.7.2
 psycopg2-binary==2.8.5
 pyap==0.3.1
