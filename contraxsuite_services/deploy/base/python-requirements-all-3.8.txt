@@ -62,7 +62,7 @@ iso639==0.1.4
 jedi==0.18.1
 Jinja2==3.1.2
 jiphy==1.2.2
-joblib==0.14.0
+joblib==1.2.0
 JSON-log-formatter==0.2.0
 jupyter==1.0.0
 jupyterlab==3.0.17
