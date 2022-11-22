@@ -85,7 +85,7 @@ numpy==1.21
 openpyxl==3.0.4
 pandas==1.4.2
 pdfkit==0.6.1
-pillow==9.1.1
+pillow==9.3.0
 protobuf==3.20.1
 psutil==5.7.2
 psycopg2-binary==2.8.5
