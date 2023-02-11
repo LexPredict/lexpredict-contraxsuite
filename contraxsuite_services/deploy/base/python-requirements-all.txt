@@ -58,7 +58,7 @@ flower==1.0.0
 fuzzywuzzy==0.18.0
 icalendar==4.0.9
 ipdb==0.13.9
-ipython==7.31.1
+ipython==8.10.0
 iso639==0.1.4
 jedi==0.18.1
 Jinja2==3.1.2
